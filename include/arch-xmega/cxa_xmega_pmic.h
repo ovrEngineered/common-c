@@ -50,6 +50,7 @@
 
 
 // ******** includes ********
+#include <stdbool.h>
 #include <avr/interrupt.h>
 #include <cxa_criticalSection.h>
 
@@ -108,6 +109,13 @@ typedef enum
  */
 void cxa_xmega_pmic_init(void);
 
+/**
+ * @public
+ * @brief Determines if the PMIC system has been initialized.
+ *
+ * @return true if the PMIC system has been initialized, false if not
+ */
+bool cxa_xmega_pmic_hasBeenInitialized(void);
 
 /**
  * @public
