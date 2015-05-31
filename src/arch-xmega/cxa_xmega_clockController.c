@@ -27,6 +27,7 @@
 #include <cxa_assert.h>
 #include <cxa_criticalSection.h>
 #include <cxa_xmega_ccp.h>
+#include <cxa_xmega_pmic.h>
 
 
 // ******** local macro definitions ********
@@ -44,6 +45,9 @@
 // ******** global function implementations ********
 void cxa_xmega_clockController_init(const cxa_xmega_clockController_internalOsc_t oscIn)
 {
+	// don't assume we can initialize this (since it may have side-effects)
+	cxa_assert(cxa_xmega_pmic_hasBeenInitialized());
+	
 	// disable power to all of our peripherals 
 	// (we'll re-enable it as we enable each peripheral)
 	PR.PRGEN = 0xFF;
