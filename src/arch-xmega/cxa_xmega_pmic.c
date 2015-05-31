@@ -51,6 +51,12 @@ void cxa_xmega_pmic_init(void)
 }
 
 
+bool cxa_xmega_pmic_hasBeenInitialized(void)
+{
+	return isInitialized;
+}
+
+
 void cxa_xmega_pmic_enableInterruptLevel(const cxa_xmega_pmic_interruptLevel_t levelIn)
 {
 	cxa_assert(isInitialized);
