@@ -53,6 +53,9 @@
 
 
 // ******** global macro definitions ********
+#ifndef CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES
+	#define CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES			8
+#endif
 
 
 // ******** global type definitions *********
