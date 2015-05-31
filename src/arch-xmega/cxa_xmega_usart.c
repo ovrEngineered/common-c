@@ -38,6 +38,10 @@
 #define USART1_TX_PIN		7
 #define USART1_RX_PIN		6
 
+#ifndef CXA_XMEGA_USART_RX_INT_LEVEL
+	#define CXA_XMEGA_USART_RX_INT_LEVEL		USART_RXCINTLVL_MED_gc
+#endif
+
 
 // ******** local type definitions ********
 typedef struct
@@ -113,7 +117,7 @@ void cxa_xmega_usart_init_noHH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsa
 	
 	// finally, clear and enable interrupts
 	usartIn->avrUsart->STATUS = 0;
-	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCF) | USART_RXCINTLVL_MED_gc;
+	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCF) | CXA_XMEGA_USART_RX_INT_LEVEL;
 }
 
 
@@ -165,7 +169,7 @@ void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsart
 	
 	// finally, clear and enable interrupts
 	usartIn->avrUsart->STATUS = 0;
-	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCF) | USART_RXCINTLVL_MED_gc;
+	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCF) | CXA_XMEGA_USART_RX_INT_LEVEL;
 	
 	// and de-assert our RTS line so our paired device knows it can transmit
 	cxa_gpio_setValue(usartIn->rts, RTS_CTS_OK);
