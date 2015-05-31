@@ -31,6 +31,9 @@
 
 
 // ******** local macro definitions ********
+#ifndef CXA_CRITICAL_SECTION_MAX_CBS
+	#define CXA_CRITICAL_SECTION_MAX_CBS		1
+#endif
 
 
 // ******** local type definitions ********
