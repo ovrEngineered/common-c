@@ -368,7 +368,7 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 	if( cxa_fixedByteBuffer_getCurrSize(sppIn->currRxBuffer) == 4 )
 	{
 		// we have all of our length bytes...make sure it's valid
-		if( cxa_fixedByteBuffer_getUint16_LE(sppIn->currRxBuffer, 2) >= 3 ) cxa_stateMachine_transition(&sppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
+		if( cxa_fixedByteBuffer_get_uint16LE(sppIn->currRxBuffer, 2) >= 3 ) cxa_stateMachine_transition(&sppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
 		cxa_stateMachine_transition(&sppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
 		return;
 	}
@@ -381,7 +381,7 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 	cxa_assert(sppIn);
 	
 	// get our expected size
-	uint16_t expectedSize_bytes = cxa_fixedByteBuffer_getUint16_LE(sppIn->currRxBuffer, 2);
+	uint16_t expectedSize_bytes = cxa_fixedByteBuffer_get_uint16LE(sppIn->currRxBuffer, 2);
 	
 	// do a limited number of iterations
 	for( uint8_t i = 0; i < MAX_NUM_RX_BYTES_PER_UPDATE; i++ )
@@ -415,13 +415,13 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 	
 	// make sure our message is kosher
 	if( (currSize_bytes >= 6) &&
-	(*cxa_fixedByteBuffer_getAtIndex(sppIn->currRxBuffer, 0) == 0x80) &&
-	(*cxa_fixedByteBuffer_getAtIndex(sppIn->currRxBuffer, 1) == 0x81) &&
-	(cxa_fixedByteBuffer_getUint16_LE(sppIn->currRxBuffer, 2) == (currSize_bytes-4)) &&
-	(*cxa_fixedByteBuffer_getAtIndex(sppIn->currRxBuffer, currSize_bytes-1) == 0x82) )
+	(cxa_fixedByteBuffer_get_byte(sppIn->currRxBuffer, 0) == 0x80) &&
+	(cxa_fixedByteBuffer_get_byte(sppIn->currRxBuffer, 1) == 0x81) &&
+	(cxa_fixedByteBuffer_get_uint16LE(sppIn->currRxBuffer, 2) == (currSize_bytes-4)) &&
+	(cxa_fixedByteBuffer_get_byte(sppIn->currRxBuffer, currSize_bytes-1) == 0x82) )
 	{
 		// we have a valid message...check our version number
-		uint8_t versionNum = *cxa_fixedByteBuffer_getAtIndex(sppIn->currRxBuffer, 4);
+		uint8_t versionNum = cxa_fixedByteBuffer_get_byte(sppIn->currRxBuffer, 4);
 		if( versionNum != ((PROTOCOL_VERSION<<4) | sppIn->userProtoVersion) )
 		{
 			// invalid version number...

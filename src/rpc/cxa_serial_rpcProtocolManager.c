@@ -24,6 +24,7 @@
 // ******** includes ********
 #include <stdio.h>
 #include <cxa_assert.h>
+#include <cxa_timeDiff.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
@@ -135,7 +136,7 @@ cxa_fixedByteBuffer_t* cxa_serial_rpcProtocolManager_sendRequest_sync(cxa_serial
 	cxa_fixedByteBuffer_t *rpcMessage = usedMsgMap_getParentBuffer_fromDataByteBuffer(srpmIn, dataBytesIn);
 	cxa_assert(rpcMessage != NULL);
 	
-	uint16_t id = cxa_fixedByteBuffer_getUint16_LE(rpcMessage, 1);
+	uint16_t id = cxa_fixedByteBuffer_get_uint16LE(rpcMessage, 1);
 	
 	// setup our inflight request
 	cxa_serial_rpcProtocolManager_inflightRequest_t *ifl = cxa_map_put_empty(&srpmIn->inflightRequests, &id);
@@ -294,7 +295,7 @@ static void messageRx_cb(cxa_fixedByteBuffer_t *const dataBytesIn, void *const u
 	if( (dataBytesIn == NULL) || ((dataBytesSize = cxa_fixedByteBuffer_getCurrSize(dataBytesIn)) < 2) ) return;
 	
 	// first, we need to see what kind of message this is
-	uint8_t msgType = *cxa_fixedByteBuffer_getAtIndex(dataBytesIn, 0);
+	uint8_t msgType = cxa_fixedByteBuffer_get_byte(dataBytesIn, 0);
 	if( msgType == RPC_MSGTYPE_REQUEST )
 	{
 		if( dataBytesSize < 4 )
@@ -304,8 +305,8 @@ static void messageRx_cb(cxa_fixedByteBuffer_t *const dataBytesIn, void *const u
 		}
 		
 		// get our opcode and see if we have a subscribed listener
-		uint8_t opCode = *cxa_fixedByteBuffer_getAtIndex(dataBytesIn, 3);
-		uint16_t id = cxa_fixedByteBuffer_getUint16_LE(dataBytesIn, 1);
+		uint8_t opCode = cxa_fixedByteBuffer_get_byte(dataBytesIn, 3);
+		uint16_t id = cxa_fixedByteBuffer_get_uint16LE(dataBytesIn, 1);
 		cxa_logger_trace(&srpmIn->logger, "request received  opCode: 0x%02X  id: 0x%04X", opCode, id);
 		
 		// make sure we actually have someone interested in this data...
@@ -367,7 +368,7 @@ static void messageRx_cb(cxa_fixedByteBuffer_t *const dataBytesIn, void *const u
 		
 		// we have a valid response...get our id and see if it is
 		// a response to an inflight request
-		uint16_t id = cxa_fixedByteBuffer_getUint16_LE(dataBytesIn, 1);
+		uint16_t id = cxa_fixedByteBuffer_get_uint16LE(dataBytesIn, 1);
 		cxa_logger_trace(&srpmIn->logger, "response received, id: 0x%04X", id);
 		
 		cxa_serial_rpcProtocolManager_inflightRequest_t *ifr = (cxa_serial_rpcProtocolManager_inflightRequest_t*)cxa_map_get(&srpmIn->inflightRequests, &id);
@@ -397,7 +398,7 @@ static void messageRx_cb(cxa_fixedByteBuffer_t *const dataBytesIn, void *const u
 	else if( msgType == RPC_MSGTYPE_NOTIFICATION )
 	{
 		// get our opcode and see if we have a subscribed listener
-		uint8_t opCode = *cxa_fixedByteBuffer_getAtIndex(dataBytesIn, 1);
+		uint8_t opCode = cxa_fixedByteBuffer_get_byte(dataBytesIn, 1);
 		cxa_logger_trace(&srpmIn->logger, "notification received, opCode: 0x%02X", opCode);
 		
 		cxa_fixedByteBuffer_t notificationBytes;
