@@ -70,7 +70,7 @@ void cxa_fixedByteBuffer_init_subsetOfData(cxa_fixedByteBuffer_t *const subsetFb
 	// we're good to go, setup our subset byte buffer
 	cxa_array_init_inPlace(&subsetFbbIn->bytes, 1,
 		length_BytesIn,
-		(void*)cxa_fixedByteBuffer_getAtIndex(sourceFbbIn, startIndexIn),
+		(void*)cxa_fixedByteBuffer_getPointerToIndex(sourceFbbIn, startIndexIn),
 		length_BytesIn);
 		
 	// set our type
@@ -203,16 +203,22 @@ bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixe
 	
 	for( size_t i = 0; i < numBytes_src; i++ )
 	{
-		if( !cxa_fixedByteBuffer_append_byte(fbbIn, *cxa_fixedByteBuffer_getAtIndex(srcFbbIn, i)) ) return false;
+		if( !cxa_fixedByteBuffer_append_byte(fbbIn, cxa_fixedByteBuffer_get_byte(srcFbbIn, i)) ) return false;
 	}
 	return true;
 }
 
 
-uint8_t* cxa_fixedByteBuffer_getAtIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
+uint8_t* cxa_fixedByteBuffer_getPointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
 	return (uint8_t*)cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
+}
+
+
+uint8_t cxa_fixedByteBuffer_get_byte(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
+{
+	return *cxa_fixedByteBuffer_getPointerToIndex(fbbIn, indexIn);
 }
 
 
@@ -303,7 +309,7 @@ bool cxa_fixedByteBuffer_writeToFile_bytes(cxa_fixedByteBuffer_t *const fbbIn, F
 	
 	for( size_t i = 0; i < cxa_array_getSize_elems(&fbbIn->bytes); i++ )
 	{
-		if( fputc(*cxa_fixedByteBuffer_getAtIndex(fbbIn, i), fileIn) == EOF ) return false;
+		if( fputc(cxa_fixedByteBuffer_get_byte(fbbIn, i), fileIn) == EOF ) return false;
 	}
 	
 	return true;
@@ -317,7 +323,7 @@ void cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fb
 	fprintf(fileIn, "fixedByteBuffer @ %p { ", fbbIn);
 	for( size_t i = 0; i < cxa_array_getSize_elems(&fbbIn->bytes); i++ )
 	{
-		fprintf(fileIn, "%02X", *cxa_fixedByteBuffer_getAtIndex(fbbIn, i));
+		fprintf(fileIn, "%02X", cxa_fixedByteBuffer_get_byte(fbbIn, i));
 		
 		if( i != (cxa_array_getSize_elems(&fbbIn->bytes)-1)) fputs(" ", fileIn);
 	}

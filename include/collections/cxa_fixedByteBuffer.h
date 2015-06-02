@@ -280,6 +280,18 @@ bool cxa_fixedByteBuffer_append_floatLE(cxa_fixedByteBuffer_t *const fbbIn, floa
  */
 bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixedByteBuffer_t *const srcFbbIn);
 
+/**
+ * @public
+ * @brief returns a pointer to the byte at the provided index
+ * @note Care should be taken to ensure that the provided index is less than
+ *		::cxa_fixedByteBuffer_currSize. Indices that are out of bounds <b>will</b>
+ *		generate an assert.
+ * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
+ * @param[in] indexIn the index of the desired byte within the buffer
+ *
+ * @return pointer to the byte at the specified index
+ */
+uint8_t* cxa_fixedByteBuffer_getPointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
 
 /**
  * @public
@@ -386,10 +398,8 @@ bool cxa_fixedByteBuffer_writeToFile_bytes(cxa_fixedByteBuffer_t *const fbbIn, F
  *
  * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
  * @param[in] fileIn pointer to an open file descriptor to which the bytes will be written
- *
- * @return true on success, false on failure
  */
-bool cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fbbIn, FILE *fileIn);
+void cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fbbIn, FILE *fileIn);
 
 
 #endif // CXA_FIXED_BYTE_BUFFER_H_
