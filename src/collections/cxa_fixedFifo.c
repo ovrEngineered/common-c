@@ -23,6 +23,7 @@
 
 // ******** includes ********
 #include <string.h>
+#include <stdint.h>
 #include <cxa_assert.h>
 
 
@@ -79,7 +80,7 @@ bool cxa_fixedFifo_queue(cxa_fixedFifo_t *const fifoIn, void *const elemIn)
 	}
 	
 	// if we made it here, we should add our element
-	memcpy((void*)(fifoIn->bufferLoc + (fifoIn->insertIndex * fifoIn->datatypeSize_bytes)), elemIn, fifoIn->datatypeSize_bytes);
+	memcpy((void*)(((uint8_t*)fifoIn->bufferLoc) + (fifoIn->insertIndex * fifoIn->datatypeSize_bytes)), elemIn, fifoIn->datatypeSize_bytes);
 	fifoIn->insertIndex++;
 	if( fifoIn->insertIndex >= fifoIn->maxNumElements ) fifoIn->insertIndex = 0;
 	
@@ -100,7 +101,7 @@ bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 	// if we made it here, we should return our element
 	if( elemOut != NULL )
 	{
-		memcpy(elemOut, (const void*)(fifoIn->bufferLoc + (fifoIn->removeIndex * fifoIn->datatypeSize_bytes)), fifoIn->datatypeSize_bytes);
+		memcpy(elemOut, (const void*)(((uint8_t*)fifoIn->bufferLoc) + (fifoIn->removeIndex * fifoIn->datatypeSize_bytes)), fifoIn->datatypeSize_bytes);
 	}
 	fifoIn->removeIndex++;
 	if( fifoIn->removeIndex >= fifoIn->maxNumElements ) fifoIn->removeIndex = 0;
