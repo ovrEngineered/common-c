@@ -225,7 +225,7 @@ uint8_t cxa_fixedByteBuffer_get_byte(cxa_fixedByteBuffer_t *const fbbIn, const s
 uint16_t cxa_fixedByteBuffer_getUint16_LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
-	cxa_assert( (indexIn >= 0) && ((indexIn + 2) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
+	cxa_assert( ((indexIn + 2) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
 	
 	uint8_t* dataPtr = (uint8_t*)cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
 	cxa_assert(dataPtr);
@@ -237,7 +237,7 @@ uint16_t cxa_fixedByteBuffer_getUint16_LE(cxa_fixedByteBuffer_t *const fbbIn, co
 uint32_t cxa_fixedByteBuffer_getUint32_LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
-	cxa_assert( (indexIn >= 0) && ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
+	cxa_assert( ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
 	
 	uint8_t* dataPtr = cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
 	cxa_assert(dataPtr);
@@ -250,7 +250,7 @@ uint32_t cxa_fixedByteBuffer_getUint32_LE(cxa_fixedByteBuffer_t *const fbbIn, co
 float cxa_fixedByteBuffer_getFloat_LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
-	cxa_assert( (indexIn >= 0) && ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
+	cxa_assert( ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
 	
 	uint32_t intVal = cxa_fixedByteBuffer_getUint32_LE(fbbIn, indexIn);
 	float retVal = 0;
