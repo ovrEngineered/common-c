@@ -25,6 +25,7 @@
 
 // ******** includes ********
 #include <stdio.h>
+#include <stdint.h>
 #include <cxa_logger_header.h>
 
 
