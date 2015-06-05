@@ -73,9 +73,11 @@
 /**
  * @public
  * @brief "Forward" declaration of the cxa_gpio_t object
- * (fully opaque type)
  */
-typedef struct cxa_gpio cxa_gpio_t;
+typedef struct cxa_gpio
+{
+	void* _placeHolder;
+}cxa_gpio_t;
 
 
 /**
