@@ -125,6 +125,7 @@ typedef void (*cxa_assert_cb_t)(void);
 
 
 // ********* global function prototypes ********
+#ifdef CXA_ASSERT_FILE_ENABLE
 /**
  * @public
  * @brief Sets the file descriptor that should be used to output assert messages.
@@ -135,6 +136,7 @@ typedef void (*cxa_assert_cb_t)(void);
  * 		be used to print the assert message
  */
 void cxa_assert_setFileDescriptor(FILE *fileIn);
+#endif
 
 
 /**
