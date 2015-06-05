@@ -199,7 +199,7 @@ void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t 
  *
  * @return the size of the array, in number of elements
  */
-const size_t cxa_array_getSize_elems(cxa_array_t *const arrIn);
+size_t cxa_array_getSize_elems(cxa_array_t *const arrIn);
 
 
 /**
@@ -210,7 +210,7 @@ const size_t cxa_array_getSize_elems(cxa_array_t *const arrIn);
  *
  * @return the maximum number of elements this array can hold
  */
-const size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn);
+size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn);
 
 
 /**
@@ -221,7 +221,7 @@ const size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn);
  *
  * @return true if the array cannot hold any more elements
  */
-const bool cxa_array_isFull(cxa_array_t *const arrIn);
+bool cxa_array_isFull(cxa_array_t *const arrIn);
 
 
 /**
@@ -232,7 +232,7 @@ const bool cxa_array_isFull(cxa_array_t *const arrIn);
  *
  * @return true if the array does not current contain any elements
  */
-const bool cxa_array_isEmpty(cxa_array_t *const arrIn);
+bool cxa_array_isEmpty(cxa_array_t *const arrIn);
 
 
 /**

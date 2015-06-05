@@ -153,7 +153,7 @@ void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t 
 }
 
 
-const size_t cxa_array_getSize_elems(cxa_array_t *const arrIn)
+size_t cxa_array_getSize_elems(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
 
@@ -161,7 +161,7 @@ const size_t cxa_array_getSize_elems(cxa_array_t *const arrIn)
 }
 
 
-const size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn)
+size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
 	
@@ -169,7 +169,7 @@ const size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn)
 }
 
 
-const bool cxa_array_isFull(cxa_array_t *const arrIn)
+bool cxa_array_isFull(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
 	
@@ -177,7 +177,7 @@ const bool cxa_array_isFull(cxa_array_t *const arrIn)
 }
 
 
-const bool cxa_array_isEmpty(cxa_array_t *const arrIn)
+bool cxa_array_isEmpty(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
 	
