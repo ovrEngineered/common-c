@@ -73,6 +73,7 @@
 /**
  * @public
  * @brief "Forward" declaration of the cxa_gpio_t object
+ * (fully opaque type)
  */
 typedef struct cxa_gpio cxa_gpio_t;
 
@@ -99,14 +100,6 @@ typedef enum
 	CXA_GPIO_POLARITY_NONINVERTED,						///< Polarity is non-inverted (logical '1' --> electrical '1')
 	CXA_GPIO_POLARITY_INVERTED							///< Polarity is inverted (logical '1' --> electrical '0')
 }cxa_gpio_polarity_t;
-
-
-/**
- * @private
- */
-struct cxa_gpio
-{
-};
 
 
 // ******** global function prototypes ********

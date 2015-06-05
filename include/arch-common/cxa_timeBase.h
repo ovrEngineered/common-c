@@ -57,16 +57,9 @@
 /**
  * @public
  * @brief "Forward" declaration of the cxa_timeBase_t object
+ * (fully opaque type)
  */
 typedef struct cxa_timeBase cxa_timeBase_t;
-
-
-/**
- * @private
- */
-struct cxa_timeBase
-{
-};
 
 
 // ******** global function prototypes ********

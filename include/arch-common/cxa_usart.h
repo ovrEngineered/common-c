@@ -69,16 +69,9 @@
 /**
  * @public
  * @brief "Forward" declaration of the cxa_gpio_t object
+ * (fully opaque type)
  */
 typedef struct cxa_usart cxa_usart_t;
-
-
-/**
- * @private
- */
-struct cxa_usart
-{
-};
 
 
 // ******** global function prototypes ********
