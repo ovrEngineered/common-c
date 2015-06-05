@@ -23,6 +23,7 @@
 
 // ******** includes ********
 #include <string.h>
+#include <stdint.h>
 #include <cxa_assert.h>
 
 
@@ -82,7 +83,7 @@ bool cxa_array_append(cxa_array_t *const arrIn, void *const itemLocIn)
 	if( arrIn->insertIndex >= arrIn->maxNumElements ) return false;
 	
 	// if we made it here, we have enough elements, get ready to copy the item
-	memcpy((void*)(arrIn->bufferLoc + (arrIn->insertIndex * arrIn->datatypeSize_bytes)), itemLocIn, arrIn->datatypeSize_bytes);
+	memcpy((void*)(((uint8_t*)arrIn->bufferLoc) + (arrIn->insertIndex * arrIn->datatypeSize_bytes)), itemLocIn, arrIn->datatypeSize_bytes);
 	arrIn->insertIndex++;
 
 	// if we made it here, everything was successful
@@ -97,7 +98,7 @@ void* cxa_array_append_empty(cxa_array_t *const arrIn)
 	// make sure we have enough space in the array
 	if( arrIn->insertIndex >= arrIn->maxNumElements ) return NULL;
 	
-	void *retVal = (void*)(arrIn->bufferLoc + (arrIn->insertIndex * arrIn->datatypeSize_bytes));
+	void *retVal = (void*)(((uint8_t*)arrIn->bufferLoc) + (arrIn->insertIndex * arrIn->datatypeSize_bytes));
 	arrIn->insertIndex++;
 	
 	return retVal;
@@ -119,8 +120,8 @@ bool cxa_array_removeElement(cxa_array_t *const arrIn, const size_t indexIn)
 	}	
 	
 	// if we made it here, we have some data to move around
-	void *dest = (void*)(arrIn->bufferLoc + (indexIn * arrIn->datatypeSize_bytes));
-	void *src = (void*)(arrIn->bufferLoc + (indexIn+1 * arrIn->datatypeSize_bytes));
+	void *dest = (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));
+	void *src = (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn+1 * arrIn->datatypeSize_bytes));
 	
 	memmove(dest, src, ((arrIn->insertIndex-(indexIn+1)) * arrIn->datatypeSize_bytes));
 	arrIn->insertIndex--;
@@ -137,7 +138,7 @@ void* cxa_array_getAtIndex(cxa_array_t *const arrIn, const size_t indexIn)
 	if( indexIn >= arrIn->insertIndex ) return NULL;
 
 	// if we made it here, we're good to go
-	return (void*)(arrIn->bufferLoc + (indexIn * arrIn->datatypeSize_bytes));
+	return (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));
 }
 
 
@@ -149,7 +150,7 @@ void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t 
 	if( indexIn >= arrIn->maxNumElements ) return NULL;
 
 	// if we made it here, we're good to go
-	return (void*)(arrIn->bufferLoc + (indexIn * arrIn->datatypeSize_bytes));	
+	return (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));	
 }
 
 
