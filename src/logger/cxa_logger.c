@@ -116,7 +116,11 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 	va_end(varArgs);
 
 	// print EOL
-	fputs("\r\n", fd);
+	#ifdef CXA_LOGGER_NEWLINE_ONLY
+		fputs("\n", fd);
+	#else
+		fputs("\r\n", fd);
+	#endif
 	fflush(fd);
 }
 
