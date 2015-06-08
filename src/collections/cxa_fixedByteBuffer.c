@@ -70,7 +70,7 @@ void cxa_fixedByteBuffer_init_subsetOfData(cxa_fixedByteBuffer_t *const subsetFb
 	// we're good to go, setup our subset byte buffer
 	cxa_array_init_inPlace(&subsetFbbIn->bytes, 1,
 		length_BytesIn,
-		(void*)cxa_fixedByteBuffer_getPointerToIndex(sourceFbbIn, startIndexIn),
+		(void*)cxa_fixedByteBuffer_get_pointerToIndex(sourceFbbIn, startIndexIn),
 		length_BytesIn);
 		
 	// set our type
@@ -141,7 +141,7 @@ bool cxa_fixedByteBuffer_isFull(cxa_fixedByteBuffer_t *const fbbIn)
 }
 
 
-bool cxa_fixedByteBuffer_append_byte(cxa_fixedByteBuffer_t *const fbbIn, uint8_t byteIn)
+bool cxa_fixedByteBuffer_append_uint8(cxa_fixedByteBuffer_t *const fbbIn, uint8_t byteIn)
 {
 	cxa_assert(fbbIn);
 	bool retVal = cxa_array_append(&fbbIn->bytes, &byteIn);
@@ -164,10 +164,10 @@ bool cxa_fixedByteBuffer_append_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, uin
 	cxa_assert(fbbIn);
 	
 	uint8_t tmp = (uint8_t)((uint16In & (uint16_t)0x00FF) >> 0);
-	if( !cxa_fixedByteBuffer_append_byte(fbbIn, tmp) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 	
 	tmp = (uint8_t)((uint16In & (uint16_t)0xFF00) >> 8);
-	if( !cxa_fixedByteBuffer_append_byte(fbbIn, tmp) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 	
 	return true;
 }
@@ -178,17 +178,37 @@ bool cxa_fixedByteBuffer_append_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, uin
 	cxa_assert(fbbIn);
 		
 	uint8_t tmp = (uint8_t)((uint32In & (uint32_t)0x000000FF) >> 0);
-	if( !cxa_fixedByteBuffer_append_byte(fbbIn, tmp) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 		
 	tmp = (uint8_t)((uint32In & (uint32_t)0x0000FF00) >> 8);
-	if( !cxa_fixedByteBuffer_append_byte(fbbIn, tmp) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 	
 	tmp = (uint8_t)((uint32In & (uint32_t)0x00FF0000) >> 16);
-	if( !cxa_fixedByteBuffer_append_byte(fbbIn, tmp) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 		
 	tmp = (uint8_t)((uint32In & (uint32_t)0xFF000000) >> 24);
-	if( !cxa_fixedByteBuffer_append_byte(fbbIn, tmp) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 	
+	return true;
+}
+
+
+bool cxa_fixedByteBuffer_append_floatLE(cxa_fixedByteBuffer_t *const fbbIn, float floatIn)
+{
+	cxa_assert(fbbIn);
+
+	uint8_t tmp = ((uint8_t*)&floatIn)[0];
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
+
+	tmp = ((uint8_t*)&floatIn)[1];
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
+
+	tmp = ((uint8_t*)&floatIn)[2];
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
+
+	tmp = ((uint8_t*)&floatIn)[3];
+	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
+
 	return true;
 }
 
@@ -203,26 +223,28 @@ bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixe
 	
 	for( size_t i = 0; i < numBytes_src; i++ )
 	{
-		if( !cxa_fixedByteBuffer_append_byte(fbbIn, cxa_fixedByteBuffer_get_byte(srcFbbIn, i)) ) return false;
+		if( !cxa_fixedByteBuffer_append_uint8(fbbIn, cxa_fixedByteBuffer_get_uint8(srcFbbIn, i)) ) return false;
 	}
 	return true;
 }
 
 
-uint8_t* cxa_fixedByteBuffer_getPointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
+uint8_t* cxa_fixedByteBuffer_get_pointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
 	return (uint8_t*)cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
 }
 
 
-uint8_t cxa_fixedByteBuffer_get_byte(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
+uint8_t cxa_fixedByteBuffer_get_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
-	return *cxa_fixedByteBuffer_getPointerToIndex(fbbIn, indexIn);
+	uint8_t* retVal = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn);
+	cxa_assert(retVal);
+	return *retVal;
 }
 
 
-uint16_t cxa_fixedByteBuffer_getUint16_LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
+uint16_t cxa_fixedByteBuffer_get_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
 	cxa_assert( ((indexIn + 2) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
@@ -234,7 +256,7 @@ uint16_t cxa_fixedByteBuffer_getUint16_LE(cxa_fixedByteBuffer_t *const fbbIn, co
 }
 
 
-uint32_t cxa_fixedByteBuffer_getUint32_LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
+uint32_t cxa_fixedByteBuffer_get_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
 	cxa_assert( ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
@@ -247,12 +269,12 @@ uint32_t cxa_fixedByteBuffer_getUint32_LE(cxa_fixedByteBuffer_t *const fbbIn, co
 }
 
 
-float cxa_fixedByteBuffer_getFloat_LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
+float cxa_fixedByteBuffer_get_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
 	cxa_assert( ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
 	
-	uint32_t intVal = cxa_fixedByteBuffer_getUint32_LE(fbbIn, indexIn);
+	uint32_t intVal = cxa_fixedByteBuffer_get_uint32LE(fbbIn, indexIn);
 	float retVal = 0;
 	((uint8_t*)&retVal)[0] = ((uint8_t*)&intVal)[0];
 	((uint8_t*)&retVal)[1] = ((uint8_t*)&intVal)[1];
@@ -309,7 +331,7 @@ bool cxa_fixedByteBuffer_writeToFile_bytes(cxa_fixedByteBuffer_t *const fbbIn, F
 	
 	for( size_t i = 0; i < cxa_array_getSize_elems(&fbbIn->bytes); i++ )
 	{
-		if( fputc(cxa_fixedByteBuffer_get_byte(fbbIn, i), fileIn) == EOF ) return false;
+		if( fputc(cxa_fixedByteBuffer_get_uint8(fbbIn, i), fileIn) == EOF ) return false;
 	}
 	
 	return true;
@@ -323,7 +345,7 @@ void cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fb
 	fprintf(fileIn, "fixedByteBuffer @ %p { ", fbbIn);
 	for( size_t i = 0; i < cxa_array_getSize_elems(&fbbIn->bytes); i++ )
 	{
-		fprintf(fileIn, "%02X", cxa_fixedByteBuffer_get_byte(fbbIn, i));
+		fprintf(fileIn, "%02X", cxa_fixedByteBuffer_get_uint8(fbbIn, i));
 		
 		if( i != (cxa_array_getSize_elems(&fbbIn->bytes)-1)) fputs(" ", fileIn);
 	}

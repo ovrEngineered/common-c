@@ -224,7 +224,7 @@ bool cxa_fixedByteBuffer_isFull(cxa_fixedByteBuffer_t *const fbbIn);
  *
  * @return true if the byte was successfully appended, false if not (eg. buffer was full)
  */
-bool cxa_fixedByteBuffer_append_byte(cxa_fixedByteBuffer_t *const fbbIn, uint8_t byteIn);
+bool cxa_fixedByteBuffer_append_uint8(cxa_fixedByteBuffer_t *const fbbIn, uint8_t byteIn);
 
 
 /**
@@ -291,7 +291,7 @@ bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixe
  *
  * @return pointer to the byte at the specified index
  */
-uint8_t* cxa_fixedByteBuffer_getPointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
+uint8_t* cxa_fixedByteBuffer_get_pointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
 
 /**
  * @public
@@ -305,7 +305,7 @@ uint8_t* cxa_fixedByteBuffer_getPointerToIndex(cxa_fixedByteBuffer_t *const fbbI
  *
  * @return the byte at the specified index
  */
-uint8_t cxa_fixedByteBuffer_get_byte(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
+uint8_t cxa_fixedByteBuffer_get_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
 
 
 /**
