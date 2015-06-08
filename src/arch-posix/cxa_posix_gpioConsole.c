@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "cxa_x86_gpioConsole.h"
+#include "cxa_posix_gpioConsole.h"
 
 
 /**
@@ -39,7 +39,7 @@
 
 
 // ******** global function implementations ********
-void cxa_x86_gpioConsole_init_input(cxa_x86_gpioConsole_t *const gpioIn, const char *nameIn)
+void cxa_posix_gpioConsole_init_input(cxa_posix_gpioConsole_t *const gpioIn, const char *nameIn)
 {
 	cxa_assert(gpioIn);
 	cxa_assert(nameIn);
@@ -52,7 +52,7 @@ void cxa_x86_gpioConsole_init_input(cxa_x86_gpioConsole_t *const gpioIn, const c
 }
 
 
-void cxa_x86_gpioConsole_init_output(cxa_x86_gpioConsole_t *const gpioIn, const char *nameIn, const bool initValIn)
+void cxa_posix_gpioConsole_init_output(cxa_posix_gpioConsole_t *const gpioIn, const char *nameIn, const bool initValIn)
 {
 	cxa_assert(gpioIn);
 	cxa_assert(nameIn);
@@ -67,7 +67,7 @@ void cxa_x86_gpioConsole_init_output(cxa_x86_gpioConsole_t *const gpioIn, const 
 }
 
 
-void cxa_x86_gpioConsole_init_safe(cxa_x86_gpioConsole_t *const gpioIn, const char *nameIn)
+void cxa_posix_gpioConsole_init_safe(cxa_posix_gpioConsole_t *const gpioIn, const char *nameIn)
 {
 	cxa_assert(gpioIn);
 	cxa_assert(nameIn);
@@ -87,7 +87,7 @@ void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t
 				(dirIn == CXA_GPIO_DIR_OUTPUT) );
 
 	// get a pointer to our class
-	cxa_x86_gpioConsole_t *const gpioIn = (cxa_x86_gpioConsole_t *const)superIn;
+	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	gpioIn->currDir = dirIn;
 	printf("gpio[%p] setDir: %s\r\n", gpioIn, cxa_gpio_direction_toString(gpioIn->currDir));
@@ -99,7 +99,7 @@ cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const superIn)
 	cxa_assert(superIn);
 
 	// get a pointer to our class
-	cxa_x86_gpioConsole_t *const gpioIn = (cxa_x86_gpioConsole_t *const)superIn;
+	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	return gpioIn->currDir;
 }
@@ -110,7 +110,7 @@ void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	cxa_assert(superIn);
 
 	// get a pointer to our class
-	cxa_x86_gpioConsole_t *const gpioIn = (cxa_x86_gpioConsole_t *const)superIn;
+	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	gpioIn->currVal = valIn;
 	printf("gpio[%p] setVal: %d\r\n", gpioIn, gpioIn->currVal);
@@ -122,7 +122,7 @@ bool cxa_gpio_getValue(cxa_gpio_t *const superIn)
 	cxa_assert(superIn);
 
 	// get a pointer to our class
-	cxa_x86_gpioConsole_t *const gpioIn = (cxa_x86_gpioConsole_t *const)superIn;
+	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	return gpioIn->currVal;
 }
@@ -133,7 +133,7 @@ void cxa_gpio_toggle(cxa_gpio_t *const superIn)
 	cxa_assert(superIn);
 
 	// get a pointer to our class
-	cxa_x86_gpioConsole_t *const gpioIn = (cxa_x86_gpioConsole_t *const)superIn;
+	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	gpioIn->currVal = !gpioIn->currVal;
 }

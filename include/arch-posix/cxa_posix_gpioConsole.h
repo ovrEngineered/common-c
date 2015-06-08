@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CXA_X86_GPIOCONSOLE_H_
-#define CXA_X86_GPIOCONSOLE_H_
+#ifndef CXA_POSIX_GPIOCONSOLE_H_
+#define CXA_POSIX_GPIOCONSOLE_H_
 
 
 /**
@@ -38,13 +38,13 @@ typedef struct
 	const char *name;
 	cxa_gpio_direction_t currDir;
 	bool currVal;
-}cxa_x86_gpioConsole_t;
+}cxa_posix_gpioConsole_t;
 
 
 // ******** global function prototypes ********
-void cxa_x86_gpioConsole_init_input(cxa_x86_gpioConsole_t *const gpioIn, const char *nameIn);
-void cxa_x86_gpioConsole_init_output(cxa_x86_gpioConsole_t *const gpioIn, const char *nameIn, const bool initValIn);
-void cxa_x86_gpioConsole_init_safe(cxa_x86_gpioConsole_t *const gpioIn, const char *nameIn);
+void cxa_posix_gpioConsole_init_input(cxa_posix_gpioConsole_t *const gpioIn, const char *nameIn);
+void cxa_posix_gpioConsole_init_output(cxa_posix_gpioConsole_t *const gpioIn, const char *nameIn, const bool initValIn);
+void cxa_posix_gpioConsole_init_safe(cxa_posix_gpioConsole_t *const gpioIn, const char *nameIn);
 
 
-#endif // CXA_X86_GPIO_H_
+#endif // CXA_POSIX_GPIOCONSOLE_H_
