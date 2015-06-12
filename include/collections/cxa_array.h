@@ -193,6 +193,40 @@ void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t 
 
 /**
  * @public
+ * @brief Overwrites an element at the specified index of the array.
+ *
+ * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
+ * @param[in] indexIn the index of the desired object. MUST be less
+ * 		than ::cxa_getSize_elems.
+ * @param[in] itemLocIn pointer to the element which will be copied
+ * 		into the specified position in the array
+ *
+ * @return true on successful overwrite, false on error
+ * 		(array is full, failed copy, etc)
+ */
+bool cxa_array_overwriteAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn);
+
+
+/**
+ * @public
+ * @brief Inserts an element at the specified index of the array.
+ * Subsequent elements are copied/moved to make room for the insertion.
+ * The size of the array will grow by 1.
+ *
+ * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
+ * @param[in] indexIn the index of the desired object. MUST be less
+ * 		than or equal to ::cxa_getSize_elems.
+ * @param[in] itemLocIn pointer to the element which will be copied
+ * 		into the specified position in the array
+ *
+ * @return true on successful insertion, false on error
+ * 		(array is full)
+ */
+bool cxa_array_insertAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn);
+
+
+/**
+ * @public
  * @brief Determines the size of the array (in number of elements).
  *
  * @param[in] arrIn pointer to the pre-initialized cxa_array_t object

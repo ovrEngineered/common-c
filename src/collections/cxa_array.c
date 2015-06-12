@@ -154,6 +154,46 @@ void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t 
 }
 
 
+bool cxa_array_overwriteAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn)
+{
+	cxa_assert(arrIn);
+	cxa_assert(itemLocIn);
+
+	// make sure the index is within our current data
+	if( indexIn >= cxa_array_getSize_elems(arrIn) ) return false;
+
+	// if we made it here, get ready to copy the item
+	memcpy((void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes)), itemLocIn, arrIn->datatypeSize_bytes);
+
+	// if we made it here, everything was successful
+	return true;
+}
+
+
+bool cxa_array_insertAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn)
+{
+	cxa_assert(arrIn);
+	cxa_assert(itemLocIn);
+
+	// make sure we have enough space in the array
+	size_t currSize = cxa_array_getSize_elems(arrIn);
+	if( currSize == arrIn->maxNumElements ) return false;
+
+	// make sure the index is within our current data
+	if( indexIn >= cxa_array_getSize_elems(arrIn) ) return false;
+
+	// increment our insert index (since we're adding an element);
+	arrIn->insertIndex++;
+
+	// move our items
+	memmove( (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn+1 * arrIn->datatypeSize_bytes)),
+			 (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes)),
+			 currSize-indexIn );
+
+	return true;
+}
+
+
 size_t cxa_array_getSize_elems(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
