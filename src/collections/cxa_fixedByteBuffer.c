@@ -23,6 +23,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <string.h>
 
 
 // ******** local macro definitions ********
@@ -32,6 +33,7 @@
 
 
 // ******** local function prototypes ********
+static void incrementSubBufferStartIndices(cxa_fixedByteBuffer_t *const fbbIn, bool isRootBufferIn, const size_t amountToIncrementIn);
 
 
 // ********  local variable declarations *********
@@ -46,116 +48,92 @@ void cxa_fixedByteBuffer_init(cxa_fixedByteBuffer_t *const fbbIn, void *const bu
 	
 	// setup our internal state
 	cxa_array_init(&fbbIn->bytes, 1, bufferLocIn, bufferMaxSize_bytesIn);
+	cxa_array_init(&fbbIn->subBuffers, sizeof(*fbbIn->subBuffers_raw), (void*)fbbIn->subBuffers_raw, sizeof(fbbIn->subBuffers_raw));
 	
-	// set our type and parent
-	fbbIn->initType = CXA_FBB_INITTYPE_NORMAL;
+	// we have no parent
 	fbbIn->parent = NULL;
 }
 
 
-void cxa_fixedByteBuffer_init_subsetOfData(cxa_fixedByteBuffer_t *const subsetFbbIn, cxa_fixedByteBuffer_t *const sourceFbbIn,
-	size_t startIndexIn, ssize_t length_BytesIn)
+bool cxa_fixedByteBuffer_init_subBuffer(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn,
+		size_t startIndexIn, size_t maxSize_bytesIn)
 {
-	cxa_assert(subsetFbbIn);
-	cxa_assert(sourceFbbIn);
-	cxa_assert(startIndexIn < cxa_fixedByteBuffer_getCurrSize(sourceFbbIn) );
+	cxa_assert(subFbbIn);
+	cxa_assert(parentFbbIn);
 
-	// make sure we enough data in the source buffer
-	if( length_BytesIn != CXA_FIXED_BYTE_BUFFER_LEN_ALL )
-	{
-		cxa_assert( (startIndexIn + length_BytesIn) <= cxa_fixedByteBuffer_getCurrSize(sourceFbbIn) );
-	}
-	else length_BytesIn = cxa_fixedByteBuffer_getCurrSize(sourceFbbIn) - startIndexIn;
-	
-	// we're good to go, setup our subset byte buffer
-	cxa_array_init_inPlace(&subsetFbbIn->bytes, 1,
-		length_BytesIn,
-		(void*)cxa_fixedByteBuffer_get_pointerToIndex(sourceFbbIn, startIndexIn),
-		length_BytesIn);
-		
-	// set our type
-	subsetFbbIn->initType = CXA_FBB_INITTYPE_SUBSET_DATA;
-	subsetFbbIn->parent = sourceFbbIn;
-	subsetFbbIn->startIndexInParent = startIndexIn;
-}
+	// make sure our sizes / indices are appropriate
+	if( (startIndexIn + maxSize_bytesIn) > cxa_fixedByteBuffer_getMaxSize(parentFbbIn) ) return false;
 
+	// setup our internal state
+	cxa_array_init(&subFbbIn->subBuffers, sizeof(*subFbbIn->subBuffers_raw), (void*)subFbbIn->subBuffers_raw, sizeof(subFbbIn->subBuffers_raw));
 
-void cxa_fixedByteBuffer_init_subsetOfCapacity(cxa_fixedByteBuffer_t *const subsetFbbIn, cxa_fixedByteBuffer_t *const sourceFbbIn,
-	size_t startIndexIn, ssize_t length_BytesIn)
-{
-	cxa_assert(subsetFbbIn);
-	cxa_assert(sourceFbbIn);
+	// store our references
+	subFbbIn->parent = parentFbbIn;
+	cxa_array_append(&parentFbbIn->subBuffers, (void*)&subFbbIn);
+	subFbbIn->subBuff_startIndexInParent = startIndexIn;
+	subFbbIn->subBuff_maxSize_bytes = (maxSize_bytesIn == CXA_FIXED_BYTE_BUFFER_LEN_ALL) ? (cxa_fixedByteBuffer_getMaxSize(parentFbbIn) - startIndexIn) : maxSize_bytesIn;
 
-	size_t srcMaxSize_bytes = cxa_fixedByteBuffer_getMaxSize(sourceFbbIn);
-	cxa_assert(startIndexIn < srcMaxSize_bytes );
-
-	// make sure we enough data in the source buffer
-	if( length_BytesIn != CXA_FIXED_BYTE_BUFFER_LEN_ALL )
-	{
-		cxa_assert( (startIndexIn + length_BytesIn) <= srcMaxSize_bytes );
-	}
-	else length_BytesIn = srcMaxSize_bytes - startIndexIn;
-	
-	// calculate the size of the new subset buffer
-	size_t srcCurrSize_bytes = cxa_fixedByteBuffer_getCurrSize(sourceFbbIn);
-	size_t subsetCurrSize_bytes = (srcCurrSize_bytes < startIndexIn) ? 0 : (srcCurrSize_bytes - startIndexIn);
-		
-	// we're good to go, setup our subset byte buffer
-	cxa_array_init_inPlace(&subsetFbbIn->bytes, 1,
-		subsetCurrSize_bytes,
-		(void*)cxa_array_getAtIndex_noBoundsCheck(&sourceFbbIn->bytes, startIndexIn),
-		length_BytesIn);
-		
-	// set our type
-	subsetFbbIn->initType = CXA_FBB_INITTYPE_SUBSET_CAP;
-	subsetFbbIn->parent = sourceFbbIn;
-	subsetFbbIn->startIndexInParent = startIndexIn;
+	return true;
 }
 
 
 size_t cxa_fixedByteBuffer_getCurrSize(cxa_fixedByteBuffer_t *const fbbIn)
 {
 	cxa_assert(fbbIn);
-	return cxa_array_getSize_elems(&fbbIn->bytes);	
+	return (fbbIn->parent == NULL) ? cxa_array_getSize_elems(&fbbIn->bytes) : (cxa_fixedByteBuffer_getCurrSize(fbbIn->parent) - fbbIn->subBuff_startIndexInParent);
 }
 
 
 size_t cxa_fixedByteBuffer_getMaxSize(cxa_fixedByteBuffer_t *const fbbIn)
 {
 	cxa_assert(fbbIn);
-	return cxa_array_getMaxSize_elems(&fbbIn->bytes);
+	return (fbbIn->parent == NULL) ? cxa_array_getMaxSize_elems(&fbbIn->bytes) : fbbIn->subBuff_maxSize_bytes;
+}
+
+
+size_t cxa_fixedByteBuffer_getBytesRemaining(cxa_fixedByteBuffer_t *const fbbIn)
+{
+	cxa_assert(fbbIn);
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		return cxa_array_getFreeSize_elems(&fbbIn->bytes);
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	size_t retVal = cxa_fixedByteBuffer_getBytesRemaining(fbbIn->parent) - fbbIn->subBuff_startIndexInParent;
+	return (retVal > fbbIn->subBuff_maxSize_bytes) ? fbbIn->subBuff_maxSize_bytes : retVal;
 }
 
 
 bool cxa_fixedByteBuffer_isEmpty(cxa_fixedByteBuffer_t *const fbbIn)
 {
 	cxa_assert(fbbIn);
-	return cxa_array_isEmpty(&fbbIn->bytes);
+	return cxa_fixedByteBuffer_getCurrSize(fbbIn) == 0;
 }
 
 
 bool cxa_fixedByteBuffer_isFull(cxa_fixedByteBuffer_t *const fbbIn)
 {
 	cxa_assert(fbbIn);
-	return cxa_array_isFull(&fbbIn->bytes);	
+	return cxa_fixedByteBuffer_getBytesRemaining(fbbIn) == 0;
 }
 
 
 bool cxa_fixedByteBuffer_append_uint8(cxa_fixedByteBuffer_t *const fbbIn, uint8_t byteIn)
 {
 	cxa_assert(fbbIn);
-	bool retVal = cxa_array_append(&fbbIn->bytes, &byteIn);
 	
-	// see if we need to adjust our parent's size to match our new addition
-	if( retVal &&
-		(fbbIn->parent != NULL) &&
-		(fbbIn->startIndexInParent <= cxa_fixedByteBuffer_getCurrSize(fbbIn->parent)) &&
-		((fbbIn->startIndexInParent + cxa_fixedByteBuffer_getCurrSize(fbbIn)) == (cxa_fixedByteBuffer_getCurrSize(fbbIn->parent)+1)) )
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
 	{
-		cxa_array_append_empty(&fbbIn->parent->bytes);
+		// we do not have a parent...
+		return cxa_array_append(&fbbIn->bytes, &byteIn);
 	}
-	
-	return retVal;
+
+	// if we made it here, little more complicated now since we have a parent...
+	return cxa_fixedByteBuffer_append_uint8(fbbIn->parent, byteIn);
 }
 
 
@@ -163,6 +141,9 @@ bool cxa_fixedByteBuffer_append_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, uin
 {
 	cxa_assert(fbbIn);
 	
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getBytesRemaining(fbbIn) < 2 ) return false;
+
 	uint8_t tmp = (uint8_t)((uint16In & (uint16_t)0x00FF) >> 0);
 	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 	
@@ -176,6 +157,9 @@ bool cxa_fixedByteBuffer_append_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, uin
 bool cxa_fixedByteBuffer_append_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, uint32_t uint32In)
 {
 	cxa_assert(fbbIn);
+
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getBytesRemaining(fbbIn) < 4 ) return false;
 		
 	uint8_t tmp = (uint8_t)((uint32In & (uint32_t)0x000000FF) >> 0);
 	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
@@ -197,6 +181,9 @@ bool cxa_fixedByteBuffer_append_floatLE(cxa_fixedByteBuffer_t *const fbbIn, floa
 {
 	cxa_assert(fbbIn);
 
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getBytesRemaining(fbbIn) < 4 ) return false;
+
 	uint8_t tmp = ((uint8_t*)&floatIn)[0];
 	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
 
@@ -208,6 +195,21 @@ bool cxa_fixedByteBuffer_append_floatLE(cxa_fixedByteBuffer_t *const fbbIn, floa
 
 	tmp = ((uint8_t*)&floatIn)[3];
 	if( !cxa_fixedByteBuffer_append_uint8(fbbIn, tmp) ) return false;
+
+	return true;
+}
+
+
+bool cxa_fixedByteBuffer_append_cString(cxa_fixedByteBuffer_t *const fbbIn, char *const stringIn)
+{
+	cxa_assert(fbbIn);
+	cxa_assert(stringIn);
+
+	size_t stringSize_bytes = strlen(stringIn);
+	for( size_t i = 0; i < stringSize_bytes; i++ )
+	{
+		if( !cxa_fixedByteBuffer_append_uint8(fbbIn, (uint8_t)stringIn[i]) ) return false;
+	}
 
 	return true;
 }
@@ -232,7 +234,16 @@ bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixe
 uint8_t* cxa_fixedByteBuffer_get_pointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
-	return (uint8_t*)cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		// we do not have a parent...
+		return (uint8_t*)cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	return cxa_fixedByteBuffer_get_pointerToIndex(fbbIn->parent, indexIn + fbbIn->subBuff_startIndexInParent);
 }
 
 
@@ -247,34 +258,41 @@ uint8_t cxa_fixedByteBuffer_get_uint8(cxa_fixedByteBuffer_t *const fbbIn, const 
 uint16_t cxa_fixedByteBuffer_get_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
-	cxa_assert( ((indexIn + 2) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
 	
-	uint8_t* dataPtr = (uint8_t*)cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
-	cxa_assert(dataPtr);
+	uint8_t* byte0 = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn);
+	uint8_t* byte1 = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn+1);
 	
-	return (((uint16_t)dataPtr[0]) <<  0) | (((uint16_t)dataPtr[1]) <<  8);
+	cxa_assert(byte0);
+	cxa_assert(byte1);
+
+	return (((uint16_t)*byte0) <<  0) | (((uint16_t)*byte1) <<  8);
 }
 
 
 uint32_t cxa_fixedByteBuffer_get_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
-	cxa_assert( ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
 	
-	uint8_t* dataPtr = cxa_array_getAtIndex(&fbbIn->bytes, indexIn);
-	cxa_assert(dataPtr);
+	uint8_t* byte0 = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn);
+	uint8_t* byte1 = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn+1);
+	uint8_t* byte2 = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn+2);
+	uint8_t* byte3 = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn+3);
 	
-	return (((uint32_t)dataPtr[0]) <<  0) | (((uint32_t)dataPtr[1]) <<  8) |
-		   (((uint32_t)dataPtr[2]) << 16) | (((uint32_t)dataPtr[3]) << 24);
+	cxa_assert(byte0);
+	cxa_assert(byte1);
+	cxa_assert(byte2);
+	cxa_assert(byte3);
+
+	return (((uint32_t)*byte0) <<  0) | (((uint32_t)*byte1) <<  8) | (((uint32_t)*byte2) << 16) | (((uint32_t)*byte3) << 24);
 }
 
 
 float cxa_fixedByteBuffer_get_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn)
 {
 	cxa_assert(fbbIn);
-	cxa_assert( ((indexIn + 4) <= cxa_array_getSize_elems(&fbbIn->bytes)) );
-	
+
 	uint32_t intVal = cxa_fixedByteBuffer_get_uint32LE(fbbIn, indexIn);
+
 	float retVal = 0;
 	((uint8_t*)&retVal)[0] = ((uint8_t*)&intVal)[0];
 	((uint8_t*)&retVal)[1] = ((uint8_t*)&intVal)[1];
@@ -285,42 +303,233 @@ float cxa_fixedByteBuffer_get_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const 
 }
 
 
-void cxa_fixedByteBuffer_clear(cxa_fixedByteBuffer_t *const fbbIn)
+bool cxa_fixedByteBuffer_get_cString(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, char *const stringOut, size_t maxOutputSize_bytes)
 {
 	cxa_assert(fbbIn);
-	
-	// we have some unique functionality here...
-	if( fbbIn->initType == CXA_FBB_INITTYPE_NORMAL ) cxa_array_clear(&fbbIn->bytes);
-	else
+	cxa_assert(stringOut);
+
+	for( size_t i = 0; i < maxOutputSize_bytes; i++ )
 	{
-		// if we're in sync with the parent (ie. same uppper size boundary) we'll also shrink
-		// the parent appropriately
-		if( (fbbIn->startIndexInParent + cxa_fixedByteBuffer_getCurrSize(fbbIn)) == cxa_fixedByteBuffer_getCurrSize(fbbIn->parent) )
-		{
-			// same upper boundary...shrink our parent by our size
-			size_t mySize_elems = cxa_fixedByteBuffer_getCurrSize(fbbIn);
-			for( size_t i = 0; i < mySize_elems; i++ )
-			{
-				cxa_array_removeElement(&fbbIn->parent->bytes, cxa_fixedByteBuffer_getCurrSize(fbbIn->parent)-1);
-			}
-			
-			// now that our parent has been shrunk, set our size to 0
-			cxa_array_clear(&fbbIn->bytes);
-		}
-		else
-		{
-			// we are out of sync with the parent (they have data "after" us in their array)
-			// or we are in the parent's "free space"...don't modify the parent, just reset our size
-			cxa_array_clear(&fbbIn->bytes);
-		}
+		uint8_t* currByte = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn+i);
+		if( currByte == NULL ) return false;
+
+		stringOut[i] = *currByte;
+		if( *currByte == 0 ) return true;
 	}
+
+	return false;
 }
 
 
-size_t cxa_fixedByteBuffer_getBytesRemaining(cxa_fixedByteBuffer_t *const fbbIn)
+bool cxa_fixedByteBuffer_overwrite_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t byteIn)
 {
 	cxa_assert(fbbIn);
-	return cxa_array_getFreeSize_elems(&fbbIn->bytes);
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		// we do not have a parent...
+		return cxa_array_overwriteAtIndex(&fbbIn->bytes, indexIn, &byteIn);
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	return cxa_fixedByteBuffer_overwrite_uint8(fbbIn->parent, (indexIn + fbbIn->subBuff_startIndexInParent), byteIn);
+}
+
+
+bool cxa_fixedByteBuffer_overwrite_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint16_t uint16In)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have room for this operation at the specified index
+	if( (indexIn+2) > cxa_fixedByteBuffer_getCurrSize(fbbIn) ) return false;
+
+	uint8_t tmp = (uint8_t)((uint16In & (uint16_t)0x00FF) >> 0);
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn, tmp) ) return false;
+
+	tmp = (uint8_t)((uint16In & (uint16_t)0xFF00) >> 8);
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn+1, tmp) ) return false;
+
+	return true;
+}
+
+
+bool cxa_fixedByteBuffer_overwrite_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint16_t uint32In)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have room for this operation at the specified index
+	if( (indexIn+4) > cxa_fixedByteBuffer_getCurrSize(fbbIn) ) return false;
+
+	uint8_t tmp = (uint8_t)((uint32In & (uint32_t)0x000000FF) >> 0);
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn, tmp) ) return false;
+
+	tmp = (uint8_t)((uint32In & (uint32_t)0x0000FF00) >> 8);
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn+1, tmp) ) return false;
+
+	tmp = (uint8_t)((uint32In & (uint32_t)0x00FF0000) >> 16);
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn+2, tmp) ) return false;
+
+	tmp = (uint8_t)((uint32In & (uint32_t)0xFF000000) >> 24);
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn+3, tmp) ) return false;
+
+	return true;
+}
+
+
+bool cxa_fixedByteBuffer_overwrite_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, float floatIn)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have room for this operation at the specified index
+	if( (indexIn+4) > cxa_fixedByteBuffer_getCurrSize(fbbIn) ) return false;
+
+	uint8_t tmp = ((uint8_t*)&floatIn)[0];
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn, tmp) ) return false;
+
+	tmp = ((uint8_t*)&floatIn)[1];
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn+1, tmp) ) return false;
+
+	tmp = ((uint8_t*)&floatIn)[2];
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn+2, tmp) ) return false;
+
+	tmp = ((uint8_t*)&floatIn)[3];
+	if( !cxa_fixedByteBuffer_overwrite_uint8(fbbIn, indexIn+3, tmp) ) return false;
+
+	return true;
+}
+
+
+bool cxa_fixedByteBuffer_insert_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t valueIn)
+{
+	cxa_assert(fbbIn);
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		// we do not have a parent...do our insert
+		if( !cxa_array_insertAtIndex(&fbbIn->bytes, indexIn, &valueIn) ) return false;
+
+		// increment the starting indices of our subBuffers
+		incrementSubBufferStartIndices(fbbIn, true, 1);
+
+		return true;
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	return cxa_fixedByteBuffer_insert_uint8(fbbIn->parent, (indexIn + fbbIn->subBuff_startIndexInParent), valueIn);
+}
+
+
+bool cxa_fixedByteBuffer_insert_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint16_t valueIn)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getBytesRemaining(fbbIn) < 2 ) return false;
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		// we do not have a parent...do our insert
+		uint8_t tmp = (uint8_t)((valueIn & (uint16_t)0x00FF) >> 0);
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn, tmp) ) return false;
+
+		tmp = (uint8_t)((valueIn & (uint16_t)0xFF00) >> 8);
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn+1, tmp) ) return false;
+
+		// increment the starting indices of our subBuffers
+		incrementSubBufferStartIndices(fbbIn, true, 2);
+
+		return true;
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	return cxa_fixedByteBuffer_insert_uint16LE(fbbIn->parent, (indexIn + fbbIn->subBuff_startIndexInParent), valueIn);
+}
+
+
+bool cxa_fixedByteBuffer_insert_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint32_t valueIn)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getBytesRemaining(fbbIn) < 4 ) return false;
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		// we do not have a parent...do our insert
+		uint8_t tmp = (uint8_t)((valueIn & (uint32_t)0x000000FF) >> 0);
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn, tmp) ) return false;
+
+		tmp = (uint8_t)((valueIn & (uint32_t)0x0000FF00) >> 8);
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn+1, tmp) ) return false;
+
+		tmp = (uint8_t)((valueIn & (uint32_t)0x00FF0000) >> 16);
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn+2, tmp) ) return false;
+
+		tmp = (uint8_t)((valueIn & (uint32_t)0xFF000000) >> 24);
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn+3, tmp) ) return false;
+
+		// increment the starting indices of our subBuffers
+		incrementSubBufferStartIndices(fbbIn, true, 4);
+
+		return true;
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	return cxa_fixedByteBuffer_insert_uint32LE(fbbIn->parent, (indexIn + fbbIn->subBuff_startIndexInParent), valueIn);
+}
+
+
+bool cxa_fixedByteBuffer_insert_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, float valueIn)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getBytesRemaining(fbbIn) < 4 ) return false;
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		// we do not have a parent...do our insert
+		uint8_t tmp = ((uint8_t*)&valueIn)[3];
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn, tmp) ) return false;
+
+		tmp = ((uint8_t*)&valueIn)[2];
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn+1, tmp) ) return false;
+
+		tmp = ((uint8_t*)&valueIn)[1];
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn+2, tmp) ) return false;
+
+		tmp = ((uint8_t*)&valueIn)[0];
+		if( !cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn+3, tmp) ) return false;
+
+		// increment the starting indices of our subBuffers
+		incrementSubBufferStartIndices(fbbIn, true, 4);
+
+		return true;
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	return cxa_fixedByteBuffer_insert_floatLE(fbbIn->parent, (indexIn + fbbIn->subBuff_startIndexInParent), valueIn);
+}
+
+
+void cxa_fixedByteBuffer_clear(cxa_fixedByteBuffer_t *const fbbIn)
+{
+	cxa_assert(fbbIn);
+
+	// depends on whether or not we have a parent
+	if( fbbIn->parent == NULL )
+	{
+		// we do not have a parent...
+		cxa_array_clear(&fbbIn->bytes);
+	}
+
+	// if we made it here, little more complicated now since we have a parent...
+	cxa_fixedByteBuffer_clear(fbbIn);
 }
 
 
@@ -329,7 +538,7 @@ bool cxa_fixedByteBuffer_writeToFile_bytes(cxa_fixedByteBuffer_t *const fbbIn, F
 	cxa_assert(fbbIn);
 	cxa_assert(fileIn);
 	
-	for( size_t i = 0; i < cxa_array_getSize_elems(&fbbIn->bytes); i++ )
+	for( size_t i = 0; i < cxa_fixedByteBuffer_getCurrSize(fbbIn); i++ )
 	{
 		if( fputc(cxa_fixedByteBuffer_get_uint8(fbbIn, i), fileIn) == EOF ) return false;
 	}
@@ -343,15 +552,30 @@ void cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fb
 	cxa_assert(fileIn);
 	
 	fprintf(fileIn, "fixedByteBuffer @ %p { ", fbbIn);
-	for( size_t i = 0; i < cxa_array_getSize_elems(&fbbIn->bytes); i++ )
+	for( size_t i = 0; i < cxa_fixedByteBuffer_getCurrSize(fbbIn); i++ )
 	{
 		fprintf(fileIn, "%02X", cxa_fixedByteBuffer_get_uint8(fbbIn, i));
 		
-		if( i != (cxa_array_getSize_elems(&fbbIn->bytes)-1)) fputs(" ", fileIn);
+		if( i != (cxa_fixedByteBuffer_getCurrSize(fbbIn)-1)) fputs(" ", fileIn);
 	}
 	fputs(" }\r\n", fileIn);
 }
 
 
 // ******** local function implementations ********
+static void incrementSubBufferStartIndices(cxa_fixedByteBuffer_t *const fbbIn, bool isRootBufferIn, const size_t amountToIncrementIn)
+{
+	cxa_assert(fbbIn);
 
+	// do our increment
+	if( !isRootBufferIn ) fbbIn->subBuff_startIndexInParent += amountToIncrementIn;
+
+	// now the same for any of our subBuffers
+	for( size_t i = 0; i < cxa_array_getSize_elems(&fbbIn->subBuffers); i++ )
+	{
+		cxa_fixedByteBuffer_t** currSubBuffer = (cxa_fixedByteBuffer_t**)cxa_array_getAtIndex(&fbbIn->subBuffers, i);
+		if( currSubBuffer == NULL ) continue;
+
+		incrementSubBufferStartIndices(*currSubBuffer, false, amountToIncrementIn);
+	}
+}
