@@ -28,6 +28,9 @@
 
 
 // ******** local macro definitions ********
+#ifndef CXA_LINE_ENDING
+	#define CXA_LINE_ENDING			"\r\n"
+#endif
 
 
 // ******** local type definitions ********
@@ -116,11 +119,7 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 	va_end(varArgs);
 
 	// print EOL
-	#ifdef CXA_LOGGER_NEWLINE_ONLY
-		fputs("\n", fd);
-	#else
-		fputs("\r\n", fd);
-	#endif
+	fputs(CXA_LINE_ENDING, fd);
 	fflush(fd);
 }
 
