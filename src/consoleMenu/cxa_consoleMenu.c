@@ -80,7 +80,7 @@ void cxa_consoleMenu_update(cxa_consoleMenu_t *const cmIn)
 			cxa_consoleMenu_menu_itemEntry_t *currEntry = (cxa_consoleMenu_menu_itemEntry_t*)cxa_array_getAtIndex(&cmIn->activeMenu->entries, i);
 			if( currEntry == NULL ) continue;
 		
-			fprintf(cmIn->fd, "  %2d.  %s\r\n", i+1, currEntry->name);
+			fprintf(cmIn->fd, "  %2lu.  %s\r\n", i+1, currEntry->name);
 		}
 	
 		if( cmIn->errorMsg != NULL ) fprintf(cmIn->fd, "Error: %s\r\n", cmIn->errorMsg);
