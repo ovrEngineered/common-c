@@ -106,7 +106,7 @@ void* cxa_array_append_empty(cxa_array_t *const arrIn)
 }
 
 
-bool cxa_array_removeElement(cxa_array_t *const arrIn, const size_t indexIn)
+bool cxa_array_remove(cxa_array_t *const arrIn, const size_t indexIn)
 {
 	cxa_assert(arrIn);
 	
@@ -131,7 +131,7 @@ bool cxa_array_removeElement(cxa_array_t *const arrIn, const size_t indexIn)
 }
 
 
-void* cxa_array_getAtIndex(cxa_array_t *const arrIn, const size_t indexIn)
+void* cxa_array_get(cxa_array_t *const arrIn, const size_t indexIn)
 {
 	cxa_assert(arrIn);
 
@@ -143,7 +143,7 @@ void* cxa_array_getAtIndex(cxa_array_t *const arrIn, const size_t indexIn)
 }
 
 
-void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn)
+void *cxa_array_get_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn)
 {
 	cxa_assert(arrIn);
 
@@ -155,7 +155,7 @@ void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t 
 }
 
 
-bool cxa_array_overwriteAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn)
+bool cxa_array_overwrite(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn)
 {
 	cxa_assert(arrIn);
 	cxa_assert(itemLocIn);
@@ -171,7 +171,7 @@ bool cxa_array_overwriteAtIndex(cxa_array_t *const arrIn, const size_t indexIn, 
 }
 
 
-bool cxa_array_insertAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn)
+bool cxa_array_insert(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn)
 {
 	cxa_assert(arrIn);
 	cxa_assert(itemLocIn);
@@ -214,6 +214,14 @@ size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn)
 }
 
 
+size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn)
+{
+	cxa_assert(arrIn);
+
+	return (arrIn->maxNumElements - arrIn->insertIndex);
+}
+
+
 bool cxa_array_isFull(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
@@ -238,30 +246,24 @@ void cxa_array_clear(cxa_array_t *const arrIn)
 }
 
 
-size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn)
-{
-	cxa_assert(arrIn);
-	
-	return (arrIn->maxNumElements - arrIn->insertIndex);
-}
-
-
-void cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn)
+bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn)
 {
 	cxa_assert(arrIn);
 	cxa_assert(fileIn);
 
-	fprintf(fileIn, "array @ %p" CXA_LINE_ENDING "{" CXA_LINE_ENDING, arrIn);
+	if( fprintf(fileIn, "array @ %p" CXA_LINE_ENDING "{" CXA_LINE_ENDING, arrIn) < 0 ) return false;
 	for( size_t i = 0; i < cxa_array_getSize_elems(arrIn); i++ )
 	{
-		fprintf(fileIn, "   %lu::0x", i);
+		if( fprintf(fileIn, "   %lu::0x", i) < 0 ) return false;
 		for( size_t byteOffset = 0; byteOffset < arrIn->datatypeSize_bytes; byteOffset++ )
 		{
-			fprintf(fileIn, "%02X", ((uint8_t*)arrIn->bufferLoc)[(i * arrIn->datatypeSize_bytes) + byteOffset]);
+			if( fprintf(fileIn, "%02X", ((uint8_t*)arrIn->bufferLoc)[(i * arrIn->datatypeSize_bytes) + byteOffset]) < 0 ) return false;
 		}
-		fputs(CXA_LINE_ENDING, fileIn);
+		if( fputs(CXA_LINE_ENDING, fileIn) < 0 ) return false;
 	}
-	fputs("}" CXA_LINE_ENDING, fileIn);
+	if( fputs("}" CXA_LINE_ENDING, fileIn) < 0 ) return false;
+
+	return true;
 }
 
 

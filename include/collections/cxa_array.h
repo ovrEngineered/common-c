@@ -204,7 +204,7 @@ void* cxa_array_append_empty(cxa_array_t *const arrIn);
  * @return true if the element was successfully removed, false on error
  *		(invalid index, etc)
  */
-bool cxa_array_removeElement(cxa_array_t *const arrIn, const size_t indexIn);
+bool cxa_array_remove(cxa_array_t *const arrIn, const size_t indexIn);
 
 
 /**
@@ -217,7 +217,7 @@ bool cxa_array_removeElement(cxa_array_t *const arrIn, const size_t indexIn);
  *
  * @return pointer to the element, or NULL if out of bounds
  */
-void* cxa_array_getAtIndex(cxa_array_t *const arrIn, const size_t indexIn);
+void* cxa_array_get(cxa_array_t *const arrIn, const size_t indexIn);
 
 
 /**
@@ -233,7 +233,7 @@ void* cxa_array_getAtIndex(cxa_array_t *const arrIn, const size_t indexIn);
  * @return pointer to the element, or NULL if index is outside the
  *		maximum size of the array.
  */
-void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn);
+void *cxa_array_get_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn);
 
 
 /**
@@ -249,7 +249,7 @@ void *cxa_array_getAtIndex_noBoundsCheck(cxa_array_t *const arrIn, const size_t 
  * @return true on successful overwrite, false on error
  * 		(array is full, failed copy, etc)
  */
-bool cxa_array_overwriteAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn);
+bool cxa_array_overwrite(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn);
 
 
 /**
@@ -267,7 +267,7 @@ bool cxa_array_overwriteAtIndex(cxa_array_t *const arrIn, const size_t indexIn, 
  * @return true on successful insertion, false on error
  * 		(array is full)
  */
-bool cxa_array_insertAtIndex(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn);
+bool cxa_array_insert(cxa_array_t *const arrIn, const size_t indexIn, void *const itemLocIn);
 
 
 /**
@@ -290,6 +290,17 @@ size_t cxa_array_getSize_elems(cxa_array_t *const arrIn);
  * @return the maximum number of elements this array can hold
  */
 size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn);
+
+
+/**
+ * @public
+ * @brief Determines the number of free spots/elements in the array.
+ *
+ * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
+ *
+ * @return the number of free elements in the array
+ */
+size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn);
 
 
 /**
@@ -327,17 +338,6 @@ void cxa_array_clear(cxa_array_t *const arrIn);
 
 /**
  * @public
- * @brief Determines the number of free spots/elements in the array.
- *
- * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
- *
- * @return the number of free elements in the array
- */
-size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn);
-
-
-/**
- * @public
  * @brief Writes a human-friendly representation of the bytes contained within this array (excluding unused bytes)
  * to the file descriptor.
  * <b>Example:</b>
@@ -345,8 +345,10 @@ size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn);
  *
  * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
  * @param[in] fileIn pointer to an open file descriptor to which the bytes will be written
+ *
+ * @return true on success, false on failure
  */
-void cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn);
+bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn);
 
 
 #endif // CXA_ARRAY_H_
