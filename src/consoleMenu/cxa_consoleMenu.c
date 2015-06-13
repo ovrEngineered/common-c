@@ -77,7 +77,7 @@ void cxa_consoleMenu_update(cxa_consoleMenu_t *const cmIn)
 		if( cmIn->activeMenu != &cmIn->rootMenu ) fprintf(cmIn->fd, "   ^.  return to previous menu\r\n");
 		for( size_t i = 0; i < cxa_array_getSize_elems(&cmIn->activeMenu->entries); i++ )
 		{
-			cxa_consoleMenu_menu_itemEntry_t *currEntry = (cxa_consoleMenu_menu_itemEntry_t*)cxa_array_getAtIndex(&cmIn->activeMenu->entries, i);
+			cxa_consoleMenu_menu_itemEntry_t *currEntry = (cxa_consoleMenu_menu_itemEntry_t*)cxa_array_get(&cmIn->activeMenu->entries, i);
 			if( currEntry == NULL ) continue;
 		
 			fprintf(cmIn->fd, "  %2lu.  %s\r\n", i+1, currEntry->name);
@@ -115,7 +115,7 @@ static void lineParser_cb(uint8_t *lineStartIn, size_t numBytesInLineIn, void *u
 	{
 		// we have a valid number...let's see if it matches
 		cxa_consoleMenu_menu_itemEntry_t *currEntry;
-		if( (choice == 0) || ((currEntry = (cxa_consoleMenu_menu_itemEntry_t*)cxa_array_getAtIndex(&cmIn->activeMenu->entries, choice-1)) == NULL) )
+		if( (choice == 0) || ((currEntry = (cxa_consoleMenu_menu_itemEntry_t*)cxa_array_get(&cmIn->activeMenu->entries, choice-1)) == NULL) )
 		{
 			cmIn->errorMsg = "invalid selection";
 		}

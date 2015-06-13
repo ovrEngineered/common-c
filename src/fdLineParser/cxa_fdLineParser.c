@@ -82,7 +82,7 @@ bool cxa_fdLineParser_update(cxa_fdLineParser_t *const fdlpIn)
 			cxa_assert(cxa_array_append(&fdlpIn->lineBuffer, &nullChar));
 			
 			// call our callback
-			if( fdlpIn->cb != NULL ) fdlpIn->cb((uint8_t*)cxa_array_getAtIndex(&fdlpIn->lineBuffer, 0), bufferSize_bytes, fdlpIn->userVar);
+			if( fdlpIn->cb != NULL ) fdlpIn->cb((uint8_t*)cxa_array_get(&fdlpIn->lineBuffer, 0), bufferSize_bytes, fdlpIn->userVar);
 			
 			// clear our buffer
 			cxa_array_clear(&fdlpIn->lineBuffer);

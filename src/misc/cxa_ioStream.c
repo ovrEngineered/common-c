@@ -114,7 +114,7 @@ bool cxa_ioStream_writeFixedByteBuffer(cxa_ioStream_t *const ioStreamIn, cxa_fix
 	cxa_assert(ioStreamIn);
 	cxa_assert(fbbIn);
 
-	return cxa_ioStream_writeBytes(ioStreamIn, (void*)cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, 0), cxa_fixedByteBuffer_getCurrSize(fbbIn));
+	return cxa_ioStream_writeBytes(ioStreamIn, (void*)cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, 0), cxa_fixedByteBuffer_getSize_bytes(fbbIn));
 }
 
 

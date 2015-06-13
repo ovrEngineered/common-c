@@ -175,7 +175,7 @@ void cxa_rpc_protocolParser_freeReservedBuffer(cxa_rpc_protocolParser_t *const r
 bool cxa_rpc_protocolParser_writeMessage(cxa_rpc_protocolParser_t *const rppIn, cxa_fixedByteBuffer_t *const dataBytesIn)
 {
 	cxa_assert(rppIn);
-	cxa_assert(cxa_fixedByteBuffer_getCurrSize(dataBytesIn) <= (65535-3));
+	cxa_assert(cxa_fixedByteBuffer_getSize_bytes(dataBytesIn) <= (65535-3));
 
 	rxState_t currState = cxa_stateMachine_getCurrentState(&rppIn->stateMachine);
 	if( (currState == RX_STATE_ERROR) || !cxa_ioStream_isBound(rppIn->ioStream) ) return false;
@@ -183,7 +183,7 @@ bool cxa_rpc_protocolParser_writeMessage(cxa_rpc_protocolParser_t *const rppIn, 
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, 0x80) ) { handleIoException(rppIn); return false; }
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, 0x81) ) { handleIoException(rppIn); return false; }
 
-	size_t len = ((dataBytesIn != NULL) ? cxa_fixedByteBuffer_getCurrSize(dataBytesIn) : 0) + 2;
+	size_t len = ((dataBytesIn != NULL) ? cxa_fixedByteBuffer_getSize_bytes(dataBytesIn) : 0) + 2;
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, ((len & 0x00FF) >> 0)) ) { handleIoException(rppIn); return false; }
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, ((len & 0xFF00) >> 8)) ) { handleIoException(rppIn); return false; }
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, ((PROTOCOL_VERSION << 4) | rppIn->userProtoVersion)) ) { handleIoException(rppIn); return false; }
@@ -369,10 +369,26 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 	{
 		// just append the byte
 		cxa_fixedByteBuffer_append_uint8(rppIn->currRxBuffer, rxByte);
-		if( cxa_fixedByteBuffer_getCurrSize(rppIn->currRxBuffer) == 4 )
+		if( cxa_fixedByteBuffer_getSize_bytes(rppIn->currRxBuffer) == 4 )
 		{
 			// we have all of our length bytes...make sure it's valid
-			if( cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2) >= 3 ) cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
+			uint16_t len;
+			if( cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, &len) && (len >= 3) )
+			{
+				cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
+				return;
+			}
+			else
+			{
+				// error calculating length...restart
+				cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_0x80);
+				return;
+			}
+		}
+		else if( cxa_fixedByteBuffer_getSize_bytes(rppIn->currRxBuffer) > 4 )
+		{
+			// our length got too big...restart
+			cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_0x80);
 			return;
 		}
 	}
@@ -385,12 +401,18 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 	cxa_assert(rppIn);
 	
 	// get our expected size
-	uint16_t expectedSize_bytes = cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2);
+	uint16_t expectedSize_bytes;
+	if( !cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, &expectedSize_bytes) )
+	{
+		// error getting our length..restart
+		cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_0x80);
+		return;
+	}
 	
 	// do a limited number of iterations
 	for( uint8_t i = 0; i < MAX_NUM_RX_BYTES_PER_UPDATE; i++ )
 	{
-		size_t currSize_bytes = cxa_fixedByteBuffer_getCurrSize(rppIn->currRxBuffer) - 4;
+		size_t currSize_bytes = cxa_fixedByteBuffer_getSize_bytes(rppIn->currRxBuffer) - 4;
 		
 		if( currSize_bytes < expectedSize_bytes )
 		{
@@ -418,17 +440,25 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 	cxa_rpc_protocolParser_t *const rppIn = (cxa_rpc_protocolParser_t *const)userVarIn;
 	cxa_assert(rppIn);
 	
-	size_t currSize_bytes = cxa_fixedByteBuffer_getCurrSize(rppIn->currRxBuffer);
+	size_t currSize_bytes = cxa_fixedByteBuffer_getSize_bytes(rppIn->currRxBuffer);
 	
 	// make sure our message is kosher
+	uint8_t tmpVal_8;
+	uint16_t tmpVal_16;
 	if( (currSize_bytes >= 6) &&
-	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 0) == 0x80) &&
-	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 1) == 0x81) &&
-	(cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2) == (currSize_bytes-4)) &&
-	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, currSize_bytes-1) == 0x82) )
+	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 0, &tmpVal_8) && (tmpVal_8 == 0x80)) &&
+	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 1, &tmpVal_8) && (tmpVal_8 == 0x81)) &&
+	(cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, &tmpVal_16) && (tmpVal_16 == (currSize_bytes-4))) &&
+	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, currSize_bytes-1, &tmpVal_8) && (tmpVal_8 == 0x82)) )
 	{
 		// we have a valid message...check our version number
-		uint8_t versionNum = cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 4);
+		uint8_t versionNum;
+		if( !cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 4, &versionNum) )
+		{
+			// error getting version...restart
+			cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_0x80);
+			return;
+		}
 		if( versionNum != ((PROTOCOL_VERSION<<4) | rppIn->userProtoVersion) )
 		{
 			// invalid version number...
@@ -437,7 +467,7 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 			// notify our protocol listeners
 			for( size_t i = 0; i < cxa_array_getSize_elems(&rppIn->protocolListeners); i++ )
 			{
-				cxa_rpc_protocolParser_protoListener_entry_t *currEntry = (cxa_rpc_protocolParser_protoListener_entry_t*)cxa_array_getAtIndex(&rppIn->protocolListeners, i);
+				cxa_rpc_protocolParser_protoListener_entry_t *currEntry = (cxa_rpc_protocolParser_protoListener_entry_t*)cxa_array_get(&rppIn->protocolListeners, i);
 				if( currEntry == NULL ) continue;
 				
 				if( currEntry->cb_invalidVer != NULL ) currEntry->cb_invalidVer(rppIn->currRxBuffer, currEntry->userVar);
@@ -448,10 +478,11 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 			// we have a valid version number...get our data bytes
 			cxa_logger_trace(&rppIn->logger, "message received");
 			cxa_fixedByteBuffer_t dataBytes;
-			cxa_fixedByteBuffer_init_subsetOfData(&dataBytes, rppIn->currRxBuffer, 5, (currSize_bytes - 6));
+#warning need to fixed the following line
+			//cxa_fixedByteBuffer_init_subsetOfData(&dataBytes, rppIn->currRxBuffer, 5, (currSize_bytes - 6));
 			for( size_t i = 0; i < cxa_array_getSize_elems(&rppIn->messageListeners); i++ )
 			{
-				cxa_rpc_protocolParser_messageListener_entry_t *currEntry = (cxa_rpc_protocolParser_messageListener_entry_t*)cxa_array_getAtIndex(&rppIn->messageListeners, i);
+				cxa_rpc_protocolParser_messageListener_entry_t *currEntry = (cxa_rpc_protocolParser_messageListener_entry_t*)cxa_array_get(&rppIn->messageListeners, i);
 				if( currEntry == NULL ) continue;
 			
 				if( currEntry->cb != NULL )
@@ -498,7 +529,7 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVar
 	// notify our protocol listeners
 	for( size_t i = 0; i < cxa_array_getSize_elems(&rppIn->protocolListeners); i++ )
 	{
-		cxa_rpc_protocolParser_protoListener_entry_t *currEntry = (cxa_rpc_protocolParser_protoListener_entry_t*)cxa_array_getAtIndex(&rppIn->protocolListeners, i);
+		cxa_rpc_protocolParser_protoListener_entry_t *currEntry = (cxa_rpc_protocolParser_protoListener_entry_t*)cxa_array_get(&rppIn->protocolListeners, i);
 		if( currEntry == NULL ) continue;
 
 		if( currEntry->cb_exception != NULL ) currEntry->cb_exception(currEntry->userVar);

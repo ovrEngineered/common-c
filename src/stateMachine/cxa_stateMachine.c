@@ -207,7 +207,7 @@ static cxa_stateMachine_state_t* getState_byId(cxa_stateMachine_t *const smIn, i
 	
 	for( size_t i = 0; i < cxa_array_getSize_elems(&smIn->states); i++ )
 	{
-		cxa_stateMachine_state_t* currState = (cxa_stateMachine_state_t*)cxa_array_getAtIndex(&smIn->states, i);
+		cxa_stateMachine_state_t* currState = (cxa_stateMachine_state_t*)cxa_array_get(&smIn->states, i);
 		if( currState == NULL ) continue;
 		
 		if( currState->stateId == idIn ) return currState;
