@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <cxa_assert.h>
+#include <cxa_config.h>
 
 
 // ******** local macro definitions ********
@@ -185,10 +186,13 @@ bool cxa_array_insertAtIndex(cxa_array_t *const arrIn, const size_t indexIn, voi
 	// increment our insert index (since we're adding an element);
 	arrIn->insertIndex++;
 
-	// move our items
-	memmove( (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn+1 * arrIn->datatypeSize_bytes)),
+	// move our other items
+	memmove( (void*)(((uint8_t*)arrIn->bufferLoc) + ((indexIn+1) * arrIn->datatypeSize_bytes)),
 			 (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes)),
-			 currSize-indexIn );
+			 (currSize-indexIn) * arrIn->datatypeSize_bytes );
+
+	// copy in our new item
+	memcpy((void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes)), itemLocIn, arrIn->datatypeSize_bytes);
 
 	return true;
 }
@@ -239,6 +243,25 @@ size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn)
 	cxa_assert(arrIn);
 	
 	return (arrIn->maxNumElements - arrIn->insertIndex);
+}
+
+
+void cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn)
+{
+	cxa_assert(arrIn);
+	cxa_assert(fileIn);
+
+	fprintf(fileIn, "array @ %p" CXA_LINE_ENDING "{" CXA_LINE_ENDING, arrIn);
+	for( size_t i = 0; i < cxa_array_getSize_elems(arrIn); i++ )
+	{
+		fprintf(fileIn, "   %lu::0x", i);
+		for( size_t byteOffset = 0; byteOffset < arrIn->datatypeSize_bytes; byteOffset++ )
+		{
+			fprintf(fileIn, "%02X", ((uint8_t*)arrIn->bufferLoc)[(i * arrIn->datatypeSize_bytes) + byteOffset]);
+		}
+		fputs(CXA_LINE_ENDING, fileIn);
+	}
+	fputs("}" CXA_LINE_ENDING, fileIn);
 }
 
 

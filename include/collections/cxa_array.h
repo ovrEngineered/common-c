@@ -55,11 +55,56 @@
 
 
 // ******** includes ********
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 
 // ******** global macro definitions ********
+/**
+ * @public
+ * @brief Shortcut to initialize an array with a buffer of an explicit data type
+ *
+ * @code
+ * cxa_array_t myArray;
+ * double myBuffer[100];
+ *
+ * cxa_array_initStd(&myArray, myBuffer);
+ * // equivalent to
+ * cxa_array_init(&myArray, sizeof(*myBuffer), (void)myBuffer, sizeof(myBuffer));
+ * @endcode
+ *
+ * @param[in] arrIn pointer to the array to initialize
+ * @param[in] bufferIn pointer to the declared c-style array which
+ * 		will contain the data for the array
+ */
+#define cxa_array_initStd(arrIn, bufferIn)						cxa_array_init((arrIn), sizeof(*(bufferIn)), ((void*)(bufferIn)), sizeof(bufferIn))
+
+
+/**
+ * @public
+ * @brief Shortcut to iterate over all items in an array
+ *
+ * @code
+ * cxa_array_t myArray;
+ * double myBuffer[100];
+ * cxa_array_initStd(&myArray, myBuffer);
+ *
+ * // add items to the array
+ *
+ * cxa_array_iterate(&myArray, currItem, double)
+ * {
+ * 		printf("currItem: %lf\n", *currItem);
+ * }
+ * @endcode
+ *
+ * @param[in] arrIn pointer to the pre-initialized array
+ * @param[in] varNameIn name of the variable which will be initialized
+ * 		by the loop. For each iteration, this variable will be a pointer
+ * 		to the current array element of the datatype 'elemTypeIn'
+ * @param[in] elemTypeIn the base datatype of each element (not their pointer)
+ */
+#define cxa_array_iterate(arrIn, varNameIn, elemTypeIn)			for(elemTypeIn* (varNameIn) = ((elemTypeIn*)((arrIn)->bufferLoc)); (varNameIn) < (elemTypeIn*)&(((uint8_t*)((arrIn)->bufferLoc))[((arrIn)->insertIndex) * ((arrIn)->datatypeSize_bytes)]); (varNameIn)++)
 
 
 // ******** global type definitions *********
@@ -151,7 +196,7 @@ void* cxa_array_append_empty(cxa_array_t *const arrIn);
 /**
  * @public
  * @brief Removes the specified element from the array (moving
- * all following elements down.
+ * all following elements down)
  *
  * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
  * @param[in] indexIn the index of the element which should be removed
@@ -289,6 +334,19 @@ void cxa_array_clear(cxa_array_t *const arrIn);
  * @return the number of free elements in the array
  */
 size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn);
+
+
+/**
+ * @public
+ * @brief Writes a human-friendly representation of the bytes contained within this array (excluding unused bytes)
+ * to the file descriptor.
+ * <b>Example:</b>
+ * @code {0x00, 0x01} @endcode
+ *
+ * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
+ * @param[in] fileIn pointer to an open file descriptor to which the bytes will be written
+ */
+void cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn);
 
 
 #endif // CXA_ARRAY_H_
