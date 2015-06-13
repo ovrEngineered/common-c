@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
 #include <cxa_assert.h>
 
 
@@ -32,19 +33,30 @@
 
 
 // ******** local type definitions ********
+typedef struct
+{
+	cxa_stringUtils_dataType_t dataType;
+	const char* string;
+}dataType_string_mapEntry_t;
 
 
 // ******** local function prototypes ********
 
 
 // ********  local variable declarations *********
+static dataType_string_mapEntry_t DT_STRING_MAP[] =
+{
+		{CXA_STRINGUTILS_DATATYPE_DOUBLE, "double"},
+		{CXA_STRINGUTILS_DATATYPE_INTEGER, "integer"},
+		{CXA_STRINGUTILS_DATATYPE_STRING, "string"},
+		{CXA_STRINGUTILS_DATATYPE_UNKNOWN, "unknown"}
+};
 
 
 // ******** global function implementations ********
-const bool cxa_stringUtils_startsWith(const char *targetStringIn, const char *prefixStringIn)
+bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn)
 {
-	cxa_assert(targetStringIn);
-	cxa_assert(prefixStringIn);
+	if( (targetStringIn == NULL) || (prefixStringIn == NULL) ) return false;
 
 	// make sure we have enough chars in our target string
 	if( strlen(targetStringIn) < strlen(prefixStringIn) ) return false;
@@ -60,10 +72,17 @@ const bool cxa_stringUtils_startsWith(const char *targetStringIn, const char *pr
 }
 
 
-const bool cxa_stringUtils_strcmp_ignoreCase(const char *str1In, const char *str2In)
+bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn)
 {
-	cxa_assert(str1In);
-	cxa_assert(str2In);
+	if( (targetStringIn == NULL) || (elementIn == NULL) ) return false;
+
+	return (strstr(targetStringIn, elementIn) != NULL);
+}
+
+
+bool cxa_stringUtils_strcmp_ignoreCase(const char* str1In, const char* str2In)
+{
+	if( (str1In == NULL) || (str2In == NULL) ) return false;
 
 	// both strings must be of same length
 	if( strlen(str1In) != strlen(str2In) ) return false;
@@ -76,6 +95,66 @@ const bool cxa_stringUtils_strcmp_ignoreCase(const char *str1In, const char *str
 
 	// if we made it here, the strings were identical
 	return true;
+}
+
+
+cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn)
+{
+	cxa_stringUtils_parseResult_t retVal = {.dataType=CXA_STRINGUTILS_DATATYPE_UNKNOWN};
+	if( strIn == NULL ) return retVal;
+
+	// first things first...see if the string contains a period
+	if( cxa_stringUtils_contains(strIn, ".") )
+	{
+		// this may be a double or a string
+		char* p = strIn;
+		errno = 0;
+		double val = strtod(strIn, &p);
+		if( (errno != 0) || (strIn == p) || (*p != 0) )
+		{
+			// couldn't parse a double...must be a string
+			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
+			retVal.val_string = strIn;
+		}
+		else
+		{
+			// we parsed a double!
+			retVal.dataType = CXA_STRINGUTILS_DATATYPE_DOUBLE;
+			retVal.val_double = val;
+		}
+	}
+	else
+	{
+		// this may be a signed integer or a string
+		char* p = strIn;
+		errno = 0;
+		long val = strtol(strIn, &p, 10);
+		if( (errno != 0) || (strIn == p) || (*p != 0) )
+		{
+			// couldn't parse an integer...must be a string
+			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
+			retVal.val_string = strIn;
+		}
+		else
+		{
+			// we got an integer!
+			retVal.dataType = CXA_STRINGUTILS_DATATYPE_INTEGER;
+			retVal.val_int = val;
+		}
+	}
+
+	return retVal;
+}
+
+
+const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn)
+{
+	for(int i = 0; i < (sizeof(DT_STRING_MAP)/sizeof(*DT_STRING_MAP)); i++ )
+	{
+		if( DT_STRING_MAP[i].dataType == dataTypeIn ) return DT_STRING_MAP[i].string;
+	}
+
+	return DT_STRING_MAP[(sizeof(DT_STRING_MAP)/sizeof(*DT_STRING_MAP))-1].string;
 }
 
 

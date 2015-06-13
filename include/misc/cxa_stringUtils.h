@@ -30,14 +30,41 @@
 
 
 // ******** global macro definitions ********
-
+#define CXA_STRINGUTILS_NULL2EMPTY(strIn)				(((strIn) == NULL) ? "" : (strIn))
 
 // ******** global type definitions *********
+typedef enum
+{
+	CXA_STRINGUTILS_DATATYPE_UNKNOWN,
+	CXA_STRINGUTILS_DATATYPE_INTEGER,
+	CXA_STRINGUTILS_DATATYPE_DOUBLE,
+	CXA_STRINGUTILS_DATATYPE_STRING
+}cxa_stringUtils_dataType_t;
+
+
+typedef struct
+{
+	cxa_stringUtils_dataType_t dataType;
+
+	union
+	{
+		unsigned long val_uint;
+		long val_int;
+		double val_double;
+		char* val_string;
+	};
+}cxa_stringUtils_parseResult_t;
 
 
 // ******** global function prototypes ********
-const bool cxa_stringUtils_startsWith(const char *targetStringIn, const char *prefixStringIn);
+bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn);
 
-const bool cxa_stringUtils_strcmp_ignoreCase(const char *str1In, const char *str2In);
+bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn);
+
+bool cxa_stringUtils_strcmp_ignoreCase(const char* str1In, const char* str2In);
+
+cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn);
+
+const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn);
 
 #endif // CXA_STRINGUTILS_H_
