@@ -30,6 +30,7 @@
 #include <stdbool.h>
 #include <cxa_array.h>
 #include <cxa_stringUtils.h>
+#include <cxa_config.h>
 
 
 // ******** global macro definitions ********
