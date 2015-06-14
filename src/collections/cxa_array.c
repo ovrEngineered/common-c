@@ -180,8 +180,8 @@ bool cxa_array_insert(cxa_array_t *const arrIn, const size_t indexIn, void *cons
 	size_t currSize = cxa_array_getSize_elems(arrIn);
 	if( currSize == arrIn->maxNumElements ) return false;
 
-	// make sure the index is within our current data
-	if( indexIn >= cxa_array_getSize_elems(arrIn) ) return false;
+	// make sure the index is within our current data (or just outside for appends)
+	if( indexIn > cxa_array_getSize_elems(arrIn) ) return false;
 
 	// increment our insert index (since we're adding an element);
 	arrIn->insertIndex++;
