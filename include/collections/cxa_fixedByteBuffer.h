@@ -57,24 +57,6 @@
 #define ssize_t long
 #endif
 
-/**
- * @public
- * @brief Defined parameter that can be passed as the
- *		{@code length_BytesIn } parameter to either
- *		::cxa_fixedByteBuffer_init_subBuffer
- */
-#define CXA_FIXED_BYTE_BUFFER_LEN_ALL		(SIZE_MAX)
-
-
-/**
- * @public
- * @brief Maximum number of buffers that can be added to
- * 		a buffer via ::cxa_fixedByteBuffer_init_subBuffer
- */
-#ifndef CXA_FIXED_BYTE_BUFFER_MAX_NUM_SUBBUFFERS
-	#define CXA_FIXED_BYTE_BUFFER_MAX_NUM_SUBBUFFERS			5
-#endif
-
 
 /**
  * @public
@@ -95,6 +77,33 @@
  */
 #define cxa_fixedByteBuffer_initStd(fbbIn, bufferIn)						cxa_fixedByteBuffer_init((fbbIn), ((void*)(bufferIn)), sizeof(bufferIn))
 
+#define cxa_fixedByteBuffer_append_uint8(fbbIn, uint8In)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){(uint8In)}, 1)
+#define cxa_fixedByteBuffer_append_uint16LE(fbbIn, uint16In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
+#define cxa_fixedByteBuffer_append_uint32LE(fbbIn, uint32In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
+#define cxa_fixedByteBuffer_append_float(fbbIn, floatIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)&(floatIn), 4)
+#define cxa_fixedByteBuffer_append_cString(fbbIn, strIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)(strIn), (strlen(strIn)+1))
+
+#define cxa_fixedByteBuffer_remove_uint8(fbbIn, indexIn)					cxa_fixedByteBuffer_remove((fbbIn), (indexIn), 1)
+#define cxa_fixedByteBuffer_remove_uint16(fbbIn, indexIn)					cxa_fixedByteBuffer_remove((fbbIn), (indexIn), 2)
+#define cxa_fixedByteBuffer_remove_uint32(fbbIn, indexIn)					cxa_fixedByteBuffer_remove((fbbIn), (indexIn), 4)
+#define cxa_fixedByteBuffer_remove_float(fbbIn, indexIn)					cxa_fixedByteBuffer_remove((fbbIn), (indexIn), 4)
+
+#define cxa_fixedByteBuffer_get_uint8(fbbIn, indexIn, uint8Out)				cxa_fixedByteBuffer_get((fbbIn), (indexIn), false, (uint8_t*)&(uint8Out), 1)
+#define cxa_fixedByteBuffer_get_uint16LE(fbbIn, indexIn, uint16Out)			cxa_fixedByteBuffer_get((fbbIn), (indexIn), false, (uint8_t*)&(uint16Out), 2)
+#define cxa_fixedByteBuffer_get_uint32LE(fbbIn, indexIn, uint32Out)			cxa_fixedByteBuffer_get((fbbIn), (indexIn), false, (uint8_t*)&(uint32Out), 4)
+#define cxa_fixedByteBuffer_get_float(fbbIn, indexIn, floatOut)				cxa_fixedByteBuffer_get((fbbIn), (indexIn), false, (uint8_t*)&(floatOut), 4)
+
+#define cxa_fixedByteBuffer_replace_uint8(fbbIn, indexIn, uint8In)			cxa_fixedByteBuffer_replace((fbbIn), (indexIn), (uint8_t[]){(uint8In)}, 1)
+#define cxa_fixedByteBuffer_replace_uint16LE(fbbIn, indexIn, uint16In)		cxa_fixedByteBuffer_replace((fbbIn), (indexIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
+#define cxa_fixedByteBuffer_replace_uint32LE(fbbIn, indexIn, uint32In)		cxa_fixedByteBuffer_replace((fbbIn), (indexIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
+#define cxa_fixedByteBuffer_replace_float(fbbIn, indexIn, floatIn)			cxa_fixedByteBuffer_replace((fbbIn), (indexIn), (uint8_t*)&(floatIn), 4)
+
+#define cxa_fixedByteBuffer_insert_uint8(fbbIn, indexIn, uint8In)			cxa_fixedByteBuffer_insert((fbbIn), (indexIn), (uint8_t[]){(uint8In)}, 1)
+#define cxa_fixedByteBuffer_insert_uint16(fbbIn, indexIn, uint16In)			cxa_fixedByteBuffer_insert((fbbIn), (indexIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
+#define cxa_fixedByteBuffer_insert_uint32(fbbIn, indexIn, uint32In)			cxa_fixedByteBuffer_insert((fbbIn), (indexIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
+#define cxa_fixedByteBuffer_insert_float(fbbIn, indexIn, floatIn)			cxa_fixedByteBuffer_insert((fbbIn), (indexIn), (uint8_t*)&(floatIn), 4)
+#define cxa_fixedByteBuffer_insert_cString(fbbIn, indexIn, strIn)			cxa_fixedByteBuffer_insert((fbbIn), (indexIn), (uint8_t*)(strIn), (strlen(strIn)+1))
+
 
 // ******** global type definitions *********
 /**
@@ -109,15 +118,6 @@ typedef struct cxa_fixedByteBuffer cxa_fixedByteBuffer_t;
  */
 struct cxa_fixedByteBuffer
 {
-	cxa_fixedByteBuffer_t *parent;
-	size_t subBuff_startIndexInParent;
-
-	bool subBuff_hasMaxSize;
-	size_t subBuff_maxSize_bytes;
-	
-	cxa_array_t subBuffers;
-	cxa_fixedByteBuffer_t* subBuffers_raw[CXA_FIXED_BYTE_BUFFER_MAX_NUM_SUBBUFFERS];
-
 	cxa_array_t bytes;
 };
 
@@ -136,272 +136,19 @@ struct cxa_fixedByteBuffer
 void cxa_fixedByteBuffer_init(cxa_fixedByteBuffer_t *const fbbIn, void *const bufferLocIn, const size_t bufferMaxSize_bytesIn);
 
 
-/**
- * @public
- *
- * @param[in] maxSize_byteIn desired maximum size of the sub-buffer (max of SIZE_MAX-1),
- * 		CXA_FIXED_BYTE_BUFFER_LEN_ALL for full capacity of parent (minus startIndex)
- *
- * @return true if successfully initialized, false if not (likely due to a size / index issue)
- */
-bool cxa_fixedByteBuffer_init_subBuffer(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn,
-	size_t startIndexIn, size_t maxSize_bytesIn);
-
-
-
-
-
-/**
- * @public
- * @brief Tries to append a single byte to the end of this buffer
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] byteIn the byte to append
- *
- * @return true if the byte was successfully appended, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_append_uint8(cxa_fixedByteBuffer_t *const fbbIn, uint8_t byteIn);
-
-
-/**
- * @public
- * @brief Tries to append a 16-bit unsigned integer to the end of this buffer in
- *		little-endian format (lower order byte first)
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] uint16In the unsigned integer to append
- *
- * @return true if the value was successfully appended, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_append_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, uint16_t uint16In);
-
-
-/**
- * @public
- * @brief Tries to append a 32-bit unsigned integer to the end of this buffer in
- *		little-endian format (lower order byte first)
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] uint32In the unsigned integer to append
- *
- * @return true if the value was successfully appended, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_append_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, uint32_t uint32In);
-
-
-/**
- * @public
- * @brief Tries to append a single-precision floating point number to the end of this buffer in
- *		little-endian format (lower order byte first).
- * @todo "little-endian" doesn't really apply here...figure out a better term
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] floatIn the floating point number to append
- *
- * @return true if the value was successfully appended, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_append_floatLE(cxa_fixedByteBuffer_t *const fbbIn, float floatIn);
-
-
-/**
- * @public
- * @brief Tries to append a null-terminated C String to the end of this buffer.
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] stringIn pointer to the null-terminated C String to append
- *
- * @return true if the value was successfully appended, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_append_cString(cxa_fixedByteBuffer_t *const fbbIn, char *const stringIn);
-
-
-/**
- * @public
- * @brief Tries to append all bytes contained within the source buffer to the end of the
- *		target buffer.
- * Any unused bytes from the buffer's maximum capacity will not be appended.
- *
- * @param[in] fbbIn pointer to the pre-initialized target buffer
- * @parma[in] srcFbbIn pointer to the pre-initialized source buffer
- *
- * @return true if the values were successfully appended, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixedByteBuffer_t *const srcFbbIn);
-
-
-bool cxa_fixedByteBuffer_remove_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
-bool cxa_fixedByteBuffer_remove_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
-bool cxa_fixedByteBuffer_remove_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
-bool cxa_fixedByteBuffer_remove_uintFloatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
+bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const size_t numBytesIn);
+bool cxa_fixedByteBuffer_remove(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, const size_t numBytesIn);
 bool cxa_fixedByteBuffer_remove_cString(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
 
-/**
- * @public
- * @brief returns a pointer to the byte at the provided index
- * @note Care should be taken to ensure that the provided index is less than
- *		::cxa_fixedByteBuffer_currSize. Indices that are out of bounds <b>will</b>
- *		generate an assert.
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired byte within the buffer
- *
- * @return pointer to the byte at the specified index
- */
 uint8_t* cxa_fixedByteBuffer_get_pointerToIndex(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn);
-
-
-/**
- * @public
- * @brief Returns the byte at the given index of the buffer.
- * @note Care should be taken to ensure that the provided index is less than
- *		::cxa_fixedByteBuffer_currSize. Indices that are out of bounds <b>will</b>
- *		generate an assert.
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired byte within the buffer
- * @param[in] valOut pointer to the location to which the value will be copied
- * 		(may be NULL if no copy desired)
- *
- * @return true if the desired index was valid and copy was attempted,
- * 		false if index was invalid
- */
-bool cxa_fixedByteBuffer_get_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t* valOut);
-
-
-/**
- * @public
- * @brief Returns the 16-bit unsigned integer which starts at the given index of the buffer.
- * @note Care should be taken to ensure that 
- *		{@code (indexIn + 1) < cxa_array_getSize_elems(&fbbIn->bytes)}
- *		Indices that are out of bounds <b>will</b> generate an assert.
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired integer within the buffer
- * @param[in] valOut pointer to the location to which the value will be copied
- * 		(may be NULL if no copy desired)
- *
- * @return true if the desired index was valid and copy was attempted,
- * 		false if index was invalid
- */
-bool cxa_fixedByteBuffer_get_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint16_t* valOut);
-
-
-/**
- * @public
- * @brief Returns the 32-bit unsigned integer which starts at the given index of the buffer.
- * @note Care should be taken to ensure that 
- *		{@code (indexIn + 3) < cxa_array_getSize_elems(&fbbIn->bytes)}
- *		Indices that are out of bounds <b>will</b> generate an assert.
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired integer within the buffer
- * @param[in] valOut pointer to the location to which the value will be copied
- * 		(may be NULL if no copy desired)
- *
- * @return true if the desired index was valid and copy was attempted,
- * 		false if index was invalid
- */
-bool cxa_fixedByteBuffer_get_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint32_t* valOut);
-
-
-/**
- * @public
- * @brief Returns the single-precision floating point number which starts at the given index of the buffer.
- * @note Care should be taken to ensure that 
- *		{@code (indexIn + 3) < cxa_array_getSize_elems(&fbbIn->bytes)}
- *		Indices that are out of bounds <b>will</b> generate an assert.
- * @todo "little-endian" doesn't really apply here...figure out a better term
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired number within the buffer
- * @param[in] valOut pointer to the location to which the value will be copied
- * 		(may be NULL if no copy desired)
- *
- * @return true if the desired index was valid and copy was attempted,
- * 		false if index was invalid
- */
-bool cxa_fixedByteBuffer_get_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, float* valOut);
-
-
-/**
- * @public
- * @brief Reads a null-terminated C String from the buffer starting at the specified index.
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired string within the buffer
- * @param[out] stringOut pointer to a buffer at which to store the string
- * @param[in] maxOutputSize_bytes the maximum number of bytes to write to 'stringOut'
- *
- * @return true if the entire string (including null terminator) was written to
- * 		stringOut, false if not (eg. maxOutputSize_bytes is too small OR null
- * 		terminator not found before end of fixed byte buffer)
- */
+bool cxa_fixedByteBuffer_get(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, bool transposeIn, uint8_t *const valOut, const size_t numBytesIn);
 bool cxa_fixedByteBuffer_get_cString(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, char *const stringOut, size_t maxOutputSize_bytes);
 
-
-/**
- * @public
- * @brief Tries to replace a single byte at the given index
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired value to replace
- * @param[in] byteIn the byte to append
- *
- * @return true if the value was successfully replaced, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_overwrite_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t byteIn);
-
-
-/**
- * @public
- * @brief Tries to replace a uint16 starting at the given index in
- * little-endian format (lower order byte first)
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired value to replace
- * @param[in] byteIn the byte to append
- *
- * @return true if the value was successfully replaced, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_overwrite_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint16_t uint16In);
-
-
-/**
- * @public
- * @brief Tries to replace a uint32 starting at the given index in
- * little-endian format (lower order byte first)
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired value to replace
- * @param[in] byteIn the byte to append
- *
- * @return true if the value was successfully replaced, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_overwrite_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint16_t uint32In);
-
-
-/**
- * @public
- * @brief Tries to replace a float starting at the given index in
- * little-endian format (lower order byte first).
- * @todo "little-endian" doesn't really apply here...figure out a better term
- *
- * @param[in] fbbIn pointer to the pre-initialized fixedByteBuffer object
- * @param[in] indexIn the index of the desired value to replace
- * @param[in] byteIn the byte to append
- *
- * @return true if the value was successfully replaced, false if not (eg. buffer was full)
- */
-bool cxa_fixedByteBuffer_overwrite_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, float floatIn);
-
-
+bool cxa_fixedByteBuffer_replace(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
 bool cxa_fixedByteBuffer_replace_cString(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, char *const stringIn);
 
+bool cxa_fixedByteBuffer_insert(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
 
-bool cxa_fixedByteBuffer_insert_uint8(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t valueIn);
-bool cxa_fixedByteBuffer_insert_uint16LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint16_t valueIn);
-bool cxa_fixedByteBuffer_insert_uint32LE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint32_t valueIn);
-bool cxa_fixedByteBuffer_insert_floatLE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, float valueIn);
-bool cxa_fixedByteBuffer_insert_cString(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, char *const stringIn);
 
 /**
  * @public
