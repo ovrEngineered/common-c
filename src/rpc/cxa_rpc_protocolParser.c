@@ -373,7 +373,7 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 		{
 			// we have all of our length bytes...make sure it's valid
 			uint16_t len;
-			if( cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, &len) && (len >= 3) )
+			if( cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, len) && (len >= 3) )
 			{
 				cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
 				return;
@@ -402,7 +402,7 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 	
 	// get our expected size
 	uint16_t expectedSize_bytes;
-	if( !cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, &expectedSize_bytes) )
+	if( !cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, expectedSize_bytes) )
 	{
 		// error getting our length..restart
 		cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_0x80);
@@ -446,14 +446,14 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 	uint8_t tmpVal_8;
 	uint16_t tmpVal_16;
 	if( (currSize_bytes >= 6) &&
-	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 0, &tmpVal_8) && (tmpVal_8 == 0x80)) &&
-	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 1, &tmpVal_8) && (tmpVal_8 == 0x81)) &&
-	(cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, &tmpVal_16) && (tmpVal_16 == (currSize_bytes-4))) &&
-	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, currSize_bytes-1, &tmpVal_8) && (tmpVal_8 == 0x82)) )
+	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 0, tmpVal_8) && (tmpVal_8 == 0x80)) &&
+	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 1, tmpVal_8) && (tmpVal_8 == 0x81)) &&
+	(cxa_fixedByteBuffer_get_uint16LE(rppIn->currRxBuffer, 2, tmpVal_16) && (tmpVal_16 == (currSize_bytes-4))) &&
+	(cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, currSize_bytes-1, tmpVal_8) && (tmpVal_8 == 0x82)) )
 	{
 		// we have a valid message...check our version number
 		uint8_t versionNum;
-		if( !cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 4, &versionNum) )
+		if( !cxa_fixedByteBuffer_get_uint8(rppIn->currRxBuffer, 4, versionNum) )
 		{
 			// error getting version...restart
 			cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_WAIT_0x80);
