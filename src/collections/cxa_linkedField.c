@@ -24,6 +24,7 @@
 // ******** includes ********
 #include <string.h>
 #include <cxa_assert.h>
+#include <cxa_numberUtils.h>
 
 
 // ******** local macro definitions ********
@@ -46,7 +47,7 @@ static bool isNonEmptyFieldDownChain(cxa_linkedField_t *const fbbLfIn, bool isFi
 
 
 // ******** global function implementations ********
-bool cxa_linkedField_initRoot(cxa_linkedField_t *const fbbLfIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexInParentIn)
+bool cxa_linkedField_initRoot(cxa_linkedField_t *const fbbLfIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexInParentIn, const size_t initialSize_bytesIn)
 {
 	cxa_assert(fbbLfIn);
 	cxa_assert(parentFbbIn);
@@ -58,10 +59,10 @@ bool cxa_linkedField_initRoot(cxa_linkedField_t *const fbbLfIn, cxa_fixedByteBuf
 	fbbLfIn->startIndex = startIndexInParentIn;
 	fbbLfIn->isFixedLength = false;
 	fbbLfIn->maxFixedLength_bytes = 0;
-	fbbLfIn->currSize_bytes = 0;
+	fbbLfIn->currSize_bytes = initialSize_bytesIn;
 
 	// make sure the start index isn't outside the max bounds for the parent
-	if( startIndexInParentIn > cxa_fixedByteBuffer_getMaxSize_bytes(parentFbbIn) ) return false;
+	if( startIndexInParentIn+initialSize_bytesIn > cxa_fixedByteBuffer_getMaxSize_bytes(parentFbbIn) ) return false;
 
 	return true;
 }
@@ -79,7 +80,7 @@ bool cxa_linkedField_initRoot_fixedLen(cxa_linkedField_t *const fbbLfIn, cxa_fix
 	fbbLfIn->startIndex = startIndexInParentIn;
 	fbbLfIn->isFixedLength = true;
 	fbbLfIn->maxFixedLength_bytes = maxLen_bytesIn;
-	fbbLfIn->currSize_bytes = 0;
+	fbbLfIn->currSize_bytes = CXA_MIN(maxLen_bytesIn, cxa_fixedByteBuffer_getSize_bytes(parentFbbIn));
 
 	// make sure that our fixed size (with index) isn't bigger than the parent's capacity
 	if( (startIndexInParentIn + maxLen_bytesIn) > cxa_fixedByteBuffer_getMaxSize_bytes(parentFbbIn) ) return false;
@@ -87,7 +88,7 @@ bool cxa_linkedField_initRoot_fixedLen(cxa_linkedField_t *const fbbLfIn, cxa_fix
 	return true;
 }
 
-bool cxa_linkedField_initChild(cxa_linkedField_t *const fbbLfIn, cxa_linkedField_t *const prevFbbLfIn)
+bool cxa_linkedField_initChild(cxa_linkedField_t *const fbbLfIn, cxa_linkedField_t *const prevFbbLfIn, const size_t initialSize_bytesIn)
 {
 	cxa_assert(fbbLfIn);
 
@@ -97,13 +98,25 @@ bool cxa_linkedField_initChild(cxa_linkedField_t *const fbbLfIn, cxa_linkedField
 	prevFbbLfIn->next = fbbLfIn;
 	fbbLfIn->parent = NULL;
 	fbbLfIn->parent = getParentBufferFromChild(fbbLfIn);
-	if( fbbLfIn->parent == NULL ) return false;
+	if( fbbLfIn->parent == NULL )
+	{
+		// we failed to initialize properly
+		prevFbbLfIn->next = NULL;
+		return false;
+	}
 
 	fbbLfIn->isFixedLength = false;
 	fbbLfIn->maxFixedLength_bytes = 0;
-	fbbLfIn->currSize_bytes = 0;
+	fbbLfIn->currSize_bytes = initialSize_bytesIn;
 
-	return validateChain(fbbLfIn, true);
+	if( ((getStartIndexInParent(fbbLfIn, true) + fbbLfIn->currSize_bytes) > cxa_fixedByteBuffer_getSize_bytes(fbbLfIn->parent)) || !validateChain(fbbLfIn, true) )
+	{
+		// we failed to initialize properly
+		prevFbbLfIn->next = NULL;
+		return false;
+	}
+
+	return true;
 }
 
 
@@ -121,7 +134,7 @@ bool cxa_linkedField_initChild_fixedLen(cxa_linkedField_t *const fbbLfIn, cxa_li
 
 	fbbLfIn->isFixedLength = true;
 	fbbLfIn->maxFixedLength_bytes = maxLen_bytesIn;
-	fbbLfIn->currSize_bytes = 0;
+	fbbLfIn->currSize_bytes = CXA_MIN(maxLen_bytesIn, (cxa_fixedByteBuffer_getSize_bytes(fbbLfIn->parent) - getStartIndexInParent(fbbLfIn, true)));
 
 	// make sure that that sizes of all fixed-length fields aren't too big...
 	if( getLengthOfAllFixedFields_bytes(fbbLfIn, true) > cxa_fixedByteBuffer_getMaxSize_bytes(fbbLfIn->parent) ) return false;
@@ -199,7 +212,7 @@ bool cxa_linkedField_get(cxa_linkedField_t *const fbbLfIn, const size_t indexIn,
 	cxa_assert(fbbLfIn);
 
 	// ensure our chain is valid
-	if( !validateChain(fbbLfIn, true) ) return NULL;
+	if( !validateChain(fbbLfIn, true) ) return false;
 
 	// make sure that we have enough bytes in _our_ buffer
 	if( numBytesIn > fbbLfIn->currSize_bytes ) return false;
@@ -216,7 +229,7 @@ bool cxa_linkedField_get_cstring(cxa_linkedField_t *const fbbLfIn, const size_t 
 	cxa_assert(fbbLfIn);
 
 	// ensure our chain is valid
-	if( !validateChain(fbbLfIn, true) ) return NULL;
+	if( !validateChain(fbbLfIn, true) ) return false;
 
 	// get our target string
 	char* targetString = (char*)cxa_linkedField_get_pointerToIndex(fbbLfIn, indexIn);
@@ -238,7 +251,7 @@ bool cxa_linkedField_replace(cxa_linkedField_t *const fbbLfIn, const size_t inde
 	cxa_assert(fbbLfIn);
 
 	// ensure our chain is valid
-	if( !validateChain(fbbLfIn, true) ) return NULL;
+	if( !validateChain(fbbLfIn, true) ) return false;
 
 	// make sure that we have enough bytes in _our_ buffer
 	if( numBytesIn > fbbLfIn->currSize_bytes ) return false;
@@ -326,6 +339,14 @@ size_t cxa_linkedField_getFreeSize_bytes(cxa_linkedField_t *const fbbLfIn)
 }
 
 
+size_t cxa_linkedField_getStartIndexInParent(cxa_linkedField_t *const fbbLfIn)
+{
+	cxa_assert(fbbLfIn);
+
+	return getStartIndexInParent(fbbLfIn, true);
+}
+
+
 // ******** local function implementations ********
 static cxa_fixedByteBuffer_t* getParentBufferFromChild(cxa_linkedField_t *const fbbLfIn)
 {
@@ -401,7 +422,7 @@ static bool validateChain(cxa_linkedField_t *const fbbLfIn, bool isFirstCallIn)
 		size_t calcSize_bytes = getStartIndexInParent(endOfChain, true) + endOfChain->currSize_bytes;
 		size_t actualSize_bytes = cxa_fixedByteBuffer_getSize_bytes(endOfChain->parent);
 
-		if( calcSize_bytes != actualSize_bytes ) return false;
+		if( calcSize_bytes > actualSize_bytes ) return false;
 
 		return validateChain(endOfChain, false);
 	}

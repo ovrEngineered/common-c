@@ -44,8 +44,8 @@
 #define cxa_linkedField_remove_float(fbbLfIn, indexIn)						cxa_linkedField_remove((fbbLfIn), (indexIn), 4)
 
 #define cxa_linkedField_get_uint8(fbbLfIn, indexIn, uint8Out)				cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(uint8Out), 1)
-#define cxa_linkedField_get_uint16LE(fbbLfIn, indexIn, uint16Out)			cxa_linkedField_get((fbbLfIn), (indexIn), true, (uint8_t*)&(uint16Out), 2)
-#define cxa_linkedField_get_uint32LE(fbbLfIn, indexIn, uint32Out)			cxa_linkedField_get((fbbLfIn), (indexIn), true, (uint8_t*)&(uint32Out), 4)
+#define cxa_linkedField_get_uint16LE(fbbLfIn, indexIn, uint16Out)			cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(uint16Out), 2)
+#define cxa_linkedField_get_uint32LE(fbbLfIn, indexIn, uint32Out)			cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(uint32Out), 4)
 #define cxa_linkedField_get_float(fbbLfIn, indexIn, floatOut)				cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(floatOut), 4)
 
 #define cxa_linkedField_replace_uint8(fbbLfIn, indexIn, uint8In)			cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){(uint8In)}, 1)
@@ -58,6 +58,8 @@
 #define cxa_linkedField_insert_uint32(fbbLfIn, indexIn, uint32In)			cxa_linkedField_insert((fbbLfIn), (indexIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
 #define cxa_linkedField_insert_float(fbbLfIn, indexIn, floatIn)				cxa_linkedField_insert((fbbLfIn), (indexIn), (uint8_t*)&(floatIn), 4)
 #define cxa_linkedField_insert_cString(fbbLfIn, indexIn, strIn)				cxa_linkedField_insert((fbbLfIn), (indexIn), (uint8_t*)(strIn), (strlen(strIn)+1))
+
+#define cxa_linkedField_getStartIndexOfNextField(fbbLfIn)					(cxa_linkedField_getStartIndexInParent(fbbLfIn) + cxa_linkedField_getSize_bytes(fbbLfIn))
 
 
 // ******** global type definitions *********
@@ -88,10 +90,10 @@ struct cxa_fixedByteBuffer_linkedField
 
 
 // ******** global function prototypes ********
-bool cxa_linkedField_initRoot(cxa_linkedField_t *const fbbLfIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexInParentIn);
+bool cxa_linkedField_initRoot(cxa_linkedField_t *const fbbLfIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexInParentIn, const size_t initialSize_bytesIn);
 bool cxa_linkedField_initRoot_fixedLen(cxa_linkedField_t *const fbbLfIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexInParentIn, const size_t maxLen_bytesIn);
 
-bool cxa_linkedField_initChild(cxa_linkedField_t *const fbbLfIn, cxa_linkedField_t *const prevFbbLfIn);
+bool cxa_linkedField_initChild(cxa_linkedField_t *const fbbLfIn, cxa_linkedField_t *const prevFbbLfIn, const size_t initialSize_bytesIn);
 bool cxa_linkedField_initChild_fixedLen(cxa_linkedField_t *const fbbLfIn, cxa_linkedField_t *const prevFbbLfIn, const size_t maxLen_bytesIn);
 
 bool cxa_linkedField_append(cxa_linkedField_t *const fbbLfIn, uint8_t *const ptrIn, const size_t numBytesIn);
@@ -110,5 +112,6 @@ bool cxa_linkedField_insert(cxa_linkedField_t *const fbbLfIn, const size_t index
 size_t cxa_linkedField_getSize_bytes(cxa_linkedField_t *const fbbLfIn);
 size_t cxa_linkedField_getMaxSize_bytes(cxa_linkedField_t *const fbbLfIn);
 size_t cxa_linkedField_getFreeSize_bytes(cxa_linkedField_t *const fbbLfIn);
+size_t cxa_linkedField_getStartIndexInParent(cxa_linkedField_t *const fbbLfIn);
 
 #endif // CXA_LINKED_FIELD_H_
