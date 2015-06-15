@@ -30,6 +30,7 @@
 
 // ******** includes ********
 #include <cxa_fixedByteBuffer.h>
+#include <cxa_linkedField.h>
 
 
 // ******** global macro definitions ********
@@ -54,15 +55,36 @@ typedef enum
 /**
  * @private
  */
-struct cxa_rpc_node
+struct cxa_rpc_message
 {
-	cxa_fixedByteBuffer_t *fbbSource;
+	cxa_fixedByteBuffer_t* buffer;
+
+	bool areFieldsConfigured;
+	cxa_linkedField_t type;
+	cxa_linkedField_t dest;
+	cxa_linkedField_t method;
+	cxa_linkedField_t src;
+	cxa_linkedField_t id;
+	cxa_linkedField_t params;
 };
 
 
 // ******** global function prototypes ********
-bool cxa_rpc_message_newRequest(cxa_rpc_message_t *const msgIn, cxa_fixedByteBuffer_t *const fbbIn);
-bool cxa_rpc_message_fromBytes(cxa_rpc_message_t *const msgIn, cxa_fixedByteBuffer_t *const fbbIn);
+/**
+ * @protected
+ */
+void cxa_rpc_message_initEmpty(cxa_rpc_message_t *const msgIn, cxa_fixedByteBuffer_t *const fbbIn);
+bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const size_t startingIndexIn, const size_t len_bytesIn);
+
+/**
+ * @public
+ */
+cxa_rpc_message_type_t cxa_rpc_message_getType(cxa_rpc_message_t *const msgIn);
+char* cxa_rpc_message_getDestination(cxa_rpc_message_t *const msgIn);
+char* cxa_rpc_message_getMethod(cxa_rpc_message_t *const msgIn);
+char* cxa_rpc_message_getSource(cxa_rpc_message_t *const msgIn);
+uint16_t cxa_rpc_message_getId(cxa_rpc_message_t *const msgIn);
+cxa_linkedField_t* cxa_rpc_message_getParams(cxa_rpc_message_t *const msgIn);
 
 
 #endif // CXA_RPC_MESSAGE_H_

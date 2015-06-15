@@ -34,10 +34,10 @@
 #include <stdbool.h>
 
 #include <cxa_array.h>
-#include <cxa_fixedByteBuffer.h>
 #include <cxa_ioStream.h>
 #include <cxa_logger_header.h>
 #include <cxa_stateMachine.h>
+#include <cxa_rpc_message.h>
 
 
 // ******** global macro definitions ********
@@ -46,12 +46,6 @@
 #endif
 #ifndef CXA_RPC_PROTOCOLPARSER_MAXNUM_MSGLISTENERS
 	#define CXA_RPC_PROTOCOLPARSER_MAXNUM_MSGLISTENERS			1
-#endif
-#ifndef CXA_RPC_PROTOCOLPARSER_MSG_POOL_NUM_MSGS
-	#define CXA_RPC_PROTOCOLPARSER_MSG_POOL_NUM_MSGS			2
-#endif
-#ifndef CXA_RPC_PROTOCOLPARSER_BUFFER_SIZE_BYTES
-	#define CXA_RPC_PROTOCOLPARSER_BUFFER_SIZE_BYTES			256
 #endif
 
 
@@ -84,16 +78,7 @@ typedef void (*cxa_rpc_protocolParser_cb_invalidVersionNumber_t)(cxa_fixedByteBu
 typedef void (*cxa_rpc_protocolParser_cb_ioExceptionOccurred_t)(void *const userVarIn);
 
 
-/**
- * @public
- * @brief Callback called when/if a valid message is received.
- *
- * @param[in] bufferIn a buffer containing the message data
- *		(no header or footer information)
- * @param[in] userVarIn pointer to the user-supplied variable passed to
- *		::cxa_rpc_protocolParser_addMessageListener
- */
-typedef void (*cxa_rpc_protocolParser_cb_messageReceived_t)(cxa_fixedByteBuffer_t *const bufferIn, void *const userVarIn);
+typedef void (*cxa_rpc_protocolParser_cb_messageReceived_t)(cxa_rpc_message_t *const msgIn, void *const userVarIn);
 
 
 /**
@@ -119,17 +104,6 @@ typedef struct
 }cxa_rpc_protocolParser_messageListener_entry_t;
 
 
-/**
- * @private
- */
-typedef struct
-{
-	uint8_t refCount;
-	
-	cxa_fixedByteBuffer_t buffer;
-	uint8_t buffer_raw[CXA_RPC_PROTOCOLPARSER_BUFFER_SIZE_BYTES];
-}cxa_rpc_protocolParser_msgBuffer_t;
-
 
 /**
  * @private
@@ -148,20 +122,14 @@ struct cxa_rpc_protocolParser
 	cxa_stateMachine_t stateMachine;
 	cxa_ioStream_t *ioStream;
 	
-	
-	cxa_fixedByteBuffer_t* currRxBuffer;
-	cxa_rpc_protocolParser_msgBuffer_t msgPool[CXA_RPC_PROTOCOLPARSER_MSG_POOL_NUM_MSGS];
+	cxa_rpc_message_t *currRxMsg;
 };
 
 
 // ******** global function prototypes ********
 void cxa_rpc_protocolParser_init(cxa_rpc_protocolParser_t *const rppIn, uint8_t userProtoVersionIn, cxa_ioStream_t *ioStreamIn);
 
-cxa_fixedByteBuffer_t* cxa_rpc_protocolParser_reserveFreeBuffer(cxa_rpc_protocolParser_t *const rppIn);
-bool cxa_rpc_protocolParser_reserveExistingBuffer(cxa_rpc_protocolParser_t *const rppIn, cxa_fixedByteBuffer_t *const dataBytesIn);
-void cxa_rpc_protocolParser_freeReservedBuffer(cxa_rpc_protocolParser_t *const rppIn, cxa_fixedByteBuffer_t *const dataBytesIn);
-
-bool cxa_rpc_protocolParser_writeMessage(cxa_rpc_protocolParser_t *const rppIn, cxa_fixedByteBuffer_t *const dataBytesIn);
+bool cxa_rpc_protocolParser_writeMessage(cxa_rpc_protocolParser_t *const rppIn, cxa_rpc_message_t *const msgToWriteIn);
 
 void cxa_rpc_protocolParser_addProtocolListener(cxa_rpc_protocolParser_t *const rppIn,
 		cxa_rpc_protocolParser_cb_invalidVersionNumber_t cb_invalidVerIn,

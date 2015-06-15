@@ -24,53 +24,31 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_RPC_NODE_H_
-#define CXA_RPC_NODE_H_
+#ifndef CXA_RPC_MESSAGE_FACTORY_H_
+#define CXA_RPC_MESSAGE_FACTORY_H_
 
 
 // ******** includes ********
-#include <stdbool.h>
-#include <cxa_array.h>
-#include <cxa_logger_header.h>
+#include <cxa_rpc_message.h>
 
 
 // ******** global macro definitions ********
-#ifndef CXA_RPC_NODE_MAX_NAME_LEN_BYTES
-	#define CXA_RPC_NODE_MAX_NAME_LEN_BYTES				10
-#endif
-
-#ifndef CXA_RPC_NODE_MAX_NUM_SUBNODES
-	#define CXA_RPC_NODE_MAX_NUM_SUBNODES				5
+#ifndef CXA_RPC_MSGFACTORY_POOL_NUM_MSGS
+	#define CXA_RPC_MSGFACTORY_POOL_NUM_MSGS				2
 #endif
 
 
 // ******** global type definitions *********
-/**
- * @public
- * @brief "Forward" declaration of the cxa_rpc_node_t object
- */
-typedef struct cxa_rpc_node cxa_rpc_node_t;
-
-
-/**
- * @private
- */
-struct cxa_rpc_node
-{
-	char name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES];
-	cxa_rpc_node_t* parent;
-
-	cxa_array_t subnodes;
-	cxa_rpc_node_t* subnodes_raw[CXA_RPC_NODE_MAX_NUM_SUBNODES];
-
-	cxa_logger_t logger;
-};
 
 
 // ******** global function prototypes ********
-void cxa_rpc_node_init(cxa_rpc_node_t *const nodeIn, char *const nameIn);
+void cxa_rpc_messageFactory_init(void);
 
-bool cxa_rpc_node_addSubNode(cxa_rpc_node_t *const nodeIn, cxa_rpc_node_t *const subNodeIn);
+cxa_rpc_message_t* cxa_rpc_messageFactory_getFreeMessage_empty(void);
+
+void cxa_rpc_messageFactory_incrementMessageRefCount(cxa_rpc_message_t *const msgIn);
+void cxa_rpc_messageFactory_decrementMessageRefCount(cxa_rpc_message_t *const msgIn);
+uint8_t cxa_rpc_messageFactory_getReferenceCountForMessage(cxa_rpc_message_t *const msgIn);
 
 
 #endif // CXA_RPC_NODE_H_
