@@ -76,9 +76,13 @@ struct cxa_rpc_message
 void cxa_rpc_message_initEmpty(cxa_rpc_message_t *const msgIn, cxa_fixedByteBuffer_t *const fbbIn);
 bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const size_t startingIndexIn, const size_t len_bytesIn);
 
+
 /**
  * @public
  */
+bool cxa_rpc_message_initRequest(cxa_rpc_message_t *const msgIn, const char *const destIn, const char *const methodIn, uint8_t *const paramsIn, const size_t paramsSize_bytesIn);
+bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, uint16_t reqIdIn, uint8_t *const paramsIn, const size_t paramsSize_bytesIn);
+
 cxa_rpc_message_type_t cxa_rpc_message_getType(cxa_rpc_message_t *const msgIn);
 char* cxa_rpc_message_getDestination(cxa_rpc_message_t *const msgIn);
 char* cxa_rpc_message_getMethod(cxa_rpc_message_t *const msgIn);

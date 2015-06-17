@@ -86,7 +86,7 @@ bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const
 			if( !cxa_linkedField_initChild(&msgIn->src, &msgIn->method, strlen(sourceString)+1) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			// next up, our id
-			if( !cxa_linkedField_initChild_fixedLen(&msgIn->id, &msgIn->src, 2) ) { msgIn->areFieldsConfigured = false; return false; }
+			if( !cxa_linkedField_initChild_fixedLen(&msgIn->id, &msgIn->src, ID_LEN_BYTES) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			// finally, our params
 			if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->id, (len_bytesIn - cxa_linkedField_getStartIndexOfNextField(&msgIn->id))) ) { msgIn->areFieldsConfigured = false; return false; }
@@ -102,7 +102,7 @@ bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const
 			if( !cxa_linkedField_initChild(&msgIn->dest, &msgIn->type, strlen(destString)+1) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			// next up, our id
-			if( !cxa_linkedField_initChild_fixedLen(&msgIn->id, &msgIn->dest, 2) ) { msgIn->areFieldsConfigured = false; return false; }
+			if( !cxa_linkedField_initChild_fixedLen(&msgIn->id, &msgIn->dest, ID_LEN_BYTES) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			// next up, our source
 			char* sourceString = (char*)cxa_fixedByteBuffer_get_pointerToIndex(msgIn->buffer, cxa_linkedField_getStartIndexOfNextField(&msgIn->id));
@@ -119,6 +119,71 @@ bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const
 			msgIn->areFieldsConfigured = false; return false;
 	}
 
+	return true;
+}
+
+
+bool cxa_rpc_message_initRequest(cxa_rpc_message_t *const msgIn, const char *const destIn, const char *const methodIn, uint8_t *const paramsIn, const size_t paramsSize_bytesIn)
+{
+	cxa_assert(msgIn);
+	cxa_assert(destIn);
+	cxa_assert(methodIn);
+
+	// message should have been obtained through message factory, so the fbb should be good to go...
+	cxa_assert(msgIn->buffer);
+
+	// type
+	if( !cxa_linkedField_initRoot_fixedLen(&msgIn->type, msgIn->buffer, 0, 1) || !cxa_linkedField_append_uint8(&msgIn->type, CXA_RPC_MESSAGE_TYPE_REQUEST) ) return false;
+
+	// dest
+	if( !cxa_linkedField_initChild(&msgIn->dest, &msgIn->type, 0) || !cxa_linkedField_append_cString(&msgIn->dest, destIn) ) return false;
+
+	// method
+	if( !cxa_linkedField_initChild(&msgIn->method, &msgIn->dest, 0) || !cxa_linkedField_append_cString(&msgIn->method, methodIn) ) return false;
+
+	// source (empty for now)
+	if( !cxa_linkedField_initChild(&msgIn->src, &msgIn->method, 0) ) return false;
+
+	// id (0 for now)
+	if( !cxa_linkedField_initChild_fixedLen(&msgIn->id, &msgIn->src, ID_LEN_BYTES) || !cxa_linkedField_append_uint16LE(&msgIn->id, 0) ) return false;
+
+	// finally, the params
+	if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->id, 0) ) return false;
+	if( (paramsIn != NULL) && (paramsSize_bytesIn > 0) && !cxa_linkedField_append(&msgIn->params, paramsIn, paramsSize_bytesIn) ) return false;
+
+	// if we made it here, we're good to go!
+	msgIn->areFieldsConfigured = true;
+	return true;
+
+}
+
+
+bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, uint16_t reqIdIn, uint8_t *const paramsIn, const size_t paramsSize_bytesIn)
+{
+	cxa_assert(msgIn);
+	cxa_assert(reqSrcIn);
+
+	// message should have been obtained through message factory, so the fbb should be good to go...
+	cxa_assert(msgIn->buffer);
+
+	// type
+	if( !cxa_linkedField_initRoot_fixedLen(&msgIn->type, msgIn->buffer, 0, 1) || !cxa_linkedField_append_uint8(&msgIn->type, CXA_RPC_MESSAGE_TYPE_RESPONSE) ) return false;
+
+	// dest
+	if( !cxa_linkedField_initChild(&msgIn->dest, &msgIn->type, 0) || !cxa_linkedField_append_cString(&msgIn->dest, reqSrcIn) ) return false;
+
+	// id
+	if( !cxa_linkedField_initChild_fixedLen(&msgIn->id, &msgIn->dest, ID_LEN_BYTES) || !cxa_linkedField_append_uint16LE(&msgIn->id, reqIdIn) ) return false;
+
+	// source (empty for now)
+	if( !cxa_linkedField_initChild(&msgIn->src, &msgIn->id, 0) ) return false;
+
+	// finally, the params
+	if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->src, 0) ) return false;
+	if( (paramsIn != NULL) && (paramsSize_bytesIn > 0) && !cxa_linkedField_append(&msgIn->params, paramsIn, paramsSize_bytesIn) ) return false;
+
+	// if we made it here, we're good to go!
+	msgIn->areFieldsConfigured = true;
 	return true;
 }
 
