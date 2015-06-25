@@ -260,4 +260,81 @@ cxa_linkedField_t* cxa_rpc_message_getParams(cxa_rpc_message_t *const msgIn)
 }
 
 
+bool cxa_rpc_message_prependNodeNameToSource(cxa_rpc_message_t *const msgIn, const char *const nodeNameToPrepend)
+{
+	cxa_assert(msgIn);
+	cxa_assert(nodeNameToPrepend);
+	if( !msgIn->areFieldsConfigured ) return false;
+
+	bool wasSourceEmpty = (cxa_linkedField_getSize_bytes(&msgIn->src) == 0);
+
+	if( !cxa_linkedField_insert_cString(&msgIn->src, 0, nodeNameToPrepend) ) return false;
+	return (wasSourceEmpty) ? true : cxa_linkedField_replace(&msgIn->src, strlen(nodeNameToPrepend), (uint8_t*)CXA_RPC_PATH_SEP, strlen(CXA_RPC_PATH_SEP));
+}
+
+
+bool cxa_rpc_message_destination_getFirstPathComponent(cxa_rpc_message_t *const msgIn, char** pathCompOut, size_t* pathCompLen_bytesOut)
+{
+	cxa_assert(msgIn);
+	if( !msgIn->areFieldsConfigured ) return false;
+
+	// get our destination
+	char* dest = (char*)cxa_linkedField_get_pointerToIndex(&msgIn->dest, 0);
+	if( (dest == NULL) || (dest[0] == 0) ) return false;
+	size_t destLen_bytes = strlen(dest);
+
+	// look for our path separator
+	char* firstPathSep = strstr(dest, CXA_RPC_PATH_SEP);
+	if( firstPathSep == NULL )
+	{
+		// this must be our last path component
+		if( pathCompOut ) *pathCompOut = dest;
+		if( pathCompLen_bytesOut ) *pathCompLen_bytesOut = destLen_bytes;
+		return true;
+	}
+
+	// if we made it here, we found a path separator
+	size_t compLen_bytes = firstPathSep - dest;
+	if( compLen_bytes == 0 ) compLen_bytes = 1;
+
+	if( pathCompOut ) *pathCompOut = dest;
+	if( pathCompLen_bytesOut ) *pathCompLen_bytesOut = compLen_bytes;
+	return true;
+}
+
+
+bool cxa_rpc_message_destination_removeFirstPathComponent(cxa_rpc_message_t *const msgIn)
+{
+	cxa_assert(msgIn);
+	if( !msgIn->areFieldsConfigured ) return false;
+
+	char *pathComp = NULL;
+	size_t firstCompLen_bytes = 0;
+	if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &firstCompLen_bytes) ) return false;
+	if( (pathComp == NULL) || (firstCompLen_bytes == 0) ) return true;
+
+	// see if there are additional components in the destination path
+	size_t destSize_bytes = cxa_linkedField_getSize_bytes(&msgIn->dest);
+	if( destSize_bytes == 0 ) return false;
+
+	// adjust for null terminator
+	destSize_bytes--;
+	if( (firstCompLen_bytes == destSize_bytes) || (strncmp(pathComp, CXA_RPC_PATH_GLOBAL_ROOT, strlen(CXA_RPC_PATH_GLOBAL_ROOT)) == 0))
+	{
+		// this is either the last component OR a GLOBALROOT component
+		return cxa_linkedField_remove(&msgIn->dest, 0, firstCompLen_bytes);
+	}
+	else if( firstCompLen_bytes < destSize_bytes )
+	{
+		// this is NOT the last component, verify and remove path separator
+		if( strncmp(&pathComp[firstCompLen_bytes], CXA_RPC_PATH_SEP, strlen(CXA_RPC_PATH_SEP)) != 0 ) return false;
+		// +1 is for the path separator
+		return cxa_linkedField_remove(&msgIn->dest, 0, firstCompLen_bytes+1);
+	}
+
+	// if we made it here, something messed up
+	return false;
+}
+
+
 // ******** local function implementations ********

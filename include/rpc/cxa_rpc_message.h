@@ -34,6 +34,10 @@
 
 
 // ******** global macro definitions ********
+#define CXA_RPC_PATH_SEP					"/"
+#define CXA_RPC_PATH_UP_ONE_LEVEL			".."
+#define CXA_RPC_PATH_GLOBAL_ROOT			"/"
+#define CXA_RPC_PATH_LOCAL_ROOT				"~"
 
 
 // ******** global type definitions *********
@@ -90,5 +94,9 @@ char* cxa_rpc_message_getSource(cxa_rpc_message_t *const msgIn);
 uint16_t cxa_rpc_message_getId(cxa_rpc_message_t *const msgIn);
 cxa_linkedField_t* cxa_rpc_message_getParams(cxa_rpc_message_t *const msgIn);
 
+bool cxa_rpc_message_prependNodeNameToSource(cxa_rpc_message_t *const msgIn, const char *const nodeNameToPrepend);
+
+bool cxa_rpc_message_destination_getFirstPathComponent(cxa_rpc_message_t *const msgIn, char** pathCompOut, size_t* pathCompLen_bytesOut);
+bool cxa_rpc_message_destination_removeFirstPathComponent(cxa_rpc_message_t *const msgIn);
 
 #endif // CXA_RPC_MESSAGE_H_
