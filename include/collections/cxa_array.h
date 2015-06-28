@@ -204,7 +204,22 @@ void* cxa_array_append_empty(cxa_array_t *const arrIn);
  * @return true if the element was successfully removed, false on error
  *		(invalid index, etc)
  */
-bool cxa_array_remove(cxa_array_t *const arrIn, const size_t indexIn);
+bool cxa_array_remove_atIndex(cxa_array_t *const arrIn, const size_t indexIn);
+
+
+/**
+ * @public
+ * @brief Removes the element at the specified memory location from the
+ * the array (moving all following elements down)
+ *
+ * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
+ * @param[in] itemLocIn pointer to the element to remove. Must be the
+ * 		starting address of the element to remove _within_ the array.
+ *
+ * @return true if the element was successfully removed, false on error
+ *		(invalid item to remove, etc)
+ */
+bool cxa_array_remove(cxa_array_t *const arrIn, void *const itemLocIn);
 
 
 /**

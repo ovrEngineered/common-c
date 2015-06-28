@@ -106,7 +106,7 @@ void* cxa_array_append_empty(cxa_array_t *const arrIn)
 }
 
 
-bool cxa_array_remove(cxa_array_t *const arrIn, const size_t indexIn)
+bool cxa_array_remove_atIndex(cxa_array_t *const arrIn, const size_t indexIn)
 {
 	cxa_assert(arrIn);
 	
@@ -128,6 +128,23 @@ bool cxa_array_remove(cxa_array_t *const arrIn, const size_t indexIn)
 	arrIn->insertIndex--;
 	
 	return true;
+}
+
+
+bool cxa_array_remove(cxa_array_t *const arrIn, void *const itemLocIn)
+{
+	cxa_assert(arrIn);
+	if( itemLocIn == NULL ) return false;
+
+	for( size_t i = 0; i < cxa_array_getSize_elems(arrIn); i++ )
+	{
+		if( cxa_array_get(arrIn, i) == itemLocIn )
+		{
+			return cxa_array_remove_atIndex(arrIn, i);
+		}
+	}
+
+	return false;
 }
 
 
