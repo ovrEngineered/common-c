@@ -89,7 +89,7 @@ bool cxa_backgroundUpdater_removeEntry(cxa_backgroundUpdater_cb_update_t cbIn)
 
 		if( currEntry->cb == cbIn )
 		{
-			cxa_array_remove(&SINGLETON.cbs, i);
+			cxa_array_remove_atIndex(&SINGLETON.cbs, i);
 			return true;
 		}
 	}

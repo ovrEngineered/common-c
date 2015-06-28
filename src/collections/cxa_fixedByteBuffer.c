@@ -76,7 +76,7 @@ bool cxa_fixedByteBuffer_remove(cxa_fixedByteBuffer_t *const fbbIn, const size_t
 
 	for( size_t i = 0; i < numBytesIn; i++ )
 	{
-		if( !cxa_array_remove(&fbbIn->bytes, indexIn) ) return false;
+		if( !cxa_array_remove_atIndex(&fbbIn->bytes, indexIn) ) return false;
 	}
 
 	return true;
