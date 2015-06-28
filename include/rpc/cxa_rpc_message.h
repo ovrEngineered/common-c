@@ -39,6 +39,9 @@
 #define CXA_RPC_PATH_GLOBAL_ROOT			"/"
 #define CXA_RPC_PATH_LOCAL_ROOT				"~"
 
+#define CXA_RPC_ID_DATATYPE					uint16_t
+#define CXA_RPC_ID_MAX						UINT16_MAX
+
 
 // ******** global type definitions *********
 /**
@@ -85,18 +88,21 @@ bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const
  * @public
  */
 bool cxa_rpc_message_initRequest(cxa_rpc_message_t *const msgIn, const char *const destIn, const char *const methodIn, uint8_t *const paramsIn, const size_t paramsSize_bytesIn);
-bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, uint16_t reqIdIn, uint8_t *const paramsIn, const size_t paramsSize_bytesIn);
+bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, uint16_t reqIdIn);
 
 cxa_rpc_message_type_t cxa_rpc_message_getType(cxa_rpc_message_t *const msgIn);
 char* cxa_rpc_message_getDestination(cxa_rpc_message_t *const msgIn);
 char* cxa_rpc_message_getMethod(cxa_rpc_message_t *const msgIn);
 char* cxa_rpc_message_getSource(cxa_rpc_message_t *const msgIn);
-uint16_t cxa_rpc_message_getId(cxa_rpc_message_t *const msgIn);
+CXA_RPC_ID_DATATYPE cxa_rpc_message_getId(cxa_rpc_message_t *const msgIn);
 cxa_linkedField_t* cxa_rpc_message_getParams(cxa_rpc_message_t *const msgIn);
 
+bool cxa_rpc_message_setId(cxa_rpc_message_t *const msgIn, uint16_t idIn);
 bool cxa_rpc_message_prependNodeNameToSource(cxa_rpc_message_t *const msgIn, const char *const nodeNameToPrepend);
 
 bool cxa_rpc_message_destination_getFirstPathComponent(cxa_rpc_message_t *const msgIn, char** pathCompOut, size_t* pathCompLen_bytesOut);
 bool cxa_rpc_message_destination_removeFirstPathComponent(cxa_rpc_message_t *const msgIn);
+
+char* cxa_rpc_message_getFriendlyTypeString(cxa_rpc_message_type_t typeIn);
 
 #endif // CXA_RPC_MESSAGE_H_

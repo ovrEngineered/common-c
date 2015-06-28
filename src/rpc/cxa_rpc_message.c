@@ -30,7 +30,7 @@
 // ******** local macro definitions ********
 #define INDEX_MSG_TYPE			0
 #define INDEX_MSG_DEST			1
-#define ID_LEN_BYTES			2
+#define ID_LEN_BYTES			(sizeof(CXA_RPC_ID_DATATYPE))
 
 
 // ******** local type definitions ********
@@ -158,7 +158,7 @@ bool cxa_rpc_message_initRequest(cxa_rpc_message_t *const msgIn, const char *con
 }
 
 
-bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, uint16_t reqIdIn, uint8_t *const paramsIn, const size_t paramsSize_bytesIn)
+bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, uint16_t reqIdIn)
 {
 	cxa_assert(msgIn);
 	cxa_assert(reqSrcIn);
@@ -180,7 +180,6 @@ bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *co
 
 	// finally, the params
 	if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->src, 0) ) return false;
-	if( (paramsIn != NULL) && (paramsSize_bytesIn > 0) && !cxa_linkedField_append(&msgIn->params, paramsIn, paramsSize_bytesIn) ) return false;
 
 	// if we made it here, we're good to go!
 	msgIn->areFieldsConfigured = true;
@@ -241,7 +240,7 @@ char* cxa_rpc_message_getSource(cxa_rpc_message_t *const msgIn)
 }
 
 
-uint16_t cxa_rpc_message_getId(cxa_rpc_message_t *const msgIn)
+CXA_RPC_ID_DATATYPE cxa_rpc_message_getId(cxa_rpc_message_t *const msgIn)
 {
 	cxa_assert(msgIn);
 	if( !msgIn->areFieldsConfigured ) return 0;
@@ -260,6 +259,15 @@ cxa_linkedField_t* cxa_rpc_message_getParams(cxa_rpc_message_t *const msgIn)
 }
 
 
+bool cxa_rpc_message_setId(cxa_rpc_message_t *const msgIn, uint16_t idIn)
+{
+	cxa_assert(msgIn);
+	if( !msgIn->areFieldsConfigured ) return false;
+
+	return cxa_linkedField_replace_uint16LE(&msgIn->id, 0, idIn);
+}
+
+
 bool cxa_rpc_message_prependNodeNameToSource(cxa_rpc_message_t *const msgIn, const char *const nodeNameToPrepend)
 {
 	cxa_assert(msgIn);
@@ -269,7 +277,16 @@ bool cxa_rpc_message_prependNodeNameToSource(cxa_rpc_message_t *const msgIn, con
 	bool wasSourceEmpty = (cxa_linkedField_getSize_bytes(&msgIn->src) == 0);
 
 	if( !cxa_linkedField_insert_cString(&msgIn->src, 0, nodeNameToPrepend) ) return false;
-	return (wasSourceEmpty) ? true : cxa_linkedField_replace(&msgIn->src, strlen(nodeNameToPrepend), (uint8_t*)CXA_RPC_PATH_SEP, strlen(CXA_RPC_PATH_SEP));
+	if( !wasSourceEmpty && (strcmp(CXA_RPC_PATH_GLOBAL_ROOT, CXA_RPC_PATH_SEP) == 0) && (strcmp(nodeNameToPrepend, CXA_RPC_PATH_GLOBAL_ROOT) != 0) )
+	{
+		// add our path separator
+		return cxa_linkedField_replace(&msgIn->src, strlen(nodeNameToPrepend), (uint8_t*)CXA_RPC_PATH_SEP, strlen(CXA_RPC_PATH_SEP));
+	}
+	else if( !wasSourceEmpty && (strcmp(CXA_RPC_PATH_GLOBAL_ROOT, CXA_RPC_PATH_SEP) == 0) && (strcmp(nodeNameToPrepend, CXA_RPC_PATH_GLOBAL_ROOT) == 0) )
+	{
+		return cxa_linkedField_remove_uint8(&msgIn->src, strlen(nodeNameToPrepend));
+	}
+	return true;
 }
 
 
@@ -334,6 +351,28 @@ bool cxa_rpc_message_destination_removeFirstPathComponent(cxa_rpc_message_t *con
 
 	// if we made it here, something messed up
 	return false;
+}
+
+
+char* cxa_rpc_message_getFriendlyTypeString(cxa_rpc_message_type_t typeIn)
+{
+	char *retVal = NULL;
+	switch( typeIn )
+	{
+		case CXA_RPC_MESSAGE_TYPE_REQUEST:
+			retVal = "request";
+			break;
+
+		case CXA_RPC_MESSAGE_TYPE_RESPONSE:
+			retVal = "response";
+			break;
+
+		default:
+			retVal = "unknown";
+			break;
+	}
+
+	return retVal;
 }
 
 
