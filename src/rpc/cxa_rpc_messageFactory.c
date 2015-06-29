@@ -80,6 +80,22 @@ void cxa_rpc_messageFactory_init(void)
 }
 
 
+size_t cxa_rpc_messageFactory_getNumFreeMessages(void)
+{
+	if( !isInit ) cxa_rpc_messageFactory_init();
+
+	size_t retVal = 0;
+
+	for( size_t i = 0; i < (sizeof(msgPool)/sizeof(*msgPool)); i++ )
+	{
+		cxa_rpc_messageFactory_msgEntry_t* currEntry = (cxa_rpc_messageFactory_msgEntry_t*)&msgPool[i];
+		if( currEntry->refCount == 0 ) retVal++;
+	}
+
+	return retVal;
+}
+
+
 cxa_rpc_message_t* cxa_rpc_messageFactory_getFreeMessage_empty(void)
 {
 	if( !isInit ) cxa_rpc_messageFactory_init();
