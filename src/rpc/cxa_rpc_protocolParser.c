@@ -100,28 +100,34 @@ void cxa_rpc_protocolParser_init(cxa_rpc_protocolParser_t *const rppIn, uint8_t 
 
 bool cxa_rpc_protocolParser_writeMessage(cxa_rpc_protocolParser_t *const rppIn, cxa_rpc_message_t *const msgToWriteIn)
 {
-	/*
 	cxa_assert(rppIn);
-	cxa_assert(cxa_fixedByteBuffer_getCurrSize(dataBytesIn) <= (65535-3));
+	cxa_assert(msgToWriteIn);
 
+	// make sure the message is configured properly
+	if( cxa_rpc_message_getType(msgToWriteIn) == CXA_RPC_MESSAGE_TYPE_UNKNOWN ) return false;
+
+	// message _should_ be configured properly...get our size
+	size_t msgSize_bytes = cxa_fixedByteBuffer_getSize_bytes(msgToWriteIn->buffer);
+	cxa_assert(msgSize_bytes <= (65535-3));
+
+	// make sure we're in a good state
 	rxState_t currState = cxa_stateMachine_getCurrentState(&rppIn->stateMachine);
 	if( (currState == RX_STATE_ERROR) || !cxa_ioStream_isBound(rppIn->ioStream) ) return false;
 
+	// write our header
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, 0x80) ) { handleIoException(rppIn); return false; }
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, 0x81) ) { handleIoException(rppIn); return false; }
 
-	size_t len = ((dataBytesIn != NULL) ? cxa_fixedByteBuffer_getCurrSize(dataBytesIn) : 0) + 2;
+	size_t len = msgSize_bytes + 2;
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, ((len & 0x00FF) >> 0)) ) { handleIoException(rppIn); return false; }
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, ((len & 0xFF00) >> 8)) ) { handleIoException(rppIn); return false; }
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, ((PROTOCOL_VERSION << 4) | rppIn->userProtoVersion)) ) { handleIoException(rppIn); return false; }
 
-	if( dataBytesIn != NULL )
-	{
-		if( !cxa_ioStream_writeFixedByteBuffer(rppIn->ioStream, dataBytesIn) ) { handleIoException(rppIn); return false; }
-	}
+	// write our data
+	if( !cxa_ioStream_writeFixedByteBuffer(rppIn->ioStream, msgToWriteIn->buffer) ) { handleIoException(rppIn); return false; }
 	
+	// write our footer
 	if( !cxa_ioStream_writeByte(rppIn->ioStream, 0x82) ) { handleIoException(rppIn); return false; }
-	*/
 	return true;
 }
 
@@ -362,7 +368,9 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 			// we have a valid version number...get our data bytes
 			cxa_logger_trace(&rppIn->logger, "message received...parsing");
 
-			if( cxa_rpc_message_validateReceivedBytes(rppIn->currRxMsg, 4, currSize_bytes-5) )
+			cxa_fixedByteBuffer_writeToFile_asciiHexRep(rppIn->currRxMsg->buffer, stdout);
+
+			if( cxa_rpc_message_validateReceivedBytes(rppIn->currRxMsg, 5, currSize_bytes-5) )
 			{
 				cxa_logger_trace(&rppIn->logger, "message validated successfully");
 
