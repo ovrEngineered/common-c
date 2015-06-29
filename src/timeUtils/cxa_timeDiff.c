@@ -47,7 +47,7 @@ void cxa_timeDiff_init(cxa_timeDiff_t *const tdIn, cxa_timeBase_t *const tbIn)
 	tdIn->tb = tbIn;
 	
 	// set some appropriate initial values
-	tdIn->startTime_us = 0;
+	cxa_timeDiff_setStartTime_now(tdIn);
 }
 
 
