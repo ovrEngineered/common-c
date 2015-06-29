@@ -30,6 +30,7 @@
 
 // ******** includes ********
 #include <cxa_rpc_message.h>
+#include <cxa_config.h>
 
 
 // ******** global macro definitions ********
@@ -44,6 +45,7 @@
 // ******** global function prototypes ********
 void cxa_rpc_messageFactory_init(void);
 
+size_t cxa_rpc_messageFactory_getNumFreeMessages(void);
 cxa_rpc_message_t* cxa_rpc_messageFactory_getFreeMessage_empty(void);
 
 void cxa_rpc_messageFactory_incrementMessageRefCount(cxa_rpc_message_t *const msgIn);
