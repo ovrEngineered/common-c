@@ -29,6 +29,7 @@
 
 
 // ******** global macro definitions ********
+#define cxa_fixedFifo_initStd(fifoIn, onFullActionIn, bufferIn)						cxa_fixedFifo_init((fifoIn), (onFullActionIn), sizeof(*(bufferIn)), ((void*)(bufferIn)), sizeof(bufferIn))
 
 
 // ******** global type definitions *********
