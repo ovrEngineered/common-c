@@ -28,6 +28,7 @@
 #include <cxa_rpc_messageFactory.h>
 #include <cxa_timeDiff.h>
 #include <cxa_rpc_nodeRemote.h>
+#include <cxa_backgroundUpdater.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
@@ -96,7 +97,7 @@ bool cxa_rpc_node_addSubNode_remote(cxa_rpc_node_t *const nodeIn, cxa_rpc_nodeRe
 	cxa_assert(subNodeIn);
 
 	// simply perform the add
-	if( !cxa_array_append(&nodeIn->subnodes, (void*)&subNodeIn->super) ) return false;
+	if( !cxa_array_append(&nodeIn->subnodes, (void*)&subNodeIn) ) return false;
 	subNodeIn->super.parent = &nodeIn->super;
 
 	cxa_logger_debug(&nodeIn->logger, "owns nodeRemote @ [%p]", subNodeIn);
@@ -166,7 +167,7 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 
 	// send our request
 	cxa_timeDiff_t td_resp;
-	cxa_timeDiff_init(&td_resp, nodeIn->timeBase);
+	cxa_timeDiff_init(&td_resp, nodeIn->timeBase, true);
 	cxa_rpc_node_sendMessage_async(nodeIn, msgIn);
 
 	// wait for the response
@@ -182,6 +183,9 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 			cxa_logger_debug(&nodeIn->logger, "request id %lu timed out", cxa_rpc_message_getId(msgIn));
 			return NULL;
 		}
+
+		// stimulate the background updater since we're blocking
+		cxa_backgroundUpdater_update();
 	}
 
 	cxa_logger_debug(&nodeIn->logger, "sync transaction id %lu complete", cxa_rpc_message_getId(msgIn));
@@ -458,13 +462,14 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 				if( currReq->id == respId )
 				{
 					// we found our request...save off this response
-					cxa_logger_debug(&nodeIn->logger, "atDest(%p): found sync tranaction for id %d", msgIn, respId);
+					cxa_logger_debug(&nodeIn->logger, "atDest(%p): found sync transaction for id %d", msgIn, respId);
+
 					currReq->response = msgIn;
 					return;
 				}
 			}
 
-			cxa_logger_trace(&nodeIn->logger, "atDest(%p): no sync transcation found for id %d, dropping message", msgIn, respId);
+			cxa_logger_trace(&nodeIn->logger, "atDest(%p): no sync transaction found for id %d, dropping message", msgIn, respId);
 
 			break;
 		}

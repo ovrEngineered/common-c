@@ -128,6 +128,7 @@ struct cxa_rpc_protocolParser
 
 // ******** global function prototypes ********
 void cxa_rpc_protocolParser_init(cxa_rpc_protocolParser_t *const rppIn, uint8_t userProtoVersionIn, cxa_ioStream_t *ioStreamIn);
+void cxa_rpc_protocolParser_deinit(cxa_rpc_protocolParser_t *const rppIn);
 
 bool cxa_rpc_protocolParser_writeMessage(cxa_rpc_protocolParser_t *const rppIn, cxa_rpc_message_t *const msgToWriteIn);
 

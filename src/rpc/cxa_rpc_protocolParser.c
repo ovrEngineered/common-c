@@ -98,6 +98,19 @@ void cxa_rpc_protocolParser_init(cxa_rpc_protocolParser_t *const rppIn, uint8_t 
 }
 
 
+void cxa_rpc_protocolParser_deinit(cxa_rpc_protocolParser_t *const rppIn)
+{
+	cxa_assert(rppIn);
+
+	// make sure we go idle
+	if( cxa_stateMachine_getCurrentState(&rppIn->stateMachine) != RX_STATE_IDLE )
+	{
+		cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_IDLE);
+		cxa_stateMachine_update(&rppIn->stateMachine);
+	}
+}
+
+
 bool cxa_rpc_protocolParser_writeMessage(cxa_rpc_protocolParser_t *const rppIn, cxa_rpc_message_t *const msgToWriteIn)
 {
 	cxa_assert(rppIn);
@@ -182,6 +195,10 @@ static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarI
 	cxa_assert(rppIn);
 	
 	cxa_logger_info(&rppIn->logger, "becoming idle");
+	if( (rppIn->currRxMsg != NULL) & (cxa_rpc_messageFactory_getReferenceCountForMessage(rppIn->currRxMsg) > 0) )
+	{
+		cxa_rpc_messageFactory_decrementMessageRefCount(rppIn->currRxMsg);
+	}
 }
 
 
@@ -368,9 +385,7 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 			// we have a valid version number...get our data bytes
 			cxa_logger_trace(&rppIn->logger, "message received...parsing");
 
-			cxa_fixedByteBuffer_writeToFile_asciiHexRep(rppIn->currRxMsg->buffer, stdout);
-
-			if( cxa_rpc_message_validateReceivedBytes(rppIn->currRxMsg, 5, currSize_bytes-5) )
+			if( cxa_rpc_message_validateReceivedBytes(rppIn->currRxMsg, 5, currSize_bytes-1) )
 			{
 				cxa_logger_trace(&rppIn->logger, "message validated successfully");
 

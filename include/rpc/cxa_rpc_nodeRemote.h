@@ -41,9 +41,28 @@
 
 
 // ******** global macro definitions ********
+#ifndef CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS
+	#define CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS		2
+#endif
 
 
 // ******** global type definitions *********
+/**
+ * @public
+ */
+typedef void (*cxa_rpc_nodeRemote_cb_linkEstablished_t)(cxa_rpc_nodeRemote_t *const nrIn, void* userVarIn);
+
+
+/**
+ * @private
+ */
+typedef struct
+{
+	cxa_rpc_nodeRemote_cb_linkEstablished_t cb_linkEstablished;
+	void *userVar;
+}cxa_rpc_nodeRemote_linkListener_t;
+
+
 /**
  * @private
  */
@@ -56,13 +75,18 @@ struct cxa_rpc_nodeRemote
 
 	cxa_timeDiff_t td_askForName;
 
+	cxa_array_t linkListeners;
+	cxa_rpc_nodeRemote_linkListener_t linkListeners_raw[CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS];
+
 	cxa_logger_t logger;
 };
 
 
 // ******** global function prototypes ********
 void cxa_rpc_nodeRemote_init_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn, cxa_timeBase_t *const timeBaseIn);
-void cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn, cxa_rpc_node_t *const subNodeIn);
+bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn, cxa_rpc_node_t *const subNodeIn);
+
+bool cxa_rpc_nodeRemote_addLinkListener(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_nodeRemote_cb_linkEstablished_t cb_linkEstablishedIn, void *const userVarIn);
 
 void cxa_rpc_nodeRemote_update(cxa_rpc_nodeRemote_t *const nrIn);
 
