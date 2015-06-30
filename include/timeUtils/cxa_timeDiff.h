@@ -37,12 +37,13 @@ typedef struct
 {
 	cxa_timeBase_t *tb;
 	
+	bool isFirstCycle;
 	uint32_t startTime_us;
 }cxa_timeDiff_t;
 
 
 // ******** global function prototypes ********
-void cxa_timeDiff_init(cxa_timeDiff_t *const tdIn, cxa_timeBase_t *const tbIn);
+void cxa_timeDiff_init(cxa_timeDiff_t *const tdIn, cxa_timeBase_t *const tbIn, bool setStartTimeIn);
 
 void cxa_timeDiff_setStartTime_now(cxa_timeDiff_t *const tdIn);
 
