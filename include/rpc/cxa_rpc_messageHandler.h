@@ -31,6 +31,7 @@
 // ******** includes ********
 #include <cxa_rpc_message.h>
 #include <cxa_config.h>
+#include <stdarg.h>
 
 
 // ******** global macro definitions ********
@@ -96,7 +97,7 @@ struct cxa_rpc_messageHandler
 void cxa_rpc_messageHandler_init(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_messageHandler_cb_handleUpstream_t cb_upstreamIn, cxa_rpc_messageHandler_cb_handleDownstream_t cb_downstreamIn);
 
 const char *const cxa_rpc_messageHandler_getName(cxa_rpc_messageHandler_t *const handlerIn);
-void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, char *const nameIn);
+void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, const char *nameFmtIn, va_list varArgsIn);
 
 
 #endif // CXA_RPC_MESSAGE_HANDLER_H_

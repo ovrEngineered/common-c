@@ -66,14 +66,14 @@ const char *const cxa_rpc_messageHandler_getName(cxa_rpc_messageHandler_t *const
 }
 
 
-void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, char *const nameIn)
+void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(handlerIn);
-	cxa_assert(nameIn);
+	cxa_assert(nameFmtIn);
 
 	// save our name (and make sure it's null-terminated)
-	strncpy(handlerIn->name, nameIn, CXA_RPC_NODE_MAX_NAME_LEN_BYTES);
-	handlerIn->name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES] = 0;
+	vsnprintf(handlerIn->name, CXA_RPC_NODE_MAX_NAME_LEN_BYTES, nameFmtIn, varArgsIn);
+	handlerIn->name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES-1] = 0;
 
 	handlerIn->hasName = true;
 }

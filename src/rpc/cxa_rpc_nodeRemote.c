@@ -117,6 +117,7 @@ bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_io
 
 	// if we made it here, we're good to add
 	subNodeIn->super.parent = &nrIn->super;
+	subNodeIn->isLocalRoot = true;
 
 	cxa_logger_debug(&nrIn->logger, "owns node '%s' @ [%p]", cxa_rpc_messageHandler_getName(&subNodeIn->super), subNodeIn);
 	return true;
@@ -281,7 +282,8 @@ static void handleLinkManagement_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_
 		// got a good name
 		cxa_logger_debug(&nrIn->logger, "name is now '%s'", newName);
 		cxa_logger_vinit(&nrIn->logger, "rpcNodeRemote_%s", newName);
-		cxa_rpc_messageHandler_setName(&nrIn->super, newName);
+		va_list empty_va_list;
+		cxa_rpc_messageHandler_setName(&nrIn->super, newName, empty_va_list);
 
 		// notify our listeners
 		cxa_array_iterate(&nrIn->linkListeners, currListener, cxa_rpc_nodeRemote_linkListener_t)

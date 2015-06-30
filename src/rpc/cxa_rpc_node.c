@@ -23,6 +23,7 @@
 
 // ******** includes ********
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <cxa_assert.h>
 #include <cxa_rpc_messageFactory.h>
@@ -41,7 +42,7 @@
 
 
 // ******** local function prototypes ********
-static void commonInit(cxa_rpc_node_t *const nodeIn, char *const nameIn, cxa_timeBase_t *const timeBaseIn, bool isGlobalRootIn);
+static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn, bool isGlobalRootIn, const char *nameFmtIn, va_list varArgsIn);
 static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 static void handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_message_t *const msgIn);
@@ -51,15 +52,29 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 
 
 // ******** global function implementations ********
-void cxa_rpc_node_init(cxa_rpc_node_t *const nodeIn, char *const nameIn, cxa_timeBase_t *const timeBaseIn)
+void cxa_rpc_node_init(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn, const char *nameFmtIn, ...)
 {
-	commonInit(nodeIn, nameIn, timeBaseIn, false);
+	cxa_assert(nameFmtIn);
+
+	va_list varArgs;
+	va_start(varArgs, nameFmtIn);
+	commonInit(nodeIn, timeBaseIn, false, nameFmtIn, varArgs);
+	va_end(varArgs);
 }
 
 
 void cxa_rpc_node_init_globalRoot(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn)
 {
-	commonInit(nodeIn, CXA_RPC_PATH_GLOBAL_ROOT, timeBaseIn, true);
+	va_list empty_va_list;
+	commonInit(nodeIn, timeBaseIn, true, CXA_RPC_PATH_GLOBAL_ROOT, empty_va_list);
+}
+
+
+const char *const cxa_rpc_node_getName(cxa_rpc_node_t *const nodeIn)
+{
+	cxa_assert(nodeIn);
+
+	return cxa_rpc_messageHandler_getName(&nodeIn->super);
 }
 
 
@@ -205,15 +220,15 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 
 
 // ******** local function implementations ********
-static void commonInit(cxa_rpc_node_t *const nodeIn, char *const nameIn, cxa_timeBase_t *const timeBaseIn, bool isGlobalRootIn)
+static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn, bool isGlobalRootIn, const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(timeBaseIn);
-	cxa_assert(nameIn);
+	cxa_assert(nameFmtIn);
 
 	// initialize our super class and set our name
 	cxa_rpc_messageHandler_init(&nodeIn->super, handleMessage_upstream, handleMessage_downstream);
-	cxa_rpc_messageHandler_setName(&nodeIn->super, nameIn);
+	cxa_rpc_messageHandler_setName(&nodeIn->super, nameFmtIn, varArgsIn);
 
 	// setup our initial state (global roots, by default, are also local roots)
 	nodeIn->super.parent = NULL;
@@ -429,16 +444,25 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 					}
 
 					// only execute if we have a callback
+					cxa_rpc_method_retVal_t methodRetVal = false;
 					if( currMethod->cb != NULL)
 					{
 						cxa_logger_debug(&nodeIn->logger, "atDest(%p): executing method '%s'", msgIn, methodNameIn);
-						if( currMethod->cb(cxa_rpc_message_getParams(msgIn), cxa_rpc_message_getParams(respMsg), currMethod->userVar) )
-						{
-							// we need to send the response
-							cxa_logger_debug(&nodeIn->logger, "atDest(%p): sending response %p", msgIn, respMsg);
-							cxa_rpc_node_sendMessage_async(nodeIn, respMsg);
-						}
+
+						methodRetVal = currMethod->cb(cxa_rpc_message_getParams(msgIn), cxa_rpc_message_getParams(respMsg), currMethod->userVar);
 					}
+
+					// set our return value
+					if( !cxa_rpc_message_setReturnValue(respMsg, methodRetVal) )
+					{
+						cxa_logger_warn(&nodeIn->logger, "atDest(%p): error setting wasSuccessful response value", msgIn);
+						cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
+						return;
+					}
+
+					// send our response
+					cxa_logger_debug(&nodeIn->logger, "atDest(%p): sending response %p", msgIn, respMsg);
+					cxa_rpc_node_sendMessage_async(nodeIn, respMsg);
 
 					// free our hold on the response
 					cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);

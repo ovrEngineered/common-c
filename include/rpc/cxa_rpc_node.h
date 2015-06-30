@@ -38,8 +38,6 @@
 
 
 // ******** global macro definitions ********
-
-
 #ifndef CXA_RPC_NODE_MAX_NUM_SUBNODES
 	#define CXA_RPC_NODE_MAX_NUM_SUBNODES				5
 #endif
@@ -60,8 +58,10 @@
 // ******** global type definitions *********
 /**
  * @public
+ *
+ * @return wasSuccessful
  */
-typedef bool (*cxa_rpc_node_method_cb_t)(cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const responseParamsIn, void *userVarIn);
+typedef cxa_rpc_method_retVal_t (*cxa_rpc_node_method_cb_t)(cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const responseParamsIn, void *userVarIn);
 
 
 /**
@@ -114,8 +114,10 @@ struct cxa_rpc_node
 
 
 // ******** global function prototypes ********
-void cxa_rpc_node_init(cxa_rpc_node_t *const nodeIn, char *const nameIn, cxa_timeBase_t *const timeBaseIn);
+void cxa_rpc_node_init(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn, const char *nameFmtIn, ...);
 void cxa_rpc_node_init_globalRoot(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn);
+
+const char *const cxa_rpc_node_getName(cxa_rpc_node_t *const nodeIn);
 
 bool cxa_rpc_node_addSubNode(cxa_rpc_node_t *const nodeIn, cxa_rpc_node_t *const subNodeIn);
 bool cxa_rpc_node_addSubNode_remote(cxa_rpc_node_t *const nodeIn, cxa_rpc_nodeRemote_t *const subNodeIn);
