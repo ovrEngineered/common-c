@@ -249,7 +249,6 @@ static void messageReceived_cb(cxa_rpc_message_t *const msgIn, void *const userV
 	else
 	{
 		// pass to our subNode for processing
-		cxa_rpc_messageFactory_decrementMessageRefCount(msgIn);
 		cxa_rpc_messageHandler_handleDownstream(&nrIn->downstreamSubNode->super, msgIn);
 	}
 }

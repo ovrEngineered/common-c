@@ -74,6 +74,7 @@ void cxa_rpc_protocolParser_init(cxa_rpc_protocolParser_t *const rppIn, uint8_t 
 	// save our references
 	rppIn->userProtoVersion = userProtoVersionIn;
 	rppIn->ioStream = ioStreamIn;
+	rppIn->currRxMsg = NULL;
 
 	// setup our logger
 	cxa_logger_init(&rppIn->logger, "protocolParser");
@@ -195,7 +196,7 @@ static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarI
 	cxa_assert(rppIn);
 	
 	cxa_logger_info(&rppIn->logger, "becoming idle");
-	if( (rppIn->currRxMsg != NULL) & (cxa_rpc_messageFactory_getReferenceCountForMessage(rppIn->currRxMsg) > 0) )
+	if( (rppIn->currRxMsg != NULL) && (cxa_rpc_messageFactory_getReferenceCountForMessage(rppIn->currRxMsg) > 0) )
 	{
 		cxa_rpc_messageFactory_decrementMessageRefCount(rppIn->currRxMsg);
 	}
@@ -404,13 +405,18 @@ static void rxState_cb_processMessage_state(cxa_stateMachine_t *const smIn, void
 				// make sure there wasn't some weirdness happening
 				if( refCount == 0 )
 				{
-					cxa_logger_warn(&rppIn->logger, "over-freed rx buffer");
+					cxa_logger_warn(&rppIn->logger, "over-freed rx buffer (%p)", rppIn->currRxMsg);
 					cxa_stateMachine_transition(&rppIn->stateMachine, RX_STATE_ERROR);
 					cxa_stateMachine_update(&rppIn->stateMachine);
 				}
 				else if( refCount > 1 )
 				{
 					// we need to reserve another buffer (this one is still being used)
+
+					// release _our_ lock on the message
+					cxa_rpc_messageFactory_decrementMessageRefCount(rppIn->currRxMsg);
+
+					// get a new message
 					rppIn->currRxMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
 					if( rppIn->currRxMsg == NULL )
 					{
