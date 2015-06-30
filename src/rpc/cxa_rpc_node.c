@@ -212,9 +212,8 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 		cxa_logger_warn(&nodeIn->logger, "error removing inflightSyncReq after rx");
 	}
 
-	// increment the refCount for our response so it doesn't get re-used
-	// until our caller is done with it
-	cxa_rpc_messageFactory_incrementMessageRefCount(retVal);
+	// at this point, the message should have been reserved by us in handleDownstream
+	// the user must free this message when they are done
 	return retVal;
 }
 
@@ -488,6 +487,7 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 					// we found our request...save off this response
 					cxa_logger_debug(&nodeIn->logger, "atDest(%p): found sync transaction for id %d", msgIn, respId);
 
+					cxa_rpc_messageFactory_incrementMessageRefCount(msgIn);
 					currReq->response = msgIn;
 					return;
 				}

@@ -29,6 +29,7 @@
 
 
 // ******** includes ********
+#include <stdio.h>
 #include <cxa_rpc_message.h>
 #include <cxa_config.h>
 
@@ -52,5 +53,6 @@ void cxa_rpc_messageFactory_incrementMessageRefCount(cxa_rpc_message_t *const ms
 void cxa_rpc_messageFactory_decrementMessageRefCount(cxa_rpc_message_t *const msgIn);
 uint8_t cxa_rpc_messageFactory_getReferenceCountForMessage(cxa_rpc_message_t *const msgIn);
 
+void cxa_rpc_messageFactory_writeStatusToFile(FILE* fileIn);
 
 #endif // CXA_RPC_NODE_H_

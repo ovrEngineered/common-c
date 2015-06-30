@@ -159,6 +159,24 @@ uint8_t cxa_rpc_messageFactory_getReferenceCountForMessage(cxa_rpc_message_t *co
 }
 
 
+void cxa_rpc_messageFactory_writeStatusToFile(FILE* fileIn)
+{
+	cxa_assert(fileIn);
+
+	fprintf(fileIn, "cxa_rpc_messageFactory status:" CXA_LINE_ENDING "{" CXA_LINE_ENDING);
+	for( size_t i = 0; i < (sizeof(msgPool)/sizeof(*msgPool)); i++ )
+	{
+		cxa_rpc_messageFactory_msgEntry_t* currEntry = (cxa_rpc_messageFactory_msgEntry_t*)&msgPool[i];
+
+		fprintf(fileIn, "   msg[%p],  buffer[%p],  refCount:%u,  size:%lu/%lu" CXA_LINE_ENDING,
+				&currEntry->msg, &currEntry->msgFbb, currEntry->refCount,
+				cxa_fixedByteBuffer_getSize_bytes(&currEntry->msgFbb) , cxa_fixedByteBuffer_getMaxSize_bytes(&currEntry->msgFbb));
+
+	}
+	fprintf(fileIn, "}" CXA_LINE_ENDING);
+}
+
+
 // ******** local function implementations ********
 static cxa_rpc_messageFactory_msgEntry_t* getMsgEntryFromMessage(cxa_rpc_message_t *const msgIn)
 {
