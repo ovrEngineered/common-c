@@ -79,7 +79,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
         #ifdef CXA_ASSERT_FILE_ENABLE
             if( fd_msg != NULL )
             {
-                fprintf(fd_msg, "\r\n%s\r\n%s%s:%ld\r\n",
+                fprintf(fd_msg, CXA_LINE_ENDING "%s" CXA_LINE_ENDING "%s%s:%ld" CXA_LINE_ENDING,
                         ASSERT_TEXT,
                         PREAMBLE_LOCATION,
                         fileIn,
@@ -110,9 +110,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
         #ifdef CXA_ASSERT_FILE_ENABLE
             if( fd_msg != NULL )
             {
-                fputs("\r\n", fd_msg);
+                fputs(CXA_LINE_ENDING, fd_msg);
                 fputs(ASSERT_TEXT, fd_msg);
-                fputs("\r\n", fd_msg);
+                fputs(CXA_LINE_ENDING, fd_msg);
                 fflush(fd_msg);
             }
         #endif
@@ -142,7 +142,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
         #ifdef CXA_ASSERT_FILE_ENABLE
             if( fd_msg != NULL )
             {
-                fprintf(fd_msg, "\r\n%s\r\n%s%s:%ld\r\n%s%s",
+                fprintf(fd_msg, CXA_LINE_ENDING "%s" CXA_LINE_ENDING "%s%s:%ld" CXA_LINE_ENDING "%s%s",
                         ASSERT_TEXT,
                         PREAMBLE_LOCATION,
                         fileIn,
@@ -175,12 +175,12 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
         #ifdef CXA_ASSERT_FILE_ENABLE
             if( fd_msg != NULL )
             {
-                fputs("\r\n ", fd_msg);
+                fputs(CXA_LINE_ENDING " ", fd_msg);
                 fputs(ASSERT_TEXT, fd_msg);
-                fputs("\r\n", fd_msg);
+                fputs(CXA_LINE_ENDING, fd_msg);
                 fputs(PREAMBLE_MESSAGE, fd_msg);
                 fputs(msgIn, fd_msg);
-                fputs("\r\n", fd_msg);
+                fputs(CXA_LINE_ENDING, fd_msg);
                 fflush(fd_msg);
             }
         #endif
