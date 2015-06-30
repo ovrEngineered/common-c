@@ -24,6 +24,7 @@
 // ******** includes ********
 #include <stdio.h>
 #include <cxa_assert.h>
+#include <cxa_config.h>
 
 
 // ******** local macro definitions ********
@@ -90,7 +91,7 @@ void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t
 	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	gpioIn->currDir = dirIn;
-	printf("gpio[%p] setDir: %s\r\n", gpioIn, cxa_gpio_direction_toString(gpioIn->currDir));
+	printf("gpio_%s[%p] setDir: %s" CXA_LINE_ENDING, gpioIn->name, gpioIn, cxa_gpio_direction_toString(gpioIn->currDir));
 }
 
 
@@ -113,7 +114,7 @@ void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	gpioIn->currVal = valIn;
-	printf("gpio[%p] setVal: %d\r\n", gpioIn, gpioIn->currVal);
+	printf("gpio_%s[%p] setVal: %d" CXA_LINE_ENDING, gpioIn->name, gpioIn, gpioIn->currVal);
 }
 
 
