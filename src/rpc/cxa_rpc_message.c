@@ -178,8 +178,12 @@ bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *co
 	// source (empty for now)
 	if( !cxa_linkedField_initChild(&msgIn->src, &msgIn->id, 0) ) return false;
 
+	// return value
+	uint8_t initRetVal = CXA_RPC_METHOD_RETVAL_UNKNOWN;
+	if( !cxa_linkedField_initChild_fixedLen(&msgIn->returnValue, &msgIn->src, 1) || !cxa_linkedField_append(&msgIn->returnValue, &initRetVal, sizeof(initRetVal)) ) return false;
+
 	// finally, the params
-	if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->src, 0) ) return false;
+	if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->returnValue, 0) ) return false;
 
 	// if we made it here, we're good to go!
 	msgIn->areFieldsConfigured = true;
@@ -259,12 +263,33 @@ cxa_linkedField_t* cxa_rpc_message_getParams(cxa_rpc_message_t *const msgIn)
 }
 
 
+bool cxa_rpc_message_getReturnValue(cxa_rpc_message_t *const msgIn)
+{
+	cxa_assert(msgIn);
+	if( !msgIn->areFieldsConfigured ) return CXA_RPC_METHOD_RETVAL_UNKNOWN;
+
+	if( cxa_rpc_message_getType(msgIn) != CXA_RPC_MESSAGE_TYPE_RESPONSE ) return CXA_RPC_METHOD_RETVAL_UNKNOWN;
+
+	uint8_t retVal_raw = 0;
+	return cxa_linkedField_get_uint8(&msgIn->returnValue, 0, retVal_raw) ? retVal_raw : CXA_RPC_METHOD_RETVAL_UNKNOWN;
+}
+
+
 bool cxa_rpc_message_setId(cxa_rpc_message_t *const msgIn, uint16_t idIn)
 {
 	cxa_assert(msgIn);
 	if( !msgIn->areFieldsConfigured ) return false;
 
 	return cxa_linkedField_replace_uint16LE(&msgIn->id, 0, idIn);
+}
+
+
+bool cxa_rpc_message_setReturnValue(cxa_rpc_message_t *const msgIn, cxa_rpc_method_retVal_t returnValueIn)
+{
+	cxa_assert(msgIn);
+	if( !msgIn->areFieldsConfigured ) return false;
+
+	return cxa_linkedField_replace_uint8(&msgIn->returnValue, 0, returnValueIn);
 }
 
 

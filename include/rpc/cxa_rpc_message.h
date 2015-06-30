@@ -59,6 +59,16 @@ typedef enum
 }cxa_rpc_message_type_t;
 
 
+// max 8-bit
+typedef enum
+{
+	CXA_RPC_METHOD_RETVAL_UNKNOWN=0,
+	CXA_RPC_METHOD_RETVAL_SUCCESS=1,
+	CXA_RPC_METHOD_RETVAL_FAIL_GENERAL=2,
+	CXA_RPC_METHOD_RETVAL_FAIL_INVALID_PARAMS=2,
+}cxa_rpc_method_retVal_t;
+
+
 /**
  * @private
  */
@@ -72,6 +82,7 @@ struct cxa_rpc_message
 	cxa_linkedField_t method;
 	cxa_linkedField_t src;
 	cxa_linkedField_t id;
+	cxa_linkedField_t returnValue;
 	cxa_linkedField_t params;
 };
 
@@ -96,8 +107,13 @@ char* cxa_rpc_message_getMethod(cxa_rpc_message_t *const msgIn);
 char* cxa_rpc_message_getSource(cxa_rpc_message_t *const msgIn);
 CXA_RPC_ID_DATATYPE cxa_rpc_message_getId(cxa_rpc_message_t *const msgIn);
 cxa_linkedField_t* cxa_rpc_message_getParams(cxa_rpc_message_t *const msgIn);
+bool cxa_rpc_message_getReturnValue(cxa_rpc_message_t *const msgIn);
 
+/**
+ * @protected
+ */
 bool cxa_rpc_message_setId(cxa_rpc_message_t *const msgIn, uint16_t idIn);
+bool cxa_rpc_message_setReturnValue(cxa_rpc_message_t *const msgIn, cxa_rpc_method_retVal_t returnValueIn);
 bool cxa_rpc_message_prependNodeNameToSource(cxa_rpc_message_t *const msgIn, const char *const nodeNameToPrepend);
 
 bool cxa_rpc_message_destination_getFirstPathComponent(cxa_rpc_message_t *const msgIn, char** pathCompOut, size_t* pathCompLen_bytesOut);
