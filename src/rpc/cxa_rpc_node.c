@@ -146,11 +146,17 @@ void cxa_rpc_node_sendMessage_async(cxa_rpc_node_t *const nodeIn, cxa_rpc_messag
 	switch( cxa_rpc_message_getType(msgIn) )
 	{
 		case CXA_RPC_MESSAGE_TYPE_REQUEST:
-			cxa_logger_debug(&nodeIn->logger, "sending request with id %lu", cxa_rpc_message_getId(msgIn));
+			// set the ID if needed
+			if(cxa_rpc_message_getId(msgIn) == 0 )
+			{
+				if( !cxa_rpc_message_setId(msgIn, nodeIn->currId) ) return;
+				nodeIn->currId = (nodeIn->currId == CXA_RPC_ID_MAX) ? 1 : nodeIn->currId+1;
+			}
+			cxa_logger_debug(&nodeIn->logger, "sending request with id %u", cxa_rpc_message_getId(msgIn));
 			break;
 
 		case CXA_RPC_MESSAGE_TYPE_RESPONSE:
-			cxa_logger_debug(&nodeIn->logger, "sending response with id %lu", cxa_rpc_message_getId(msgIn));
+			cxa_logger_debug(&nodeIn->logger, "sending response with id %u", cxa_rpc_message_getId(msgIn));
 			break;
 
 		default:
@@ -169,10 +175,6 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 
 	cxa_rpc_message_type_t msgType = cxa_rpc_message_getType(msgIn);
 	if( msgType != CXA_RPC_MESSAGE_TYPE_REQUEST ) return NULL;
-
-	// set the ID
-	if( !cxa_rpc_message_setId(msgIn, nodeIn->currId) ) return false;
-	nodeIn->currId = (nodeIn->currId == CXA_RPC_ID_MAX) ? 1 : nodeIn->currId+1;
 
 	// create a new inflight request entry and add to our list
 	cxa_rpc_node_inflightSyncRequestEntry_t *newEntry = cxa_array_append_empty(&nodeIn->inflightSyncRequests);
