@@ -74,7 +74,6 @@ struct cxa_xmega_usart
 	cxa_usart_t super;
 	
 	USART_t *avrUsart;
-	FILE fd;
 	
 	cxa_fixedFifo_t rxFifo;
 	uint8_t rxFifo_raw[CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES];

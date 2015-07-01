@@ -54,18 +54,10 @@
 
 // ******** global type definitions *********
 /**
- * @public
- * @brief "Forward" declaration of the cxa_xmega_timeBase_t object
- */
-typedef struct cxa_xmega_timeBase cxa_xmega_timeBase_t;
-
-
-/**
  * @private
  */
-struct cxa_xmega_timeBase
+struct cxa_timeBase
 {
-	cxa_timeBase_t super;
 	cxa_xmega_timer32_t *timer;
 };
 
@@ -81,7 +73,7 @@ struct cxa_xmega_timeBase
  * @param[in] tbIn pointer to a pre-allocated XMega timeBase object
  * @param[in] timerIn pre-configured XMega 32-bit timer
  */
-void cxa_xmega_timeBase_init_timer32(cxa_xmega_timeBase_t *const tbIn, cxa_xmega_timer32_t *const timerIn);
+void cxa_xmega_timeBase_init_timer32(cxa_timeBase_t *const tbIn, cxa_xmega_timer32_t *const timerIn);
 
 
 #endif // CXA_XMEGA_TIMEBASE_H_

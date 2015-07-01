@@ -271,7 +271,7 @@ bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn)
 	if( fprintf(fileIn, "array @ %p" CXA_LINE_ENDING "{" CXA_LINE_ENDING, arrIn) < 0 ) return false;
 	for( size_t i = 0; i < cxa_array_getSize_elems(arrIn); i++ )
 	{
-		if( fprintf(fileIn, "   %lu::0x", i) < 0 ) return false;
+		if( fprintf(fileIn, "   %u::0x", i) < 0 ) return false;
 		for( size_t byteOffset = 0; byteOffset < arrIn->datatypeSize_bytes; byteOffset++ )
 		{
 			if( fprintf(fileIn, "%02X", ((uint8_t*)arrIn->bufferLoc)[(i * arrIn->datatypeSize_bytes) + byteOffset]) < 0 ) return false;

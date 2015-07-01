@@ -60,6 +60,7 @@
 // ******** includes ********
 #include <stdio.h>
 #include <stdbool.h>
+#include <cxa_ioStream.h>
 
 
 // ******** global macro definitions ********
@@ -68,52 +69,18 @@
 // ******** global type definitions *********
 /**
  * @public
- * @brief "Forward" declaration of the cxa_gpio_t object
- * (fully opaque type)
  */
-typedef struct cxa_usart cxa_usart_t;
+typedef struct
+{
+	cxa_ioStream_t ioStream;
+}cxa_usart_t;
 
 
 // ******** global function prototypes ********
 /**
  * @public
- * @brief Attempts to read up to countIn bytes from the usart into the specified
- * buffer
- *
- * @param[in] usartIn pointer to a pre-initialized USART object
- * @param[in] buffIn pointer to a memory location at which to store
- * 		any read bytes
- * @param[in] desiredReadSize_bytesIn the maximum number of bytes that should
- * 		be copied to buffIn before returning. Must be <= SSIZE_MAX.
- * @param[in] actualReadSize_bytesOut the _actual_ number of bytes read into
- * 		buffIn. If enough data is available, will be set to desiredReadSizeIn,
- * 		otherwise will be set to number of bytes actually read.
- *
- * @return true if 0 - desiredReadSize_bytesIn bytes were read, false if there
- * 		was an error with the underlying USART.
  */
-bool cxa_usart_read(cxa_usart_t* usartIn, void* buffIn, size_t desiredReadSize_bytesIn, size_t* actualReadSize_bytesOut);
-
-
-/**
- * @public
- * @brief Writes the specified bytes to the USART.
- *
- * @note On some implementations, this function will block until all data
- * has been written to the USART. On some implementations, this function
- * will queue data to be sent at some time later.
- *
- * @param[in] usartIn pointer to a pre-initialized USART object
- * @param[in] buffIn pointer to a memory location which contains the bytes
- * 		to write
- * @param[in] bufferSizeIn the number of bytes from buffIn to write.
- * 		Must be <= SSIZE_MAX.
- *
- * @return true if all bytes were sent / queued to be sent, false if there
- * 		was an error with the underlying USART. If false, number of bytes
- * 		queued or sent is undetermined.
- */
-bool cxa_usart_write(cxa_usart_t* usartIn, void* buffIn, size_t bufferSize_bytesIn);
+cxa_ioStream_t* cxa_usart_getIoStream(cxa_usart_t* usartIn);
 
 
 /**

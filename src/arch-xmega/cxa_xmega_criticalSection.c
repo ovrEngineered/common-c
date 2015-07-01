@@ -70,9 +70,8 @@ void cxa_criticalSection_enter(void)
 	// if we made it here, we're the first caller...call our pre-entry callbacks
 	if( isInitialized )
 	{
-		for( size_t i = 0; i < cxa_array_getSize_elems(&callbackEntries); i++ )
+		cxa_array_iterate(&callbackEntries, currEntry, callback_entry_t)
 		{
-			callback_entry_t *currEntry = (callback_entry_t*)cxa_array_getAtIndex(&callbackEntries, i);
 			if( currEntry == NULL ) continue;
 			if( currEntry->preEnter != NULL ) currEntry->preEnter(currEntry->userVar);
 		}
@@ -101,9 +100,8 @@ void cxa_criticalSection_exit(void)
 		// nest levels in case somebody calls enter while we're still processing
 		if( isInitialized && (nestLevels == 0) )
 		{
-			for( size_t i = 0; i < cxa_array_getSize_elems(&callbackEntries); i++ )
+			cxa_array_iterate(&callbackEntries, currEntry, callback_entry_t)
 			{
-				callback_entry_t *currEntry = (callback_entry_t*)cxa_array_getAtIndex(&callbackEntries, i);
 				if( currEntry == NULL ) continue;
 				
 				// if somebody tries to enter a critical section while we're still here, bail
@@ -120,7 +118,7 @@ void cxa_criticalSection_addCallback(cxa_criticalSection_cb_t cb_preEnterIn, cxa
 {
 	if( !isInitialized )
 	{
-		cxa_array_init(&callbackEntries, sizeof(*callbackEntries_raw), (void*)callbackEntries_raw, sizeof(callbackEntries_raw));
+		cxa_array_initStd(&callbackEntries, callbackEntries_raw);
 		isInitialized = true;
 	}
 	
@@ -140,9 +138,8 @@ void cxa_criticalSection_notifyExternal_enter(void)
 	// if we made it here, we're the first caller...call our pre-entry callbacks
 	if( isInitialized )
 	{
-		for( size_t i = 0; i < cxa_array_getSize_elems(&callbackEntries); i++ )
+		cxa_array_iterate(&callbackEntries, currEntry, callback_entry_t)
 		{
-			callback_entry_t *currEntry = (callback_entry_t*)cxa_array_getAtIndex(&callbackEntries, i);
 			if( currEntry == NULL ) continue;
 			if( currEntry->preEnter != NULL ) currEntry->preEnter(currEntry->userVar);
 		}
@@ -168,9 +165,8 @@ void cxa_criticalSection_notifyExternal_exit(void)
 		// nest levels in case somebody calls enter while we're still processing
 		if( isInitialized && (nestLevels == 0) )
 		{
-			for( size_t i = 0; i < cxa_array_getSize_elems(&callbackEntries); i++ )
+			cxa_array_iterate(&callbackEntries, currEntry, callback_entry_t)
 			{
-				callback_entry_t *currEntry = (callback_entry_t*)cxa_array_getAtIndex(&callbackEntries, i);
 				if( currEntry == NULL ) continue;
 					
 				// if somebody tries to enter a critical section while we're still here, bail

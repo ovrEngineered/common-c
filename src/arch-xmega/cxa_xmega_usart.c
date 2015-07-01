@@ -52,14 +52,17 @@ typedef struct
 
 
 // ******** local function prototypes ********
+static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn, cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn);
+
 static void usart_moduleClock_enable(cxa_xmega_usart_t *const usartIn);
 static void usart_connectToPort(cxa_xmega_usart_t *const usartIn);
 static bool usart_set_baudrate(cxa_xmega_usart_t *const usartIn, uint32_t baud_bpsIn);
 static void avrCxaUsartMap_setCxaUsart(USART_t *const avrUsartIn, cxa_xmega_usart_t *const cxaUsartIn);
 static cxa_xmega_usart_t* avrCxaUsartMap_getCxaUsart_fromAvrUsart(USART_t *const avrUsartIn);
 
-static int fdev_cb_putChar(char charIn, FILE *fdIn);
-static int fdev_cb_getChar(FILE *fdIn);
+static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn);
+static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
+
 static void criticalSection_cb_preEnter(void *userVar);
 static void criticalSection_cb_postExit(void *userVar);
 static inline void rxIsr(USART_t *const avrUsartIn);
@@ -85,49 +88,30 @@ static avrUsart_cxaUsart_map_entry_t avrCxaUsartMap[] = {
 // ******** global function implementations ********
 void cxa_xmega_usart_init_noHH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn)
 {
-	cxa_assert(usartIn);
-	cxa_assert(avrUsartIn);
-	
-	// save our references
-	usartIn->avrUsart = avrUsartIn;
-	
-	// no handshaking
-	usartIn->isHandshakingEnabled = false;
-	
-	// setup our receive fifo
-	cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void *const)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
-	
-	// enable power to our module
-	usart_moduleClock_enable(usartIn);
-	
-	// asynchronous, 8,n,1...set baud rate
-	usartIn->avrUsart->CTRLC = USART_CHSIZE_8BIT_gc;
-	cxa_assert(usart_set_baudrate(usartIn, baudRate_bpsIn));
-	
-	// setup our file descriptor
-	fdev_setup_stream(&usartIn->fd, fdev_cb_putChar, fdev_cb_getChar, _FDEV_SETUP_RW);
-	fdev_set_udata(&usartIn->fd, (void*)usartIn);
-	
-	// associate this cxa usart with the avrUsart (for interrupts)
-	avrCxaUsartMap_setCxaUsart(usartIn->avrUsart, usartIn);
-	
-	// now enable our transmitter and receiver and connect to output pins!
-	usart_connectToPort(usartIn);
-	usartIn->avrUsart->CTRLB |= USART_TXEN_bm | USART_RXEN_bm;
-	
-	// finally, clear and enable interrupts
-	usartIn->avrUsart->STATUS = 0;
-	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCF) | CXA_XMEGA_USART_RX_INT_LEVEL;
+	commonInit(usartIn, avrUsartIn, baudRate_bpsIn, NULL, NULL);
 }
 
 
 void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn,
 	cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn)
 {
+	commonInit(usartIn, avrUsartIn, baudRate_bpsIn, rtsIn, ctsIn);
+}
+
+
+cxa_ioStream_t* cxa_usart_getIoStream(cxa_usart_t* usartIn)
+{
+	cxa_assert(usartIn);
+
+	return &usartIn->ioStream;
+}
+
+
+// ******** local function implementations ********
+static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn, cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn)
+{
 	cxa_assert(usartIn);
 	cxa_assert(avrUsartIn);
-	cxa_assert(rtsIn);
-	cxa_assert(ctsIn);
 	
 	// save our references
 	usartIn->avrUsart = avrUsartIn;
@@ -135,12 +119,15 @@ void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsart
 	usartIn->rts = rtsIn;
 	
 	// setup our handshaking pins
-	cxa_gpio_setDirection(usartIn->cts, CXA_GPIO_DIR_INPUT);
-	cxa_gpio_setPolarity(usartIn->cts, CXA_GPIO_POLARITY_NONINVERTED);
-	cxa_gpio_setPolarity(usartIn->rts, CXA_GPIO_POLARITY_NONINVERTED);
-	cxa_gpio_setValue(usartIn->rts, RTS_CTS_STOP);
-	cxa_gpio_setDirection(usartIn->rts, CXA_GPIO_DIR_OUTPUT);
-	usartIn->isHandshakingEnabled = true;
+	usartIn->isHandshakingEnabled = (usartIn->cts != NULL) && (usartIn->rts != NULL);
+	if( usartIn->isHandshakingEnabled )
+	{
+		cxa_gpio_setDirection(usartIn->cts, CXA_GPIO_DIR_INPUT);
+		cxa_gpio_setPolarity(usartIn->cts, CXA_GPIO_POLARITY_NONINVERTED);
+		cxa_gpio_setPolarity(usartIn->rts, CXA_GPIO_POLARITY_NONINVERTED);
+		cxa_gpio_setValue(usartIn->rts, RTS_CTS_STOP);
+		cxa_gpio_setDirection(usartIn->rts, CXA_GPIO_DIR_OUTPUT);
+	}
 	
 	// setup our receive fifo
 	cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void *const)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
@@ -152,16 +139,12 @@ void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsart
 	usartIn->avrUsart->CTRLC = USART_CHSIZE_8BIT_gc;
 	cxa_assert(usart_set_baudrate(usartIn, baudRate_bpsIn));
 	
-	// setup our file descriptor
-	fdev_setup_stream(&usartIn->fd, fdev_cb_putChar, fdev_cb_getChar, _FDEV_SETUP_RW);
-	fdev_set_udata(&usartIn->fd, (void*)usartIn);
-	
 	// associate this cxa usart with the avrUsart (for interrupts)
 	avrCxaUsartMap_setCxaUsart(usartIn->avrUsart, usartIn);
 	
 	// setup the usart subsystem to handle critical section events
 	// so we can trigger CTS/RTS appropriately
-	cxa_criticalSection_addCallback(criticalSection_cb_preEnter, criticalSection_cb_postExit, NULL);
+	if( usartIn->isHandshakingEnabled ) cxa_criticalSection_addCallback(criticalSection_cb_preEnter, criticalSection_cb_postExit, NULL);
 	
 	// now enable our transmitter and receiver and connect to output pins!
 	usart_connectToPort(usartIn);
@@ -171,21 +154,15 @@ void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsart
 	usartIn->avrUsart->STATUS = 0;
 	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCF) | CXA_XMEGA_USART_RX_INT_LEVEL;
 	
+	// setup our ioStream (last once everything is setup)
+	cxa_ioStream_init(&usartIn->super.ioStream);
+	cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
+
 	// and de-assert our RTS line so our paired device knows it can transmit
-	cxa_gpio_setValue(usartIn->rts, RTS_CTS_OK);
+	if( usartIn->isHandshakingEnabled ) cxa_gpio_setValue(usartIn->rts, RTS_CTS_OK);
 }
 
 
-FILE* cxa_usart_getFileDescriptor(cxa_usart_t *const superIn)
-{
-	cxa_assert(superIn);
-	cxa_xmega_usart_t *const usartIn = (cxa_xmega_usart_t *const)superIn;
-	
-	return &usartIn->fd;
-}
-
-
-// ******** local function implementations ********
 static void usart_moduleClock_enable(cxa_xmega_usart_t *const usartIn)
 {
 	cxa_criticalSection_enter();
@@ -365,42 +342,34 @@ static cxa_xmega_usart_t* avrCxaUsartMap_getCxaUsart_fromAvrUsart(USART_t *const
 }
 
 
-static int fdev_cb_putChar(char charIn, FILE *fdIn)
+static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn)
 {
-	cxa_assert(fdIn);
-	
-	// get a reference to our usart object
-	cxa_xmega_usart_t *const usartIn = (cxa_xmega_usart_t *const)fdev_get_udata(fdIn);
+	cxa_xmega_usart_t* usartIn = (cxa_xmega_usart_t*)userVarIn;
 	cxa_assert(usartIn);
 	
-	// wait for previous transmission to finish
-	while( !(usartIn->avrUsart->STATUS & USART_DREIF_bm) );
-	
-	// now that our previous transmission has finished, make sure our
-	// receiver is ready to receive (if handshaking is enabled)
-	while( usartIn->isHandshakingEnabled && (cxa_gpio_getValue(usartIn->cts) != RTS_CTS_OK) );
-	
-	// now send our data
-	usartIn->avrUsart->DATA = charIn;
-	
-	// return 0 on success
-	return 0;
+	return cxa_fixedFifo_dequeue(&usartIn->rxFifo, (void*)byteOut) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
 }
 
 
-static int fdev_cb_getChar(FILE *fdIn)
+static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn)
 {
-	cxa_assert(fdIn);
-		
-	// get a reference to our usart object
-	cxa_xmega_usart_t *const usartIn = (cxa_xmega_usart_t *const)fdev_get_udata(fdIn);
+	cxa_xmega_usart_t* usartIn = (cxa_xmega_usart_t*)userVarIn;
 	cxa_assert(usartIn);
 	
-	char rxChar;
-	if( cxa_fixedFifo_dequeue(&usartIn->rxFifo, &rxChar) ) return (int)rxChar;
+	for( size_t i = 0; i < bufferSize_bytesIn; i++ )
+	{
+		// wait for previous transmission to finish
+		while( !(usartIn->avrUsart->STATUS & USART_DREIF_bm) );
 	
-	// if we made it here, we have no data to return
-	return _FDEV_EOF;
+		// now that our previous transmission has finished, make sure our
+		// receiver is ready to receive (if handshaking is enabled)
+		while( usartIn->isHandshakingEnabled && (cxa_gpio_getValue(usartIn->cts) != RTS_CTS_OK) );
+	
+		// now send our data
+		usartIn->avrUsart->DATA = ((uint8_t*)buffIn)[i];
+	}
+	
+	return true;
 }
 
 
