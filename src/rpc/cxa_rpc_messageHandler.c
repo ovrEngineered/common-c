@@ -73,7 +73,7 @@ void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, c
 
 	// save our name (and make sure it's null-terminated)
 	vsnprintf(handlerIn->name, CXA_RPC_NODE_MAX_NAME_LEN_BYTES, nameFmtIn, varArgsIn);
-	handlerIn->name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES-1] = 0;
+	handlerIn->name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES] = 0;
 
 	handlerIn->hasName = true;
 }
