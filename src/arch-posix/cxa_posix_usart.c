@@ -41,12 +41,15 @@
 static bool set_interface_attribs (int fd, int speed, int parity);
 static bool set_blocking (int fd, int should_block);
 
+static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn);
+static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
+
 
 // ********  local variable declarations *********
 
 
 // ******** global function implementations ********
-bool cxa_posix_usart_init_noHH(cxa_usart_t *const usartIn, char *const pathIn, const int baudRateIn)
+bool cxa_posix_usart_init_noHH(cxa_posix_usart_t *const usartIn, char *const pathIn, const int baudRateIn)
 {
 	cxa_assert(usartIn);
 	cxa_assert(pathIn);
@@ -57,50 +60,19 @@ bool cxa_posix_usart_init_noHH(cxa_usart_t *const usartIn, char *const pathIn, c
 	if( !set_interface_attribs (usartIn->fd, baudRateIn, 0) ) return false;
 	if( !set_blocking (usartIn->fd, 0) ) return false;
 
+	// setup our ioStream (last once everything is setup)
+	cxa_ioStream_init(&usartIn->super.ioStream);
+	cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
+
 	return true;
 }
 
 
-void cxa_posix_usart_close(cxa_usart_t *const usartIn)
+void cxa_posix_usart_close(cxa_posix_usart_t *const usartIn)
 {
 	cxa_assert(usartIn);
 
 	close(usartIn->fd);
-}
-
-
-bool cxa_usart_read(cxa_usart_t* usartIn, void* buffIn, size_t desiredReadSize_bytesIn, size_t* actualReadSize_bytesOut)
-{
-	cxa_assert(usartIn);
-
-	// perform our read and check the return value
-	ssize_t retVal_read = read(usartIn->fd, buffIn, desiredReadSize_bytesIn);
-	if( retVal_read < 0 ) return false;
-
-	// set our output parameter if asked
-	if( actualReadSize_bytesOut != NULL ) *actualReadSize_bytesOut = (size_t)retVal_read;
-
-	return true;
-}
-
-
-bool cxa_usart_write(cxa_usart_t* usartIn, void* buffIn, size_t bufferSize_bytesIn)
-{
-	cxa_assert(usartIn);
-
-	size_t numBytesRemaining = bufferSize_bytesIn;
-	size_t numBytesSent = 0;
-	while( numBytesRemaining != 0 )
-	{
-		ssize_t retVal_write = write(usartIn->fd, (void*)&(((uint8_t*)buffIn)[numBytesSent]), numBytesRemaining);
-		if( retVal_write < 0 ) return false;
-
-		// if we made it here, retVal_write is positive
-		numBytesSent += (size_t)retVal_write;
-		numBytesRemaining -= (size_t)retVal_write;
-	}
-
-	return true;
 }
 
 
@@ -159,6 +131,41 @@ static bool set_blocking (int fd, int should_block)
 	tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
 
 	if (tcsetattr (fd, TCSANOW, &tty) != 0) return false;
+
+	return true;
+}
+
+
+static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn)
+{
+	cxa_posix_usart_t* usartIn = (cxa_posix_usart_t*)userVarIn;
+	cxa_assert(usartIn);
+
+	// perform our read and check the return value
+	ssize_t retVal_read = read(usartIn->fd, byteOut, 1);
+	if( retVal_read < 0 ) return CXA_IOSTREAM_READSTAT_ERROR;
+	else if( retVal_read == 0 ) return CXA_IOSTREAM_READSTAT_NODATA;
+
+	return CXA_IOSTREAM_READSTAT_GOTDATA;
+}
+
+
+static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn)
+{
+	cxa_posix_usart_t* usartIn = (cxa_posix_usart_t*)userVarIn;
+	cxa_assert(usartIn);
+
+	size_t numBytesRemaining = bufferSize_bytesIn;
+	size_t numBytesSent = 0;
+	while( numBytesRemaining != 0 )
+	{
+		ssize_t retVal_write = write(usartIn->fd, (void*)&(((uint8_t*)buffIn)[numBytesSent]), numBytesRemaining);
+		if( retVal_write < 0 ) return false;
+
+		// if we made it here, retVal_write is positive
+		numBytesSent += (size_t)retVal_write;
+		numBytesRemaining -= (size_t)retVal_write;
+	}
 
 	return true;
 }

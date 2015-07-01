@@ -99,14 +99,6 @@ void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsart
 }
 
 
-cxa_ioStream_t* cxa_usart_getIoStream(cxa_usart_t* usartIn)
-{
-	cxa_assert(usartIn);
-
-	return &usartIn->ioStream;
-}
-
-
 // ******** local function implementations ********
 static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn, cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn)
 {

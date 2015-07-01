@@ -52,19 +52,18 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_POSIX_USART_RX_FIFO_SIZE_BYTES
-	#define CXA_POSIX_USART_RX_FIFO_SIZE_BYTES			8
-#endif
 
 
 // ******** global type definitions *********
 /**
- * @private
+ * @public
  */
-struct cxa_usart
+typedef struct
 {
+	cxa_usart_t super;
+
 	int fd;
-};
+}cxa_posix_usart_t;
 
 
 // ******** global function prototypes ********
@@ -79,7 +78,7 @@ struct cxa_usart
  *
  * @return true if successfully opened, false if not
  */
-bool cxa_posix_usart_init_noHH(cxa_usart_t *const usartIn, char *const pathIn, const int baudRateIn);
+bool cxa_posix_usart_init_noHH(cxa_posix_usart_t *const usartIn, char *const pathIn, const int baudRateIn);
 
 
 /**
@@ -87,7 +86,7 @@ bool cxa_posix_usart_init_noHH(cxa_usart_t *const usartIn, char *const pathIn, c
  *
  * @param[in] usartIn pointer to the pre-initialized serial port to close
  */
-void cxa_posix_usart_close(cxa_usart_t *const usartIn);
+void cxa_posix_usart_close(cxa_posix_usart_t *const usartIn);
 
 
 #endif // CXA_POSIX_USART_H_

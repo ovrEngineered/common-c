@@ -83,20 +83,4 @@ typedef struct
 cxa_ioStream_t* cxa_usart_getIoStream(cxa_usart_t* usartIn);
 
 
-/**
- * @public
- * @brief Returns a file descriptor which should be used for all serial I/O.
- * The file descriptor _may_ use an underlying buffer scheme. Frequent use
- * of fflush() is highly suggested.
- *
- * @note When reading from the file descriptor, fgetc() or similar may return
- *		EOF. This is normal and indicates that no serial data has been received.
- *		It is standard practice to continue reading from the file descriptor
- *		until an EOF is no longer received.
- *
- * @param[in] superIn pointer to a pre-initialized USART object
-FILE* cxa_usart_getFileDescriptor(cxa_usart_t *const superIn);
- */
-
-
 #endif // CXA_USART_H_
