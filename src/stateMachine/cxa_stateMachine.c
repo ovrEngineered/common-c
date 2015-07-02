@@ -86,7 +86,7 @@ void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const cha
 	#endif
 	
 	// setup our timediff for timed states
-	cxa_timeDiff_init(&smIn->td_timedTransition, timeBaseIn);
+	cxa_timeDiff_init(&smIn->td_timedTransition, timeBaseIn, true);
 	smIn->timedStatesEnabled = true;
 }
 #endif
