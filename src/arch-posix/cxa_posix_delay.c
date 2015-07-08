@@ -22,7 +22,7 @@
 
 
 // ******** includes ********
-#include <time.h>
+#include <unistd.h>
 
 
 // ******** local macro definitions ********
@@ -40,8 +40,7 @@
 // ******** global function implementations ********
 void cxa_delay_ms(uint16_t delay_msIn)
 {	
-	struct timespec sleepReq = { .tv_sec=(delay_msIn / 1000), .tv_nsec=((delay_msIn % 1000) * 1000000) };
-	nanosleep(&sleepReq, NULL);
+	usleep(((uint32_t)delay_msIn) * 1000);
 }
 
 

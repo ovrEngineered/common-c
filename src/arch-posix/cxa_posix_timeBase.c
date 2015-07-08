@@ -31,7 +31,7 @@
 
 
 // ******** local function prototypes ********
-static void current_utc_time(struct timespec *ts);
+static void current_utc_time(struct timeval *ts);
 
 
 // ********  local variable declarations *********
@@ -45,14 +45,13 @@ void cxa_posix_timeBase_init(cxa_timeBase_t *const tbIn)
 }
 
 
-#include <stdio.h>
 uint32_t cxa_timeBase_getCount_us(cxa_timeBase_t *const superIn)
 {
 	cxa_assert(superIn);
 	
-	struct timespec ts;
+	struct timeval ts;
 	current_utc_time(&ts);
-	return (1000000 * ts.tv_sec) + (ts.tv_nsec / 1000);
+	return (1000000 * ts.tv_sec) + (ts.tv_usec);
 }
 
 
@@ -65,7 +64,7 @@ uint32_t cxa_timeBase_getMaxCount_us(cxa_timeBase_t *const superIn)
 
 
 // ******** local function implementations ********
-static void current_utc_time(struct timespec *ts)
+static void current_utc_time(struct timeval *ts)
 {
 	#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
 		clock_serv_t cclock;
@@ -76,7 +75,7 @@ static void current_utc_time(struct timespec *ts)
 		ts->tv_sec = mts.tv_sec;
 		ts->tv_nsec = mts.tv_nsec;
 	#else
-		clock_gettime(CLOCK_MONOTONIC, ts);
+		gettimeofday(ts, NULL);
 	#endif
 }
 
