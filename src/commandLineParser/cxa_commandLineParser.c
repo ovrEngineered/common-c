@@ -140,14 +140,14 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 		else if( cxa_stringUtils_startsWith(passedOpt, "-") ) expectedOpt = findOptionByShortOpt(clpIn, passedOpt);
 		else
 		{
-			fprintf(stderr, "Option [%s] not specified with preceding '--' or '-'", passedOpt);
+			fprintf(stderr, "Option [%s] not specified with preceding '--' or '-'" CXA_LINE_ENDING, passedOpt);
 			return false;
 		}
 
 		// make sure we got our option
 		if( expectedOpt == NULL )
 		{
-			fprintf(stderr, "Error: Unknown option [%s]", passedOpt);
+			fprintf(stderr, "Error: Unknown option [%s]" CXA_LINE_ENDING, passedOpt);
 			return false;
 		}
 		if( !cxa_array_append(&presentOptions, &expectedOpt) ) return false;
@@ -166,14 +166,14 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 			// make sure we actually have another element
 			if( ++i >= argc )
 			{
-				fprintf(stderr, "Error: Required argument not specified for option [%s]", passedOpt);
+				fprintf(stderr, "Error: Required argument not specified for option [%s]" CXA_LINE_ENDING, passedOpt);
 				return false;
 			}
 			// get the argument value
 			cxa_stringUtils_parseResult_t argVal = cxa_stringUtils_parseString(passedOpt);
 			if( argVal.dataType != expectedOpt->expectedArgType )
 			{
-				fprintf(stderr, "Error: Cannot parse expected %s argument from string [%s]", cxa_stringUtils_getStringForDataType(argVal.dataType), passedOpt);
+				fprintf(stderr, "Error: Cannot parse expected %s argument from string [%s]" CXA_LINE_ENDING, cxa_stringUtils_getStringForDataType(argVal.dataType), passedOpt);
 				return false;
 			}
 
@@ -206,7 +206,7 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 				cxa_stringUtils_parseResult_t argVal = cxa_stringUtils_parseString(passedOpt);
 				if( argVal.dataType != expectedOpt->expectedArgType )
 				{
-					fprintf(stderr, "Error: Cannot parse expected %s argument from string [%s]", cxa_stringUtils_getStringForDataType(argVal.dataType), passedOpt);
+					fprintf(stderr, "Error: Cannot parse expected %s argument from string [%s]" CXA_LINE_ENDING, cxa_stringUtils_getStringForDataType(argVal.dataType), passedOpt);
 					return false;
 				}
 
@@ -231,7 +231,7 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 
 			if( !isOptPresent )
 			{
-				fprintf(stderr, "Error: required argument not present [%s]", (currOptEntry->shortOpt == NULL) ? currOptEntry->longOpt : currOptEntry->shortOpt);
+				fprintf(stderr, "Error: required argument not present [%s]" CXA_LINE_ENDING, (currOptEntry->shortOpt == NULL) ? currOptEntry->longOpt : currOptEntry->shortOpt);
 				return false;
 			}
 		}
