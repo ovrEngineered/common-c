@@ -250,7 +250,15 @@ static void messageReceived_cb(cxa_rpc_message_t *const msgIn, void *const userV
 	else
 	{
 		// pass to our subNode for processing
-		cxa_rpc_messageHandler_handleDownstream(&nrIn->downstreamSubNode->super, msgIn);
+		char* pathComp = NULL;
+		size_t pathCompLen_bytes = 0;
+		if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &pathCompLen_bytes) ) return;
+		if( strncmp(pathComp, cxa_rpc_node_getName(nrIn->downstreamSubNode), pathCompLen_bytes) == 0 )
+		{
+			cxa_rpc_message_destination_removeFirstPathComponent(msgIn);
+			cxa_rpc_messageHandler_handleDownstream(&nrIn->downstreamSubNode->super, msgIn);
+		}
+		else cxa_logger_debug(&nrIn->logger, "not bound for us");
 	}
 }
 
