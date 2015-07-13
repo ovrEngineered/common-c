@@ -41,7 +41,7 @@
 
 
 #define cxa_rpc_messageHandler_handleUpstream(handlerIn, msgIn)			if( (handlerIn)->cb_upstream != NULL ) (handlerIn)->cb_upstream((handlerIn), (msgIn))
-#define cxa_rpc_messageHandler_handleDownstream(handlerIn, msgIn)		if( (handlerIn)->cb_downstream != NULL ) (handlerIn)->cb_downstream((handlerIn), (msgIn))
+#define cxa_rpc_messageHandler_handleDownstream(handlerIn, msgIn)		(((handlerIn)->cb_downstream != NULL) ? (handlerIn)->cb_downstream((handlerIn), (msgIn)) : false)
 
 
 // ******** global type definitions *********
@@ -74,8 +74,10 @@ typedef void (*cxa_rpc_messageHandler_cb_handleUpstream_t)(cxa_rpc_messageHandle
 
 /**
  * @public
+ *
+ * @return true if message has been handled, false if not
  */
-typedef void (*cxa_rpc_messageHandler_cb_handleDownstream_t)(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
+typedef bool (*cxa_rpc_messageHandler_cb_handleDownstream_t)(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 
 
 /**

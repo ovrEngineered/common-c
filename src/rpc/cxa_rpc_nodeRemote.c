@@ -47,7 +47,7 @@
 static bool isUpstream(cxa_rpc_nodeRemote_t *const nrIn);
 
 static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
-static void handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
+static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 
 static void messageReceived_cb(cxa_rpc_message_t *const msgIn, void *const userVarIn);
 
@@ -196,25 +196,27 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 }
 
 
-static void handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn)
+static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn)
 {
 	cxa_assert(handlerIn);
 	cxa_rpc_nodeRemote_t* nrIn = (cxa_rpc_nodeRemote_t*)handlerIn;
-	if( !msgIn ) return;
+	if( !msgIn ) return false;
 
 	// this function should only be called on the upstream side of the connection
 	if( !isUpstream(nrIn) )
 	{
 		cxa_logger_warn(&nrIn->logger, "handleDownstream(%p): called on downstream side, dropping message", msgIn);
-		return;
+		return false;
 	}
 
 	// we have a message that we need to send via our ioStream
 	if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, msgIn))
 	{
 		cxa_logger_warn(&nrIn->logger, "handleDownstream(%p): protocolParser reports write error, dropping message", msgIn);
-		return;
+		return false;
 	}
+
+	return true;
 }
 
 
@@ -250,15 +252,7 @@ static void messageReceived_cb(cxa_rpc_message_t *const msgIn, void *const userV
 	else
 	{
 		// pass to our subNode for processing
-		char* pathComp = NULL;
-		size_t pathCompLen_bytes = 0;
-		if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &pathCompLen_bytes) ) return;
-		if( strncmp(pathComp, cxa_rpc_node_getName(nrIn->downstreamSubNode), pathCompLen_bytes) == 0 )
-		{
-			cxa_rpc_message_destination_removeFirstPathComponent(msgIn);
-			cxa_rpc_messageHandler_handleDownstream(&nrIn->downstreamSubNode->super, msgIn);
-		}
-		else cxa_logger_debug(&nrIn->logger, "not bound for us");
+		cxa_rpc_messageHandler_handleDownstream(&nrIn->downstreamSubNode->super, msgIn);
 	}
 }
 

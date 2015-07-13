@@ -30,6 +30,7 @@
 #include <cxa_timeDiff.h>
 #include <cxa_rpc_nodeRemote.h>
 #include <cxa_backgroundUpdater.h>
+#include <cxa_stringUtils.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
@@ -43,8 +44,9 @@
 
 // ******** local function prototypes ********
 static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn, bool isGlobalRootIn, const char *nameFmtIn, va_list varArgsIn);
+static bool setRequestIdIfNeeded(cxa_rpc_node_t *const nodeIn, cxa_rpc_message_t *const msgIn);
 static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
-static void handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
+static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_message_t *const msgIn);
 
 
@@ -146,12 +148,7 @@ void cxa_rpc_node_sendMessage_async(cxa_rpc_node_t *const nodeIn, cxa_rpc_messag
 	switch( cxa_rpc_message_getType(msgIn) )
 	{
 		case CXA_RPC_MESSAGE_TYPE_REQUEST:
-			// set the ID if needed
-			if(cxa_rpc_message_getId(msgIn) == 0 )
-			{
-				if( !cxa_rpc_message_setId(msgIn, nodeIn->currId) ) return;
-				nodeIn->currId = (nodeIn->currId == CXA_RPC_ID_MAX) ? 1 : nodeIn->currId+1;
-			}
+			if( !setRequestIdIfNeeded(nodeIn, msgIn) ) return;
 			cxa_logger_debug(&nodeIn->logger, "sending request with id %u", cxa_rpc_message_getId(msgIn));
 			break;
 
@@ -175,6 +172,9 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 
 	cxa_rpc_message_type_t msgType = cxa_rpc_message_getType(msgIn);
 	if( msgType != CXA_RPC_MESSAGE_TYPE_REQUEST ) return NULL;
+
+	// set our ID BEFORE we send the message so we can have a proper inflight entry
+	if( !setRequestIdIfNeeded(nodeIn, msgIn) ) return NULL;
 
 	// create a new inflight request entry and add to our list
 	cxa_rpc_node_inflightSyncRequestEntry_t *newEntry = cxa_array_append_empty(&nodeIn->inflightSyncRequests);
@@ -243,6 +243,22 @@ static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeB
 
 	// setup our logger
 	cxa_logger_vinit(&nodeIn->logger, "rpcNode_%s", cxa_rpc_messageHandler_getName(&nodeIn->super));
+}
+
+
+static bool setRequestIdIfNeeded(cxa_rpc_node_t *const nodeIn, cxa_rpc_message_t *const msgIn)
+{
+	cxa_assert(nodeIn);
+	cxa_assert(msgIn);
+
+	// set the ID if needed
+	if(cxa_rpc_message_getId(msgIn) == 0 )
+	{
+		if( !cxa_rpc_message_setId(msgIn, nodeIn->currId) ) return false;
+		nodeIn->currId = (nodeIn->currId == CXA_RPC_ID_MAX) ? 1 : nodeIn->currId+1;
+	}
+
+	return true;
 }
 
 
@@ -339,25 +355,13 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 		// we got a local node name...process below
 	}
 
-	// if we made it here, we need to process a local nodeName...
+	// if we made it here, we're going to start moving downstream
 	cxa_array_iterate(&nodeIn->subnodes, currSubHandler, cxa_rpc_messageHandler_t*)
 	{
 		if( currSubHandler == NULL) continue;
 
-		// make sure the node has a name
-		const char *const currSubHandlerName = cxa_rpc_messageHandler_getName((*currSubHandler));
-		if( currSubHandlerName == NULL ) continue;
-
-		// we've got a name for this subNode/subHandler...compare
-		if( strncmp(pathComp, currSubHandlerName, pathCompLen_bytes) == 0 )
-		{
-			// we have a match for the node name...start going down stream
-			if( !cxa_rpc_message_destination_removeFirstPathComponent(msgIn) ) return;
-
-			cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn);
-
-			return;
-		}
+		// if our subnode handled it, stop iterating!
+		if( cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn) ) return;
 	}
 
 	// if we made it here, we failed
@@ -365,51 +369,57 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 }
 
 
-static void handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn)
+static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn)
 {
 	cxa_assert(handlerIn);
 	cxa_rpc_node_t* nodeIn = (cxa_rpc_node_t*)handlerIn;
 	cxa_assert(msgIn);
 
-	// get the first path component and strip it
+	// if we don't have a name yet, we can't do anything
+	if( !handlerIn->hasName ) return false;
+
+	// if we made it here, get the first path component and strip it
 	char* pathComp = NULL;
 	size_t pathCompLen_bytes = 0;
 	if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &pathCompLen_bytes) ||
 				(pathComp == NULL) || (pathCompLen_bytes == 0) )
 	{
-		// couldn't parse a path component...must have been meant for us
-		cxa_logger_debug(&nodeIn->logger, "handleDownstream(%p): msg reached dest, processing", msgIn);
-		handleMessage_atDestination(nodeIn, msgIn);
-		return;
+		// couldn't parse a path component...that's an issue
+		cxa_logger_debug(&nodeIn->logger, "handleDownstream(%p): no path component, dropping message", msgIn);
+		return false;
 	}
+
+	// if we made it here, we have a name and we got a path component...see if it was meant for us...
+	if( !cxa_stringUtils_startsWith(pathComp, handlerIn->name) ) return false;
 
 	cxa_logger_debug(&nodeIn->logger, "handleDownstream(%p): '%s'", msgIn, pathComp);
 
-	// if we made it here, it wasn't meant for us...it was meant for a subnode
+	// if we made it here, this message was meant for us...remove our path component and proceed
+	// from this point forward we MUST return true (since we changed the message)
+	if( !cxa_rpc_message_destination_removeFirstPathComponent(msgIn) ) return false;
 
-	// process a local node name
+	// see if there is another path component
+	if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &pathCompLen_bytes) ||
+					(pathComp == NULL) || (pathCompLen_bytes == 0) )
+	{
+		// no more path components, this is bound for us!
+		cxa_logger_debug(&nodeIn->logger, "handleDownstream(%p): msg reached dest, processing", msgIn);
+		handleMessage_atDestination(nodeIn, msgIn);
+		return true;
+	}
+
+	// if we made it here, there are additional path components...pass to our subHandlers
 	cxa_array_iterate(&nodeIn->subnodes, currSubHandler, cxa_rpc_messageHandler_t*)
 	{
 		if( currSubHandler == NULL) continue;
 
-		// make sure the node has a name
-		const char *const currSubHandlerName = cxa_rpc_messageHandler_getName((*currSubHandler));
-		if( currSubHandlerName == NULL ) continue;
-
-		// we've got a name for this subNode/subHandler...compare
-		if( strncmp(pathComp, currSubHandlerName, pathCompLen_bytes) == 0 )
-		{
-			// we have a match for the node name...start going down stream
-			if( !cxa_rpc_message_destination_removeFirstPathComponent(msgIn) ) return;
-
-			cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn);
-
-			return;
-		}
+		// if our subnode handled it, stop iterating!
+		if( cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn) ) return true;
 	}
 
-	// if we made it here, we failed
+	// if we made it here, we couldn't find the proper subhandler...(but it was meant for us)
 	cxa_logger_trace(&nodeIn->logger, "handleDownStream(%p): unable to route '%s'", msgIn, pathComp);
+	return true;
 }
 
 
