@@ -161,7 +161,7 @@ bool cxa_rpc_message_initRequest(cxa_rpc_message_t *const msgIn, const char *con
 }
 
 
-bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, CXA_RPC_ID_DATATYPE reqIdIn)
+bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, CXA_RPC_ID_DATATYPE reqIdIn, cxa_rpc_method_retVal_t returnValIn)
 {
 	cxa_assert(msgIn);
 	cxa_assert(reqSrcIn);
@@ -182,7 +182,7 @@ bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *co
 	if( !cxa_linkedField_initChild(&msgIn->src, &msgIn->id, 0) ) return false;
 
 	// return value
-	if( !cxa_linkedField_initChild_fixedLen(&msgIn->returnValue, &msgIn->src, 1) || !cxa_linkedField_append_uint8(&msgIn->returnValue, CXA_RPC_METHOD_RETVAL_UNKNOWN) ) return false;
+	if( !cxa_linkedField_initChild_fixedLen(&msgIn->returnValue, &msgIn->src, 1) || !cxa_linkedField_append_uint8(&msgIn->returnValue, returnValIn) ) return false;
 
 	// finally, the params
 	if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->returnValue, 0) ) return false;

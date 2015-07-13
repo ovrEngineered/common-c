@@ -54,7 +54,7 @@ void cxa_rpc_messageHandler_init(cxa_rpc_messageHandler_t *const handlerIn, cxa_
 	handlerIn->cb_downstream = cb_downstreamIn;
 	handlerIn->name[0] = 0;
 	handlerIn->parent = NULL;
-	handlerIn->hasName = false;
+	handlerIn->isProvisioned = false;
 }
 
 
@@ -62,11 +62,19 @@ const char *const cxa_rpc_messageHandler_getName(cxa_rpc_messageHandler_t *const
 {
 	cxa_assert(handlerIn);
 
-	return (handlerIn->hasName) ? handlerIn->name : NULL;
+	return (handlerIn->isProvisioned) ? handlerIn->name : NULL;
 }
 
 
-void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, const char *nameFmtIn, va_list varArgsIn)
+bool cxa_rpc_messageHandler_isProvisioned(cxa_rpc_messageHandler_t *const handlerIn)
+{
+	cxa_assert(handlerIn);
+
+	return handlerIn->isProvisioned;
+}
+
+
+void cxa_rpc_messageHandler_provision(cxa_rpc_messageHandler_t *const handlerIn, const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(handlerIn);
 	cxa_assert(nameFmtIn);
@@ -75,7 +83,7 @@ void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, c
 	vsnprintf(handlerIn->name, CXA_RPC_NODE_MAX_NAME_LEN_BYTES, nameFmtIn, varArgsIn);
 	handlerIn->name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES] = 0;
 
-	handlerIn->hasName = true;
+	handlerIn->isProvisioned = true;
 }
 
 

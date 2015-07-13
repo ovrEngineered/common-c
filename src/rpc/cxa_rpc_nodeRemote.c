@@ -27,17 +27,18 @@
 #include <cxa_assert.h>
 #include <cxa_rpc_node.h>
 #include <cxa_rpc_messageFactory.h>
+#include <cxa_stringUtils.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
 
 
 // ******** local macro definitions ********
-#define PROTO_VERSION					2
-#define ASK_FOR_NAME_TIMEOUT_MS			5000
-#define LINK_MANAGEMENT_DEST			"_linkMan"
-#define LMM_GET_NAME					"_getName"
-#define LM_GET_NAME_ID					1234
+#define PROTO_VERSION						2
+#define PROVISION_TIMEOUT_MS				5000
+#define LINK_MANAGEMENT_DEST				"_linkMan"
+#define LINK_MANAGEMENT_METHOD_PROVISON		"_getName"
+#define LINK_MANAGEMENT_ID_PROVISON			1234
 
 
 // ******** local type definitions ********
@@ -70,11 +71,11 @@ void cxa_rpc_nodeRemote_init_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioSt
 
 	// setup our initial state
 	nrIn->downstreamSubNode = NULL;
-	cxa_timeDiff_init(&nrIn->td_askForName, timeBaseIn, false);
+	cxa_timeDiff_init(&nrIn->td_provision, timeBaseIn, false);
 	cxa_array_initStd(&nrIn->linkListeners, nrIn->linkListeners_raw);
 
 	// setup our logger
-	cxa_logger_vinit(&nrIn->logger, "rpcNr_%p", nrIn);
+	cxa_logger_vinit(&nrIn->super.logger, "rpcNr_%p", nrIn);
 
 	// initialize our protocol parser
 	cxa_rpc_protocolParser_init(&nrIn->protocolParser, PROTO_VERSION, ioStreamIn);
@@ -95,7 +96,7 @@ bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_io
 	cxa_array_initStd(&nrIn->linkListeners, nrIn->linkListeners_raw);
 
 	// setup our logger
-	cxa_logger_vinit(&nrIn->logger, "rpcNr_%p", nrIn);
+	cxa_logger_vinit(&nrIn->super.logger, "rpcNr_%p", nrIn);
 
 	// initialize our protocol parser
 	cxa_rpc_protocolParser_init(&nrIn->protocolParser, PROTO_VERSION, ioStreamIn);
@@ -104,14 +105,14 @@ bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_io
 	// set ourselves as the downstream node's parent
 	if( subNodeIn->super.parent != NULL )
 	{
-		cxa_logger_warn(&nrIn->logger, "attempted downstream node %p already has parent", subNodeIn);
+		cxa_logger_warn(&nrIn->super.logger, "attempted downstream node %p already has parent", subNodeIn);
 		return false;
 	}
 
 	// make sure we're not trying to add the global root as a subnode
 	if( subNodeIn->isGlobalRoot )
 	{
-		cxa_logger_warn(&nrIn->logger, "cannot add the global root as downstream subnode");
+		cxa_logger_warn(&nrIn->super.logger, "cannot add the global root as downstream subnode");
 		return false;
 	}
 
@@ -119,7 +120,7 @@ bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_io
 	subNodeIn->super.parent = &nrIn->super;
 	subNodeIn->isLocalRoot = true;
 
-	cxa_logger_debug(&nrIn->logger, "owns node '%s' @ [%p]", cxa_rpc_messageHandler_getName(&subNodeIn->super), subNodeIn);
+	cxa_logger_debug(&nrIn->super.logger, "owns node '%s' @ [%p]", cxa_rpc_messageHandler_getName(&subNodeIn->super), subNodeIn);
 	return true;
 }
 
@@ -138,26 +139,28 @@ void cxa_rpc_nodeRemote_update(cxa_rpc_nodeRemote_t *const nrIn)
 {
 	cxa_assert(nrIn);
 
-	// see if we need to ask for a name...
-	if( isUpstream(nrIn) && !cxa_rpc_messageHandler_getName(&nrIn->super) && cxa_timeDiff_isElaped_recurring_ms(&nrIn->td_askForName, ASK_FOR_NAME_TIMEOUT_MS) )
+	// see if we need to try and provision ourselves...
+	if( !isUpstream(nrIn) && !cxa_rpc_messageHandler_isProvisioned(&nrIn->super) && cxa_timeDiff_isElaped_recurring_ms(&nrIn->td_provision, PROVISION_TIMEOUT_MS) && (nrIn->downstreamSubNode != NULL) )
 	{
 		cxa_rpc_message_t* nameReqMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
-		if( !nameReqMsg || !cxa_rpc_message_initRequest(nameReqMsg, LINK_MANAGEMENT_DEST, LMM_GET_NAME, NULL, 0) ||
-				!cxa_rpc_message_setId(nameReqMsg, LM_GET_NAME_ID) || !cxa_rpc_message_prependNodeNameToSource(nameReqMsg, LMM_GET_NAME) )
+		cxa_linkedField_t* params = NULL;
+		if( !nameReqMsg || !cxa_rpc_message_initRequest(nameReqMsg, LINK_MANAGEMENT_DEST, LINK_MANAGEMENT_METHOD_PROVISON, NULL, 0) ||
+				!cxa_rpc_message_setId(nameReqMsg, LINK_MANAGEMENT_ID_PROVISON) || !cxa_rpc_message_prependNodeNameToSource(nameReqMsg, LINK_MANAGEMENT_DEST) ||
+				((params = cxa_rpc_message_getParams(nameReqMsg)) == NULL) || !cxa_linkedField_append_cString(params, cxa_rpc_node_getName(nrIn->downstreamSubNode)) )
 		{
-			cxa_logger_warn(&nrIn->logger, "error getting/initializing name request, will retry");
+			cxa_logger_warn(&nrIn->super.logger, "error getting/initializing provisioning request, will retry");
 			cxa_rpc_messageFactory_decrementMessageRefCount(nameReqMsg);
 			return;
 		}
 
 		if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, nameReqMsg) )
 		{
-			cxa_logger_warn(&nrIn->logger, "error writing name request, will retry");
+			cxa_logger_warn(&nrIn->super.logger, "error writing provisioning request, will retry");
 			cxa_rpc_messageFactory_decrementMessageRefCount(nameReqMsg);
 			return;
 		}
 
-		cxa_logger_debug(&nrIn->logger, "sent name request");
+		cxa_logger_debug(&nrIn->super.logger, "sent provision request");
 		cxa_rpc_messageFactory_decrementMessageRefCount(nameReqMsg);
 	}
 
@@ -183,14 +186,14 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 	// this function should only be called on the downstream side of the connection
 	if( isUpstream(nrIn) )
 	{
-		cxa_logger_warn(&nrIn->logger, "handleUpstream(%p): called on upstream side, dropping message", msgIn);
+		cxa_logger_warn(&nrIn->super.logger, "handleUpstream(%p): called on upstream side, dropping message", msgIn);
 		return;
 	}
 
 	// we have a message that we need to send via our ioStream
 	if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, msgIn))
 	{
-		cxa_logger_warn(&nrIn->logger, "handleUpstream(%p): protocolParser reports write error, dropping message", msgIn);
+		cxa_logger_warn(&nrIn->super.logger, "handleUpstream(%p): protocolParser reports write error, dropping message", msgIn);
 		return;
 	}
 }
@@ -205,14 +208,14 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 	// this function should only be called on the upstream side of the connection
 	if( !isUpstream(nrIn) )
 	{
-		cxa_logger_warn(&nrIn->logger, "handleDownstream(%p): called on downstream side, dropping message", msgIn);
+		cxa_logger_warn(&nrIn->super.logger, "handleDownstream(%p): called on downstream side, dropping message", msgIn);
 		return false;
 	}
 
 	// we have a message that we need to send via our ioStream
 	if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, msgIn))
 	{
-		cxa_logger_warn(&nrIn->logger, "handleDownstream(%p): protocolParser reports write error, dropping message", msgIn);
+		cxa_logger_warn(&nrIn->super.logger, "handleDownstream(%p): protocolParser reports write error, dropping message", msgIn);
 		return false;
 	}
 
@@ -229,7 +232,7 @@ static void messageReceived_cb(cxa_rpc_message_t *const msgIn, void *const userV
 
 	// check for our exclusive link management messages...
 	char* dest = cxa_rpc_message_getDestination(msgIn);
-	if( (dest != NULL) && (strcmp(dest, LINK_MANAGEMENT_DEST) == 0))
+	if( (dest != NULL) && cxa_stringUtils_equals(dest, LINK_MANAGEMENT_DEST))
 	{
 		// this is a link management message...process locally and discard
 		if( isUpstream(nrIn) )
@@ -262,29 +265,53 @@ static void handleLinkManagement_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_
 	cxa_assert(nrIn);
 	cxa_assert(msgIn);
 
-	if( (cxa_rpc_message_getType(msgIn) == CXA_RPC_MESSAGE_TYPE_RESPONSE) && (cxa_rpc_message_getId(msgIn) == LM_GET_NAME_ID) )
+	char *method = NULL;
+	if( (cxa_rpc_message_getType(msgIn) == CXA_RPC_MESSAGE_TYPE_REQUEST) &&
+			((method = cxa_rpc_message_getMethod(msgIn)) != NULL) && cxa_stringUtils_equals(method, LINK_MANAGEMENT_METHOD_PROVISON) )
 	{
+		// this is a request to provision
 
-		// this a response for a name...
-		cxa_linkedField_t* retParams = cxa_rpc_message_getParams(msgIn);
-		if( retParams == NULL )
+		//@TODO perform authentication here
+
+		cxa_linkedField_t* params = cxa_rpc_message_getParams(msgIn);
+		if( params == NULL )
 		{
-			cxa_logger_warn(&nrIn->logger, "no return params for name response");
+			cxa_logger_warn(&nrIn->super.logger, "no params for provision request");
 			return;
 		}
-
-		char* newName = (char*)cxa_linkedField_get_pointerToIndex(retParams, 0);
+		char* newName = (char*)cxa_linkedField_get_pointerToIndex(params, 0);
 		if( (newName == NULL) || (strlen(newName) == 0) )
 		{
-			cxa_logger_warn(&nrIn->logger, "name response strlen is 0");
+			cxa_logger_warn(&nrIn->super.logger, "provisioning name is length 0");
 			return;
 		}
 
 		// got a good name
-		cxa_logger_debug(&nrIn->logger, "name is now '%s'", newName);
-		cxa_logger_vinit(&nrIn->logger, "rpcNodeRemote_%s", newName);
+		cxa_logger_debug(&nrIn->super.logger, "name is now '%s'", newName);
+		cxa_logger_vinit(&nrIn->super.logger, "rpcNodeRemote_%s", newName);
 		va_list empty_va_list;
-		cxa_rpc_messageHandler_setName(&nrIn->super, newName, empty_va_list);
+		cxa_rpc_messageHandler_provision(&nrIn->super, newName, empty_va_list);
+
+		// get our response ready
+		cxa_rpc_message_t* respMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
+		if( (respMsg == NULL) || !cxa_rpc_message_initResponse(respMsg, LINK_MANAGEMENT_DEST, cxa_rpc_message_getId(msgIn), CXA_RPC_METHOD_RETVAL_SUCCESS) ||
+				!cxa_rpc_message_prependNodeNameToSource(respMsg, LINK_MANAGEMENT_DEST) )
+		{
+			cxa_logger_warn(&nrIn->super.logger, "error getting/initializing provisioning response");
+			cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
+			return;
+		}
+
+		// our response is ready to go, send it!
+		if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, respMsg) )
+		{
+			cxa_logger_warn(&nrIn->super.logger, "error writing provision response");
+			cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
+			return;
+		}
+
+		cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
+		cxa_logger_debug(&nrIn->super.logger, "sent provision response");
 
 		// notify our listeners
 		cxa_array_iterate(&nrIn->linkListeners, currListener, cxa_rpc_nodeRemote_linkListener_t)
@@ -293,7 +320,7 @@ static void handleLinkManagement_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_
 			if( currListener->cb_linkEstablished != NULL ) currListener->cb_linkEstablished(nrIn, currListener->userVar);
 		}
 	}
-	else cxa_logger_warn(&nrIn->logger, "unknown upstream linkManagement message received");
+	else cxa_logger_warn(&nrIn->super.logger, "unknown downstream linkManagement message received");
 }
 
 
@@ -302,34 +329,9 @@ static void handleLinkManagement_downstream(cxa_rpc_nodeRemote_t *const nrIn, cx
 	cxa_assert(nrIn);
 	cxa_assert(msgIn);
 
-	char *method = NULL;
-	if( (cxa_rpc_message_getType(msgIn) == CXA_RPC_MESSAGE_TYPE_REQUEST) &&
-			((method = cxa_rpc_message_getMethod(msgIn)) != NULL) && (strcmp(method, LMM_GET_NAME) == 0) )
+	if( (cxa_rpc_message_getType(msgIn) == CXA_RPC_MESSAGE_TYPE_RESPONSE) && (cxa_rpc_message_getId(msgIn) == LINK_MANAGEMENT_ID_PROVISON) )
 	{
-		// this is a request for a name...return the name of our subNode
-		cxa_rpc_message_t* respMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
-		cxa_linkedField_t* retParams = NULL;
-		const char* subNodeName = cxa_rpc_messageHandler_getName(&nrIn->downstreamSubNode->super);
-		if( (respMsg == NULL) || !cxa_rpc_message_initResponse(respMsg, LINK_MANAGEMENT_DEST, cxa_rpc_message_getId(msgIn)) ||
-				!cxa_rpc_message_prependNodeNameToSource(respMsg, LMM_GET_NAME) ||
-				((retParams = cxa_rpc_message_getParams(respMsg)) == NULL) || (subNodeName == NULL) ||
-				!cxa_linkedField_append_cString(retParams, subNodeName) )
-		{
-			cxa_logger_warn(&nrIn->logger, "error getting/initializing name response");
-			cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
-			return;
-		}
-
-		// our response is ready to go, send it!
-		if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, respMsg) )
-		{
-			cxa_logger_warn(&nrIn->logger, "error writing name response");
-			cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
-			return;
-		}
-
-		cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
-		cxa_logger_debug(&nrIn->logger, "sent name response");
+		// this a response for provisioning...
 
 		// notify our listeners
 		cxa_array_iterate(&nrIn->linkListeners, currListener, cxa_rpc_nodeRemote_linkListener_t)
@@ -338,5 +340,5 @@ static void handleLinkManagement_downstream(cxa_rpc_nodeRemote_t *const nrIn, cx
 			if( currListener->cb_linkEstablished != NULL ) currListener->cb_linkEstablished(nrIn, currListener->userVar);
 		}
 	}
-	else cxa_logger_warn(&nrIn->logger, "unknown downstream linkManagement message received");
+	else cxa_logger_warn(&nrIn->super.logger, "unknown upstream linkManagement message received");
 }

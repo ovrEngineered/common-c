@@ -32,6 +32,7 @@
 #include <cxa_rpc_message.h>
 #include <cxa_config.h>
 #include <stdarg.h>
+#include <cxa_logger_header.h>
 
 
 // ******** global macro definitions ********
@@ -85,13 +86,14 @@ typedef bool (*cxa_rpc_messageHandler_cb_handleDownstream_t)(cxa_rpc_messageHand
  */
 struct cxa_rpc_messageHandler
 {
-	bool hasName;
+	bool isProvisioned;
 	char name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES+1];
 
 	cxa_rpc_messageHandler_cb_handleUpstream_t cb_upstream;
 	cxa_rpc_messageHandler_cb_handleDownstream_t cb_downstream;
 
 	cxa_rpc_messageHandler_t* parent;
+	cxa_logger_t logger;
 };
 
 
@@ -99,7 +101,9 @@ struct cxa_rpc_messageHandler
 void cxa_rpc_messageHandler_init(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_messageHandler_cb_handleUpstream_t cb_upstreamIn, cxa_rpc_messageHandler_cb_handleDownstream_t cb_downstreamIn);
 
 const char *const cxa_rpc_messageHandler_getName(cxa_rpc_messageHandler_t *const handlerIn);
-void cxa_rpc_messageHandler_setName(cxa_rpc_messageHandler_t *const handlerIn, const char *nameFmtIn, va_list varArgsIn);
+
+bool cxa_rpc_messageHandler_isProvisioned(cxa_rpc_messageHandler_t *const handlerIn);
+void cxa_rpc_messageHandler_provision(cxa_rpc_messageHandler_t *const handlerIn, const char *nameFmtIn, va_list varArgsIn);
 
 
 #endif // CXA_RPC_MESSAGE_HANDLER_H_

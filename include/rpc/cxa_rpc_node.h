@@ -107,7 +107,6 @@ struct cxa_rpc_node
 
 
 	cxa_timeBase_t* timeBase;
-	cxa_logger_t logger;
 
 	CXA_RPC_ID_DATATYPE currId;
 };

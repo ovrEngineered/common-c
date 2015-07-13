@@ -73,12 +73,10 @@ struct cxa_rpc_nodeRemote
 	cxa_rpc_protocolParser_t protocolParser;
 	cxa_rpc_node_t *downstreamSubNode;
 
-	cxa_timeDiff_t td_askForName;
+	cxa_timeDiff_t td_provision;
 
 	cxa_array_t linkListeners;
 	cxa_rpc_nodeRemote_linkListener_t linkListeners_raw[CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS];
-
-	cxa_logger_t logger;
 };
 
 
