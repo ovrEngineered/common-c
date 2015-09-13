@@ -94,7 +94,7 @@ void cxa_xmega_eventSystem_initChannel_timerEvent(const cxa_xmega_eventSystem_ev
 			break;
 		
 		case CXA_XMEGA_TIMER16_TCE0:
-			muxVal = 0xD0 | timerEvIn;
+			muxVal = 0xE0 | timerEvIn;
 			break;
 		
 		case CXA_XMEGA_TIMER16_TCE1:

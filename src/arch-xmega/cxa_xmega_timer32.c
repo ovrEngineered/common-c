@@ -57,43 +57,43 @@ void cxa_xmega_timer32_init_freerun(cxa_xmega_timer32_t *const timerIn, const cx
 	cxa_xmega_eventSystem_initChannel_timerEvent(evChan_link, timerIn->timer_lower, CXA_XMEGA_EVENT_SOURCE_TC_OVERFLOW);
 	
 	// now setup our upper timer
-	cxa_xmega_timer16_clockSource_t clkSrc = 0;
+	cxa_xmega_timer16_clockSource_t upperClkSrc = 0;
 	switch( evChan_link )
 	{
 		case CXA_XMEGA_EVENT_CHAN_0:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_0;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_0;
 			break;
 			
 		case CXA_XMEGA_EVENT_CHAN_1:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_1;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_1;
 			break;
 		
 		case CXA_XMEGA_EVENT_CHAN_2:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_2;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_2;
 			break;
 		
 		case CXA_XMEGA_EVENT_CHAN_3:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_3;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_3;
 			break;
 		
 		case CXA_XMEGA_EVENT_CHAN_4:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_4;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_4;
 			break;
 		
 		case CXA_XMEGA_EVENT_CHAN_5:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_5;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_5;
 			break;
 		
 		case CXA_XMEGA_EVENT_CHAN_6:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_6;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_6;
 			break;
 		
 		case CXA_XMEGA_EVENT_CHAN_7:
-			clkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_7;
+			upperClkSrc = CXA_XMEGA_TIMER16_CLOCKSRC_EVENT_CHAN_7;
 			break;
 		
 	}
-	cxa_xmega_timer16_init_freerun(timerIn->timer_upper, clkSrc);
+	cxa_xmega_timer16_init_freerun(timerIn->timer_upper, upperClkSrc);
 	
 	// finally, setup our capture channels for synchronous reading
 	cxa_xmega_eventSystem_eventChannel_t evChan_lowerCap = cxa_xmega_eventSystem_getUnusedEventChannel();
