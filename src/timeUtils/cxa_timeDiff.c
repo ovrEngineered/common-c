@@ -80,7 +80,7 @@ bool cxa_timeDiff_isElapsed_ms(cxa_timeDiff_t *const tdIn, uint32_t msIn)
 }
 
 
-bool cxa_timeDiff_isElaped_recurring_ms(cxa_timeDiff_t *const tdIn, uint32_t msIn)
+bool cxa_timeDiff_isElapsed_recurring_ms(cxa_timeDiff_t *const tdIn, uint32_t msIn)
 {
 	cxa_assert(tdIn);
 	

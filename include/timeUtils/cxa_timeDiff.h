@@ -51,7 +51,7 @@ uint32_t cxa_timeDiff_getElapsedTime_ms(cxa_timeDiff_t *const tdIn);
 
 bool cxa_timeDiff_isElapsed_ms(cxa_timeDiff_t *const tdIn, uint32_t msIn);
 
-bool cxa_timeDiff_isElaped_recurring_ms(cxa_timeDiff_t *const tdIn, uint32_t msIn);
+bool cxa_timeDiff_isElapsed_recurring_ms(cxa_timeDiff_t *const tdIn, uint32_t msIn);
 
 
 #endif // CXA_timeBase_H_
