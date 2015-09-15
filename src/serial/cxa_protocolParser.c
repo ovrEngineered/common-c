@@ -30,7 +30,6 @@
 
 
 // ******** local macro definitions ********
-#define PROTOCOL_VERSION				1
 #define MAX_NUM_RX_BYTES_PER_UPDATE		16
 
 
@@ -64,15 +63,12 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVar
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, uint8_t userProtoVersionIn,
-							 cxa_ioStream_t* ioStreamIn, cxa_fixedByteBuffer_t* buffIn)
+void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t* ioStreamIn, cxa_fixedByteBuffer_t* buffIn)
 {
 	cxa_assert(ppIn);
-	cxa_assert(userProtoVersionIn <= 15);
 	cxa_assert(ioStreamIn);
 	
 	// save our references
-	ppIn->userProtoVersion = userProtoVersionIn;
 	ppIn->ioStream = ioStreamIn;
 	ppIn->currBuffer = buffIn;
 
@@ -80,7 +76,7 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, uint8_t userProto
 	cxa_logger_init(&ppIn->logger, "protocolParser");
 
 	// setup our listeners
-	cxa_array_initStd(&ppIn->protocolListeners, ppIn->protocolListeners_raw);
+	cxa_array_initStd(&ppIn->exceptionListeners, ppIn->exceptionListeners_raw);
 	cxa_array_initStd(&ppIn->packetListeners, ppIn->packetListeners_raw);
 
 	// setup our state machine
@@ -99,16 +95,15 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, uint8_t userProto
 }
 
 
-void cxa_protocolParser_addProtocolListener(cxa_protocolParser_t *const ppIn,
-	cxa_protocolParser_cb_invalidVersionNumber_t cb_invalidVerIn,
-	cxa_protocolParser_cb_ioExceptionOccurred_t cb_exceptionIn,
-	void *const userVarIn)
+void cxa_protocolParser_addExceptionListener(cxa_protocolParser_t *const ppIn,
+		cxa_protocolParser_cb_ioExceptionOccurred_t cb_exceptionIn,
+		void *const userVarIn)
 {
 	cxa_assert(ppIn);
 
 	// create and add our new entry
-	cxa_protocolParser_protoListener_entry_t newEntry = {.cb_invalidVer=cb_invalidVerIn, .cb_exception=cb_exceptionIn, .userVar=userVarIn};
-	cxa_assert( cxa_array_append(&ppIn->protocolListeners, &newEntry) );
+	cxa_protocolParser_exceptionListener_entry_t newEntry = {.cb=cb_exceptionIn, .userVar=userVarIn};
+	cxa_assert( cxa_array_append(&ppIn->exceptionListeners, &newEntry) );
 }
 
 
@@ -176,10 +171,9 @@ bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedB
 	if( !cxa_ioStream_writeByte(ppIn->ioStream, 0x80) ) { handleIoException(ppIn); return false; }
 	if( !cxa_ioStream_writeByte(ppIn->ioStream, 0x81) ) { handleIoException(ppIn); return false; }
 
-	size_t len = msgSize_bytes + 2;
+	size_t len = msgSize_bytes + 1;
 	if( !cxa_ioStream_writeByte(ppIn->ioStream, ((len & 0x00FF) >> 0)) ) { handleIoException(ppIn); return false; }
 	if( !cxa_ioStream_writeByte(ppIn->ioStream, ((len & 0xFF00) >> 8)) ) { handleIoException(ppIn); return false; }
-	if( !cxa_ioStream_writeByte(ppIn->ioStream, ((PROTOCOL_VERSION << 4) | ppIn->userProtoVersion)) ) { handleIoException(ppIn); return false; }
 
 	// write our data
 	if( (dataIn != NULL) && !cxa_ioStream_writeFixedByteBuffer(ppIn->ioStream, dataIn) ) { handleIoException(ppIn); return false; }
@@ -310,7 +304,7 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 		{
 			// we have all of our length bytes...make sure it's valid
 			uint16_t len_bytes;
-			if( cxa_fixedByteBuffer_get_uint16LE(ppIn->currBuffer, 2, len_bytes) && (len_bytes >= 2) ) cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
+			if( cxa_fixedByteBuffer_get_uint16LE(ppIn->currBuffer, 2, len_bytes) && (len_bytes >= 1) ) cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
 			return;
 		}
 	}
@@ -367,32 +361,14 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 	uint16_t tmpVal16;
 
 	// make sure our packet is kosher
-	if( (currSize_bytes >= 6) &&
+	if( (currSize_bytes >= 5) &&
 		(cxa_fixedByteBuffer_get_uint8(ppIn->currBuffer, 0, tmpVal8) && (tmpVal8 == 0x80)) &&
 		(cxa_fixedByteBuffer_get_uint8(ppIn->currBuffer, 1, tmpVal8) && (tmpVal8 == 0x81)) &&
 		(cxa_fixedByteBuffer_get_uint16LE(ppIn->currBuffer, 2, tmpVal16) && (tmpVal16 == (currSize_bytes-4))) &&
 		(cxa_fixedByteBuffer_get_uint8(ppIn->currBuffer, currSize_bytes-1, tmpVal8) && (tmpVal8 == 0x82)) )
 	{
-		// we have a valid packet...check our version number
-		uint8_t versionNum = 0xFF;
-		if( !cxa_fixedByteBuffer_get_uint8(ppIn->currBuffer, 4, versionNum) || (versionNum != ((PROTOCOL_VERSION<<4) | ppIn->userProtoVersion)) )
-		{
-			// invalid version number...
-			cxa_logger_debug(&ppIn->logger, "packet received for incorrect protocol version: 0x%02X", versionNum);
-			
-			// notify our protocol listeners
-			cxa_array_iterate(&ppIn->protocolListeners, currEntry, cxa_protocolParser_protoListener_entry_t)
-			{
-				if( currEntry == NULL ) continue;
-				
-				if( currEntry->cb_invalidVer != NULL ) currEntry->cb_invalidVer(ppIn->currBuffer, currEntry->userVar);
-			}
-			return;
-		}
-
-		// if we made it here, we have a valid version number...get our data bytes
+		// we received a message
 		cxa_logger_trace(&ppIn->logger, "message received...calling listeners");
-
 
 		cxa_array_iterate(&ppIn->packetListeners, currEntry, cxa_protocolParser_packetListener_entry_t)
 		{
@@ -418,11 +394,11 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVar
 	
 	cxa_logger_error(&ppIn->logger, "underlying serial device is broken, protocol parser is inoperable");
 
-	// notify our protocol listeners
-	cxa_array_iterate(&ppIn->protocolListeners, currEntry, cxa_protocolParser_protoListener_entry_t)
+	// notify our exception listeners
+	cxa_array_iterate(&ppIn->exceptionListeners, currEntry, cxa_protocolParser_exceptionListener_entry_t)
 	{
 		if( currEntry == NULL ) continue;
 
-		if( currEntry->cb_exception != NULL ) currEntry->cb_exception(currEntry->userVar);
+		if( currEntry->cb != NULL ) currEntry->cb(currEntry->userVar);
 	}
 }

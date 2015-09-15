@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include <cxa_config.h>
 #include <cxa_array.h>
 #include <cxa_ioStream.h>
 #include <cxa_logger_header.h>
@@ -54,17 +55,6 @@
  * @brief "Forward" declaration of the cxa_protocolParser_t object
  */
 typedef struct cxa_protocolParser cxa_protocolParser_t;
-
-
-/**
- * @public
- * @brief Callback called when/if a packet is received with an unsupported version number.
- * 
- * @param[in] bufferIn a buffer containing the entire packet (header, verNum, data, footer, etc)
- * @param[in] userVarIn pointer to the user-supplied variable passed to
- *		::cxa_protocolParser_addProtocolListener
- */
-typedef void (*cxa_protocolParser_cb_invalidVersionNumber_t)(cxa_fixedByteBuffer_t *const bufferIn, void *const userVarIn);
 
 
 /**
@@ -94,11 +84,10 @@ typedef void (*cxa_protocolParser_cb_packetReceived_t)(cxa_fixedByteBuffer_t *co
  */
 typedef struct
 {
-	cxa_protocolParser_cb_invalidVersionNumber_t cb_invalidVer;
-	cxa_protocolParser_cb_ioExceptionOccurred_t cb_exception;
+	cxa_protocolParser_cb_ioExceptionOccurred_t cb;
 	
 	void *userVar;
-}cxa_protocolParser_protoListener_entry_t;
+}cxa_protocolParser_exceptionListener_entry_t;
 
 
 /**
@@ -119,13 +108,12 @@ struct cxa_protocolParser
 {
 	cxa_logger_t logger;
 
-	cxa_array_t protocolListeners;
-	cxa_protocolParser_protoListener_entry_t protocolListeners_raw[CXA_PROTOCOLPARSER_MAXNUM_PROTOLISTENERS];
+	cxa_array_t exceptionListeners;
+	cxa_protocolParser_exceptionListener_entry_t exceptionListeners_raw[CXA_PROTOCOLPARSER_MAXNUM_PROTOLISTENERS];
 
 	cxa_array_t packetListeners;
 	cxa_protocolParser_packetListener_entry_t packetListeners_raw[CXA_PROTOCOLPARSER_MAXNUM_PACKETLISTENERS];
 
-	uint8_t userProtoVersion;
 	cxa_stateMachine_t stateMachine;
 	cxa_ioStream_t* ioStream;
 	
@@ -140,33 +128,26 @@ struct cxa_protocolParser
  *
  * @param[in] ppIn pointer to the pre-allocated protocolParser
  * 		to initialize
- * @param[in] userProtoVersionIn a user-supplied protocol
- * 		version which will be validated on all received packets
  * @param[in] ioStreamIn the ioStream on which to send/receive
  * 		packets (may or may not be bound at this point)
  * @param[in] buffIn the initial buffer which should be used to
  * 		receive packets. May be NULL if this will be set later
  * 		(but protocolParser will not operate)
  */
-void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, uint8_t userProtoVersionIn,
-							 cxa_ioStream_t* ioStreamIn, cxa_fixedByteBuffer_t* buffIn);
+void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t* ioStreamIn, cxa_fixedByteBuffer_t* buffIn);
 
 /**
  * @public
- * @brief Adds a listener for protocol-related events
+ * @brief Adds a listener for exception events
  *
  * @param[in] ppIn pointer to the pre-initialized protocolParser
- * @param[in] cb_invalidVerIn callback that should be called when
- * 		an invalid version number is received (protocol OR user).
- * 		May be NULL.
  * @param[in] cb_exceptionIn callback that should be called when
  * 		an exception occurs within the parser or the underlying
  * 		ioStream. May be NULL.
  * @param[in] userVarIn pointer to a user-supplied variable which
  * 		will be passed to each callback upon execution.
  */
-void cxa_protocolParser_addProtocolListener(cxa_protocolParser_t *const ppIn,
-		cxa_protocolParser_cb_invalidVersionNumber_t cb_invalidVerIn,
+void cxa_protocolParser_addExceptionListener(cxa_protocolParser_t *const ppIn,
 		cxa_protocolParser_cb_ioExceptionOccurred_t cb_exceptionIn,
 		void *const userVarIn);
 
