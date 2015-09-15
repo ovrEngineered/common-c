@@ -310,7 +310,7 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 		{
 			// we have all of our length bytes...make sure it's valid
 			uint16_t len_bytes;
-			if( cxa_fixedByteBuffer_get_uint16LE(ppIn->currBuffer, 2, len_bytes) && (len_bytes >= 3) ) cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
+			if( cxa_fixedByteBuffer_get_uint16LE(ppIn->currBuffer, 2, len_bytes) && (len_bytes >= 2) ) cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
 			return;
 		}
 	}
