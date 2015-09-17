@@ -160,12 +160,9 @@ void* cxa_array_get(cxa_array_t *const arrIn, const size_t indexIn)
 }
 
 
-void *cxa_array_get_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn)
+void* cxa_array_get_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn)
 {
 	cxa_assert(arrIn);
-
-	// make sure we're not out of bounds
-	if( indexIn >= arrIn->maxNumElements ) return NULL;
 
 	// if we made it here, we're good to go
 	return (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));	
