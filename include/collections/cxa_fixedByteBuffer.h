@@ -135,7 +135,36 @@ struct cxa_fixedByteBuffer
  */
 void cxa_fixedByteBuffer_init(cxa_fixedByteBuffer_t *const fbbIn, void *const bufferLocIn, const size_t bufferMaxSize_bytesIn);
 
+/**
+ * @public
+ * Initializes a new subBuffer whose bytes are stored within another fixedByteBuffer. This
+ * function requires an explicit startIndex and length.
+ * Note: both the parentFbb and the subFbb will be backed by the same data, modification
+ * 		of byte values in one will be reflected in the other. Care should be made to avoid
+ * 		structure-modifying actions (such as appending, inserting or removing)
+ *
+ * @param[in] subFbbIn pointer to the pre-allocated fixedByteBuffer object (the new fbb)
+ * @param[in] parentFbbIn pointer to the pre-initialized parent fixedByteBuffer (currently holding the target bytes)
+ * @param[in] startIndexIn the desired offset of the subFbb within the parent (eg. 2 -> index 0 of subFbb == index 2 of parentFbb)
+ * @param[in] numBytesIn the desired size of the subFbb (in bytes). The current and max size of the subFbb will
+ * 		be set to this value. Care must be taken to ensure that startIndexIn + numBytesIn is not out of bounds
+ * 		of the parentFbb
+ */
 void cxa_fixedByteBuffer_init_subBufferFixedSize(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexIn, size_t numBytesIn);
+
+/**
+ * @public
+ * Initializes a new subBuffer whose bytes are stored within another fixedByteBuffer. This
+ * function will size the subFbb to use all bytes in the parent starting at the specified
+ * index (eg. parentSize=4, startIndex=2 -> subFbbSize=2).
+ * Note: both the parentFbb and the subFbb will be backed by the same data, modification
+ * 		of byte values in one will be reflected in the other. Care should be made to avoid
+ * 		structure-modifying actions (such as appending, inserting or removing)
+ *
+ * @param[in] subFbbIn pointer to the pre-allocated fixedByteBuffer object (the new fbb)
+ * @param[in] parentFbbIn pointer to the pre-initialized parent fixedByteBuffer (currently holding the target bytes)
+ * @param[in] startIndexIn the desired offset of the subFbb within the parent (eg. 2 -> index 0 of subFbb == index 2 of parentFbb)
+ */
 void cxa_fixedByteBuffer_init_subBufferRemainingElems(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexIn);
 
 bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const size_t numBytesIn);
