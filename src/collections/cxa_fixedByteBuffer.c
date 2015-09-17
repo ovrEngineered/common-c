@@ -50,6 +50,29 @@ void cxa_fixedByteBuffer_init(cxa_fixedByteBuffer_t *const fbbIn, void *const bu
 }
 
 
+void cxa_fixedByteBuffer_init_subBufferFixedSize(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexIn, size_t numBytesIn)
+{
+	cxa_assert(subFbbIn);
+	cxa_assert(parentFbbIn);
+	cxa_assert( (startIndexIn + numBytesIn) <= cxa_fixedByteBuffer_getSize_bytes(parentFbbIn) );
+
+	// setup our internal state
+	cxa_array_init_inPlace(&subFbbIn->bytes, 1, numBytesIn, cxa_array_get(&parentFbbIn->bytes, startIndexIn), numBytesIn);
+}
+
+
+void cxa_fixedByteBuffer_init_subBufferRemainingElems(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexIn)
+{
+	cxa_assert(subFbbIn);
+	cxa_assert(parentFbbIn);
+	cxa_assert(startIndexIn <= cxa_fixedByteBuffer_getSize_bytes(parentFbbIn));
+
+	// setup our internal state
+	size_t numElems = cxa_fixedByteBuffer_getSize_bytes(parentFbbIn) - startIndexIn;
+	cxa_array_init_inPlace(&subFbbIn->bytes, 1, numElems, cxa_array_get_noBoundsCheck(&parentFbbIn->bytes, startIndexIn), numElems);
+}
+
+
 bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const size_t numBytesIn)
 {
 	cxa_assert(fbbIn);

@@ -374,9 +374,11 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 		{
 			if( currEntry == NULL ) continue;
 
+			cxa_fixedByteBuffer_t fbb_data;
+			cxa_fixedByteBuffer_init_subBufferFixedSize(&fbb_data, ppIn->currBuffer, 4, (currSize_bytes-5));
 			if( currEntry->cb != NULL )
 			{
-				currEntry->cb(ppIn->currBuffer, currEntry->userVar);
+				currEntry->cb(&fbb_data, currEntry->userVar);
 			}
 		}
 	}
