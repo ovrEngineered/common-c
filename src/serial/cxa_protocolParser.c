@@ -31,6 +31,7 @@
 
 // ******** local macro definitions ********
 #define MAX_NUM_RX_BYTES_PER_UPDATE		16
+#define RECEPTION_TIMEOUT_MS			5000
 
 
 // ******** local type definitions ********
@@ -48,6 +49,7 @@ typedef enum
 
 // ******** local function prototypes ********
 static void handleIoException(cxa_protocolParser_t *const ppIn);
+static void handleReceptionTimeout(cxa_protocolParser_t *const ppIn);
 static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
@@ -63,7 +65,8 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVar
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t* ioStreamIn, cxa_fixedByteBuffer_t* buffIn)
+void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn,
+							 cxa_timeBase_t *const timeBaseIn)
 {
 	cxa_assert(ppIn);
 	cxa_assert(ioStreamIn);
@@ -72,11 +75,15 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t* i
 	ppIn->ioStream = ioStreamIn;
 	ppIn->currBuffer = buffIn;
 
+	// setup our timediff (if enabled)
+	ppIn->isReceptionTimeoutEnabled = (timeBaseIn != NULL);
+	if( ppIn->isReceptionTimeoutEnabled ) cxa_timeDiff_init(&ppIn->td_timeout, timeBaseIn, false);
+
 	// setup our logger
 	cxa_logger_init(&ppIn->logger, "protocolParser");
 
 	// setup our listeners
-	cxa_array_initStd(&ppIn->exceptionListeners, ppIn->exceptionListeners_raw);
+	cxa_array_initStd(&ppIn->protocolListeners, ppIn->protocolListeners_raw);
 	cxa_array_initStd(&ppIn->packetListeners, ppIn->packetListeners_raw);
 
 	// setup our state machine
@@ -95,15 +102,16 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t* i
 }
 
 
-void cxa_protocolParser_addExceptionListener(cxa_protocolParser_t *const ppIn,
+void cxa_protocolParser_addProtocolListener(cxa_protocolParser_t *const ppIn,
 		cxa_protocolParser_cb_ioExceptionOccurred_t cb_exceptionIn,
+		cxa_protocolParser_cb_receptionTimeout_t cb_receptionTimeoutIn,
 		void *const userVarIn)
 {
 	cxa_assert(ppIn);
 
 	// create and add our new entry
-	cxa_protocolParser_exceptionListener_entry_t newEntry = {.cb=cb_exceptionIn, .userVar=userVarIn};
-	cxa_assert( cxa_array_append(&ppIn->exceptionListeners, &newEntry) );
+	cxa_protocolParser_protocolListener_entry_t newEntry = {.cb_exception=cb_exceptionIn, .cb_receptionTimeout=cb_receptionTimeoutIn, .userVar=userVarIn};
+	cxa_assert( cxa_array_append(&ppIn->protocolListeners, &newEntry) );
 }
 
 
@@ -203,6 +211,24 @@ static void handleIoException(cxa_protocolParser_t *const ppIn)
 }
 
 
+static void handleReceptionTimeout(cxa_protocolParser_t *const ppIn)
+{
+	cxa_assert(ppIn);
+
+	cxa_logger_warn(&ppIn->logger, "reception timeout");
+
+	cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_0x80);
+
+	// notify our protocol listeners
+	cxa_array_iterate(&ppIn->protocolListeners, currEntry, cxa_protocolParser_protocolListener_entry_t)
+	{
+		if( currEntry == NULL ) continue;
+
+		if( currEntry->cb_receptionTimeout != NULL ) currEntry->cb_receptionTimeout(ppIn->currBuffer, currEntry->userVar);
+	}
+}
+
+
 static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
@@ -253,6 +279,9 @@ static void rxState_cb_wait0x80_state(cxa_stateMachine_t *const smIn, void *user
 				cxa_fixedByteBuffer_clear(ppIn->currBuffer);
 				cxa_fixedByteBuffer_append_uint8(ppIn->currBuffer, rxByte);
 
+				// start our reception timeout timeDiff
+				if( ppIn->isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&ppIn->td_timeout);
+
 				cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_0x81);
 				return;
 			}
@@ -271,6 +300,9 @@ static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *user
 	if( readStat == CXA_IOSTREAM_READSTAT_ERROR ) { handleIoException(ppIn); return; }
 	else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
+		// reset our reception timeout timeDiff
+		if( ppIn->isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&ppIn->td_timeout);
+
 		if( rxByte == 0x81 )
 		{
 			// we have a valid second header byte
@@ -285,6 +317,13 @@ static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *user
 			return;
 		}
 	}
+
+	// check to see if we've had a reception timeout
+	if( ppIn->isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&ppIn->td_timeout, RECEPTION_TIMEOUT_MS) )
+	{
+		handleReceptionTimeout(ppIn);
+		return;
+	}
 }
 
 
@@ -298,6 +337,9 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 	if( readStat == CXA_IOSTREAM_READSTAT_ERROR ) { handleIoException(ppIn); return; }
 	else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
+		// reset our reception timeout timeDiff
+		if( ppIn->isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&ppIn->td_timeout);
+
 		// just append the byte
 		cxa_fixedByteBuffer_append_uint8(ppIn->currBuffer, rxByte);
 		if( cxa_fixedByteBuffer_getSize_bytes(ppIn->currBuffer) == 4 )
@@ -307,6 +349,13 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 			if( cxa_fixedByteBuffer_get_uint16LE(ppIn->currBuffer, 2, len_bytes) && (len_bytes >= 1) ) cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
 			return;
 		}
+	}
+
+	// check to see if we've had a reception timeout
+	if( ppIn->isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&ppIn->td_timeout, RECEPTION_TIMEOUT_MS) )
+	{
+		handleReceptionTimeout(ppIn);
+		return;
 	}
 }
 
@@ -337,6 +386,9 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 			if( readStat == CXA_IOSTREAM_READSTAT_ERROR ) { handleIoException(ppIn); return; }
 			else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 			{
+				// reset our reception timeout timeDiff
+				if( ppIn->isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&ppIn->td_timeout);
+
 				cxa_fixedByteBuffer_append_uint8(ppIn->currBuffer, rxByte);
 			}
 		}
@@ -346,6 +398,13 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 			cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_PROCESS_PACKET);
 			return;
 		}
+	}
+
+	// check to see if we've had a reception timeout
+	if( ppIn->isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&ppIn->td_timeout, RECEPTION_TIMEOUT_MS) )
+	{
+		handleReceptionTimeout(ppIn);
+		return;
 	}
 }
 
@@ -396,11 +455,11 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVar
 	
 	cxa_logger_error(&ppIn->logger, "underlying serial device is broken, protocol parser is inoperable");
 
-	// notify our exception listeners
-	cxa_array_iterate(&ppIn->exceptionListeners, currEntry, cxa_protocolParser_exceptionListener_entry_t)
+	// notify our protocol listeners
+	cxa_array_iterate(&ppIn->protocolListeners, currEntry, cxa_protocolParser_protocolListener_entry_t)
 	{
 		if( currEntry == NULL ) continue;
 
-		if( currEntry->cb != NULL ) currEntry->cb(currEntry->userVar);
+		if( currEntry->cb_exception != NULL ) currEntry->cb_exception(currEntry->userVar);
 	}
 }
