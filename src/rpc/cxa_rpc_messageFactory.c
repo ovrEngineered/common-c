@@ -120,6 +120,25 @@ cxa_rpc_message_t* cxa_rpc_messageFactory_getFreeMessage_empty(void)
 }
 
 
+cxa_rpc_message_t* cxa_rpc_messageFactory_getMessage_byBuffer(cxa_fixedByteBuffer_t *const fbbIn)
+{
+	if( !isInit ) cxa_rpc_messageFactory_init();
+
+	// simple case (better than an assert in this case)
+	if( fbbIn == NULL) return NULL;
+
+	for( size_t i = 0; i < (sizeof(msgPool)/sizeof(*msgPool)); i++ )
+	{
+		cxa_rpc_messageFactory_msgEntry_t* currEntry = (cxa_rpc_messageFactory_msgEntry_t*)&msgPool[i];
+
+		if( (currEntry->refCount != 0) && (&currEntry->msgFbb == fbbIn) ) return &currEntry->msg;
+	}
+
+	// if we made it here, we couldn't find a match
+	return NULL;
+}
+
+
 void cxa_rpc_messageFactory_incrementMessageRefCount(cxa_rpc_message_t *const msgIn)
 {
 	if( !isInit ) cxa_rpc_messageFactory_init();
