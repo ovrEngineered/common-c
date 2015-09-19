@@ -47,6 +47,7 @@ void cxa_backgroundUpdater_init(void);
 
 bool cxa_backgroundUpdater_addEntry(cxa_backgroundUpdater_cb_update_t cbIn, void *const userVarIn);
 bool cxa_backgroundUpdater_removeEntry(cxa_backgroundUpdater_cb_update_t cbIn);
+void cxa_backgroundUpdater_clearAllEntries(void);
 
 void cxa_backgroundUpdater_update(void);
 

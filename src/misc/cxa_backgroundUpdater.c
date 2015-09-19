@@ -98,6 +98,13 @@ bool cxa_backgroundUpdater_removeEntry(cxa_backgroundUpdater_cb_update_t cbIn)
 }
 
 
+void cxa_backgroundUpdater_clearAllEntries(void)
+{
+	isInit = false;
+	cxa_backgroundUpdater_init();
+}
+
+
 void cxa_backgroundUpdater_update(void)
 {
 	if( !isInit ) cxa_backgroundUpdater_init();
