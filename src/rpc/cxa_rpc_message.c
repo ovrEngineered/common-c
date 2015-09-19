@@ -381,6 +381,13 @@ bool cxa_rpc_message_destination_removeFirstPathComponent(cxa_rpc_message_t *con
 }
 
 
+cxa_fixedByteBuffer_t* cxa_rpc_message_getBuffer(cxa_rpc_message_t *const msgIn)
+{
+	cxa_assert(msgIn);
+	return msgIn->buffer;
+}
+
+
 char* cxa_rpc_message_getFriendlyTypeString(cxa_rpc_message_type_t typeIn)
 {
 	char *retVal = NULL;

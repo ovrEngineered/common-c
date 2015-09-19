@@ -43,6 +43,16 @@
 #define CXA_RPC_ID_MAX						UINT16_MAX
 
 
+/**
+ * @protected
+ * @brief Resets a previously initialized message for use
+ * 		in reception
+ *
+ * @param[in] msgIn the previously initialized message
+ */
+#define cxa_rpc_message_resetForRx(msgIn)							cxa_rpc_message_initEmpty(msgIn, msgIn->buffer)
+
+
 // ******** global type definitions *********
 /**
  * @public
@@ -118,6 +128,8 @@ bool cxa_rpc_message_prependNodeNameToSource(cxa_rpc_message_t *const msgIn, con
 
 bool cxa_rpc_message_destination_getFirstPathComponent(cxa_rpc_message_t *const msgIn, char** pathCompOut, size_t* pathCompLen_bytesOut);
 bool cxa_rpc_message_destination_removeFirstPathComponent(cxa_rpc_message_t *const msgIn);
+
+cxa_fixedByteBuffer_t* cxa_rpc_message_getBuffer(cxa_rpc_message_t *const msgIn);
 
 char* cxa_rpc_message_getFriendlyTypeString(cxa_rpc_message_type_t typeIn);
 
