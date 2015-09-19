@@ -50,7 +50,7 @@ static bool isUpstream(cxa_rpc_nodeRemote_t *const nrIn);
 static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 
-static void messageReceived_cb(cxa_rpc_message_t *const msgIn, void *const userVarIn);
+static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, const size_t dataOffsetIn, cxa_fixedByteBuffer_t *const dataIn, void *const userVarIn);
 
 static void handleLinkManagement_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_message_t *const msgIn);
 static void handleLinkManagement_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_message_t *const msgIn);
@@ -60,7 +60,7 @@ static void handleLinkManagement_downstream(cxa_rpc_nodeRemote_t *const nrIn, cx
 
 
 // ******** global function implementations ********
-void cxa_rpc_nodeRemote_init_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn)
+void cxa_rpc_nodeRemote_init_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn, cxa_timeBase_t *const timeBaseIn)
 {
 	cxa_assert(nrIn);
 	cxa_assert(ioStreamIn);
@@ -76,9 +76,13 @@ void cxa_rpc_nodeRemote_init_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioSt
 	// setup our logger
 	cxa_logger_vinit(&nrIn->super.logger, "rpcNr_us_%p", nrIn);
 
+	// get a message (and buffer) for our protocol parser
+	cxa_rpc_message_t* rxMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
+	cxa_assert(rxMsg);
+
 	// initialize our protocol parser
-	cxa_rpc_protocolParser_init(&nrIn->protocolParser, PROTO_VERSION, ioStreamIn);
-	cxa_rpc_protocolParser_addMessageListener(&nrIn->protocolParser, messageReceived_cb, nrIn);
+	cxa_protocolParser_init(&nrIn->protocolParser, ioStreamIn, cxa_rpc_message_getBuffer(rxMsg), timeBaseIn);
+	cxa_protocolParser_addPacketListener(&nrIn->protocolParser, packetReceived_cb, nrIn);
 }
 
 
@@ -100,9 +104,13 @@ bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_io
 	// setup our logger
 	cxa_logger_vinit(&nrIn->super.logger, "rpcNr_ds_%s", cxa_rpc_node_getName(subNodeIn));
 
+	// get a message (and buffer) for our protocol parser
+	cxa_rpc_message_t* rxMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
+	cxa_assert(rxMsg);
+
 	// initialize our protocol parser
-	cxa_rpc_protocolParser_init(&nrIn->protocolParser, PROTO_VERSION, ioStreamIn);
-	cxa_rpc_protocolParser_addMessageListener(&nrIn->protocolParser, messageReceived_cb, nrIn);
+	cxa_protocolParser_init(&nrIn->protocolParser, ioStreamIn, cxa_rpc_message_getBuffer(rxMsg), timeBaseIn);
+	cxa_protocolParser_addPacketListener(&nrIn->protocolParser, packetReceived_cb, nrIn);
 
 	// set ourselves as the downstream node's parent
 	if( subNodeIn->super.parent != NULL )
@@ -127,6 +135,20 @@ bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_io
 }
 
 
+void cxa_rpc_nodeRemote_deinit(cxa_rpc_nodeRemote_t *const nrIn)
+{
+	cxa_assert(nrIn);
+
+	cxa_rpc_message_t* rxMsg = cxa_rpc_messageFactory_getMessage_byBuffer(cxa_protocolParser_getBuffer(&nrIn->protocolParser));
+	if( rxMsg != NULL )
+	{
+		cxa_protocolParser_setBuffer(&nrIn->protocolParser, NULL);
+
+		if( cxa_rpc_messageFactory_getReferenceCountForMessage(rxMsg) > 0 ) cxa_rpc_messageFactory_decrementMessageRefCount(rxMsg);
+	}
+}
+
+
 bool cxa_rpc_nodeRemote_addLinkListener(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_nodeRemote_cb_linkEstablished_t cb_linkEstablishedIn, void *const userVarIn)
 {
 	cxa_assert(nrIn);
@@ -142,7 +164,7 @@ void cxa_rpc_nodeRemote_update(cxa_rpc_nodeRemote_t *const nrIn)
 	cxa_assert(nrIn);
 
 	// see if we need to try and provision ourselves...
-	if( !isUpstream(nrIn) && !nrIn->isProvisioned && cxa_timeDiff_isElaped_recurring_ms(&nrIn->td_provision, PROVISION_TIMEOUT_MS) && (nrIn->downstreamSubNode != NULL) )
+	if( !isUpstream(nrIn) && !nrIn->isProvisioned && cxa_timeDiff_isElapsed_recurring_ms(&nrIn->td_provision, PROVISION_TIMEOUT_MS) && (nrIn->downstreamSubNode != NULL) )
 	{
 		cxa_rpc_message_t* nameReqMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
 		cxa_linkedField_t* params = NULL;
@@ -158,7 +180,7 @@ void cxa_rpc_nodeRemote_update(cxa_rpc_nodeRemote_t *const nrIn)
 			return;
 		}
 
-		if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, nameReqMsg) )
+		if( !cxa_protocolParser_writePacket(&nrIn->protocolParser, cxa_rpc_message_getBuffer(nameReqMsg)) )
 		{
 			cxa_logger_warn(&nrIn->super.logger, "error writing provisioning request, will retry");
 			cxa_rpc_messageFactory_decrementMessageRefCount(nameReqMsg);
@@ -169,7 +191,7 @@ void cxa_rpc_nodeRemote_update(cxa_rpc_nodeRemote_t *const nrIn)
 		cxa_rpc_messageFactory_decrementMessageRefCount(nameReqMsg);
 	}
 
-	cxa_rpc_protocolParser_update(&nrIn->protocolParser);
+	cxa_protocolParser_update(&nrIn->protocolParser);
 }
 
 
@@ -196,7 +218,7 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 	}
 
 	// we have a message that we need to send via our ioStream
-	if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, msgIn))
+	if( !cxa_protocolParser_writePacket(&nrIn->protocolParser, cxa_rpc_message_getBuffer(msgIn)) )
 	{
 		cxa_logger_warn(&nrIn->super.logger, "handleUpstream(%p): protocolParser reports write error, dropping message", msgIn);
 		return;
@@ -218,7 +240,7 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 	}
 
 	// we have a message that we need to send via our ioStream
-	if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, msgIn))
+	if( !cxa_protocolParser_writePacket(&nrIn->protocolParser, cxa_rpc_message_getBuffer(msgIn)) )
 	{
 		cxa_logger_warn(&nrIn->super.logger, "handleDownstream(%p): protocolParser reports write error, dropping message", msgIn);
 		return false;
@@ -228,40 +250,90 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 }
 
 
-static void messageReceived_cb(cxa_rpc_message_t *const msgIn, void *const userVarIn)
+static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, const size_t dataOffsetIn, cxa_fixedByteBuffer_t *const dataIn, void *const userVarIn)
 {
-	cxa_assert(msgIn);
+	cxa_assert(dataIn);
 	cxa_assert(userVarIn);
 
 	cxa_rpc_nodeRemote_t* nrIn = (cxa_rpc_nodeRemote_t*)userVarIn;
 
+	// verify that this is actually an rpc message
+	cxa_rpc_message_t* rxMsg = cxa_rpc_messageFactory_getMessage_byBuffer(packetIn);
+	if( rxMsg == NULL)
+	{
+		cxa_logger_warn(&nrIn->super.logger, "received message using unknown message buffer, dropping");
+		return;
+	}
+
+	// if we made it here, we should validate the message
+	if( !cxa_rpc_message_validateReceivedBytes(rxMsg, dataOffsetIn, cxa_fixedByteBuffer_getSize_bytes(dataIn)) )
+	{
+		cxa_logger_debug(&nrIn->super.logger, "invalid message received");
+		return;
+	}
+	cxa_logger_trace(&nrIn->super.logger, "message validated successfully");
+
+
 	// check for our exclusive link management messages...
-	char* dest = cxa_rpc_message_getDestination(msgIn);
+	char* dest = cxa_rpc_message_getDestination(rxMsg);
 	if( (dest != NULL) && cxa_stringUtils_equals(dest, LINK_MANAGEMENT_DEST))
 	{
 		// this is a link management message...process locally and discard
 		if( isUpstream(nrIn) )
 		{
-			handleLinkManagement_upstream(nrIn, msgIn);
+			handleLinkManagement_upstream(nrIn, rxMsg);
 		}
 		else
 		{
-			handleLinkManagement_downstream(nrIn, msgIn);
+			handleLinkManagement_downstream(nrIn, rxMsg);
 		}
-		return;
-	}
-
-	// normal operation...depends what side we are on...
-	if( isUpstream(nrIn) )
-	{
-		// pass to our parent for processing
-		cxa_rpc_messageHandler_handleUpstream(nrIn->super.parent, msgIn);
 	}
 	else
 	{
-		// pass to our subNode for processing
-		cxa_rpc_messageHandler_handleDownstream(&nrIn->downstreamSubNode->super, msgIn);
+		// normal operation...depends what side we are on...
+		if( isUpstream(nrIn) )
+		{
+			// pass to our parent for processing
+			cxa_rpc_messageHandler_handleUpstream(nrIn->super.parent, rxMsg);
+		}
+		else
+		{
+			// pass to our subNode for processing
+			cxa_rpc_messageHandler_handleDownstream(&nrIn->downstreamSubNode->super, rxMsg);
+		}
 	}
+
+
+	// we need to check our reference count for our message and get a new one
+	// (if one of our callbacks is still using this rxMsg)
+	uint8_t refCount = cxa_rpc_messageFactory_getReferenceCountForMessage(rxMsg);
+	// make sure there wasn't some weirdness happening
+	if( refCount == 0 )
+	{
+		cxa_logger_warn(&nrIn->super.logger, "over-freed rx buffer (%p)", rxMsg);
+		// this was a warning, but we _should_ still be able to use this message
+		cxa_rpc_message_resetForRx(rxMsg);
+	}
+	else if( refCount == 1 )
+	{
+		// we need to reset our current buffer for re-use
+		cxa_rpc_message_resetForRx(rxMsg);
+	}
+	else
+	{
+		// we need to reserve another buffer (this one is still being used)
+
+		// release _our_ lock on the message
+		cxa_rpc_messageFactory_decrementMessageRefCount(rxMsg);
+
+		// get a new message
+		cxa_rpc_message_t* rxMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
+		if( rxMsg == NULL ) cxa_logger_warn(&nrIn->super.logger, "could not reserve free rx buffer");
+
+		// if we didn't get an rx buffer, protocol parser will become idle automatically
+		cxa_protocolParser_setBuffer(&nrIn->protocolParser, (rxMsg != NULL)? cxa_rpc_message_getBuffer(rxMsg) : NULL);
+	}
+
 }
 
 
@@ -307,7 +379,7 @@ static void handleLinkManagement_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_
 		}
 
 		// our response is ready to go, send it!
-		if( !cxa_rpc_protocolParser_writeMessage(&nrIn->protocolParser, respMsg) )
+		if( !cxa_protocolParser_writePacket(&nrIn->protocolParser, cxa_rpc_message_getBuffer(respMsg)) )
 		{
 			cxa_logger_warn(&nrIn->super.logger, "error writing provision response");
 			cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
