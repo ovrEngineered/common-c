@@ -163,6 +163,13 @@ void cxa_protocolParser_setBuffer(cxa_protocolParser_t *const ppIn, cxa_fixedByt
 }
 
 
+cxa_fixedByteBuffer_t* cxa_protocolParser_getBuffer(cxa_protocolParser_t *const ppIn)
+{
+	cxa_assert(ppIn);
+	return ppIn->currBuffer;
+}
+
+
 bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedByteBuffer_t *const dataIn)
 {
 	cxa_assert(ppIn);
@@ -418,6 +425,7 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 	
 	uint8_t tmpVal8;
 	uint16_t tmpVal16;
+	const size_t dataOffset = 4;
 
 	// make sure our packet is kosher
 	if( (currSize_bytes >= 5) &&
@@ -434,10 +442,10 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 			if( currEntry == NULL ) continue;
 
 			cxa_fixedByteBuffer_t fbb_data;
-			cxa_fixedByteBuffer_init_subBufferFixedSize(&fbb_data, ppIn->currBuffer, 4, (currSize_bytes-5));
+			cxa_fixedByteBuffer_init_subBufferFixedSize(&fbb_data, ppIn->currBuffer, dataOffset, (currSize_bytes-5));
 			if( currEntry->cb != NULL )
 			{
-				currEntry->cb(&fbb_data, currEntry->userVar);
+				currEntry->cb(ppIn->currBuffer, dataOffset, &fbb_data, currEntry->userVar);
 			}
 		}
 	}
