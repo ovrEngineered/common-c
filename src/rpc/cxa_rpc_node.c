@@ -76,7 +76,7 @@ const char *const cxa_rpc_node_getName(cxa_rpc_node_t *const nodeIn)
 {
 	cxa_assert(nodeIn);
 
-	return cxa_rpc_messageHandler_getName(&nodeIn->super);
+	return nodeIn->name;
 }
 
 
@@ -102,7 +102,7 @@ bool cxa_rpc_node_addSubNode(cxa_rpc_node_t *const nodeIn, cxa_rpc_node_t *const
 	if( !cxa_array_append(&nodeIn->subnodes, (void*)&subNodeIn) ) return false;
 	subNodeIn->super.parent = &nodeIn->super;
 
-	cxa_logger_debug(&nodeIn->super.logger, "owns node '%s' @ [%p]", cxa_rpc_messageHandler_getName(&subNodeIn->super), subNodeIn);
+	cxa_logger_debug(&nodeIn->super.logger, "owns node '%s' @ [%p]", subNodeIn->name, subNodeIn);
 
 	return true;
 }
@@ -118,6 +118,7 @@ bool cxa_rpc_node_addSubNode_remote(cxa_rpc_node_t *const nodeIn, cxa_rpc_nodeRe
 	subNodeIn->super.parent = &nodeIn->super;
 
 	cxa_logger_debug(&nodeIn->super.logger, "owns nodeRemote @ [%p]", subNodeIn);
+	cxa_logger_vinit(&subNodeIn->super.logger, "rpcNr_us_%s", cxa_rpc_node_getName(nodeIn));
 
 	return true;
 }
@@ -229,7 +230,8 @@ static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeB
 
 	// initialize our super class and set our name
 	cxa_rpc_messageHandler_init(&nodeIn->super, handleMessage_upstream, handleMessage_downstream);
-	cxa_rpc_messageHandler_provision(&nodeIn->super, nameFmtIn, varArgsIn);
+	vsnprintf(nodeIn->name, CXA_RPC_NODE_MAX_NAME_LEN_BYTES, nameFmtIn, varArgsIn);
+	nodeIn->name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES] = 0;
 
 	// setup our initial state (global roots, by default, are also local roots)
 	nodeIn->super.parent = NULL;
@@ -242,7 +244,7 @@ static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeB
 	cxa_array_initStd(&nodeIn->inflightSyncRequests, nodeIn->inflightSyncRequests_raw);
 
 	// setup our logger
-	cxa_logger_vinit(&nodeIn->super.logger, "rpcNode_%s", cxa_rpc_messageHandler_getName(&nodeIn->super));
+	cxa_logger_vinit(&nodeIn->super.logger, "rpcNode_%s", nodeIn->name);
 }
 
 
@@ -268,14 +270,6 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 	cxa_rpc_node_t* nodeIn = (cxa_rpc_node_t*)handlerIn;
 	if( !msgIn ) return;
 
-	// make sure we have a name
-	const char *const myName = cxa_rpc_messageHandler_getName(handlerIn);
-	if( myName == NULL)
-	{
-		cxa_logger_warn(&nodeIn->super.logger, "node does not have a name, dropping message");
-		return;
-	}
-
 	// get the first path component but don't strip it
 	char* pathComp = NULL;
 	size_t pathCompLen_bytes = 0;
@@ -289,7 +283,7 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 	cxa_logger_debug(&nodeIn->super.logger, "handleUpstream(%p): '%s'", msgIn, pathComp);
 
 	// prepend ourselves
-	cxa_rpc_message_prependNodeNameToSource(msgIn, myName);
+	cxa_rpc_message_prependNodeNameToSource(msgIn, nodeIn->name);
 
 	// depends upon the path component
 	if( strncmp(pathComp, CXA_RPC_PATH_UP_ONE_LEVEL, strlen(CXA_RPC_PATH_UP_ONE_LEVEL)) == 0 )
@@ -375,9 +369,6 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 	cxa_rpc_node_t* nodeIn = (cxa_rpc_node_t*)handlerIn;
 	cxa_assert(msgIn);
 
-	// if we haven't been provisioned, we can't do anything
-	if( !handlerIn->isProvisioned ) return false;
-
 	// if we made it here, get the first path component and strip it
 	char* pathComp = NULL;
 	size_t pathCompLen_bytes = 0;
@@ -390,7 +381,7 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 	}
 
 	// if we made it here, we have a name and we got a path component...see if it was meant for us...
-	if( !cxa_stringUtils_startsWith(pathComp, handlerIn->name) ) return false;
+	if( !cxa_stringUtils_startsWith(pathComp, nodeIn->name) ) return false;
 
 	cxa_logger_debug(&nodeIn->super.logger, "handleDownstream(%p): '%s'", msgIn, pathComp);
 

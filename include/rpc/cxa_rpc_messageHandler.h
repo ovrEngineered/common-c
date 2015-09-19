@@ -36,11 +36,6 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_RPC_NODE_MAX_NAME_LEN_BYTES
-	#define CXA_RPC_NODE_MAX_NAME_LEN_BYTES				10
-#endif
-
-
 #define cxa_rpc_messageHandler_handleUpstream(handlerIn, msgIn)			if( (handlerIn)->cb_upstream != NULL ) (handlerIn)->cb_upstream((handlerIn), (msgIn))
 #define cxa_rpc_messageHandler_handleDownstream(handlerIn, msgIn)		(((handlerIn)->cb_downstream != NULL) ? (handlerIn)->cb_downstream((handlerIn), (msgIn)) : false)
 
@@ -86,9 +81,6 @@ typedef bool (*cxa_rpc_messageHandler_cb_handleDownstream_t)(cxa_rpc_messageHand
  */
 struct cxa_rpc_messageHandler
 {
-	bool isProvisioned;
-	char name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES+1];
-
 	cxa_rpc_messageHandler_cb_handleUpstream_t cb_upstream;
 	cxa_rpc_messageHandler_cb_handleDownstream_t cb_downstream;
 
@@ -99,11 +91,6 @@ struct cxa_rpc_messageHandler
 
 // ******** global function prototypes ********
 void cxa_rpc_messageHandler_init(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_messageHandler_cb_handleUpstream_t cb_upstreamIn, cxa_rpc_messageHandler_cb_handleDownstream_t cb_downstreamIn);
-
-const char *const cxa_rpc_messageHandler_getName(cxa_rpc_messageHandler_t *const handlerIn);
-
-bool cxa_rpc_messageHandler_isProvisioned(cxa_rpc_messageHandler_t *const handlerIn);
-void cxa_rpc_messageHandler_provision(cxa_rpc_messageHandler_t *const handlerIn, const char *nameFmtIn, va_list varArgsIn);
 
 
 #endif // CXA_RPC_MESSAGE_HANDLER_H_

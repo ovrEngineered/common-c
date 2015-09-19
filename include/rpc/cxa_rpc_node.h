@@ -38,6 +38,10 @@
 
 
 // ******** global macro definitions ********
+#ifndef CXA_RPC_NODE_MAX_NAME_LEN_BYTES
+	#define CXA_RPC_NODE_MAX_NAME_LEN_BYTES				10
+#endif
+
 #ifndef CXA_RPC_NODE_MAX_NUM_SUBNODES
 	#define CXA_RPC_NODE_MAX_NUM_SUBNODES				5
 #endif
@@ -92,6 +96,8 @@ typedef struct
 struct cxa_rpc_node
 {
 	cxa_rpc_messageHandler_t super;
+
+	char name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES+1];
 
 	bool isGlobalRoot;
 	bool isLocalRoot;
