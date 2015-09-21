@@ -337,7 +337,7 @@ bool cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fb
 			if( fputs(" ", fileIn) < 0 ) return false;
 		}
 	}
-	if( fputs(" }\r\n", fileIn) < 0 ) return false;
+	if( fputs(" }" CXA_LINE_ENDING, fileIn) < 0 ) return false;
 
 	return true;
 }
