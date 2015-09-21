@@ -41,7 +41,7 @@
 
 
 // ********  local variable declarations *********
-#ifdef CXA_ASSERT_FILE_ENABLE
+#if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
 static FILE *fd_msg = NULL;
 #endif
 static cxa_assert_cb_t cb = NULL;
@@ -51,7 +51,7 @@ static cxa_assert_cb_t cb = NULL;
 
 
 // ******** global function implementations ********
-#ifdef CXA_ASSERT_FILE_ENABLE
+#if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
 void cxa_assert_setFileDescriptor(FILE *fileIn)
 {
 	fd_msg = fileIn;
@@ -76,7 +76,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 #ifdef CXA_ASSERT_LINE_NUM_ENABLE
 	void cxa_assert_impl(const char *fileIn, const long int lineIn)
 	{
-        #ifdef CXA_ASSERT_FILE_ENABLE
+        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
             if( fd_msg != NULL )
             {
                 fprintf(fd_msg, CXA_LINE_ENDING "%s" CXA_LINE_ENDING "%s%s:%ld" CXA_LINE_ENDING,
@@ -87,9 +87,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
                 fflush(fd_msg);
             }
         #endif
-                
+
 		if( cb != NULL ) cb();
-		
+
 		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
 			if( gpio != NULL )
 			{
@@ -107,7 +107,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 #else
 	void cxa_assert_impl(void)
 	{
-        #ifdef CXA_ASSERT_FILE_ENABLE
+        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
             if( fd_msg != NULL )
             {
                 fputs(CXA_LINE_ENDING, fd_msg);
@@ -116,9 +116,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
                 fflush(fd_msg);
             }
         #endif
-            
+
 		if( cb != NULL ) cb();
-		
+
 		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
 			if( gpio != NULL )
 			{
@@ -139,7 +139,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 #if defined (CXA_ASSERT_MSG_ENABLE) && defined (CXA_ASSERT_LINE_NUM_ENABLE)
 	void cxa_assert_impl_msg(const char *msgIn, const char *fileIn, const long int lineIn)
 	{
-        #ifdef CXA_ASSERT_FILE_ENABLE
+        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
             if( fd_msg != NULL )
             {
                 fprintf(fd_msg, CXA_LINE_ENDING "%s" CXA_LINE_ENDING "%s%s:%ld" CXA_LINE_ENDING "%s%s",
@@ -152,9 +152,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
                 fflush(fd_msg);
             }
         #endif
-            
+
 		if( cb != NULL ) cb();
-		
+
 		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
 			if( gpio != NULL )
 			{
@@ -172,7 +172,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 #elif defined (CXA_ASSERT_MSG_ENABLE) && !(defined (CXA_ASSERT_LINE_NUM_ENABLE))
 	void cxa_assert_impl_msg(const char *msgIn)
 	{
-        #ifdef CXA_ASSERT_FILE_ENABLE
+        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
             if( fd_msg != NULL )
             {
                 fputs(CXA_LINE_ENDING " ", fd_msg);
@@ -184,9 +184,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
                 fflush(fd_msg);
             }
         #endif
-            
+
 		if( cb != NULL ) cb();
-		
+
 		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
 			if( gpio != NULL )
 			{
@@ -207,4 +207,3 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 
 
 // ******** local function implementations ********
-
