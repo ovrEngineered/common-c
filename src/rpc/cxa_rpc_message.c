@@ -54,7 +54,7 @@ void cxa_rpc_message_initEmpty(cxa_rpc_message_t *const msgIn, cxa_fixedByteBuff
 }
 
 
-bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const size_t startingIndexIn, const size_t len_bytesIn)
+bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const size_t dataOffsetIn, const size_t dataLen_bytesIn)
 {
 	cxa_assert(msgIn);
 
@@ -62,7 +62,7 @@ bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const
 	msgIn->areFieldsConfigured = true;
 
 	// setup our linkedFields
-	if( !cxa_linkedField_initRoot_fixedLen(&msgIn->type, msgIn->buffer, startingIndexIn, 1) ) { msgIn->areFieldsConfigured = false; return false; }
+	if( !cxa_linkedField_initRoot_fixedLen(&msgIn->type, msgIn->buffer, dataOffsetIn, 1) ) { msgIn->areFieldsConfigured = false; return false; }
 
 	// check our message type
 	cxa_rpc_message_type_t msgType = cxa_rpc_message_getType(msgIn);
@@ -89,7 +89,7 @@ bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const
 			if( !cxa_linkedField_initChild_fixedLen(&msgIn->id, &msgIn->src, ID_LEN_BYTES) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			// finally, our params
-			if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->id, (len_bytesIn - cxa_linkedField_getStartIndexOfNextField(&msgIn->id))) ) { msgIn->areFieldsConfigured = false; return false; }
+			if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->id, ((dataOffsetIn+dataLen_bytesIn) - cxa_linkedField_getStartIndexOfNextField(&msgIn->id))) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			break;
 		}
@@ -113,7 +113,7 @@ bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const
 			if( !cxa_linkedField_initChild_fixedLen(&msgIn->returnValue, &msgIn->src, 1) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			// finally, our params
-			if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->returnValue, (len_bytesIn - cxa_linkedField_getStartIndexOfNextField(&msgIn->returnValue))) ) { msgIn->areFieldsConfigured = false; return false; }
+			if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->returnValue, ((dataOffsetIn+dataLen_bytesIn) - cxa_linkedField_getStartIndexOfNextField(&msgIn->returnValue))) ) { msgIn->areFieldsConfigured = false; return false; }
 
 			break;
 		}
@@ -161,7 +161,7 @@ bool cxa_rpc_message_initRequest(cxa_rpc_message_t *const msgIn, const char *con
 }
 
 
-bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, CXA_RPC_ID_DATATYPE reqIdIn)
+bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *const reqSrcIn, CXA_RPC_ID_DATATYPE reqIdIn, cxa_rpc_method_retVal_t returnValIn)
 {
 	cxa_assert(msgIn);
 	cxa_assert(reqSrcIn);
@@ -182,7 +182,7 @@ bool cxa_rpc_message_initResponse(cxa_rpc_message_t *const msgIn, const char *co
 	if( !cxa_linkedField_initChild(&msgIn->src, &msgIn->id, 0) ) return false;
 
 	// return value
-	if( !cxa_linkedField_initChild_fixedLen(&msgIn->returnValue, &msgIn->src, 1) || !cxa_linkedField_append_uint8(&msgIn->returnValue, CXA_RPC_METHOD_RETVAL_UNKNOWN) ) return false;
+	if( !cxa_linkedField_initChild_fixedLen(&msgIn->returnValue, &msgIn->src, 1) || !cxa_linkedField_append_uint8(&msgIn->returnValue, returnValIn) ) return false;
 
 	// finally, the params
 	if( !cxa_linkedField_initChild(&msgIn->params, &msgIn->returnValue, 0) ) return false;
@@ -378,6 +378,13 @@ bool cxa_rpc_message_destination_removeFirstPathComponent(cxa_rpc_message_t *con
 
 	// if we made it here, something messed up
 	return false;
+}
+
+
+cxa_fixedByteBuffer_t* cxa_rpc_message_getBuffer(cxa_rpc_message_t *const msgIn)
+{
+	cxa_assert(msgIn);
+	return msgIn->buffer;
 }
 
 

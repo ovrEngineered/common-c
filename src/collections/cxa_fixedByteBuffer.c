@@ -175,6 +175,22 @@ bool cxa_fixedByteBuffer_get_cString(cxa_fixedByteBuffer_t *const fbbIn, const s
 }
 
 
+bool cxa_fixedByteBuffer_get_cString_inPlace(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, char** stringOut, size_t *strLen_bytesOut)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have enough bytes in the buffer for this operation
+	char* targetString = (char*)cxa_array_get(&fbbIn->bytes, indexIn);
+	if( targetString == NULL) return false;
+
+	// set our output parameters
+	if( stringOut != NULL ) *stringOut = targetString;
+	if( strLen_bytesOut != NULL ) *strLen_bytesOut = strlen(targetString);
+
+	return true;
+}
+
+
 bool cxa_fixedByteBuffer_replace(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn)
 {
 	cxa_assert(fbbIn);
@@ -321,7 +337,7 @@ bool cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fb
 			if( fputs(" ", fileIn) < 0 ) return false;
 		}
 	}
-	if( fputs(" }\r\n", fileIn) < 0 ) return false;
+	if( fputs(" }" CXA_LINE_ENDING, fileIn) < 0 ) return false;
 
 	return true;
 }

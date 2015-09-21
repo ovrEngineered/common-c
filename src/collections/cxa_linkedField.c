@@ -246,6 +246,22 @@ bool cxa_linkedField_get_cstring(cxa_linkedField_t *const fbbLfIn, const size_t 
 }
 
 
+bool cxa_linkedField_get_cstring_inPlace(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char ** stringOut, size_t *strLen_bytesOut)
+{
+	cxa_assert(fbbLfIn);
+
+	// ensure our chain is valid
+	if( !validateChain(fbbLfIn, true) ) return false;
+
+	// get our target string
+	char* targetString = (char*)cxa_linkedField_get_pointerToIndex(fbbLfIn, indexIn);
+	if( targetString == NULL ) return false;
+
+	size_t parentIndex = getStartIndexInParent(fbbLfIn, true) + indexIn;
+	return cxa_fixedByteBuffer_get_cString_inPlace(fbbLfIn->parent, parentIndex, stringOut, strLen_bytesOut);
+}
+
+
 bool cxa_linkedField_replace(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn)
 {
 	cxa_assert(fbbLfIn);

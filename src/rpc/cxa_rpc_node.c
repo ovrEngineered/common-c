@@ -30,6 +30,7 @@
 #include <cxa_timeDiff.h>
 #include <cxa_rpc_nodeRemote.h>
 #include <cxa_backgroundUpdater.h>
+#include <cxa_stringUtils.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
@@ -43,8 +44,9 @@
 
 // ******** local function prototypes ********
 static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeBaseIn, bool isGlobalRootIn, const char *nameFmtIn, va_list varArgsIn);
+static bool setRequestIdIfNeeded(cxa_rpc_node_t *const nodeIn, cxa_rpc_message_t *const msgIn);
 static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
-static void handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
+static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_message_t *const msgIn);
 
 
@@ -74,7 +76,7 @@ const char *const cxa_rpc_node_getName(cxa_rpc_node_t *const nodeIn)
 {
 	cxa_assert(nodeIn);
 
-	return cxa_rpc_messageHandler_getName(&nodeIn->super);
+	return nodeIn->name;
 }
 
 
@@ -85,14 +87,14 @@ bool cxa_rpc_node_addSubNode(cxa_rpc_node_t *const nodeIn, cxa_rpc_node_t *const
 
 	if( subNodeIn->super.parent != NULL )
 	{
-		cxa_logger_warn(&nodeIn->logger, "attempted subnode %p already has parent", subNodeIn);
+		cxa_logger_warn(&nodeIn->super.logger, "attempted subnode %p already has parent", subNodeIn);
 		return false;
 	}
 
 	// make sure we're not trying to add the global root as a subnode
 	if( subNodeIn->isGlobalRoot )
 	{
-		cxa_logger_warn(&nodeIn->logger, "cannot add the global root as a subnode");
+		cxa_logger_warn(&nodeIn->super.logger, "cannot add the global root as a subnode");
 		return false;
 	}
 
@@ -100,7 +102,7 @@ bool cxa_rpc_node_addSubNode(cxa_rpc_node_t *const nodeIn, cxa_rpc_node_t *const
 	if( !cxa_array_append(&nodeIn->subnodes, (void*)&subNodeIn) ) return false;
 	subNodeIn->super.parent = &nodeIn->super;
 
-	cxa_logger_debug(&nodeIn->logger, "owns node '%s' @ [%p]", cxa_rpc_messageHandler_getName(&subNodeIn->super), subNodeIn);
+	cxa_logger_debug(&nodeIn->super.logger, "owns node '%s' @ [%p]", subNodeIn->name, subNodeIn);
 
 	return true;
 }
@@ -115,7 +117,8 @@ bool cxa_rpc_node_addSubNode_remote(cxa_rpc_node_t *const nodeIn, cxa_rpc_nodeRe
 	if( !cxa_array_append(&nodeIn->subnodes, (void*)&subNodeIn) ) return false;
 	subNodeIn->super.parent = &nodeIn->super;
 
-	cxa_logger_debug(&nodeIn->logger, "owns nodeRemote @ [%p]", subNodeIn);
+	cxa_logger_debug(&nodeIn->super.logger, "owns nodeRemote @ [%p]", subNodeIn);
+	cxa_logger_vinit(&subNodeIn->super.logger, "rpcNr_us_%s", cxa_rpc_node_getName(nodeIn));
 
 	return true;
 }
@@ -146,21 +149,16 @@ void cxa_rpc_node_sendMessage_async(cxa_rpc_node_t *const nodeIn, cxa_rpc_messag
 	switch( cxa_rpc_message_getType(msgIn) )
 	{
 		case CXA_RPC_MESSAGE_TYPE_REQUEST:
-			// set the ID if needed
-			if(cxa_rpc_message_getId(msgIn) == 0 )
-			{
-				if( !cxa_rpc_message_setId(msgIn, nodeIn->currId) ) return;
-				nodeIn->currId = (nodeIn->currId == CXA_RPC_ID_MAX) ? 1 : nodeIn->currId+1;
-			}
-			cxa_logger_debug(&nodeIn->logger, "sending request with id %u", cxa_rpc_message_getId(msgIn));
+			if( !setRequestIdIfNeeded(nodeIn, msgIn) ) return;
+			cxa_logger_debug(&nodeIn->super.logger, "sending request with id %u", cxa_rpc_message_getId(msgIn));
 			break;
 
 		case CXA_RPC_MESSAGE_TYPE_RESPONSE:
-			cxa_logger_debug(&nodeIn->logger, "sending response with id %u", cxa_rpc_message_getId(msgIn));
+			cxa_logger_debug(&nodeIn->super.logger, "sending response with id %u", cxa_rpc_message_getId(msgIn));
 			break;
 
 		default:
-			cxa_logger_warn(&nodeIn->logger, "refusing to send message with unknown type");
+			cxa_logger_warn(&nodeIn->super.logger, "refusing to send message with unknown type");
 			return;
 	}
 
@@ -175,6 +173,9 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 
 	cxa_rpc_message_type_t msgType = cxa_rpc_message_getType(msgIn);
 	if( msgType != CXA_RPC_MESSAGE_TYPE_REQUEST ) return NULL;
+
+	// set our ID BEFORE we send the message so we can have a proper inflight entry
+	if( !setRequestIdIfNeeded(nodeIn, msgIn) ) return NULL;
 
 	// create a new inflight request entry and add to our list
 	cxa_rpc_node_inflightSyncRequestEntry_t *newEntry = cxa_array_append_empty(&nodeIn->inflightSyncRequests);
@@ -195,9 +196,9 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 		{
 			if( !cxa_array_remove(&nodeIn->inflightSyncRequests, newEntry) )
 			{
-				cxa_logger_warn(&nodeIn->logger, "error removing inflightSyncReq after timeout");
+				cxa_logger_warn(&nodeIn->super.logger, "error removing inflightSyncReq after timeout");
 			}
-			cxa_logger_debug(&nodeIn->logger, "request id %lu timed out", cxa_rpc_message_getId(msgIn));
+			cxa_logger_debug(&nodeIn->super.logger, "request id %lu timed out", cxa_rpc_message_getId(msgIn));
 			return NULL;
 		}
 
@@ -205,13 +206,13 @@ cxa_rpc_message_t* cxa_rpc_node_sendRequest_sync(cxa_rpc_node_t *const nodeIn, c
 		cxa_backgroundUpdater_update();
 	}
 
-	cxa_logger_debug(&nodeIn->logger, "sync transaction id %lu complete", cxa_rpc_message_getId(msgIn));
+	cxa_logger_debug(&nodeIn->super.logger, "sync transaction id %lu complete", cxa_rpc_message_getId(msgIn));
 
 	// if we made it here, we have a response!
 	cxa_rpc_message_t* retVal = newEntry->response;
 	if( !cxa_array_remove(&nodeIn->inflightSyncRequests, newEntry) )
 	{
-		cxa_logger_warn(&nodeIn->logger, "error removing inflightSyncReq after rx");
+		cxa_logger_warn(&nodeIn->super.logger, "error removing inflightSyncReq after rx");
 	}
 
 	// at this point, the message should have been reserved by us in handleDownstream
@@ -229,7 +230,8 @@ static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeB
 
 	// initialize our super class and set our name
 	cxa_rpc_messageHandler_init(&nodeIn->super, handleMessage_upstream, handleMessage_downstream);
-	cxa_rpc_messageHandler_setName(&nodeIn->super, nameFmtIn, varArgsIn);
+	vsnprintf(nodeIn->name, CXA_RPC_NODE_MAX_NAME_LEN_BYTES, nameFmtIn, varArgsIn);
+	nodeIn->name[CXA_RPC_NODE_MAX_NAME_LEN_BYTES] = 0;
 
 	// setup our initial state (global roots, by default, are also local roots)
 	nodeIn->super.parent = NULL;
@@ -242,7 +244,23 @@ static void commonInit(cxa_rpc_node_t *const nodeIn, cxa_timeBase_t *const timeB
 	cxa_array_initStd(&nodeIn->inflightSyncRequests, nodeIn->inflightSyncRequests_raw);
 
 	// setup our logger
-	cxa_logger_vinit(&nodeIn->logger, "rpcNode_%s", cxa_rpc_messageHandler_getName(&nodeIn->super));
+	cxa_logger_vinit(&nodeIn->super.logger, "rpcNode_%s", nodeIn->name);
+}
+
+
+static bool setRequestIdIfNeeded(cxa_rpc_node_t *const nodeIn, cxa_rpc_message_t *const msgIn)
+{
+	cxa_assert(nodeIn);
+	cxa_assert(msgIn);
+
+	// set the ID if needed
+	if(cxa_rpc_message_getId(msgIn) == 0 )
+	{
+		if( !cxa_rpc_message_setId(msgIn, nodeIn->currId) ) return false;
+		nodeIn->currId = (nodeIn->currId == CXA_RPC_ID_MAX) ? 1 : nodeIn->currId+1;
+	}
+
+	return true;
 }
 
 
@@ -252,28 +270,20 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 	cxa_rpc_node_t* nodeIn = (cxa_rpc_node_t*)handlerIn;
 	if( !msgIn ) return;
 
-	// make sure we have a name
-	const char *const myName = cxa_rpc_messageHandler_getName(handlerIn);
-	if( myName == NULL)
-	{
-		cxa_logger_warn(&nodeIn->logger, "node does not have a name, dropping message");
-		return;
-	}
-
 	// get the first path component but don't strip it
 	char* pathComp = NULL;
 	size_t pathCompLen_bytes = 0;
 	if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &pathCompLen_bytes) ||
 			(pathComp == NULL) || (pathCompLen_bytes == 0) )
 	{
-		cxa_logger_trace(&nodeIn->logger, "handleUpstream(%p): unable to parse path component, dropping message", msgIn);
+		cxa_logger_trace(&nodeIn->super.logger, "handleUpstream(%p): unable to parse path component, dropping message", msgIn);
 		return;
 	}
 
-	cxa_logger_debug(&nodeIn->logger, "handleUpstream(%p): '%s'", msgIn, pathComp);
+	cxa_logger_debug(&nodeIn->super.logger, "handleUpstream(%p): '%s'", msgIn, pathComp);
 
 	// prepend ourselves
-	cxa_rpc_message_prependNodeNameToSource(msgIn, myName);
+	cxa_rpc_message_prependNodeNameToSource(msgIn, nodeIn->name);
 
 	// depends upon the path component
 	if( strncmp(pathComp, CXA_RPC_PATH_UP_ONE_LEVEL, strlen(CXA_RPC_PATH_UP_ONE_LEVEL)) == 0 )
@@ -282,7 +292,7 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 		if( !cxa_rpc_message_destination_removeFirstPathComponent(msgIn) ) return;
 
 		if( nodeIn->super.parent != NULL ) { cxa_rpc_messageHandler_handleUpstream(nodeIn->super.parent, msgIn); }
-		else { cxa_logger_trace(&nodeIn->logger, "handleUpstream(%p): no parent for UOL, dropping message", msgIn); }
+		else { cxa_logger_trace(&nodeIn->super.logger, "handleUpstream(%p): no parent for UOL, dropping message", msgIn); }
 
 		return;
 	}
@@ -293,7 +303,7 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 		{
 			// we are not global root...pass it up, then bail
 			if( nodeIn->super.parent != NULL ) { cxa_rpc_messageHandler_handleUpstream(nodeIn->super.parent, msgIn); }
-			else { cxa_logger_trace(&nodeIn->logger, "handleUpstream(%p): no parent for GR, dropping message", msgIn); }
+			else { cxa_logger_trace(&nodeIn->super.logger, "handleUpstream(%p): no parent for GR, dropping message", msgIn); }
 
 			return;
 		}
@@ -305,7 +315,7 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 					(pathComp == NULL) || (pathCompLen_bytes == 0) )
 		{
 			// there's no more destination components...this must have been meant for us...
-			cxa_logger_debug(&nodeIn->logger, "handleUpstream(%p): msg reached dest, processing", msgIn);
+			cxa_logger_debug(&nodeIn->super.logger, "handleUpstream(%p): msg reached dest, processing", msgIn);
 			handleMessage_atDestination(nodeIn, msgIn);
 			return;
 		}
@@ -319,7 +329,7 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 		{
 			// we are not local root...pass it up, then bail
 			if( nodeIn->super.parent != NULL ) { cxa_rpc_messageHandler_handleUpstream(nodeIn->super.parent, msgIn); }
-			else { cxa_logger_trace(&nodeIn->logger, "handleUpstream(%p): no parent for LR, dropping message", msgIn); }
+			else { cxa_logger_trace(&nodeIn->super.logger, "handleUpstream(%p): no parent for LR, dropping message", msgIn); }
 
 			return;
 		}
@@ -331,7 +341,7 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 					(pathComp == NULL) || (pathCompLen_bytes == 0) )
 		{
 			// there's no more destination components...this must have been meant for us...
-			cxa_logger_debug(&nodeIn->logger, "handleUpstream(%p): msg reached dest, processing", msgIn);
+			cxa_logger_debug(&nodeIn->super.logger, "handleUpstream(%p): msg reached dest, processing", msgIn);
 			handleMessage_atDestination(nodeIn, msgIn);
 			return;
 		}
@@ -339,77 +349,68 @@ static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cx
 		// we got a local node name...process below
 	}
 
-	// if we made it here, we need to process a local nodeName...
+	// if we made it here, we're going to start moving downstream
 	cxa_array_iterate(&nodeIn->subnodes, currSubHandler, cxa_rpc_messageHandler_t*)
 	{
 		if( currSubHandler == NULL) continue;
 
-		// make sure the node has a name
-		const char *const currSubHandlerName = cxa_rpc_messageHandler_getName((*currSubHandler));
-		if( currSubHandlerName == NULL ) continue;
-
-		// we've got a name for this subNode/subHandler...compare
-		if( strncmp(pathComp, currSubHandlerName, pathCompLen_bytes) == 0 )
-		{
-			// we have a match for the node name...start going down stream
-			if( !cxa_rpc_message_destination_removeFirstPathComponent(msgIn) ) return;
-
-			cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn);
-
-			return;
-		}
+		// if our subnode handled it, stop iterating!
+		if( cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn) ) return;
 	}
 
 	// if we made it here, we failed
-	cxa_logger_trace(&nodeIn->logger, "handleUpstream(%p): unable to route '%s'", msgIn, pathComp);
+	cxa_logger_trace(&nodeIn->super.logger, "handleUpstream(%p): unable to route '%s'", msgIn, pathComp);
 }
 
 
-static void handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn)
+static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn)
 {
 	cxa_assert(handlerIn);
 	cxa_rpc_node_t* nodeIn = (cxa_rpc_node_t*)handlerIn;
 	cxa_assert(msgIn);
 
-	// get the first path component and strip it
+	// if we made it here, get the first path component and strip it
 	char* pathComp = NULL;
 	size_t pathCompLen_bytes = 0;
 	if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &pathCompLen_bytes) ||
 				(pathComp == NULL) || (pathCompLen_bytes == 0) )
 	{
-		// couldn't parse a path component...must have been meant for us
-		cxa_logger_debug(&nodeIn->logger, "handleDownstream(%p): msg reached dest, processing", msgIn);
-		handleMessage_atDestination(nodeIn, msgIn);
-		return;
+		// couldn't parse a path component...that's an issue
+		cxa_logger_debug(&nodeIn->super.logger, "handleDownstream(%p): no path component, dropping message", msgIn);
+		return false;
 	}
 
-	cxa_logger_debug(&nodeIn->logger, "handleDownstream(%p): '%s'", msgIn, pathComp);
+	// if we made it here, we have a name and we got a path component...see if it was meant for us...
+	if( !cxa_stringUtils_startsWith(pathComp, nodeIn->name) ) return false;
 
-	// if we made it here, it wasn't meant for us...it was meant for a subnode
+	cxa_logger_debug(&nodeIn->super.logger, "handleDownstream(%p): '%s'", msgIn, pathComp);
 
-	// process a local node name
+	// if we made it here, this message was meant for us...remove our path component and proceed
+	// from this point forward we MUST return true (since we changed the message)
+	if( !cxa_rpc_message_destination_removeFirstPathComponent(msgIn) ) return false;
+
+	// see if there is another path component
+	if( !cxa_rpc_message_destination_getFirstPathComponent(msgIn, &pathComp, &pathCompLen_bytes) ||
+					(pathComp == NULL) || (pathCompLen_bytes == 0) )
+	{
+		// no more path components, this is bound for us!
+		cxa_logger_debug(&nodeIn->super.logger, "handleDownstream(%p): msg reached dest, processing", msgIn);
+		handleMessage_atDestination(nodeIn, msgIn);
+		return true;
+	}
+
+	// if we made it here, there are additional path components...pass to our subHandlers
 	cxa_array_iterate(&nodeIn->subnodes, currSubHandler, cxa_rpc_messageHandler_t*)
 	{
 		if( currSubHandler == NULL) continue;
 
-		// make sure the node has a name
-		const char *const currSubHandlerName = cxa_rpc_messageHandler_getName((*currSubHandler));
-		if( currSubHandlerName == NULL ) continue;
-
-		// we've got a name for this subNode/subHandler...compare
-		if( strncmp(pathComp, currSubHandlerName, pathCompLen_bytes) == 0 )
-		{
-			// we have a match for the node name...start going down stream
-			if( !cxa_rpc_message_destination_removeFirstPathComponent(msgIn) ) return;
-
-			cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn);
-
-			return;
-		}
+		// if our subnode handled it, stop iterating!
+		if( cxa_rpc_messageHandler_handleDownstream(*currSubHandler, msgIn) ) return true;
 	}
 
-	// if we made it here, we failed
-	cxa_logger_trace(&nodeIn->logger, "handleDownStream(%p): unable to route '%s'", msgIn, pathComp);
+	// if we made it here, we couldn't find the proper subhandler...(but it was meant for us)
+	cxa_logger_trace(&nodeIn->super.logger, "handleDownStream(%p): unable to route '%s'", msgIn, pathComp);
+	return true;
 }
 
 
@@ -425,7 +426,7 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 			char* methodNameIn = cxa_rpc_message_getMethod(msgIn);
 			if( methodNameIn == NULL)
 			{
-				cxa_logger_trace(&nodeIn->logger, "atDest(%p): unable to parse method, dropping message", msgIn);
+				cxa_logger_trace(&nodeIn->super.logger, "atDest(%p): unable to parse method, dropping message", msgIn);
 				return;
 			}
 
@@ -433,13 +434,13 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 			{
 				if( strcmp(methodNameIn, currMethod->name) == 0 )
 				{
-					cxa_logger_trace(&nodeIn->logger, "atDest(%p): found method '%s'", msgIn, methodNameIn);
+					cxa_logger_trace(&nodeIn->super.logger, "atDest(%p): found method '%s'", msgIn, methodNameIn);
 
 					// we found the method...setup our response message
 					cxa_rpc_message_t* respMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
-					if( !cxa_rpc_message_initResponse(respMsg, cxa_rpc_message_getSource(msgIn), cxa_rpc_message_getId(msgIn)))
+					if( (respMsg == NULL) || !cxa_rpc_message_initResponse(respMsg, cxa_rpc_message_getSource(msgIn), cxa_rpc_message_getId(msgIn), CXA_RPC_METHOD_RETVAL_UNKNOWN) )
 					{
-						cxa_logger_warn(&nodeIn->logger, "atDest(%p): error initializing response", msgIn);
+						cxa_logger_warn(&nodeIn->super.logger, "atDest(%p): error initializing response", msgIn);
 						cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
 						return;
 					}
@@ -448,7 +449,7 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 					cxa_rpc_method_retVal_t methodRetVal = false;
 					if( currMethod->cb != NULL)
 					{
-						cxa_logger_debug(&nodeIn->logger, "atDest(%p): executing method '%s'", msgIn, methodNameIn);
+						cxa_logger_debug(&nodeIn->super.logger, "atDest(%p): executing method '%s'", msgIn, methodNameIn);
 
 						methodRetVal = currMethod->cb(cxa_rpc_message_getParams(msgIn), cxa_rpc_message_getParams(respMsg), currMethod->userVar);
 					}
@@ -456,13 +457,13 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 					// set our return value
 					if( !cxa_rpc_message_setReturnValue(respMsg, methodRetVal) )
 					{
-						cxa_logger_warn(&nodeIn->logger, "atDest(%p): error setting wasSuccessful response value", msgIn);
+						cxa_logger_warn(&nodeIn->super.logger, "atDest(%p): error setting wasSuccessful response value", msgIn);
 						cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);
 						return;
 					}
 
 					// send our response
-					cxa_logger_debug(&nodeIn->logger, "atDest(%p): sending response %p", msgIn, respMsg);
+					cxa_logger_debug(&nodeIn->super.logger, "atDest(%p): sending response %p", msgIn, respMsg);
 					cxa_rpc_node_sendMessage_async(nodeIn, respMsg);
 
 					// free our hold on the response
@@ -472,14 +473,14 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 			}
 
 			// if we made it here, we failed
-			cxa_logger_trace(&nodeIn->logger, "atDest(%p): unknown method '%s', dropping message", msgIn, methodNameIn);
+			cxa_logger_trace(&nodeIn->super.logger, "atDest(%p): unknown method '%s', dropping message", msgIn, methodNameIn);
 			return;
 		}
 
 		case CXA_RPC_MESSAGE_TYPE_RESPONSE:
 		{
 			CXA_RPC_ID_DATATYPE respId = cxa_rpc_message_getId(msgIn);
-			cxa_logger_debug(&nodeIn->logger, "atDest(%p): received response id %d", msgIn, respId);
+			cxa_logger_debug(&nodeIn->super.logger, "atDest(%p): received response id %d", msgIn, respId);
 
 			// look through our inflight requests to see if we have anything outstanding
 			cxa_array_iterate(&nodeIn->inflightSyncRequests, currReq, cxa_rpc_node_inflightSyncRequestEntry_t)
@@ -487,7 +488,7 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 				if( currReq->id == respId )
 				{
 					// we found our request...save off this response
-					cxa_logger_debug(&nodeIn->logger, "atDest(%p): found sync transaction for id %d", msgIn, respId);
+					cxa_logger_debug(&nodeIn->super.logger, "atDest(%p): found sync transaction for id %d", msgIn, respId);
 
 					cxa_rpc_messageFactory_incrementMessageRefCount(msgIn);
 					currReq->response = msgIn;
@@ -495,7 +496,7 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 				}
 			}
 
-			cxa_logger_trace(&nodeIn->logger, "atDest(%p): no sync transaction found for id %d, dropping message", msgIn, respId);
+			cxa_logger_trace(&nodeIn->super.logger, "atDest(%p): no sync transaction found for id %d, dropping message", msgIn, respId);
 
 			break;
 		}

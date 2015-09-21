@@ -56,10 +56,13 @@ static dataType_string_mapEntry_t DT_STRING_MAP[] =
 // ******** global function implementations ********
 bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn)
 {
-	if( (targetStringIn == NULL) || (prefixStringIn == NULL) ) return false;
+	// if one is false and the other isn't, we can't compare
+	if( (targetStringIn == NULL) != (prefixStringIn == NULL) ) return false;
+	// if they're both NULL, they're equal
+	if( (targetStringIn == NULL) && (prefixStringIn == NULL) ) return true;
 
 	// make sure we have enough chars in our target string
-	if( strlen(targetStringIn) < strlen(prefixStringIn) ) return false;
+	if( strlen(prefixStringIn) > strlen(targetStringIn) ) return false;
 
 	// iterate our characters
 	for( size_t i = 0; i < strlen(prefixStringIn); i++ )
@@ -80,11 +83,30 @@ bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn)
 }
 
 
-bool cxa_stringUtils_strcmp_ignoreCase(const char* str1In, const char* str2In)
+bool cxa_stringUtils_equals(const char* str1In, const char* str2In)
 {
-	if( (str1In == NULL) || (str2In == NULL) ) return false;
+	// if one is false and the other isn't, we can't compare
+	if( (str1In == NULL) != (str2In == NULL) ) return false;
+	// if they're both NULL, they're equal
+	if( (str1In == NULL) && (str2In == NULL) ) return true;
 
-	// both strings must be of same length
+	// must have the same length
+	if( strlen(str1In) != strlen(str2In) ) return false;
+
+	// if we made it here, they have the same length...we're safe
+	// to use strcmp
+	return (strcmp(str1In, str2In) == 0);
+}
+
+
+bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In)
+{
+	// if one is false and the other isn't, we can't compare
+	if( (str1In == NULL) != (str2In == NULL) ) return false;
+	// if they're both NULL, they're equal
+	if( (str1In == NULL) && (str2In == NULL) ) return true;
+
+	// must have the same length
 	if( strlen(str1In) != strlen(str2In) ) return false;
 
 	// now iterate over each character

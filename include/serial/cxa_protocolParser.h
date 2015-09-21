@@ -85,12 +85,16 @@ typedef void (*cxa_protocolParser_cb_receptionTimeout_t)(cxa_fixedByteBuffer_t *
  * @public
  * @brief Callback called when/if a packet is successfully received
  *
- * @param[in] dataIn a buffer containing _only_ the data portion of the packet
- * 		(not header, footer, etc)
+ * @param[in] packetIn a buffer containing the entire received packet (includes
+ * 		header, data, footer, etc)
+ * @param[in] dataOffsetIn index within 'packetIn' where the actual data starts
+ * 		(eg. after header)
+ * @param[in] dataLen_bytesIn length of data field (number of bytes, starting at
+ * 		dataOffsetIn within 'packetIn'). Does NOT include footer.
  * @param[in] userVarIn pointer to the user-supplied variable passed to
  *		::cxa_protocolParser_addProtocolListener
  */
-typedef void (*cxa_protocolParser_cb_packetReceived_t)(cxa_fixedByteBuffer_t *const dataIn, void *const userVarIn);
+typedef void (*cxa_protocolParser_cb_packetReceived_t)(cxa_fixedByteBuffer_t *const packetIn, size_t dataOffsetIn, size_t dataLen_bytesIn, void *const userVarIn);
 
 
 /**
@@ -208,6 +212,15 @@ void cxa_protocolParser_addPacketListener(cxa_protocolParser_t *const ppIn,
  * 		protocolParser will not operate
  */
 void cxa_protocolParser_setBuffer(cxa_protocolParser_t *const ppIn, cxa_fixedByteBuffer_t* buffIn);
+
+/**
+ * @public
+ *
+ * @param[in] ppIn pointer to the pre-initialized protocolParser
+ *
+ * @return the buffer currently being used to receive packets
+ */
+cxa_fixedByteBuffer_t* cxa_protocolParser_getBuffer(cxa_protocolParser_t *const ppIn);
 
 /**
  * @public

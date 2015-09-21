@@ -49,6 +49,8 @@ void cxa_rpc_messageFactory_init(void);
 size_t cxa_rpc_messageFactory_getNumFreeMessages(void);
 cxa_rpc_message_t* cxa_rpc_messageFactory_getFreeMessage_empty(void);
 
+cxa_rpc_message_t* cxa_rpc_messageFactory_getMessage_byBuffer(cxa_fixedByteBuffer_t *const fbbIn);
+
 void cxa_rpc_messageFactory_incrementMessageRefCount(cxa_rpc_message_t *const msgIn);
 void cxa_rpc_messageFactory_decrementMessageRefCount(cxa_rpc_message_t *const msgIn);
 uint8_t cxa_rpc_messageFactory_getReferenceCountForMessage(cxa_rpc_message_t *const msgIn);

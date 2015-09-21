@@ -103,6 +103,7 @@ bool cxa_linkedField_remove_cString(cxa_linkedField_t *const fbbLfIn, const size
 uint8_t* cxa_linkedField_get_pointerToIndex(cxa_linkedField_t *const fbbLfIn, const size_t indexIn);
 bool cxa_linkedField_get(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, bool transposeIn, uint8_t *const valOut, const size_t numBytesIn);
 bool cxa_linkedField_get_cstring(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char *const stringOut, size_t maxOutputSize_bytes);
+bool cxa_linkedField_get_cstring_inPlace(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char ** stringOut, size_t *strLen_bytesOut);
 
 bool cxa_linkedField_replace(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
 bool cxa_linkedField_replace_cstring(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char *const stringIn);

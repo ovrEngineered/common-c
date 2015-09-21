@@ -260,12 +260,13 @@ void cxa_array_clear(cxa_array_t *const arrIn)
 }
 
 
-bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, FILE *fileIn)
+bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, const char *const tagIn, FILE *fileIn)
 {
 	cxa_assert(arrIn);
 	cxa_assert(fileIn);
 
-	if( fprintf(fileIn, "array @ %p" CXA_LINE_ENDING "{" CXA_LINE_ENDING, arrIn) < 0 ) return false;
+	if( fprintf(fileIn, "array @ %p [%s]" CXA_LINE_ENDING, arrIn, ((tagIn == NULL) ? "" : tagIn)) < 0) return false;
+	if( fprintf(fileIn, "{" CXA_LINE_ENDING) < 0 ) return false;
 	for( size_t i = 0; i < cxa_array_getSize_elems(arrIn); i++ )
 	{
 		if( fprintf(fileIn, "   %u::0x", i) < 0 ) return false;

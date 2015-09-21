@@ -34,7 +34,7 @@
 #include <cxa_logger_header.h>
 #include <cxa_timeBase.h>
 #include <cxa_rpc_messageHandler.h>
-#include <cxa_rpc_protocolParser.h>
+#include <cxa_protocolParser.h>
 #include <cxa_timeDiff.h>
 
 #include <cxa_config.h>
@@ -69,22 +69,22 @@ typedef struct
 struct cxa_rpc_nodeRemote
 {
 	cxa_rpc_messageHandler_t super;
+	bool isProvisioned;
 
-	cxa_rpc_protocolParser_t protocolParser;
+	cxa_protocolParser_t protocolParser;
 	cxa_rpc_node_t *downstreamSubNode;
 
-	cxa_timeDiff_t td_askForName;
+	cxa_timeDiff_t td_provision;
 
 	cxa_array_t linkListeners;
 	cxa_rpc_nodeRemote_linkListener_t linkListeners_raw[CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS];
-
-	cxa_logger_t logger;
 };
 
 
 // ******** global function prototypes ********
 void cxa_rpc_nodeRemote_init_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn, cxa_timeBase_t *const timeBaseIn);
-bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn, cxa_rpc_node_t *const subNodeIn);
+bool cxa_rpc_nodeRemote_init_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_ioStream_t *const ioStreamIn, cxa_timeBase_t *const timeBaseIn, cxa_rpc_node_t *const subNodeIn);
+void cxa_rpc_nodeRemote_deinit(cxa_rpc_nodeRemote_t *const nrIn);
 
 bool cxa_rpc_nodeRemote_addLinkListener(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_nodeRemote_cb_linkEstablished_t cb_linkEstablishedIn, void *const userVarIn);
 

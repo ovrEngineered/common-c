@@ -73,7 +73,7 @@ static void current_utc_time(struct timeval *ts)
 		clock_get_time(cclock, &mts);
 		mach_port_deallocate(mach_task_self(), cclock);
 		ts->tv_sec = mts.tv_sec;
-		ts->tv_usec = mts.tv_nsec * 1000;
+		ts->tv_usec = mts.tv_nsec / 1000;
 	#else
 		gettimeofday(ts, NULL);
 	#endif

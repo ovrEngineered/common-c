@@ -61,7 +61,8 @@ bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixSt
 
 bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn);
 
-bool cxa_stringUtils_strcmp_ignoreCase(const char* str1In, const char* str2In);
+bool cxa_stringUtils_equals(const char* str1In, const char* str2In);
+bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
 
 cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn);
 
