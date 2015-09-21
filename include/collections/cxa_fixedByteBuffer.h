@@ -49,6 +49,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+#include <cxa_config.h>
 #include <cxa_array.h>
 
 
@@ -248,6 +250,7 @@ bool cxa_fixedByteBuffer_isEmpty(cxa_fixedByteBuffer_t *const fbbIn);
 void cxa_fixedByteBuffer_clear(cxa_fixedByteBuffer_t *const fbbIn);
 
 
+#ifndef CXA_FILE_DISABLE
 /**
  * @public
  * @brief Writes the raw bytes contained within this buffer (excluding unused bytes)
@@ -259,8 +262,10 @@ void cxa_fixedByteBuffer_clear(cxa_fixedByteBuffer_t *const fbbIn);
  * @return true on success, false on failure
  */
 bool cxa_fixedByteBuffer_writeToFile_bytes(cxa_fixedByteBuffer_t *const fbbIn, FILE *fileIn);
+#endif
 
 
+#ifndef CXA_FILE_DISABLE
 /**
  * @public
  * @brief Writes a human-friendly representation of the bytes contained within this buffer (excluding unused bytes)
@@ -274,6 +279,7 @@ bool cxa_fixedByteBuffer_writeToFile_bytes(cxa_fixedByteBuffer_t *const fbbIn, F
  * @return true on success, false on failure
  */
 bool cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fbbIn, FILE *fileIn);
+#endif
 
 
 #endif // CXA_FIXED_BYTE_BUFFER_H_

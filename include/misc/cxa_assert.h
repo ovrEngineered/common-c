@@ -1,7 +1,7 @@
 /**
  * @file
  * This file contains an implementation of a mPutF compliant assert framework.
- * Asserts are simple run-time checks of input arguments and conditions to 
+ * Asserts are simple run-time checks of input arguments and conditions to
  * verify compliance with expected ranges and values. If an assert fails,
  * it will halt execution of the program and optionally, print information
  * about the location/cause.
@@ -54,7 +54,7 @@
 	 * If it isn't, prints
 	 *
 	 *     "\r\n**assert**\r\nloc: <file>:<lineNum>\r\n"
-	 * 
+	 *
 	 * where <file> and <lineNum> is the filename and line number from
 	 * where this function was called.
 	 *
@@ -64,7 +64,7 @@
 	 * @param[in] condIn the assertion condition (should be true)
 	 */
 	#define cxa_assert(condIn)					if( !(condIn) ) cxa_assert_impl(__FILE__, __LINE__);
-	
+
 	/**
 	 * @public
 	 * @brief Asserts that the provided condition is true.
@@ -95,11 +95,11 @@
 	 * @param[in] condIn the assertion condition (should be true)
 	 */
 	#define cxa_assert(condIn)					if( !(condIn) ) cxa_assert_impl();
-	
+
 	/**
 	 * @public
 	 * @brief Asserts that the provided condition is true.
-	 * If it isn't, prints 
+	 * If it isn't, prints
 	 *
 	 *     "\r\n**assert**\r\nmsg: <msg>\r\n"
 	 *
@@ -125,7 +125,7 @@ typedef void (*cxa_assert_cb_t)(void);
 
 
 // ********* global function prototypes ********
-#ifdef CXA_ASSERT_FILE_ENABLE
+#if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
 /**
  * @public
  * @brief Sets the file descriptor that should be used to output assert messages.
@@ -142,7 +142,7 @@ void cxa_assert_setFileDescriptor(FILE *fileIn);
 /**
  * @public
  * @brief Sets a single callback that will be called once an assert
- * occurs _before_ entering the terminal while loop. 
+ * occurs _before_ entering the terminal while loop.
  *
  * This callback should generally be used to nicely shutdown any
  * processes.
@@ -162,7 +162,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn);
 	 * @brief When CXA_ASSERT_GPIO_FLASH_ENABLE is enabled, allows a single
 	 * GPIO to be flashed continuously to indicate to the outside
 	 * world that something is wrong.
-	 * 
+	 *
 	 * If enabled and supplied, the GPIO flashing will replace a terminal call to exit()
 	 *
 	 * @param[in] gpioIn the pre-configured GPIO that will be forcefully

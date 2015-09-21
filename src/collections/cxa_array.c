@@ -64,12 +64,12 @@ void cxa_array_init_inPlace(cxa_array_t *const arrIn, const size_t datatypeSize_
 	cxa_assert(datatypeSize_bytesIn > 0);
 	cxa_assert(bufferLocIn);
 	cxa_assert( (currNumElemsIn*datatypeSize_bytesIn) <= bufferMaxSize_bytesIn );
-	
+
 	// save our references
 	arrIn->bufferLoc = bufferLocIn;
 	arrIn->datatypeSize_bytes = datatypeSize_bytesIn;
 	arrIn->maxNumElements = bufferMaxSize_bytesIn / datatypeSize_bytesIn;
-	
+
 	// set our size
 	arrIn->insertIndex = currNumElemsIn;
 }
@@ -82,7 +82,7 @@ bool cxa_array_append(cxa_array_t *const arrIn, void *const itemLocIn)
 
 	// make sure we have enough space in the array
 	if( arrIn->insertIndex >= arrIn->maxNumElements ) return false;
-	
+
 	// if we made it here, we have enough elements, get ready to copy the item
 	memcpy((void*)(((uint8_t*)arrIn->bufferLoc) + (arrIn->insertIndex * arrIn->datatypeSize_bytes)), itemLocIn, arrIn->datatypeSize_bytes);
 	arrIn->insertIndex++;
@@ -95,13 +95,13 @@ bool cxa_array_append(cxa_array_t *const arrIn, void *const itemLocIn)
 void* cxa_array_append_empty(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
-	
+
 	// make sure we have enough space in the array
 	if( arrIn->insertIndex >= arrIn->maxNumElements ) return NULL;
-	
+
 	void *retVal = (void*)(((uint8_t*)arrIn->bufferLoc) + (arrIn->insertIndex * arrIn->datatypeSize_bytes));
 	arrIn->insertIndex++;
-	
+
 	return retVal;
 }
 
@@ -109,24 +109,24 @@ void* cxa_array_append_empty(cxa_array_t *const arrIn)
 bool cxa_array_remove_atIndex(cxa_array_t *const arrIn, const size_t indexIn)
 {
 	cxa_assert(arrIn);
-	
+
 	// make sure we're not out of bounds
 	if( indexIn >= arrIn->insertIndex ) return false;
-	
+
 	// if this is the last element in the array, we don't need to do any memmoves
 	if( (indexIn+1) >= arrIn->insertIndex )
 	{
 		arrIn->insertIndex--;
 		return true;
-	}	
-	
+	}
+
 	// if we made it here, we have some data to move around
 	void *dest = (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));
 	void *src = (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn+1 * arrIn->datatypeSize_bytes));
-	
+
 	memmove(dest, src, ((arrIn->insertIndex-(indexIn+1)) * arrIn->datatypeSize_bytes));
 	arrIn->insertIndex--;
-	
+
 	return true;
 }
 
@@ -165,7 +165,7 @@ void* cxa_array_get_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn
 	cxa_assert(arrIn);
 
 	// if we made it here, we're good to go
-	return (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));	
+	return (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));
 }
 
 
@@ -223,7 +223,7 @@ size_t cxa_array_getSize_elems(cxa_array_t *const arrIn)
 size_t cxa_array_getMaxSize_elems(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
-	
+
 	return arrIn->maxNumElements;
 }
 
@@ -239,7 +239,7 @@ size_t cxa_array_getFreeSize_elems(cxa_array_t *const arrIn)
 bool cxa_array_isFull(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
-	
+
 	return (arrIn->insertIndex >= arrIn->maxNumElements);
 }
 
@@ -247,7 +247,7 @@ bool cxa_array_isFull(cxa_array_t *const arrIn)
 bool cxa_array_isEmpty(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
-	
+
 	return (arrIn->insertIndex == 0);
 }
 
@@ -255,11 +255,12 @@ bool cxa_array_isEmpty(cxa_array_t *const arrIn)
 void cxa_array_clear(cxa_array_t *const arrIn)
 {
 	cxa_assert(arrIn);
-	
+
 	arrIn->insertIndex = 0;
 }
 
 
+#ifndef CXA_FILE_DISABLE
 bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, const char *const tagIn, FILE *fileIn)
 {
 	cxa_assert(arrIn);
@@ -280,7 +281,7 @@ bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, const char *con
 
 	return true;
 }
+#endif
 
 
 // ******** local function implementations ********
-

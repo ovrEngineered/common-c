@@ -60,6 +60,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <cxa_config.h>
+
 
 // ******** global macro definitions ********
 /**
@@ -147,7 +149,7 @@ void cxa_array_init(cxa_array_t *const arrIn, const size_t datatypeSize_bytesIn,
 /**
  * @public
  * @brief Initializes the array using the specified buffer (which already contains elements) to store elements.
- * 
+ *
  * @param[in] arrIn pointer to the pre-allocated cxa_array_t object
  * @param[in] datatypeSize_bytesIn the size of each element that will be inserted
  * 		into the array (all elements MUST be the same size)
@@ -352,6 +354,7 @@ bool cxa_array_isEmpty(cxa_array_t *const arrIn);
 void cxa_array_clear(cxa_array_t *const arrIn);
 
 
+#ifndef CXA_FILE_DISABLE
 /**
  * @public
  * @brief Writes a human-friendly representation of the bytes contained within this array (excluding unused bytes)
@@ -366,6 +369,6 @@ void cxa_array_clear(cxa_array_t *const arrIn);
  * @return true on success, false on failure
  */
 bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, const char *const tagIn, FILE *fileIn);
-
+#endif
 
 #endif // CXA_ARRAY_H_
