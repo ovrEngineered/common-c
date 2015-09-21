@@ -50,7 +50,7 @@ static bool isUpstream(cxa_rpc_nodeRemote_t *const nrIn);
 static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 
-static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, const size_t dataOffsetIn, cxa_fixedByteBuffer_t *const dataIn, void *const userVarIn);
+static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, size_t dataOffsetIn, size_t dataLen_bytesIn, void *const userVarIn);
 
 static void handleLinkManagement_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_message_t *const msgIn);
 static void handleLinkManagement_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_message_t *const msgIn);
@@ -250,9 +250,9 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 }
 
 
-static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, const size_t dataOffsetIn, cxa_fixedByteBuffer_t *const dataIn, void *const userVarIn)
+static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, size_t dataOffsetIn, size_t dataLen_bytesIn, void *const userVarIn)
 {
-	cxa_assert(dataIn);
+	cxa_assert(packetIn);
 	cxa_assert(userVarIn);
 
 	cxa_rpc_nodeRemote_t* nrIn = (cxa_rpc_nodeRemote_t*)userVarIn;
@@ -266,7 +266,7 @@ static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, const size_
 	}
 
 	// if we made it here, we should validate the message
-	if( !cxa_rpc_message_validateReceivedBytes(rxMsg, dataOffsetIn, cxa_fixedByteBuffer_getSize_bytes(dataIn)) )
+	if( !cxa_rpc_message_validateReceivedBytes(rxMsg, dataOffsetIn, dataLen_bytesIn) )
 	{
 		cxa_logger_debug(&nrIn->super.logger, "invalid message received");
 		return;
@@ -322,6 +322,7 @@ static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, const size_
 	else
 	{
 		// we need to reserve another buffer (this one is still being used)
+		cxa_logger_trace(&nrIn->super.logger, "message is still in-use, requesting new rx buffer");
 
 		// release _our_ lock on the message
 		cxa_rpc_messageFactory_decrementMessageRefCount(rxMsg);

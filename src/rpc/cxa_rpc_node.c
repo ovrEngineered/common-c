@@ -438,7 +438,7 @@ static void handleMessage_atDestination(cxa_rpc_node_t *const nodeIn, cxa_rpc_me
 
 					// we found the method...setup our response message
 					cxa_rpc_message_t* respMsg = cxa_rpc_messageFactory_getFreeMessage_empty();
-					if( !cxa_rpc_message_initResponse(respMsg, cxa_rpc_message_getSource(msgIn), cxa_rpc_message_getId(msgIn), CXA_RPC_METHOD_RETVAL_UNKNOWN) )
+					if( (respMsg == NULL) || !cxa_rpc_message_initResponse(respMsg, cxa_rpc_message_getSource(msgIn), cxa_rpc_message_getId(msgIn), CXA_RPC_METHOD_RETVAL_UNKNOWN) )
 					{
 						cxa_logger_warn(&nodeIn->super.logger, "atDest(%p): error initializing response", msgIn);
 						cxa_rpc_messageFactory_decrementMessageRefCount(respMsg);

@@ -102,7 +102,7 @@ struct cxa_rpc_message
  * @protected
  */
 void cxa_rpc_message_initEmpty(cxa_rpc_message_t *const msgIn, cxa_fixedByteBuffer_t *const fbbIn);
-bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const size_t startingIndexIn, const size_t len_bytesIn);
+bool cxa_rpc_message_validateReceivedBytes(cxa_rpc_message_t *const msgIn, const size_t dataOffsetIn, const size_t dataLen_bytesIn);
 
 
 /**
