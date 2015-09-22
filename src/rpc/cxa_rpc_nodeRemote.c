@@ -50,7 +50,7 @@ static bool isUpstream(cxa_rpc_nodeRemote_t *const nrIn);
 static void handleMessage_upstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, cxa_rpc_message_t *const msgIn);
 
-static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, size_t dataOffsetIn, size_t dataLen_bytesIn, void *const userVarIn);
+static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
 
 static void handleLinkManagement_upstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_message_t *const msgIn);
 static void handleLinkManagement_downstream(cxa_rpc_nodeRemote_t *const nrIn, cxa_rpc_message_t *const msgIn);
@@ -250,7 +250,7 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 }
 
 
-static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, size_t dataOffsetIn, size_t dataLen_bytesIn, void *const userVarIn)
+static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn)
 {
 	cxa_assert(packetIn);
 	cxa_assert(userVarIn);
@@ -266,7 +266,7 @@ static void packetReceived_cb(cxa_fixedByteBuffer_t *const packetIn, size_t data
 	}
 
 	// if we made it here, we should validate the message
-	if( !cxa_rpc_message_validateReceivedBytes(rxMsg, dataOffsetIn, dataLen_bytesIn) )
+	if( !cxa_rpc_message_validateReceivedBytes(rxMsg) )
 	{
 		cxa_logger_debug(&nrIn->super.logger, "invalid message received");
 		return;

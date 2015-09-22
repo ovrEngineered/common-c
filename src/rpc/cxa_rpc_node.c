@@ -381,7 +381,11 @@ static bool handleMessage_downstream(cxa_rpc_messageHandler_t *const handlerIn, 
 	}
 
 	// if we made it here, we have a name and we got a path component...see if it was meant for us...
-	if( !cxa_stringUtils_startsWith(pathComp, nodeIn->name) ) return false;
+	if( !cxa_stringUtils_startsWith(pathComp, nodeIn->name) )
+	{
+		cxa_logger_trace(&nodeIn->super.logger, "not meant for us(%p): '%s'", msgIn, pathComp);
+		return false;
+	}
 
 	cxa_logger_debug(&nodeIn->super.logger, "handleDownstream(%p): '%s'", msgIn, pathComp);
 
