@@ -425,7 +425,6 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 	
 	uint8_t tmpVal8;
 	uint16_t tmpVal16;
-	const size_t dataOffset = 4;
 
 	// make sure our packet is kosher
 	if( (currSize_bytes >= 5) &&
@@ -437,13 +436,17 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 		// we received a message
 		cxa_logger_trace(&ppIn->logger, "message received...calling listeners");
 
+		// ...but first, strip the header and footer
+		cxa_fixedByteBuffer_remove(ppIn->currBuffer, 0, 4);
+		cxa_fixedByteBuffer_remove(ppIn->currBuffer, cxa_fixedByteBuffer_getSize_bytes(ppIn->currBuffer)-1, 1);
+
 		cxa_array_iterate(&ppIn->packetListeners, currEntry, cxa_protocolParser_packetListener_entry_t)
 		{
 			if( currEntry == NULL ) continue;
 
 			if( currEntry->cb != NULL )
 			{
-				currEntry->cb(ppIn->currBuffer, dataOffset, (currSize_bytes-5), currEntry->userVar);
+				currEntry->cb(ppIn->currBuffer, currEntry->userVar);
 			}
 		}
 	}
