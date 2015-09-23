@@ -120,5 +120,14 @@ bool cxa_ioStream_writeFixedByteBuffer(cxa_ioStream_t *const ioStreamIn, cxa_fix
 }
 
 
+bool cxa_ioStream_writeString(cxa_ioStream_t *const ioStreamIn, char* stringIn)
+{
+	cxa_assert(ioStreamIn);
+	cxa_assert(stringIn);
+
+	return cxa_ioStream_writeBytes(ioStreamIn, (void*)stringIn, strlen(stringIn));
+}
+
+
 // ******** local function implementations ********
 

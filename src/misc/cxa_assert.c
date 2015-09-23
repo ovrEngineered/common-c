@@ -26,6 +26,7 @@
 #include <string.h>
 #include <cxa_delay.h>
 #include <cxa_numberUtils.h>
+#include <cxa_stringUtils.h>
 
 
 // ******** local macro definitions ********

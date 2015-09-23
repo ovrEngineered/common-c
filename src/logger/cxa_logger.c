@@ -26,13 +26,10 @@
 #include <string.h>
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
+#include <cxa_stringUtils.h>
 
 
 // ******** local macro definitions ********
-#ifndef CXA_LINE_ENDING
-	#define CXA_LINE_ENDING			"\r\n"
-#endif
-
 #ifndef CXA_LOGGER_MAXLINELEN_BYTES
 	#define CXA_LOGGER_MAXLINELEN_BYTES			24
 #endif

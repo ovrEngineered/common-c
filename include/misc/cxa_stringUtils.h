@@ -32,6 +32,11 @@
 // ******** global macro definitions ********
 #define CXA_STRINGUTILS_NULL2EMPTY(strIn)				(((strIn) == NULL) ? "" : (strIn))
 
+#ifndef CXA_LINE_ENDING
+	#define CXA_LINE_ENDING			"\r\n"
+#endif
+
+
 // ******** global type definitions *********
 typedef enum
 {
