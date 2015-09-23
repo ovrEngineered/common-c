@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <cxa_logger_header.h>
+#include <cxa_ioStream.h>
 
 
 // ******** global macro definitions ********
@@ -82,7 +83,7 @@
 
 
 // ******** global function prototypes ********
-void cxa_logger_setGlobalFd(FILE *fd_outputIn);
+void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn);
 
 void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn);
 void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
