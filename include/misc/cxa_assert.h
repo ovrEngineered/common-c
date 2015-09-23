@@ -44,6 +44,7 @@
 #ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
 	#include <cxa_gpio.h>
 #endif
+#include <cxa_ioStream.h>
 
 
 // ********* global macro definitions ********
@@ -125,18 +126,16 @@ typedef void (*cxa_assert_cb_t)(void);
 
 
 // ********* global function prototypes ********
-#if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
 /**
  * @public
- * @brief Sets the file descriptor that should be used to output assert messages.
+ * @brief Sets the ioStream that should be used to output assert messages.
  * Should be called prior to any cxa_assert* macro calls.
  * If not set, no assert message will be printed.
  *
- * @param[in] fileIn the pre-configured file descriptor which should
+ * @param[in] ioStreamIn the pre-configured ioStream which should
  * 		be used to print the assert message
  */
-void cxa_assert_setFileDescriptor(FILE *fileIn);
-#endif
+void cxa_assert_setIoStream(cxa_ioStream_t *const ioStreamIn);
 
 
 /**

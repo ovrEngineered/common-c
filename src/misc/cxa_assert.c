@@ -23,7 +23,9 @@
 
 // ******** includes ********
 #include <stdlib.h>
+#include <string.h>
 #include <cxa_delay.h>
+#include <cxa_numberUtils.h>
 
 
 // ******** local macro definitions ********
@@ -41,9 +43,7 @@
 
 
 // ********  local variable declarations *********
-#if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
-static FILE *fd_msg = NULL;
-#endif
+static cxa_ioStream_t* ioStream = NULL;
 static cxa_assert_cb_t cb = NULL;
 #ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
 	static cxa_gpio_t *gpio;
@@ -51,12 +51,10 @@ static cxa_assert_cb_t cb = NULL;
 
 
 // ******** global function implementations ********
-#if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
-void cxa_assert_setFileDescriptor(FILE *fileIn)
+void cxa_assert_setIoStream(cxa_ioStream_t *const ioStreamIn)
 {
-	fd_msg = fileIn;
+	ioStream = ioStreamIn;
 }
-#endif
 
 
 void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
@@ -76,17 +74,19 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 #ifdef CXA_ASSERT_LINE_NUM_ENABLE
 	void cxa_assert_impl(const char *fileIn, const long int lineIn)
 	{
-        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
-            if( fd_msg != NULL )
-            {
-                fprintf(fd_msg, CXA_LINE_ENDING "%s" CXA_LINE_ENDING "%s%s:%ld" CXA_LINE_ENDING,
-                        ASSERT_TEXT,
-                        PREAMBLE_LOCATION,
-                        fileIn,
-                        lineIn);
-                fflush(fd_msg);
-            }
-        #endif
+		if( ioStream != NULL )
+		{
+			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, ASSERT_TEXT, strlen(ASSERT_TEXT));
+			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
+			cxa_ioStream_writeBytes(ioStream, (void*)fileIn, strlen(fileIn));
+			cxa_ioStream_writeByte(ioStream, ':');
+			char lineNumBuff[5];
+			int expectedNumBytesWritten = snprintf(lineNumBuff, sizeof(lineNumBuff), "%ld", lineIn);
+			cxa_ioStream_writeBytes(ioStream, lineNumBuff, CXA_MIN(expectedNumBytesWritten, sizeof(lineNumBuff)));
+			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+		}
 
 		if( cb != NULL ) cb();
 
@@ -139,19 +139,21 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 #if defined (CXA_ASSERT_MSG_ENABLE) && defined (CXA_ASSERT_LINE_NUM_ENABLE)
 	void cxa_assert_impl_msg(const char *msgIn, const char *fileIn, const long int lineIn)
 	{
-        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
-            if( fd_msg != NULL )
-            {
-                fprintf(fd_msg, CXA_LINE_ENDING "%s" CXA_LINE_ENDING "%s%s:%ld" CXA_LINE_ENDING "%s%s",
-                        ASSERT_TEXT,
-                        PREAMBLE_LOCATION,
-                        fileIn,
-                        lineIn,
-                        PREAMBLE_MESSAGE,
-                        msgIn);
-                fflush(fd_msg);
-            }
-        #endif
+		if( ioStream != NULL )
+		{
+			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, ASSERT_TEXT, strlen(ASSERT_TEXT));
+			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
+			cxa_ioStream_writeBytes(ioStream, (void*)fileIn, strlen(fileIn));
+			cxa_ioStream_writeByte(ioStream, ':');
+			char lineNumBuff[5];
+			int expectedNumBytesWritten = snprintf(lineNumBuff, sizeof(lineNumBuff), "%ld", lineIn);
+			cxa_ioStream_writeBytes(ioStream, lineNumBuff, CXA_MIN(expectedNumBytesWritten, sizeof(lineNumBuff)));
+			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, (void*)msgIn, strlen(msgIn));
+			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+		}
 
 		if( cb != NULL ) cb();
 
