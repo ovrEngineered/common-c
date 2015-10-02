@@ -225,8 +225,25 @@ cxa_fixedByteBuffer_t* cxa_protocolParser_getBuffer(cxa_protocolParser_t *const 
  * @param[in] ppIn pointer to the pre-initialized protocolParser
  * @param[in] dataIn the data to send. Should not include
  * 		header, footer, etc (will be automatically added)
+ *
+ * @return true if the packet was sent successfully, false if there
+ * 		was an error with the underlying ioStream
  */
 bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedByteBuffer_t* dataIn);
+
+/**
+ * @public
+ * @brief Writes a pack to the ioStream
+ *
+ * @param[in] ppIn pointer to the pre-initialized protocolParser
+ * @param bytesIn bytesIn pointer to the bytes to send. Should not
+ * 		include header, footer, etc (will be automatically added)
+ * @param numBytesIn the number of bytes (located at bytesIn) to send
+ *
+ * @return true if the packet was sent successfully, false if there
+ * 		was an error with the underlying ioStream
+ */
+bool cxa_protocolParser_writePacket_bytes(cxa_protocolParser_t *const ppIn, void* bytesIn, size_t numBytesIn);
 
 /**
  * @public

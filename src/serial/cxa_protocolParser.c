@@ -131,7 +131,7 @@ void cxa_protocolParser_setBuffer(cxa_protocolParser_t *const ppIn, cxa_fixedByt
 {
 	cxa_assert(ppIn);
 
-	rxState_t currState = cxa_stateMachine_getCurrentState(&ppIn->stateMachine);
+	rxState_t currState = (rxState_t)cxa_stateMachine_getCurrentState(&ppIn->stateMachine);
 
 	// handle our special cases
 	if( buffIn == NULL)
@@ -179,7 +179,7 @@ bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedB
 	cxa_assert(msgSize_bytes <= (65535-3));
 
 	// make sure we're in a good state
-	rxState_t currState = cxa_stateMachine_getCurrentState(&ppIn->stateMachine);
+	rxState_t currState = (rxState_t)cxa_stateMachine_getCurrentState(&ppIn->stateMachine);
 	if( (currState == RX_STATE_ERROR) || !cxa_ioStream_isBound(ppIn->ioStream) ) return false;
 
 	// write our header
@@ -196,6 +196,17 @@ bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedB
 	// write our footer
 	if( !cxa_ioStream_writeByte(ppIn->ioStream, 0x82) ) { handleIoException(ppIn); return false; }
 	return true;
+}
+
+
+bool cxa_protocolParser_writePacket_bytes(cxa_protocolParser_t *const ppIn, void* bytesIn, size_t numBytesIn)
+{
+	cxa_assert(ppIn);
+
+	cxa_fixedByteBuffer_t tmpFbb;
+	cxa_fixedByteBuffer_init_inPlace(&tmpFbb, numBytesIn, bytesIn, numBytesIn);
+
+	return cxa_protocolParser_writePacket(ppIn, &tmpFbb);
 }
 
 
@@ -238,7 +249,7 @@ static void handleReceptionTimeout(cxa_protocolParser_t *const ppIn)
 
 static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 	
 	cxa_logger_info(&ppIn->logger, "becoming idle");
@@ -247,7 +258,7 @@ static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarI
 
 static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 
 	// if we have a bound ioStream and a buffer, become active
@@ -261,7 +272,7 @@ static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarI
 
 static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 	
 	cxa_logger_info(&ppIn->logger, "becoming active");
@@ -270,7 +281,7 @@ static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, void *userVarI
 
 static void rxState_cb_wait0x80_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 
 	uint8_t rxByte;
@@ -299,7 +310,7 @@ static void rxState_cb_wait0x80_state(cxa_stateMachine_t *const smIn, void *user
 
 static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 	
 	uint8_t rxByte;
@@ -336,7 +347,7 @@ static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *user
 
 static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 	
 	uint8_t rxByte;
@@ -369,7 +380,7 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 
 static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 	
 	// get our expected size
@@ -418,7 +429,7 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 
 static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 	
 	size_t currSize_bytes = cxa_fixedByteBuffer_getSize_bytes(ppIn->currBuffer);
@@ -459,7 +470,7 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 
 static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t *const)userVarIn;
+	cxa_protocolParser_t *const ppIn = (cxa_protocolParser_t*)userVarIn;
 	cxa_assert(ppIn);
 	
 	cxa_logger_error(&ppIn->logger, "underlying serial device is broken, protocol parser is inoperable");
