@@ -50,6 +50,17 @@ void cxa_fixedByteBuffer_init(cxa_fixedByteBuffer_t *const fbbIn, void *const bu
 }
 
 
+void cxa_fixedByteBuffer_init_inPlace(cxa_fixedByteBuffer_t *const fbbIn, const size_t currNumElemsIn, void *const bufferLocIn, const size_t bufferMaxSize_bytesIn)
+{
+	cxa_assert(fbbIn);
+	cxa_assert(bufferLocIn);
+	cxa_assert(bufferMaxSize_bytesIn > 0);
+
+	// setup our internal state
+	cxa_array_init_inPlace(&fbbIn->bytes, 1, currNumElemsIn, bufferLocIn, bufferMaxSize_bytesIn);
+}
+
+
 void cxa_fixedByteBuffer_init_subBufferFixedSize(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexIn, size_t numBytesIn)
 {
 	cxa_assert(subFbbIn);

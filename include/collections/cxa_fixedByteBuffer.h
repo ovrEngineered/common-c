@@ -139,6 +139,21 @@ void cxa_fixedByteBuffer_init(cxa_fixedByteBuffer_t *const fbbIn, void *const bu
 
 /**
  * @public
+ * @brief Initializes the pre-allocated fixedByteBuffer using the
+ * 		specified memory (which already contains data).
+ *
+ * @param[in] fbbIn pointer to the pre-allocated fixedByteBuffer object
+ * @param[in] currNumElemsIn the number of bytes currently in the
+ *		specified buffer. The resulting buffer will be initialized such that
+ *		::cxa_fixedByteBuffer_getSize_bytes will equal currNumElemsIn.
+ * @param[in] bufferLocIn pointer to the pre-allocated chunk of memory that will
+ * 		be used to store bytes in the array (the buffer)
+ * @param[in] bufferMaxSize_bytesIn the maximum size of the chunk of memory (buffer) in bytes
+ */
+void cxa_fixedByteBuffer_init_inPlace(cxa_fixedByteBuffer_t *const fbbIn, const size_t currNumElemsIn, void *const bufferLocIn, const size_t bufferMaxSize_bytesIn);
+
+/**
+ * @public
  * Initializes a new subBuffer whose bytes are stored within another fixedByteBuffer. This
  * function requires an explicit startIndex and length.
  * Note: both the parentFbb and the subFbb will be backed by the same data, modification
