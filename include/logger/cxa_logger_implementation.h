@@ -29,6 +29,10 @@
 #include <cxa_logger_header.h>
 #include <cxa_ioStream.h>
 
+#ifdef CXA_LOGGER_TIME_ENABLE
+#include <cxa_timeBase.h>
+#endif
+
 
 // ******** global macro definitions ********
 #define CXA_LOG_LEVEL_NONE				0
@@ -83,11 +87,50 @@
 
 
 // ******** global function prototypes ********
+/**
+ * @public
+ * @brief Sets the ioStream which will be used to output all
+ * 		logging statements.
+ * @param ioStreamIn the pre-initialized ioStream which will
+ * 		be used to output logging statements
+ */
 void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn);
 
+#ifdef CXA_LOGGER_TIME_ENABLE
+/**
+ * @public
+ * @brief If CXA_LOGGER_TIME_ENABLE is defined, sets the timebase
+ * 		whose value will be pre-pended to every logging statement
+ * @param nameIn the pre-initialized time base
+ */
+void cxa_logger_setGlobalTimeBase(cxa_timeBase_t *const tbIn);
+#endif
+
+/**
+ * @public
+ * @brief Initializes a logger with the given name
+ *
+ * @param loggerIn pointer to the pre-allocated logger to
+ * 		initialize
+ * @param nameIn the logger's name (will be copied into the
+ * 		logger object)
+ */
 void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn);
+
+/**
+ * @public
+ * @brief Convenience method to initialize a logger with a format
+ * 		string
+ * @param loggerIn pointer to the pre-allocated logger to
+ * 		initialize
+ * @param nameIn the logger's name format string (will be copied into the
+ * 		logger object)
+ */
 void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
 
+/**
+ * @private
+ */
 void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...);
 
 

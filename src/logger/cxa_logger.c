@@ -30,8 +30,8 @@
 
 
 // ******** local macro definitions ********
-#ifndef CXA_LOGGER_MAXLINELEN_BYTES
-	#define CXA_LOGGER_MAXLINELEN_BYTES			24
+#ifndef CXA_LOGGER_BUFFERLEN_BYTES
+	#define CXA_LOGGER_BUFFERLEN_BYTES			16
 #endif
 
 #define CXA_LOGGER_TRUNCATE_STRING			"..."
@@ -48,12 +48,24 @@ static void writeField(char *const stringIn, size_t maxFieldLenIn);
 static cxa_ioStream_t* ioStream = NULL;
 static size_t largestloggerName_bytes = 0;
 
+#ifdef CXA_LOGGER_TIME_ENABLE
+static cxa_timeBase_t* timeBase = NULL;
+#endif
+
 
 // ******** global function implementations ********
 void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 {
 	ioStream = ioStreamIn;
 }
+
+
+#ifdef CXA_LOGGER_TIME_ENABLE
+void cxa_logger_setGlobalTimeBase(cxa_timeBase_t *const tbIn)
+{
+	timeBase = tbIn;
+}
+#endif
 
 
 void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
@@ -125,18 +137,30 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 	}
 
 	// our buffer for this go-round
-	char buff[CXA_LOGGER_MAXLINELEN_BYTES];
+	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
+
+	// print the time (if enabled)
+	#ifdef CXA_LOGGER_TIME_ENABLE
+		if( timeBase != NULL )
+		{
+			snprintf(buff, sizeof(buff), "%-8lX ", cxa_timeBase_getCount_us(timeBase));
+			// 32-bit integer +space
+			writeField(buff, 9);
+		}
+	#endif
 
 
-	// print the header
+	// print the name
 	writeField(loggerIn->name, largestloggerName_bytes);
 
+	// pointer (id of logger)
+	// 4+ includes [,], optional 0x (depends on printf implementation), terminating space
 	snprintf(buff, sizeof(buff), "[%p]", loggerIn);
-	writeField(buff, 2+(2*sizeof(void*)));
+	writeField(buff, 5+(2*sizeof(void*)));
 
+	// level text
 	writeField(levelText, 5);
 	cxa_ioStream_writeByte(ioStream, ' ');
-
 
 	// now do our VARARGS
 	va_list varArgs;
