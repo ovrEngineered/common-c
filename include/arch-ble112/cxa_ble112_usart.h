@@ -37,7 +37,7 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_BLE112_USART_RX_FIFO_SIZE_BYTES
-	#define CXA_BLE112_USART_RX_FIFO_SIZE_BYTES			8
+	#define CXA_BLE112_USART_RX_FIFO_SIZE_BYTES			16
 #endif
 
 
