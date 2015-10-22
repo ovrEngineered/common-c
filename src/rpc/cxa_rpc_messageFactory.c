@@ -178,6 +178,7 @@ uint8_t cxa_rpc_messageFactory_getReferenceCountForMessage(cxa_rpc_message_t *co
 }
 
 
+#ifndef CXA_FILE_DISABLE
 void cxa_rpc_messageFactory_writeStatusToFile(FILE* fileIn)
 {
 	cxa_assert(fileIn);
@@ -194,6 +195,7 @@ void cxa_rpc_messageFactory_writeStatusToFile(FILE* fileIn)
 	}
 	fprintf(fileIn, "}" CXA_LINE_ENDING);
 }
+#endif
 
 
 // ******** local function implementations ********
