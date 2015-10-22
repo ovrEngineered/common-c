@@ -100,9 +100,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 					cxa_gpio_toggle(gpio);
 					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
 				}
-			} else exit(EXIT_STATUS);
+			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#else
-			exit(EXIT_STATUS);
+			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#endif
 	}
 #else
@@ -129,9 +129,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 					cxa_gpio_toggle(gpio);
 					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
 				}
-			} else exit(EXIT_STATUS);
+			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#else
-			exit(EXIT_STATUS);
+			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#endif
 	}
 #endif
@@ -167,9 +167,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 					cxa_gpio_toggle(gpio);
 					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
 				}
-			} else exit(EXIT_STATUS);
+			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#else
-			exit(EXIT_STATUS);
+			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#endif
 	}
 #elif defined (CXA_ASSERT_MSG_ENABLE) && !(defined (CXA_ASSERT_LINE_NUM_ENABLE))
@@ -199,9 +199,9 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 					cxa_gpio_toggle(gpio);
 					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
 				}
-			} else exit(EXIT_STATUS);
+			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#else
-			exit(EXIT_STATUS);
+			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
 		#endif
 	}
 #endif

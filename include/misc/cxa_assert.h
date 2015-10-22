@@ -47,7 +47,17 @@
 #include <cxa_ioStream.h>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 // ********* global macro definitions ********
+#ifndef CXA_ASSERT_EXIT_FUNC
+#define CXA_ASSERT_EXIT_FUNC(exitStatusIn)		exit(exitStatusIn)
+#endif
+
+
 #ifdef CXA_ASSERT_LINE_NUM_ENABLE
 	/**
 	 * @public
@@ -202,4 +212,7 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn);
 #endif
 
 
+#ifdef __cplusplus
+}
+#endif
 #endif // CXA_ASSERT_H_
