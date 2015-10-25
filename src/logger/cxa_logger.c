@@ -31,7 +31,7 @@
 
 // ******** local macro definitions ********
 #ifndef CXA_LOGGER_BUFFERLEN_BYTES
-	#define CXA_LOGGER_BUFFERLEN_BYTES			16
+	#define CXA_LOGGER_BUFFERLEN_BYTES			24
 #endif
 
 #define CXA_LOGGER_TRUNCATE_STRING			"..."
@@ -41,10 +41,14 @@
 
 
 // ******** local function prototypes ********
+static inline void checkSysLogInit(void);
 static void writeField(char *const stringIn, size_t maxFieldLenIn);
 
 
 // ********  local variable declarations *********
+static cxa_logger_t sysLog;
+static bool isSysLogInit = false;
+
 static cxa_ioStream_t* ioStream = NULL;
 static size_t largestloggerName_bytes = 0;
 
@@ -56,13 +60,18 @@ static cxa_timeBase_t* timeBase = NULL;
 // ******** global function implementations ********
 void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 {
+	checkSysLogInit();
+
 	ioStream = ioStreamIn;
+	cxa_logger_vlog(&sysLog, CXA_LOG_LEVEL_INFO, "logging ioStream @ %p", ioStreamIn);
 }
 
 
 #ifdef CXA_LOGGER_TIME_ENABLE
 void cxa_logger_setGlobalTimeBase(cxa_timeBase_t *const tbIn)
 {
+	checkSysLogInit();
+
 	timeBase = tbIn;
 }
 #endif
@@ -72,6 +81,7 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
 {
 	cxa_assert(loggerIn);
 	cxa_assert(nameIn);
+	checkSysLogInit();
 
 	// copy our name (and make sure it will be null terminated)
 	strncpy(loggerIn->name, nameIn, CXA_LOGGER_MAX_NAME_LEN_CHARS);
@@ -86,7 +96,8 @@ void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...)
 {
 	cxa_assert(loggerIn);
 	cxa_assert(nameFmtIn);
-	
+	checkSysLogInit();
+
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
 	vsnprintf(loggerIn->name, CXA_LOGGER_MAX_NAME_LEN_CHARS, nameFmtIn, varArgs);
@@ -107,6 +118,7 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
 				(levelIn == CXA_LOG_LEVEL_TRACE) );
 	cxa_assert(formatIn);
+	checkSysLogInit();
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
@@ -179,6 +191,17 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 
 
 // ******** local function implementations ********
+static inline void checkSysLogInit(void)
+{
+	if( !isSysLogInit )
+	{
+		// mark init first since we'll have a stack overflow (recursive call if not)
+		isSysLogInit = true;
+		cxa_logger_init(&sysLog, "sysLog");
+	}
+}
+
+
 static void writeField(char *const stringIn, size_t maxFieldLenIn)
 {
 	size_t stringLen_bytes = strlen(stringIn);
