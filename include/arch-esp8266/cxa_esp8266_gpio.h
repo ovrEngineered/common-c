@@ -43,6 +43,7 @@ struct cxa_esp8266_gpio
 	cxa_gpio_t super;
 
 	uint8_t pinNum;
+	cxa_gpio_direction_t direction;
 	cxa_gpio_polarity_t polarity;
 
 	bool lastSetVal_nonInverted;

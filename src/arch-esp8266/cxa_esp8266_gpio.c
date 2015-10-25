@@ -1,4 +1,7 @@
 /**
+ * Original Source:
+ * https://github.com/esp8266/Arduino.git
+ *
  * Copyright 2015 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +22,7 @@
 
 
 // ******** includes ********
-#include <eagle_soc.h>
+#include <esp8266_peri.h>
 
 #include <cxa_assert.h>
 
@@ -28,34 +31,12 @@
 
 
 // ******** local type definitions ********
-typedef struct
-{
-	uint8_t pinNum;
-	uint32_t muxVal;
-	uint8_t func;
-}pinRegMapEntry_t;
 
 
 // ******** local function prototypes ********
-static pinRegMapEntry_t* getPinRegMapEntry_forPinNum(uint8_t pinNumIn);
 
 
 // ********  local variable declarations *********
-static pinRegMapEntry_t pinRegMap[] =
-{
-	{ 0, PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0},
-	{ 1, PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1},
-	{ 2, PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2},
-	{ 3, PERIPHS_IO_MUX_U0RXD_U, FUNC_GPIO3},
-	{ 4, PERIPHS_IO_MUX_GPIO4_U, FUNC_GPIO4},
-	{ 5, PERIPHS_IO_MUX_GPIO5_U, FUNC_GPIO5},
-	{ 9, PERIPHS_IO_MUX_SD_DATA2_U, FUNC_GPIO9},
-	{10, PERIPHS_IO_MUX_SD_DATA3_U, FUNC_GPIO10},
-	{12, PERIPHS_IO_MUX_MTDI_U, FUNC_GPIO12},
-	{13, PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13},
-	{14, PERIPHS_IO_MUX_MTMS_U, FUNC_GPIO14},
-	{15, PERIPHS_IO_MUX_MTDO_U, FUNC_GPIO15},
-};
 
 
 // ******** global function implementations ********
@@ -87,9 +68,7 @@ void cxa_esp8266_gpio_init_output(cxa_esp8266_gpio_t *const gpioIn, const uint8_
 	gpioIn->lastSetVal_nonInverted = false;
 	
 	// configure the pin for GPIO
-	pinRegMapEntry_t* currEntry = getPinRegMapEntry_forPinNum(gpioIn->pinNum);
-	cxa_assert(currEntry);
-	PIN_FUNC_SELECT((currEntry->muxVal), (currEntry->func));
+    GPF(gpioIn->pinNum) = GPFFS(GPFFS_GPIO(gpioIn->pinNum));			//Set mode to GPIO
 
 	// set our initial value (before we set direction to avoid glitches)
 	cxa_gpio_setValue(&gpioIn->super, initValIn);
@@ -120,9 +99,20 @@ void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t
 
 	// get a pointer to our class
 	cxa_esp8266_gpio_t *const gpioIn = (cxa_esp8266_gpio_t *const)superIn;
+	gpioIn->direction = dirIn;
 
-	// configure out register
-	GPIO_REG_WRITE(((dirIn == CXA_GPIO_DIR_OUTPUT) ? GPIO_ENABLE_W1TS_ADDRESS : GPIO_ENABLE_W1TC_ADDRESS), (1<<gpioIn->pinNum));
+	// configure our registers
+	if( gpioIn->direction == CXA_GPIO_DIR_OUTPUT )
+	{
+		GPC(gpioIn->pinNum) = (GPC(gpioIn->pinNum) & (0xF << GPCI));					//SOURCE(GPIO) | DRIVER(NORMAL) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
+		GPES = (1 << gpioIn->pinNum); 													//Enable
+	}
+	else
+	{
+		GPEC = (1 << gpioIn->pinNum); 													//Disable
+		GPC(gpioIn->pinNum) = (GPC(gpioIn->pinNum) & (0xF << GPCI)) | (1 << GPCD); 		//SOURCE(GPIO) | DRIVER(OPEN_DRAIN) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
+	}
+
 }
 
 
@@ -133,7 +123,7 @@ cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const superIn)
 	// get a pointer to our class
 	cxa_esp8266_gpio_t *const gpioIn = (cxa_esp8266_gpio_t *const)superIn;
 	
-	return ((GPIO_REG_READ(GPIO_ENABLE_ADDRESS) >> gpioIn->pinNum) & 1) ? CXA_GPIO_DIR_INPUT : CXA_GPIO_DIR_OUTPUT;
+	return gpioIn->direction;
 }
 
 
@@ -171,7 +161,8 @@ void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
 
 	gpioIn->lastSetVal_nonInverted = (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn;
 
-	GPIO_REG_WRITE(((gpioIn->lastSetVal_nonInverted ? GPIO_OUT_W1TS_ADDRESS : GPIO_OUT_W1TC_ADDRESS)), (1 << gpioIn->pinNum));
+	if( gpioIn->lastSetVal_nonInverted ) GPOS = (1 << gpioIn->pinNum);
+	else GPOC = (1 << gpioIn->pinNum);
 }
 
 
@@ -182,7 +173,7 @@ bool cxa_gpio_getValue(cxa_gpio_t *const superIn)
 	// get a pointer to our class
 	cxa_esp8266_gpio_t *const gpioIn = (cxa_esp8266_gpio_t *const)superIn;
 
-	bool retVal_nonInverted = (cxa_gpio_getDirection(superIn) == CXA_GPIO_DIR_INPUT) ? ((GPIO_REG_READ(GPIO_IN_ADDRESS) >> gpioIn->pinNum) & 1) : gpioIn->lastSetVal_nonInverted;
+	bool retVal_nonInverted = (cxa_gpio_getDirection(superIn) == CXA_GPIO_DIR_INPUT) ? GPIP(gpioIn->pinNum) : gpioIn->lastSetVal_nonInverted;
 	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal_nonInverted : retVal_nonInverted;
 }
 
@@ -196,15 +187,4 @@ void cxa_gpio_toggle(cxa_gpio_t *const superIn)
 
 
 // ******** local function implementations ********
-static pinRegMapEntry_t* getPinRegMapEntry_forPinNum(uint8_t pinNumIn)
-{
-	for( size_t i = 0; i < (sizeof(pinRegMap)/sizeof(*pinRegMap)); i++ )
-	{
-		pinRegMapEntry_t* currEntry = &pinRegMap[i];
-
-		if( currEntry->pinNum == pinNumIn ) return currEntry;
-	}
-
-	return NULL;
-}
 
