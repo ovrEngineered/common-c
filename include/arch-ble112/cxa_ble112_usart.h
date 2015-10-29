@@ -37,7 +37,7 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_BLE112_USART_RX_FIFO_SIZE_BYTES
-	#define CXA_BLE112_USART_RX_FIFO_SIZE_BYTES			16
+	#define CXA_BLE112_USART_RX_FIFO_SIZE_BYTES			64
 #endif
 
 
@@ -95,5 +95,6 @@ struct cxa_ble112_usart
 
 // ******** global function prototypes ********
 void cxa_ble112_usart_init_noHH(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart_id_t idIn, const cxa_ble112_usart_pinConfig_t pinConfigIn, const cxa_ble112_usart_baudRate_t baudRateIn);
+void cxa_ble112_usart_init_HH(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart_id_t idIn, const cxa_ble112_usart_pinConfig_t pinConfigIn, const cxa_ble112_usart_baudRate_t baudRateIn);
 
 #endif // CXA_BLE112_USART_H_

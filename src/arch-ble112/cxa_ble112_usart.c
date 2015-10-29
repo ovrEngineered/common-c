@@ -40,6 +40,8 @@ typedef struct
 
 
 // ******** local function prototypes ********
+static void commonInit(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart_id_t idIn, const cxa_ble112_usart_pinConfig_t pinConfigIn, const cxa_ble112_usart_baudRate_t baudRateIn, bool flowControlEnabledIn);
+
 static void ble112CxaUsartMap_setCxaUsart(cxa_ble112_usart_id_t idIn, cxa_ble112_usart_t *const cxaUsartIn);
 static cxa_ble112_usart_t* ble112CxaUsartMap_getCxaUsart_fromAvrUsart(cxa_ble112_usart_id_t idIn);
 static void usart_setBaudRate(const cxa_ble112_usart_id_t portIdIn, const cxa_ble112_usart_baudRate_t baudRateIn);
@@ -60,72 +62,85 @@ static ble112Usart_cxaUsart_map_entry_t ble112CxaUsartMap[] = {
 // ******** global function implementations ********
 void cxa_ble112_usart_init_noHH(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart_id_t idIn, const cxa_ble112_usart_pinConfig_t pinConfigIn, const cxa_ble112_usart_baudRate_t baudRateIn)
 {
-	cxa_assert(usartIn);
+	commonInit(usartIn, idIn, pinConfigIn, baudRateIn, false);
+}
 
-	// save our internal state
-	usartIn->id = idIn;
 
-	// setup our receive fifo
-	cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void*)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
-
-	// configure our port...
-	if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
-	{
-		PERCFG &= ~0x01;
-		P0SEL |= 0x0C;
-		P2DIR = (P2DIR & (~0xC0));			// priority for PORT0 to USART0
-		U0CSR |= 0xC0;
-		UTX0IF = 0;
-		URX0IF = 0;
-	}
-	else if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
-	{
-		PERCFG |= 0x01;
-		P1SEL |= 0x30;
-		P2SEL &= 0x48;						// priority for PORT1 to USART
-		U0CSR |= 0xC0;
-		UTX0IF = 0;
-		URX0IF = 0;
-	}
-	else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
-	{
-		PERCFG &= ~0x02;
-		P0SEL |= 0x30;
-		P2DIR = (P2DIR & (~0xC0)) | 0x40;	// priority for PORT0 to USART1
-		U1CSR |= 0xC0;
-		UTX1IF = 0;
-		URX1IF = 0;
-	}
-	else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
-	{
-		PERCFG |= 0x02;
-		P1SEL |= 0xC0;
-		P2SEL = (P2SEL & (~0x60)) | 0x40;	// priority for PORT1 to USART1
-		U1CSR |= 0xC0;
-		UTX1IF = 0;
-		URX1IF = 0;
-	}
-
-	// set our baud rate
-	usart_setBaudRate(idIn, baudRateIn);
-
-	// associate this cxa usart with the ble112Usart (for interrupts)
-	ble112CxaUsartMap_setCxaUsart(usartIn->id, usartIn);
-
-	// enable reception interrupt
-	URX1IE = 1;
-	IEN0 |= 0x84; // 1000 0100
-
-	// global interrupt enable
-	EA = 1;
-
-	// setup our ioStream (last once everything is setup)
-	cxa_ioStream_init(&usartIn->super.ioStream);
-	cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
+void cxa_ble112_usart_init_HH(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart_id_t idIn, const cxa_ble112_usart_pinConfig_t pinConfigIn, const cxa_ble112_usart_baudRate_t baudRateIn)
+{
+	commonInit(usartIn, idIn, pinConfigIn, baudRateIn, true);
 }
 
 
 // ******** local function implementations ********
+static void commonInit(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart_id_t idIn, const cxa_ble112_usart_pinConfig_t pinConfigIn, const cxa_ble112_usart_baudRate_t baudRateIn, bool flowControlEnabledIn)
+{
+	cxa_assert(usartIn);
+
+		// save our internal state
+		usartIn->id = idIn;
+
+		// setup our receive fifo
+		cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void*)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
+
+		// configure our port...
+		if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
+		{
+			PERCFG &= ~0x01;
+			P0SEL |= 0x0C | (flowControlEnabledIn ? 0x30 : 0x00);
+			P2DIR = (P2DIR & (~0xC0));			// priority for PORT0 to USART0
+			U0CSR |= 0xC0;
+			UTX0IF = 0;
+			URX0IF = 0;
+			U0UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+		}
+		else if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
+		{
+			PERCFG |= 0x01;
+			P1SEL |= 0x30 | (flowControlEnabledIn ? 0xC0 : 0x00);
+			P2SEL &= 0x48;						// priority for PORT1 to USART
+			U0CSR |= 0xC0;
+			UTX0IF = 0;
+			URX0IF = 0;
+			U0UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+		}
+		else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
+		{
+			PERCFG &= ~0x02;
+			P0SEL |= 0x30 | (flowControlEnabledIn ? 0x0C : 0x00);
+			P2DIR = (P2DIR & (~0xC0)) | 0x40;	// priority for PORT0 to USART1
+			U1CSR |= 0xC0;
+			UTX1IF = 0;
+			URX1IF = 0;
+			U1UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+		}
+		else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
+		{
+			PERCFG |= 0x02;
+			P1SEL |= 0xC0 | (flowControlEnabledIn ? 0x30 : 0x00);
+			P2SEL = (P2SEL & (~0x60)) | 0x40;	// priority for PORT1 to USART1
+			U1CSR |= 0xC0;
+			UTX1IF = 0;
+			URX1IF = 0;
+			U1UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+		}
+
+		// set our baud rate
+		usart_setBaudRate(idIn, baudRateIn);
+
+		// associate this cxa usart with the ble112Usart (for interrupts)
+		ble112CxaUsartMap_setCxaUsart(usartIn->id, usartIn);
+
+		// enable reception interrupt
+		URX1IE = 1;
+		IEN0 |= 0x84; // 1000 0100
+
+		// setup our ioStream (last once everything is setup)
+		cxa_ioStream_init(&usartIn->super.ioStream);
+		cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
+}
+
+
 static void ble112CxaUsartMap_setCxaUsart(cxa_ble112_usart_id_t idIn, cxa_ble112_usart_t *const cxaUsartIn)
 {
 	cxa_assert((idIn == CXA_BLE112_USART_0) || (idIn == CXA_BLE112_USART_1));
