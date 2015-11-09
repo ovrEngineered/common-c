@@ -40,9 +40,9 @@ typedef enum
 {
 	STATE_INIT,
 	STATE_CONFIG_MODE,
-	STATE_CONNECTING,
-	STATE_CONNECTED,
-	STATE_CONNECT_FAILED
+	STATE_ASSOCIATING,
+	STATE_ASSOCIATED,
+	STATE_ASSOCIATE_FAILED
 }state_t;
 
 
@@ -51,10 +51,10 @@ typedef struct
 	cxa_esp8266_wifiManager_configMode_cb_t cb_configModeEnter;
 	cxa_esp8266_wifiManager_configMode_numConnStationsChanged_cb_t cb_numConnStationsChanged;
 	cxa_esp8266_wifiManager_configMode_cb_t cb_configModeLeave;
-	cxa_esp8266_wifiManager_ssid_cb_t cb_connectingToSsid;
-	cxa_esp8266_wifiManager_ssid_cb_t cb_connectedToSsid;
-	cxa_esp8266_wifiManager_ssid_cb_t cb_lostConnectionToSsid;
-	cxa_esp8266_wifiManager_ssid_cb_t cb_connectToSsidFailed;
+	cxa_esp8266_wifiManager_ssid_cb_t cb_associatingWithSsid;
+	cxa_esp8266_wifiManager_ssid_cb_t cb_associatedWithSsid;
+	cxa_esp8266_wifiManager_ssid_cb_t cb_lostAssociationWithSsid;
+	cxa_esp8266_wifiManager_ssid_cb_t cb_associateWithSsidFailed;
 	void *userVarIn;
 }listener_t;
 
@@ -63,12 +63,12 @@ typedef struct
 static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_configMode_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_configMode_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connectFailed_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associating_state(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associated_state(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associateFailed_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -124,9 +124,9 @@ void cxa_esp8266_wifiManager_init(const char* configModeSsidIn, cxa_timeBase_t *
 	cxa_stateMachine_init(&stateMachine, "wifiMgr");
 	cxa_stateMachine_addState(&stateMachine, STATE_INIT, "init", NULL, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONFIG_MODE, "cfgMode", stateCb_configMode_enter, stateCb_configMode_state, stateCb_configMode_leave, NULL);
-	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, NULL);
-	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, stateCb_connected_state, stateCb_connected_leave, NULL);
-	cxa_stateMachine_addState(&stateMachine, STATE_CONNECT_FAILED, "connectFailed", stateCb_connectFailed_enter, NULL, NULL, NULL);
+	cxa_stateMachine_addState(&stateMachine, STATE_ASSOCIATING, "associating", stateCb_associating_enter, stateCb_associating_state, NULL, NULL);
+	cxa_stateMachine_addState(&stateMachine, STATE_ASSOCIATED, "associated", stateCb_associated_enter, stateCb_associated_state, stateCb_associated_leave, NULL);
+	cxa_stateMachine_addState(&stateMachine, STATE_ASSOCIATE_FAILED, "associatedFailed", stateCb_associateFailed_enter, NULL, NULL, NULL);
 	cxa_stateMachine_transition(&stateMachine, STATE_INIT);
 	cxa_stateMachine_update(&stateMachine);
 }
@@ -150,20 +150,20 @@ void cxa_esp8266_wifiManager_addStoredNetwork(const char* ssidIn, const char* pa
 void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t cb_configModeEnter,
 										 cxa_esp8266_wifiManager_configMode_numConnStationsChanged_cb_t cb_numConnStationsChanged,
 										 cxa_esp8266_wifiManager_configMode_cb_t cb_configModeLeave,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_connectingToSsid,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_connectedToSsid,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_lostConnectionToSsid,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_connectToSsidFailed,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_associatingWithSsid,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_associatedWithSsid,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_lostAssociationWithSsid,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_associateWithSsidFailed,
 										 void *userVarIn)
 {
 	listener_t newListener;
 	newListener.cb_configModeEnter = cb_configModeEnter;
 	newListener.cb_numConnStationsChanged = cb_numConnStationsChanged;
 	newListener.cb_configModeLeave = cb_configModeLeave;
-	newListener.cb_connectingToSsid = cb_connectingToSsid;
-	newListener.cb_connectedToSsid = cb_connectedToSsid;
-	newListener.cb_lostConnectionToSsid = cb_lostConnectionToSsid;
-	newListener.cb_connectToSsidFailed = cb_connectToSsidFailed;
+	newListener.cb_associatingWithSsid = cb_associatingWithSsid;
+	newListener.cb_associatedWithSsid = cb_associatedWithSsid;
+	newListener.cb_lostAssociationWithSsid = cb_lostAssociationWithSsid;
+	newListener.cb_associateWithSsidFailed = cb_associateWithSsidFailed;
 	newListener.userVarIn = userVarIn;
 
 	cxa_assert(cxa_array_append(&listeners, &newListener));
@@ -177,7 +177,7 @@ void cxa_esp8266_wifiManager_start(void)
 	if( cxa_array_getSize_elems(&storedNetworks) > 0 )
 	{
 		targetNetworkIndex = 0;
-		cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
 		return;
 	}
 	else
@@ -247,7 +247,7 @@ static void stateCb_configMode_leave(cxa_stateMachine_t *const smIn, void *userV
 }
 
 
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	// get our config and validate
 	struct station_config* targetConfig = cxa_array_get(&storedNetworks, targetNetworkIndex);
@@ -262,9 +262,9 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 	{
 		cxa_logger_warn(&logger, "invalid stored network at index %d, skipping", targetNetworkIndex);
 		targetNetworkIndex++;
-		cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
 	}
-	cxa_logger_info(&logger, "connecting to '%s'", targetConfig->ssid);
+	cxa_logger_info(&logger, "associating with '%s'", targetConfig->ssid);
 
 	wifi_set_opmode(STATION_MODE);
 	wifi_station_set_auto_connect(true);
@@ -276,18 +276,18 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 	cxa_array_iterate(&listeners, currListener, listener_t)
 	{
 		if( currListener == NULL ) continue;
-		if( currListener->cb_connectingToSsid != NULL ) currListener->cb_connectingToSsid((char*)targetConfig->ssid, currListener->userVarIn);
+		if( currListener->cb_associatingWithSsid != NULL ) currListener->cb_associatingWithSsid((char*)targetConfig->ssid, currListener->userVarIn);
 	}
 }
 
 
-static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associating_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	uint8_t connStatus = wifi_station_get_connect_status();
 	switch( connStatus )
 	{
 		case STATION_IDLE:
-			if( cxa_timeDiff_isElapsed_recurring_ms(&td_genPurpose, 1000) ) cxa_logger_warn(&logger, "should be connecting but reports idle");
+			if( cxa_timeDiff_isElapsed_recurring_ms(&td_genPurpose, 1000) ) cxa_logger_warn(&logger, "should be associating but reports idle");
 			break;
 
 		case STATION_CONNECTING:
@@ -297,60 +297,60 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 		case STATION_WRONG_PASSWORD:
 		case STATION_NO_AP_FOUND:
 		case STATION_CONNECT_FAIL:
-			cxa_logger_debug(&logger, "connect failure: %d", connStatus);
+			cxa_logger_debug(&logger, "associate failure: %d", connStatus);
 			targetNetworkIndex++;
-			cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+			cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
 			return;
 			break;
 
 		case STATION_GOT_IP:
-			cxa_stateMachine_transition(&stateMachine, STATE_CONNECTED);
+			cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATED);
 			return;
 			break;
 	}
 }
 
 
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	struct station_config* targetConfig = cxa_array_get(&storedNetworks, targetNetworkIndex);
 	lastAssociatedNetwork = targetConfig;
-	cxa_logger_info(&logger, "connected to '%s'", targetConfig->ssid);
+	cxa_logger_info(&logger, "associated with '%s'", targetConfig->ssid);
 
 	// notify our listeners
 	cxa_array_iterate(&listeners, currListener, listener_t)
 	{
 		if( currListener == NULL ) continue;
-		if( currListener->cb_connectedToSsid != NULL ) currListener->cb_connectedToSsid((char*)lastAssociatedNetwork->ssid, currListener->userVarIn);
+		if( currListener->cb_associatedWithSsid != NULL ) currListener->cb_associatedWithSsid((char*)lastAssociatedNetwork->ssid, currListener->userVarIn);
 	}
 }
 
 
-static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associated_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	if( wifi_station_get_connect_status() != STATION_GOT_IP )
 	{
-		cxa_logger_info(&logger, "disconnected from '%s'", lastAssociatedNetwork->ssid);
+		cxa_logger_info(&logger, "disassociated from '%s'", lastAssociatedNetwork->ssid);
 		targetNetworkIndex = 0;
-		cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
 	}
 }
 
 
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	// lost our connection...notify our listeners
 	cxa_array_iterate(&listeners, currListener, listener_t)
 	{
 		if( currListener == NULL ) continue;
-		if( currListener->cb_lostConnectionToSsid != NULL ) currListener->cb_lostConnectionToSsid((char*)lastAssociatedNetwork->ssid, currListener->userVarIn);
+		if( currListener->cb_lostAssociationWithSsid != NULL ) currListener->cb_lostAssociationWithSsid((char*)lastAssociatedNetwork->ssid, currListener->userVarIn);
 	}
 	lastAssociatedNetwork = NULL;
 }
 
 
-static void stateCb_connectFailed_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associateFailed_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_logger_warn(&logger, "failed to connect to any known network, falling back to config mode");
+	cxa_logger_warn(&logger, "failed to associate with any known network, falling back to config mode");
 	cxa_stateMachine_transition(&stateMachine, STATE_CONFIG_MODE);
 }

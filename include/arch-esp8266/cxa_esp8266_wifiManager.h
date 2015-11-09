@@ -43,10 +43,10 @@ void cxa_esp8266_wifiManager_addStoredNetwork(const char* ssidIn, const char* pa
 void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t cb_configModeEnter,
 										 cxa_esp8266_wifiManager_configMode_numConnStationsChanged_cb_t cb_numConnStationsChanged,
 										 cxa_esp8266_wifiManager_configMode_cb_t cb_configModeLeave,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_connectingToSsid,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_connectedToSsid,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_lostConnectionToSsid,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_connectToSsidFailed,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_associatingWithSsid,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_associatedWithSsid,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_lostAssociationWithSsid,
+										 cxa_esp8266_wifiManager_ssid_cb_t cb_associateWithSsidFailed,
 										 void *userVarIn);
 
 void cxa_esp8266_wifiManager_start(void);
