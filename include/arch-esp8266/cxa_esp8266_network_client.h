@@ -57,6 +57,9 @@ struct cxa_esp8266_network_client
 
 	ip_addr_t ip;
 	struct espconn espconn;
+	esp_tcp tcp;
+	uint32_t connectTimeout_ms;
+	bool autoReconnect;
 
 	cxa_stateMachine_t stateMachine;
 };

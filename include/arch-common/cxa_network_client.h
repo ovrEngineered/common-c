@@ -56,7 +56,7 @@ typedef void (*cxa_network_client_cb_onDisconnect_t)(cxa_network_client_t *const
 /**
  * @private
  */
-typedef bool (*cxa_network_client_cb_connectToHost_t)(cxa_network_client_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn);
+typedef bool (*cxa_network_client_cb_connectToHost_t)(cxa_network_client_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
 
 
 /**
@@ -114,7 +114,7 @@ void cxa_network_client_addListener(cxa_network_client_t *const netClientIn,
 /**
  * @public
  */
-bool cxa_network_client_connectToHost(cxa_network_client_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn);
+bool cxa_network_client_connectToHost(cxa_network_client_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
 
 
 /**
