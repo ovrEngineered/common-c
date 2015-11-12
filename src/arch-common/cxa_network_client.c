@@ -37,16 +37,19 @@
 // ******** global function implementations ********
 void cxa_network_client_init(cxa_network_client_t *const netClientIn, cxa_timeBase_t *const timeBaseIn,
 							 cxa_network_client_cb_connectToHost_t cb_connToHostIn,
-							 cxa_network_client_cb_disconnectFromHost_t cb_disconnectIn)
+							 cxa_network_client_cb_disconnectFromHost_t cb_disconnectIn,
+							 cxa_network_client_cb_isConnected_t cb_isConnected)
 {
 	cxa_assert(netClientIn);
 	cxa_assert(timeBaseIn);
 	cxa_assert(cb_connToHostIn);
 	cxa_assert(cb_disconnectIn);
+	cxa_assert(cb_isConnected);
 
 	// save our references
 	netClientIn->cb_connToHost = cb_connToHostIn;
 	netClientIn->cb_disconnect = cb_disconnectIn;
+	netClientIn->cb_isConnected = cb_isConnected;
 
 	// setup our logger
 	cxa_logger_init(&netClientIn->logger, "netClient");
@@ -88,6 +91,14 @@ void cxa_network_client_disconnect(cxa_network_client_t *const netClientIn)
 	cxa_assert(netClientIn);
 
 	netClientIn->cb_disconnect(netClientIn);
+}
+
+
+bool cxa_network_client_isConnected(cxa_network_client_t *const netClientIn)
+{
+	cxa_assert(netClientIn);
+
+	return netClientIn->cb_isConnected(netClientIn);
 }
 
 

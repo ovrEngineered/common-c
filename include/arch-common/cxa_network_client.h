@@ -55,14 +55,23 @@ typedef void (*cxa_network_client_cb_onDisconnect_t)(cxa_network_client_t *const
 
 /**
  * @private
+ * Used for network client subclasses
  */
 typedef bool (*cxa_network_client_cb_connectToHost_t)(cxa_network_client_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
 
 
 /**
  * @private
+ * Used for network client subclasses
  */
 typedef void (*cxa_network_client_cb_disconnectFromHost_t)(cxa_network_client_t *const netClientIn);
+
+
+/**
+ * @private
+ * Used for network client subclasses
+ */
+typedef bool (*cxa_network_client_cb_isConnected_t)(cxa_network_client_t *const netClientIn);
 
 
 typedef struct
@@ -84,6 +93,7 @@ struct cxa_network_client
 	// subclass methods
 	cxa_network_client_cb_connectToHost_t cb_connToHost;
 	cxa_network_client_cb_disconnectFromHost_t cb_disconnect;
+	cxa_network_client_cb_isConnected_t cb_isConnected;
 
 	cxa_timeDiff_t td_genPurp;
 
@@ -100,7 +110,8 @@ struct cxa_network_client
  */
 void cxa_network_client_init(cxa_network_client_t *const netClientIn, cxa_timeBase_t *const timeBaseIn,
 							 cxa_network_client_cb_connectToHost_t cb_connToHostIn,
-							 cxa_network_client_cb_disconnectFromHost_t cb_disconnectIn);
+							 cxa_network_client_cb_disconnectFromHost_t cb_disconnectIn,
+							 cxa_network_client_cb_isConnected_t cb_isConnected);
 
 /**
  * @public
@@ -121,6 +132,13 @@ bool cxa_network_client_connectToHost(cxa_network_client_t *const netClientIn, c
  * @public
  */
 void cxa_network_client_disconnect(cxa_network_client_t *const netClientIn);
+
+
+/**
+ * @param netClientIn
+ * @return
+ */
+bool cxa_network_client_isConnected(cxa_network_client_t *const netClientIn);
 
 
 /**

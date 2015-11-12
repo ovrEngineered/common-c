@@ -52,9 +52,11 @@ static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVa
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
 
 static bool cb_connectToHost(cxa_network_client_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
 static void cb_disconnectFromHost(cxa_network_client_t *const superIn);
+static bool cb_isConnected(cxa_network_client_t *const superIn);
 
 static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_arg);
 static void cb_espConnected(void *arg);
@@ -62,6 +64,8 @@ static void cb_espDisconnected(void *arg);
 static void cb_espRx(void *arg, char *data, unsigned short len);
 static void cb_espRecon(void *arg, sint8 err);
 
+static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, void *const userVarIn);
+static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
 
 
 // ********  local variable declarations *********
@@ -74,14 +78,17 @@ void cxa_esp8266_network_client_init(cxa_esp8266_network_client_t *const netClie
 	cxa_assert(timeBaseIn);
 
 	// initialize our super class
-	cxa_network_client_init(&netClientIn->super, timeBaseIn, cb_connectToHost, cb_disconnectFromHost);
+	cxa_network_client_init(&netClientIn->super, timeBaseIn, cb_connectToHost, cb_disconnectFromHost, cb_isConnected);
+
+	// setup our fifo (backing our ioStream)
+	cxa_fixedFifo_initStd(&netClientIn->rxFifo, CXA_FF_ON_FULL_DROP, netClientIn->rxFifo_raw);
 
 	// setup our state machine
 	cxa_stateMachine_init(&netClientIn->stateMachine, "netClient");
 	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_IDLE, "idle", stateCb_idle_enter, NULL, NULL, (void*)netClientIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_DNS_LOOKUP, "dnsLookup", stateCb_dnsLookup_enter, stateCb_dnsLookup_state, NULL, (void*)netClientIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, (void*)netClientIn);
-	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, NULL, (void*)netClientIn);
+	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, stateCb_connected_leave, (void*)netClientIn);
 	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
 }
 
@@ -169,7 +176,6 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 	// register for our callbacks
 	espconn_regist_connectcb(&netClientIn->espconn, cb_espConnected);
 	espconn_regist_disconcb(&netClientIn->espconn, cb_espDisconnected);
-	espconn_regist_recvcb(&netClientIn->espconn, cb_espRx);
 	espconn_regist_reconcb(&netClientIn->espconn, cb_espRecon);
 
 	// actually connect
@@ -198,6 +204,23 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 {
 	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
 	cxa_assert(netClientIn);
+
+	// register for received data
+	cxa_logger_trace(&netClientIn->super.logger, "regist");
+	espconn_regist_recvcb(&netClientIn->espconn, cb_espRx);
+
+	// bind to our ioStream
+	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
+}
+
+
+static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
+{
+	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_assert(netClientIn);
+
+	// unbind our ioStream
+	cxa_ioStream_unbind(&netClientIn->super.ioStream);
 }
 
 
@@ -223,6 +246,17 @@ static void cb_disconnectFromHost(cxa_network_client_t *const superIn)
 {
 	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)superIn;
 	cxa_assert(netClientIn);
+
+	if( (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED)) espconn_disconnect(&netClientIn->espconn);
+}
+
+
+static bool cb_isConnected(cxa_network_client_t *const superIn)
+{
+	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)superIn;
+	cxa_assert(netClientIn);
+
+	return (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED);
 }
 
 
@@ -283,7 +317,19 @@ static void cb_espDisconnected(void *arg)
 
 static void cb_espRx(void *arg, char *data, unsigned short len)
 {
+	// find our network client
+	struct espconn *conn = (struct espconn*)arg;
+	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_assert(netClientIn);
 
+	// queue in our buffer
+	bool didDropData = false;
+	for( unsigned short i = 0; i < len; i++ )
+	{
+		if( !cxa_fixedFifo_queue(&netClientIn->rxFifo, (void*)&data[i]) ) didDropData = true;
+	}
+
+	if( didDropData ) cxa_logger_warn(&netClientIn->super.logger, "buffer overflow, data dropped");
 }
 
 
@@ -307,4 +353,34 @@ static void cb_espRecon(void *arg, sint8 err)
 		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
 		return;
 	}
+}
+
+
+static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, void *const userVarIn)
+{
+	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_assert(netClientIn);
+
+	return cxa_fixedFifo_dequeue(&netClientIn->rxFifo, (void*)byteOut) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
+}
+
+
+static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn)
+{
+	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_assert(netClientIn);
+
+	if( !cxa_network_client_isConnected(&netClientIn->super) ) return false;
+
+	// size_t is probably bigger than uint16 of the send function...just to be safe...
+	size_t currSendIndex = 0;
+	while(bufferSize_bytesIn > 0)
+	{
+		uint16_t currNumBytesToSend = (bufferSize_bytesIn <= UINT16_MAX) ? bufferSize_bytesIn : UINT16_MAX;
+		espconn_send(&netClientIn->espconn, &((uint8_t*)buffIn)[currSendIndex], currNumBytesToSend);
+		bufferSize_bytesIn -= currNumBytesToSend;
+		currSendIndex += currNumBytesToSend;
+	}
+
+	return true;
 }
