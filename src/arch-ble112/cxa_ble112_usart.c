@@ -49,6 +49,8 @@ static void usart_setBaudRate(const cxa_ble112_usart_id_t portIdIn, const cxa_bl
 static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn);
 static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
 
+static void fifo_cb_noLongerFull(cxa_fixedFifo_t *const fifoIn, void* userVarIn);
+
 static inline void rxIsr(cxa_ble112_usart_id_t idIn);
 
 
@@ -82,6 +84,7 @@ static void commonInit(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart
 
 		// setup our receive fifo
 		cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void*)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
+		cxa_fixedFifo_addListener(&usartIn->rxFifo, fifo_cb_noLongerFull, (void*)usartIn);
 
 		// configure our port...
 		if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
@@ -282,6 +285,39 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 }
 
 
+static void fifo_cb_noLongerFull(cxa_fixedFifo_t *const fifoIn, void* userVarIn)
+{
+	cxa_ble112_usart_t *const usartIn = (cxa_ble112_usart_t*)userVarIn;
+	cxa_assert(usartIn);
+
+	switch( usartIn->id )
+	{
+		case CXA_BLE112_USART_0:
+			// see if we have a byte waiting in the buffer
+			if( (U0CSR & 0x04) )
+			{
+				uint8_t rxChar = U0DBUF;
+				cxa_fixedFifo_queue(&usartIn->rxFifo, (void*)&rxChar);
+			}
+			// regardless of whether we had a byte waiting, we should re-enable interrupts
+			if( !URX0IE ) URX0IE = 1;
+
+			break;
+
+		case CXA_BLE112_USART_1:
+			// see if we have a byte waiting in the buffer
+			if( (U1CSR & 0x04) )
+			{
+				uint8_t rxChar = U1DBUF;
+				cxa_fixedFifo_queue(&usartIn->rxFifo, (void*)&rxChar);
+			}
+			// regardless of whether we had a byte waiting, we should re-enable interrupts
+			if( !URX1IE ) URX1IE = 1;
+			break;
+	}
+}
+
+
 static inline void rxIsr(cxa_ble112_usart_id_t idIn)
 {
 	cxa_ble112_usart_t *const cxaUsartIn = ble112CxaUsartMap_getCxaUsart_fromAvrUsart(idIn);
@@ -291,13 +327,33 @@ static inline void rxIsr(cxa_ble112_usart_id_t idIn)
 	switch( cxaUsartIn->id )
 	{
 		case CXA_BLE112_USART_0:
-			rxChar = U0DBUF;
-			cxa_fixedFifo_queue(&cxaUsartIn->rxFifo, (void*)&rxChar);
+			// see if we have room for the received byte
+			if( cxa_fixedFifo_isFull(&cxaUsartIn->rxFifo) )
+			{
+				// no room...disable further interrupts (until the fifo is clear)
+				URX0IE = 0;
+			}
+			else
+			{
+				// we've got room...queue the byte
+				rxChar = U0DBUF;
+				cxa_fixedFifo_queue(&cxaUsartIn->rxFifo, (void*)&rxChar);
+			}
 			break;
 
 		case CXA_BLE112_USART_1:
-			rxChar = U1DBUF;
-			cxa_fixedFifo_queue(&cxaUsartIn->rxFifo, (void*)&rxChar);
+			// see if we have room for the received byte
+			if( cxa_fixedFifo_isFull(&cxaUsartIn->rxFifo) )
+			{
+				// no room...disable further interrupts (until the fifo is clear)
+				URX1IE = 0;
+			}
+			else
+			{
+				// we've got room...queue the byte
+				rxChar = U1DBUF;
+				cxa_fixedFifo_queue(&cxaUsartIn->rxFifo, (void*)&rxChar);
+			}
 			break;
 	}
 }

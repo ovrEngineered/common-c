@@ -57,6 +57,18 @@ void cxa_fixedFifo_init(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_onFullActio
 	// set some reasonable defaults
 	fifoIn->insertIndex = 0;
 	fifoIn->removeIndex = 0;
+
+	// setup our listener array
+	cxa_array_initStd(&fifoIn->listeners, fifoIn->listeners_raw);
+}
+
+
+void cxa_fixedFifo_addListener(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_cb_noLongerFull_t cb_noLongerFull, void* userVarIn)
+{
+	cxa_assert(fifoIn);
+
+	cxa_fixedFifo_listener_entry_t newEntry = {.cb_noLongerFull=cb_noLongerFull, .userVarIn=userVarIn};
+	cxa_assert(cxa_array_append(&fifoIn->listeners, &newEntry));
 }
 
 
@@ -92,6 +104,8 @@ bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 {
 	cxa_assert(fifoIn);
 	
+	bool wasFull = cxa_fixedFifo_isFull(fifoIn);
+
 	// if we're empty, we have nothing to return
 	if( cxa_fixedFifo_isEmpty(fifoIn) )
 	{
@@ -106,6 +120,17 @@ bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 	fifoIn->removeIndex++;
 	if( fifoIn->removeIndex >= fifoIn->maxNumElements ) fifoIn->removeIndex = 0;
 	
+	// notify our listeners
+	if( wasFull )
+	{
+		cxa_array_iterate(&fifoIn->listeners, currEntry, cxa_fixedFifo_listener_entry_t)
+		{
+			if( currEntry == NULL ) continue;
+
+			if( currEntry->cb_noLongerFull != NULL ) currEntry->cb_noLongerFull(fifoIn, currEntry->userVarIn);
+		}
+	}
+
 	return true;
 }
 
