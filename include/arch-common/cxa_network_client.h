@@ -46,6 +46,11 @@ typedef struct cxa_network_client cxa_network_client_t;
  */
 typedef void (*cxa_network_client_cb_onConnect_t)(cxa_network_client_t *const superIn, void* userVarIn);
 
+/**
+ * @public
+ */
+typedef void (*cxa_network_client_cb_onConnectFail_t)(cxa_network_client_t *const superIn, void* userVarIn);
+
 
 /**
  * @public
@@ -77,6 +82,7 @@ typedef bool (*cxa_network_client_cb_isConnected_t)(cxa_network_client_t *const 
 typedef struct
 {
 	cxa_network_client_cb_onConnect_t cb_onConnect;
+	cxa_network_client_cb_onConnectFail_t cb_onConnectFail;
 	cxa_network_client_cb_onDisconnect_t cb_onDisconnect;
 
 	void* userVar;
@@ -118,6 +124,7 @@ void cxa_network_client_init(cxa_network_client_t *const netClientIn, cxa_timeBa
  */
 void cxa_network_client_addListener(cxa_network_client_t *const netClientIn,
 									cxa_network_client_cb_onConnect_t cb_onConnectIn,
+									cxa_network_client_cb_onConnectFail_t cb_onConnectFailIn,
 									cxa_network_client_cb_onDisconnect_t cb_onDisconnectIn,
 									void* userVarIn);
 

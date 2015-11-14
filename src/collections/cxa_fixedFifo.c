@@ -135,13 +135,62 @@ bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 }
 
 
-size_t cxa_fixedFifo_getCurrSize(cxa_fixedFifo_t *const fifoIn)
+bool cxa_fixedFifo_bulkQueue(cxa_fixedFifo_t *const fifoIn, void *const elemsIn, size_t numElemsIn)
+{
+	cxa_assert(fifoIn);
+	cxa_assert(elemsIn);
+
+	// simplistic implementation...we can probably make this more efficient
+	for( size_t i = 0; i < numElemsIn; i++ )
+	{
+		if( !cxa_fixedFifo_queue(fifoIn, &(((uint8_t*)elemsIn)[i*fifoIn->datatypeSize_bytes])) ) return false;
+	}
+
+	return true;
+}
+
+
+bool cxa_fixedFifo_bulkDequeue(cxa_fixedFifo_t *const fifoIn, size_t numElemsIn)
+{
+	cxa_assert(fifoIn);
+
+	// simplistic implementation...we can probably make this more efficient
+	for( size_t i = 0; i < numElemsIn; i++ )
+	{
+		if( !cxa_fixedFifo_dequeue(fifoIn, NULL) ) return false;
+	}
+
+	return true;
+}
+
+
+size_t cxa_fixedFifo_bulkDequeue_peek(cxa_fixedFifo_t *const fifoIn, void **const elemsOut)
+{
+	cxa_assert(fifoIn);
+
+	if( elemsOut != NULL ) *elemsOut = &(((uint8_t*)fifoIn->bufferLoc)[fifoIn->removeIndex*fifoIn->datatypeSize_bytes]);
+
+	return (fifoIn->insertIndex >= fifoIn->removeIndex) ?
+			(fifoIn->insertIndex - fifoIn->removeIndex) :
+			(fifoIn->maxNumElements-fifoIn->removeIndex);
+}
+
+
+size_t cxa_fixedFifo_getSize_elems(cxa_fixedFifo_t *const fifoIn)
 {
 	cxa_assert(fifoIn);
 	
 	return (fifoIn->insertIndex >= fifoIn->removeIndex) ?
 		(fifoIn->insertIndex - fifoIn->removeIndex) :
 		((fifoIn->maxNumElements-fifoIn->removeIndex) + fifoIn->insertIndex);
+}
+
+
+size_t cxa_fixedFifo_getFreeSize_elems(cxa_fixedFifo_t *const fifoIn)
+{
+	cxa_assert(fifoIn);
+
+	return fifoIn->maxNumElements - cxa_fixedFifo_getSize_elems(fifoIn);
 }
 
 
