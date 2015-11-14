@@ -56,13 +56,12 @@ void cxa_esp8266_network_clientFactory_init(cxa_timeBase_t *const timeBaseIn)
 	timeBase = timeBaseIn;
 	cxa_array_init_inPlace(&clients, sizeof(*clients_raw), (sizeof(clients_raw)/sizeof(*clients_raw)), clients_raw, sizeof(clients_raw));
 
-	// setup each of our clients
+	// mark each of our clients as unused
 	cxa_array_iterate(&clients, currEntry, clientEntry_t)
 	{
 		if( currEntry == NULL ) continue;
 
 		currEntry->isUsed = false;
-		cxa_esp8266_network_client_init(&currEntry->client, timeBase);
 	}
 	isInit = true;
 }
@@ -106,6 +105,8 @@ cxa_network_client_t* cxa_network_clientFactory_reserveClient(void)
 		if( !currEntry->isUsed )
 		{
 			currEntry->isUsed = true;
+			// initialize our client
+			cxa_esp8266_network_client_init(&currEntry->client, timeBase);
 			return &currEntry->client.super;
 		}
 	}
