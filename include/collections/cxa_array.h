@@ -1,6 +1,6 @@
 /**
  * @file
- * This file contains an implementation of a statically allocated, fixed-length array
+ * This file contains an implementation of a statically allocated, fixed-max-length array
  * holding elements of a single datatype (and size). The array itself does not hold
  * any data, rather, it stores the data in an external buffer supplied during
  * initialization.
@@ -19,6 +19,8 @@
  * // sizeof(*myArray_buffer)      2 bytes, the size of each element in the array
  * // sizeof(myArray_buffer)       32 bytes, 16 elements of type uint16 (2 bytes)
  * cxa_array_init(&myArray, sizeof(*myArray_buffer), (void*)myArray_buffer, sizeof(myArrayBuffer));
+ * // OR more simply:
+ * cxa_array_initStd(&myArray, myArray_buffer);
  *
  * ...
  *
@@ -31,12 +33,12 @@
  * // see how many elements are in the array (should be 1 at this point)
  * size_t numElems = cxa_array_getSize_elems(&myArray);
  *
- * // now access that element (which is currently exists in the array)
- * uint16_t *addedElem = (uint16_t*)cxa_array_getAtIndex(&myArray, 0);
+ * // now access that element (which currently exists in the array)
+ * uint16_t *addedElem = (uint16_t*)cxa_array_get(&myArray, 0);
  * @endcode
  *
  *
- * @copyright 2013-2014 opencxa.org
+ * @copyright 2015 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -338,7 +340,7 @@ bool cxa_array_isFull(cxa_array_t *const arrIn);
  *
  * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
  *
- * @return true if the array does not current contain any elements
+ * @return true if the array does not currently contain any elements
  */
 bool cxa_array_isEmpty(cxa_array_t *const arrIn);
 
