@@ -41,6 +41,10 @@
 	#define CXA_ESP8266_NETWORK_CLIENT_RXBUFFERSIZE_BYTES			64
 #endif
 
+#ifndef CXA_ESP8266_NETWORK_CLIENT_TXBUFFERSIZE_BYTES
+	#define CXA_ESP8266_NETWORK_CLIENT_TXBUFFERSIZE_BYTES			64
+#endif
+
 
 // ******** global type definitions *********
 /**
@@ -69,6 +73,11 @@ struct cxa_esp8266_network_client
 
 	cxa_fixedFifo_t rxFifo;
 	uint8_t rxFifo_raw[CXA_ESP8266_NETWORK_CLIENT_RXBUFFERSIZE_BYTES];
+
+	cxa_fixedFifo_t txFifo;
+	uint8_t txFifo_raw[CXA_ESP8266_NETWORK_CLIENT_TXBUFFERSIZE_BYTES];
+	size_t numBytesInPreviousBulkDequeue;
+	bool sendInProgress;
 };
 
 

@@ -67,12 +67,13 @@ void cxa_network_client_init(cxa_network_client_t *const netClientIn, cxa_timeBa
 
 void cxa_network_client_addListener(cxa_network_client_t *const netClientIn,
 									cxa_network_client_cb_onConnect_t cb_onConnectIn,
+									cxa_network_client_cb_onConnectFail_t cb_onConnectFailIn,
 									cxa_network_client_cb_onDisconnect_t cb_onDisconnectIn,
 									void* userVarIn)
 {
 	cxa_assert(netClientIn);
 
-	cxa_network_client_listenerEntry_t newEntry = {.cb_onConnect = cb_onConnectIn, .cb_onDisconnect = cb_onDisconnectIn, .userVar = userVarIn};
+	cxa_network_client_listenerEntry_t newEntry = {.cb_onConnect=cb_onConnectIn, .cb_onConnectFail=cb_onConnectFailIn, .cb_onDisconnect=cb_onDisconnectIn, .userVar=userVarIn};
 	cxa_assert( cxa_array_append(&netClientIn->listeners, &newEntry) );
 }
 

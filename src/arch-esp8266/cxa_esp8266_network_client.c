@@ -31,7 +31,6 @@
 
 
 // ******** local macro definitions ********
-#define DNS_LOOKUP_TIMEOUT_MS					15000
 #define IPADDR_TO_STRINGARG(ip_uint32In)		((ip_uint32In >> 24) & 0x000000FF), ((ip_uint32In >> 16) & 0x000000FF), ((ip_uint32In >> 8) & 0x000000FF), ((ip_uint32In >> 0) & 0x000000FF)
 
 
@@ -46,7 +45,6 @@ typedef enum
 
 
 // ******** local function prototypes ********
-static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
@@ -62,6 +60,7 @@ static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_a
 static void cb_espConnected(void *arg);
 static void cb_espDisconnected(void *arg);
 static void cb_espRx(void *arg, char *data, unsigned short len);
+static void cb_espSent(void *arg);
 static void cb_espRecon(void *arg, sint8 err);
 
 static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, void *const userVarIn);
@@ -80,16 +79,20 @@ void cxa_esp8266_network_client_init(cxa_esp8266_network_client_t *const netClie
 	// initialize our super class
 	cxa_network_client_init(&netClientIn->super, timeBaseIn, cb_connectToHost, cb_disconnectFromHost, cb_isConnected);
 
-	// setup our fifo (backing our ioStream)
+	// setup our fifos (backing our ioStream)
 	cxa_fixedFifo_initStd(&netClientIn->rxFifo, CXA_FF_ON_FULL_DROP, netClientIn->rxFifo_raw);
+	cxa_fixedFifo_initStd(&netClientIn->txFifo, CXA_FF_ON_FULL_DROP, netClientIn->txFifo_raw);
+	netClientIn->numBytesInPreviousBulkDequeue = 0;
+	netClientIn->sendInProgress = false;
 
 	// setup our state machine
 	cxa_stateMachine_init(&netClientIn->stateMachine, "netClient");
-	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_IDLE, "idle", stateCb_idle_enter, NULL, NULL, (void*)netClientIn);
+	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_IDLE, "idle", NULL, NULL, NULL, (void*)netClientIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_DNS_LOOKUP, "dnsLookup", stateCb_dnsLookup_enter, stateCb_dnsLookup_state, NULL, (void*)netClientIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, (void*)netClientIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, stateCb_connected_leave, (void*)netClientIn);
 	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
+	cxa_stateMachine_update(&netClientIn->stateMachine);
 }
 
 
@@ -102,12 +105,6 @@ void cxa_esp8266_network_client_update(cxa_esp8266_network_client_t *const netCl
 
 
 // ******** local function implementations ********
-static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-
-}
-
-
 static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
@@ -130,13 +127,18 @@ static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, void *userVa
 		default:
 			// error
 			cxa_logger_warn(&netClientIn->super.logger, "dns lookup error");
+
+			// notify our listeners
+			cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+			{
+				if( currListener == NULL ) continue;
+				if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
+			}
+
 			cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
 			return;
 			break;
 	}
-
-	// start our timeout
-	cxa_timeDiff_setStartTime_now(&netClientIn->super.td_genPurp);
 }
 
 
@@ -145,9 +147,17 @@ static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVa
 	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	if( cxa_timeDiff_isElapsed_ms(&netClientIn->super.td_genPurp, DNS_LOOKUP_TIMEOUT_MS) )
+	if( cxa_timeDiff_isElapsed_ms(&netClientIn->super.td_genPurp, netClientIn->connectTimeout_ms) )
 	{
 		cxa_logger_warn(&netClientIn->super.logger, "dns lookup timed out");
+
+		// notify our listeners
+		cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+		{
+			if( currListener == NULL ) continue;
+			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
+		}
+
 		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
 		return;
 	}
@@ -180,9 +190,6 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 
 	// actually connect
 	espconn_connect(&netClientIn->espconn);
-
-	// start our timeout
-	cxa_timeDiff_setStartTime_now(&netClientIn->super.td_genPurp);
 }
 
 
@@ -193,8 +200,16 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 
 	if( cxa_timeDiff_isElapsed_ms(&netClientIn->super.td_genPurp, netClientIn->connectTimeout_ms) )
 	{
-		cxa_logger_warn(&netClientIn->super.logger, "connect timeout, retrying");
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTING);
+		cxa_logger_warn(&netClientIn->super.logger, "connect timeout");
+
+		// notify our listeners
+		cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+		{
+			if( currListener == NULL ) continue;
+			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
+		}
+
+		cxa_stateMachine_transition(&netClientIn->stateMachine, (netClientIn->autoReconnect ? CONN_STATE_CONNECTING : CONN_STATE_IDLE));
 		return;
 	}
 }
@@ -205,12 +220,19 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	// register for received data
-	cxa_logger_trace(&netClientIn->super.logger, "regist");
+	// register for received and sent data
 	espconn_regist_recvcb(&netClientIn->espconn, cb_espRx);
+	espconn_regist_sentcb(&netClientIn->espconn, cb_espSent);
 
 	// bind to our ioStream
 	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
+
+	// notify our listeners
+	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onConnect != NULL ) currListener->cb_onConnect(&netClientIn->super, currListener->userVar);
+	}
 }
 
 
@@ -229,6 +251,9 @@ static bool cb_connectToHost(cxa_network_client_t *const superIn, char *const ho
 	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)superIn;
 	cxa_assert(netClientIn);
 
+	// don't do anything if we're already trying
+	if( cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) != CONN_STATE_IDLE ) return false;
+
 	// copy our target hostname to our local buffer
 	strlcpy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
 	netClientIn->tcp.remote_port = portNumIn;
@@ -236,6 +261,10 @@ static bool cb_connectToHost(cxa_network_client_t *const superIn, char *const ho
 	netClientIn->autoReconnect = autoReconnectIn;
 	cxa_logger_info(&netClientIn->super.logger, "connect requested to %s:%d", netClientIn->targetHostName, netClientIn->tcp.remote_port);
 
+	// start our timeout
+	cxa_timeDiff_setStartTime_now(&netClientIn->super.td_genPurp);
+
+	// start the sate machine transition
 	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_DNS_LOOKUP);
 
 	return true;
@@ -322,6 +351,8 @@ static void cb_espRx(void *arg, char *data, unsigned short len)
 	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
+	cxa_logger_trace(&netClientIn->super.logger, "got %d bytes", len);
+
 	// queue in our buffer
 	bool didDropData = false;
 	for( unsigned short i = 0; i < len; i++ )
@@ -330,6 +361,37 @@ static void cb_espRx(void *arg, char *data, unsigned short len)
 	}
 
 	if( didDropData ) cxa_logger_warn(&netClientIn->super.logger, "buffer overflow, data dropped");
+}
+
+
+static void cb_espSent(void *arg)
+{
+	// find our network client
+	struct espconn *conn = (struct espconn*)arg;
+	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_assert(netClientIn);
+
+	// done sending
+	netClientIn->sendInProgress = false;
+
+	// finish the dequeue for any previously started bulk dequeues
+	if( netClientIn->numBytesInPreviousBulkDequeue != 0 )
+	{
+		cxa_logger_trace(&netClientIn->super.logger, "bulk deueueing %d bytes", netClientIn->numBytesInPreviousBulkDequeue);
+		cxa_fixedFifo_bulkDequeue(&netClientIn->txFifo, netClientIn->numBytesInPreviousBulkDequeue);
+		netClientIn->numBytesInPreviousBulkDequeue = 0;
+	}
+
+	// figure out how many bytes we can send in "one shot"
+	void* bytesToSend;
+	size_t numContiguousBytesInFifo = cxa_fixedFifo_bulkDequeue_peek(&netClientIn->txFifo, &bytesToSend);
+	if( numContiguousBytesInFifo > 0 )
+	{
+		uint16_t currNumBytesToSend = (numContiguousBytesInFifo <= UINT16_MAX) ? numContiguousBytesInFifo : UINT16_MAX;
+		cxa_logger_trace(&netClientIn->super.logger, "transmitting %d bytes from queue", currNumBytesToSend);
+		espconn_send(&netClientIn->espconn, bytesToSend, currNumBytesToSend);
+		netClientIn->numBytesInPreviousBulkDequeue = currNumBytesToSend;
+	}
 }
 
 
@@ -372,14 +434,26 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 	if( !cxa_network_client_isConnected(&netClientIn->super) ) return false;
 
-	// size_t is probably bigger than uint16 of the send function...just to be safe...
-	size_t currSendIndex = 0;
-	while(bufferSize_bytesIn > 0)
+	// see if we should immediately transmit or queue
+	if( !netClientIn->sendInProgress )
 	{
+		// immediately transmit...but be careful of the type size mismatch
 		uint16_t currNumBytesToSend = (bufferSize_bytesIn <= UINT16_MAX) ? bufferSize_bytesIn : UINT16_MAX;
-		espconn_send(&netClientIn->espconn, &((uint8_t*)buffIn)[currSendIndex], currNumBytesToSend);
-		bufferSize_bytesIn -= currNumBytesToSend;
-		currSendIndex += currNumBytesToSend;
+		cxa_logger_trace(&netClientIn->super.logger, "immediately transmitting %d bytes", currNumBytesToSend);
+		espconn_send(&netClientIn->espconn, buffIn, currNumBytesToSend);
+		netClientIn->sendInProgress = true;
+
+		// queue any remaining bytes
+		size_t numBytesToQueue = bufferSize_bytesIn - currNumBytesToSend;
+		cxa_logger_trace(&netClientIn->super.logger, "queueing %d bytes", numBytesToQueue);
+		if( numBytesToQueue > 0 ) cxa_fixedFifo_bulkQueue(&netClientIn->txFifo, &(((uint8_t*)buffIn)[currNumBytesToSend]), numBytesToQueue);
+	}
+	else
+	{
+		cxa_logger_trace(&netClientIn->super.logger, "immediately queueing %d bytes", bufferSize_bytesIn);
+
+		// we're already in the process of transmitting...esp doesn't buffer internally so we must
+		cxa_fixedFifo_bulkQueue(&netClientIn->txFifo, buffIn, bufferSize_bytesIn);
 	}
 
 	return true;
