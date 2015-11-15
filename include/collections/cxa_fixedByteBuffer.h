@@ -81,7 +81,7 @@
 
 #define cxa_fixedByteBuffer_append_uint8(fbbIn, uint8In)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){(uint8In)}, 1)
 #define cxa_fixedByteBuffer_append_uint16LE(fbbIn, uint16In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
-#define cxa_fixedByteBuffer_append_uint32LE(fbbIn, uint32In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
+#define cxa_fixedByteBuffer_append_uint32LE(fbbIn, uint32In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
 #define cxa_fixedByteBuffer_append_float(fbbIn, floatIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)&(floatIn), 4)
 #define cxa_fixedByteBuffer_append_cString(fbbIn, strIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)(strIn), (strlen(strIn)+1))
 
@@ -94,6 +94,10 @@
 #define cxa_fixedByteBuffer_get_uint16LE(fbbIn, indexIn, uint16Out)			cxa_fixedByteBuffer_get((fbbIn), (indexIn), false, (uint8_t*)&(uint16Out), 2)
 #define cxa_fixedByteBuffer_get_uint32LE(fbbIn, indexIn, uint32Out)			cxa_fixedByteBuffer_get((fbbIn), (indexIn), false, (uint8_t*)&(uint32Out), 4)
 #define cxa_fixedByteBuffer_get_float(fbbIn, indexIn, floatOut)				cxa_fixedByteBuffer_get((fbbIn), (indexIn), false, (uint8_t*)&(floatOut), 4)
+
+#define cxa_fixedByteBuffer_get_uint16BE(fbbIn, indexIn, uint16Out)			cxa_fixedByteBuffer_get((fbbIn), (indexIn), true, (uint8_t*)&(uint16Out), 2)
+#define cxa_fixedByteBuffer_get_uint32BE(fbbIn, indexIn, uint32Out)			cxa_fixedByteBuffer_get((fbbIn), (indexIn), true, (uint8_t*)&(uint32Out), 4)
+#define cxa_fixedByteBuffer_get_floatBE(fbbIn, indexIn, floatOut)			cxa_fixedByteBuffer_get((fbbIn), (indexIn), true, (uint8_t*)&(floatOut), 4)
 
 #define cxa_fixedByteBuffer_replace_uint8(fbbIn, indexIn, uint8In)			cxa_fixedByteBuffer_replace((fbbIn), (indexIn), (uint8_t[]){(uint8In)}, 1)
 #define cxa_fixedByteBuffer_replace_uint16LE(fbbIn, indexIn, uint16In)		cxa_fixedByteBuffer_replace((fbbIn), (indexIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
