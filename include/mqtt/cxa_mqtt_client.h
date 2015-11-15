@@ -14,39 +14,119 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_ESP8266_MQTT_CLIENT_H_
-#define CXA_ESP8266_MQTT_CLIENT_H_
+#ifndef CXA_MQTT_CLIENT_H_
+#define CXA_MQTT_CLIENT_H_
 
 
 // ******** includes ********
-#include <stdbool.h>
-#include <MQTTPacket.h>
+#include <cxa_array.h>
+#include <cxa_ioStream.h>
+#include <cxa_logger_header.h>
+#include <cxa_mqtt_protocolParser.h>
+#include <cxa_stateMachine.h>
+#include <cxa_timeDiff.h>
+#include <cxa_config.h>
 
 
 // ******** global macro definitions ********
+#ifndef CXA_MQTT_CLIENT_MAXNUM_LISTENERS
+	#define CXA_MQTT_CLIENT_MAXNUM_LISTENERS			1
+#endif
+
+#ifndef CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS
+	#define CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS		4
+#endif
 
 
 // ******** global type definitions *********
-/**
- * @public
- * @brief "Forward" declaration of the cxa_esp8266_mqttClient_t object
- */
-typedef struct cxa_esp8266_mqttClient cxa_esp8266_mqttClient_t;
+typedef struct cxa_mqtt_client cxa_mqtt_client_t;
+
+
+typedef void (*cxa_mqtt_client_cb_onConnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
+typedef void (*cxa_mqtt_client_cb_onDisconnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
+
+typedef void (*cxa_mqtt_client_cb_onPublish_t)(cxa_mqtt_client_t *const clientIn, char* topicNameIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
 
 
 /**
  * @private
  */
-struct cxa_esp8266_mqttClient
+typedef struct
 {
-	MQTTTransport transport;
+	cxa_mqtt_client_cb_onConnect_t cb_onConnect;
+	cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnect;
+
+	void* userVar;
+}cxa_mqtt_client_listenerEntry_t;
+
+
+typedef enum
+{
+	CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_UNACKNOWLEDGED,
+	CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_ACKNOWLEDGED,
+	CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_REFUSED
+}cxa_mqtt_client_subscriptionState_t;
+
+
+/**
+ * @private
+ */
+typedef struct
+{
+	uint16_t packetId;
+	cxa_mqtt_client_subscriptionState_t state;
+
+	char* topicFilter;
+	cxa_mqtt_protocolParser_qosLevel_t qos;
+	cxa_mqtt_client_cb_onPublish_t cb_onPublish;
+
+	void* userVar;
+}cxa_mqtt_client_subscriptionEntry_t;
+
+
+/**
+ * @private
+ */
+struct cxa_mqtt_client
+{
+	cxa_mqtt_protocolParser_t mpp;
+
+	cxa_array_t listeners;
+	cxa_mqtt_client_listenerEntry_t listeners_raw[CXA_MQTT_CLIENT_MAXNUM_LISTENERS];
+
+	cxa_array_t subscriptions;
+	cxa_mqtt_client_subscriptionEntry_t subscriptions_raw[CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS];
+
+	cxa_stateMachine_t stateMachine;
+	cxa_timeBase_t *timeBase;
+	cxa_timeDiff_t td_timeout;
+	cxa_timeDiff_t td_sendKeepAlive;
+	cxa_timeDiff_t td_receiveKeepAlive;
+
+	cxa_logger_t logger;
+
+	char* clientId;
+	bool hasSentConnectPacket;
+	uint16_t currPacketId;
 };
 
 
 // ******** global function prototypes ********
-void cxa_esp8266_mqttClient_init(cxa_esp8266_mqttClient_t *const clientIn);
+void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn);
 
-bool cxa_esp8266_mqttClient_connectTohost(cxa_esp8266_mqttClient_t *const clientIn, char *const hostIn, uint16_t portNumIn);
+void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
+								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
+								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
+								 void *const userVarIn);
+
+bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, char *const passwordIn);
+void cxa_mqtt_client_disconnect(cxa_mqtt_client_t *const clientIn);
+
+bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_protocolParser_qosLevel_t qosIn, bool retainIn,
+							 char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn);
+void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFilterIn, cxa_mqtt_protocolParser_qosLevel_t qosIn, cxa_mqtt_client_cb_onPublish_t cb_onPublishIn, void* userVarIn);
+
+void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn);
 
 
-#endif // CXA_ESP8266_MQTT_CLIENT_H_
+#endif // CXA_MQTT_CLIENT_H_
