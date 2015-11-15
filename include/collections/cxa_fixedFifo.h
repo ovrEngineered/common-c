@@ -124,6 +124,7 @@ typedef enum
 }cxa_fixedFifo_onFullAction_t;
 
 
+#if CXA_FF_MAX_LISTENERS > 0
 /**
  * @public
  * @brief Callback for 'fifoIsNoLongerFull' events.
@@ -146,6 +147,7 @@ typedef struct
 
 	void* userVarIn;
 }cxa_fixedFifo_listener_entry_t;
+#endif
 
 
 /**
@@ -163,8 +165,10 @@ struct cxa_fixedFifo
 	
 	cxa_fixedFifo_onFullAction_t onFullAction;
 
+	#if CXA_FF_MAX_LISTENERS > 0
 	cxa_array_t listeners;
 	cxa_fixedFifo_listener_entry_t listeners_raw[CXA_FF_MAX_LISTENERS];
+	#endif
 };
 
 
@@ -185,6 +189,7 @@ struct cxa_fixedFifo
 void cxa_fixedFifo_init(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_onFullAction_t onFullActionIn, const size_t datatypeSize_bytesIn, void *const bufferLocIn, const size_t bufferMaxSize_bytesIn);
 
 
+#if CXA_FF_MAX_LISTENERS > 0
 /**
  * @public
  * @brief Adds a listener to the FIFO which will be called upon various events
@@ -196,6 +201,7 @@ void cxa_fixedFifo_init(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_onFullActio
  * 		function for each event.
  */
 void cxa_fixedFifo_addListener(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_cb_noLongerFull_t cb_noLongerFull, void* userVarIn);
+#endif
 
 
 /**
