@@ -101,6 +101,7 @@ bool cxa_ioStream_writeByte(cxa_ioStream_t *const ioStreamIn, uint8_t byteIn)
 bool cxa_ioStream_writeBytes(cxa_ioStream_t *const ioStreamIn, void* buffIn, size_t bufferSize_bytesIn)
 {
 	cxa_assert(ioStreamIn);
+	if( bufferSize_bytesIn > 0 ) cxa_assert(buffIn);
 
 	// make sure we're bound
 	if( !cxa_ioStream_isBound(ioStreamIn) ) return false;
