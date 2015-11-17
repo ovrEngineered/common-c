@@ -135,6 +135,14 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 }
 
 
+bool cxa_mqtt_client_isConnected(cxa_mqtt_client_t *const clientIn)
+{
+	cxa_assert(clientIn);
+
+	return (cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_CONNECTED);
+}
+
+
 void cxa_mqtt_client_disconnect(cxa_mqtt_client_t *const clientIn)
 {
 	cxa_assert(clientIn);

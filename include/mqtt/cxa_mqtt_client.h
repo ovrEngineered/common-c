@@ -120,6 +120,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 void *const userVarIn);
 
 bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, char *const passwordIn);
+bool cxa_mqtt_client_isConnected(cxa_mqtt_client_t *const clientIn);
 void cxa_mqtt_client_disconnect(cxa_mqtt_client_t *const clientIn);
 
 bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_protocolParser_qosLevel_t qosIn, bool retainIn,
