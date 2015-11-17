@@ -15,14 +15,13 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_ESP8266_NETWORK_CLIENTFACTORY_H_
-#define CXA_ESP8266_NETWORK_CLIENTFACTORY_H_
+#ifndef CXA_NETWORK_FACTORY_H_
+#define CXA_NETWORK_FACTORY_H_
 
 
 // ******** includes ********
-#include <cxa_timeBase.h>
-#include <cxa_network_clientFactory.h>
-#include <cxa_esp8266_network_client.h>
+#include <cxa_network_tcpClient.h>
+#include <cxa_network_tcpServer.h>
 
 
 // ******** global macro definitions ********
@@ -32,9 +31,10 @@
 
 
 // ******** global function prototypes ********
-void cxa_esp8266_network_clientFactory_init(cxa_timeBase_t *const timeBaseIn);
-cxa_esp8266_network_client_t* cxa_esp8266_network_clientFactory_getClientByEspConn(struct espconn *const connIn);
-void cxa_esp8266_network_clientFactory_update(void);
+cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(void);
+void cxa_network_factory_freeTcpClient(cxa_network_tcpClient_t *const clientIn);
 
+cxa_network_tcpServer_t* cxa_network_factory_reserveTcpServer(void);
+void cxa_network_factory_freeTcpServer(cxa_network_tcpServer_t *const serverIn);
 
-#endif // CXA_ESP8266_NETWORK_CLIENTFACTORY_H_
+#endif // CXA_NETWORK_FACTORY_H_

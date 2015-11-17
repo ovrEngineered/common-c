@@ -1,7 +1,4 @@
 /**
- * Original Source:
- * https://github.com/esp8266/Arduino.git
- *
  * Copyright 2015 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +17,8 @@
  */
 #include <string.h>
 #include <cxa_assert.h>
-#include <cxa_esp8266_network_client.h>
-#include <cxa_esp8266_network_clientFactory.h>
+#include <cxa_esp8266_network_tcpClient.h>
+#include <cxa_esp8266_network_factory.h>
 
 #include <user_interface.h>
 
@@ -52,9 +49,9 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
 
-static bool cb_connectToHost(cxa_network_client_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
-static void cb_disconnectFromHost(cxa_network_client_t *const superIn);
-static bool cb_isConnected(cxa_network_client_t *const superIn);
+static bool cb_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
+static void cb_disconnectFromHost(cxa_network_tcpClient_t *const superIn);
+static bool cb_isConnected(cxa_network_tcpClient_t *const superIn);
 
 static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_arg);
 static void cb_espConnected(void *arg);
@@ -71,13 +68,13 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_esp8266_network_client_init(cxa_esp8266_network_client_t *const netClientIn, cxa_timeBase_t* const timeBaseIn)
+void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn, cxa_timeBase_t* const timeBaseIn)
 {
 	cxa_assert(netClientIn);
 	cxa_assert(timeBaseIn);
 
 	// initialize our super class
-	cxa_network_client_init(&netClientIn->super, timeBaseIn, cb_connectToHost, cb_disconnectFromHost, cb_isConnected);
+	cxa_network_tcpClient_init(&netClientIn->super, timeBaseIn, cb_connectToHost, cb_disconnectFromHost, cb_isConnected);
 
 	// setup our fifos (backing our ioStream)
 	cxa_fixedFifo_initStd(&netClientIn->rxFifo, CXA_FF_ON_FULL_DROP, netClientIn->rxFifo_raw);
@@ -96,7 +93,7 @@ void cxa_esp8266_network_client_init(cxa_esp8266_network_client_t *const netClie
 }
 
 
-void cxa_esp8266_network_client_update(cxa_esp8266_network_client_t *const netClientIn)
+void cxa_esp8266_network_tcpClient_update(cxa_esp8266_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
 
@@ -107,7 +104,7 @@ void cxa_esp8266_network_client_update(cxa_esp8266_network_client_t *const netCl
 // ******** local function implementations ********
 static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	// try to get the ip address to which we'll be connecting
@@ -129,7 +126,7 @@ static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, void *userVa
 			cxa_logger_warn(&netClientIn->super.logger, "dns lookup error");
 
 			// notify our listeners
-			cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+			cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 			{
 				if( currListener == NULL ) continue;
 				if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
@@ -144,7 +141,7 @@ static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, void *userVa
 
 static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	if( cxa_timeDiff_isElapsed_ms(&netClientIn->super.td_genPurp, netClientIn->connectTimeout_ms) )
@@ -152,7 +149,7 @@ static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVa
 		cxa_logger_warn(&netClientIn->super.logger, "dns lookup timed out");
 
 		// notify our listeners
-		cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+		cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 		{
 			if( currListener == NULL ) continue;
 			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
@@ -166,7 +163,7 @@ static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVa
 
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	// setup the local information about the connection
@@ -195,7 +192,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 
 static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	if( cxa_timeDiff_isElapsed_ms(&netClientIn->super.td_genPurp, netClientIn->connectTimeout_ms) )
@@ -203,7 +200,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 		cxa_logger_warn(&netClientIn->super.logger, "connect timeout");
 
 		// notify our listeners
-		cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+		cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 		{
 			if( currListener == NULL ) continue;
 			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
@@ -217,7 +214,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	// register for received and sent data
@@ -228,7 +225,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
 
 	// notify our listeners
-	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_client_listenerEntry_t)
+	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 	{
 		if( currListener == NULL ) continue;
 		if( currListener->cb_onConnect != NULL ) currListener->cb_onConnect(&netClientIn->super, currListener->userVar);
@@ -238,17 +235,24 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 
 static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
+
+	// notify our listeners
+	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onDisconnect != NULL ) currListener->cb_onDisconnect(&netClientIn->super, currListener->userVar);
+	}
 
 	// unbind our ioStream
 	cxa_ioStream_unbind(&netClientIn->super.ioStream);
 }
 
 
-static bool cb_connectToHost(cxa_network_client_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn)
+static bool cb_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)superIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
 	// don't do anything if we're already trying
@@ -271,18 +275,18 @@ static bool cb_connectToHost(cxa_network_client_t *const superIn, char *const ho
 }
 
 
-static void cb_disconnectFromHost(cxa_network_client_t *const superIn)
+static void cb_disconnectFromHost(cxa_network_tcpClient_t *const superIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)superIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
 	if( (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED)) espconn_disconnect(&netClientIn->espconn);
 }
 
 
-static bool cb_isConnected(cxa_network_client_t *const superIn)
+static bool cb_isConnected(cxa_network_tcpClient_t *const superIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)superIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
 	return (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED);
@@ -293,7 +297,7 @@ static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_a
 {
 	// find our network client
 	struct espconn *conn = (struct espconn*)callback_arg;
-	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
 	if( ipaddr == NULL )
@@ -314,7 +318,7 @@ static void cb_espConnected(void *arg)
 {
 	// find our network client
 	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
 	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTED);
@@ -326,7 +330,7 @@ static void cb_espDisconnected(void *arg)
 {
 	// find our network client
 	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
 	if( netClientIn->autoReconnect )
@@ -348,7 +352,7 @@ static void cb_espRx(void *arg, char *data, unsigned short len)
 {
 	// find our network client
 	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
 	cxa_logger_trace(&netClientIn->super.logger, "got %d bytes", len);
@@ -368,7 +372,7 @@ static void cb_espSent(void *arg)
 {
 	// find our network client
 	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
 	// done sending
@@ -399,7 +403,7 @@ static void cb_espRecon(void *arg, sint8 err)
 {
 	// find our network client
 	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_client_t* netClientIn = cxa_esp8266_network_clientFactory_getClientByEspConn(conn);
+	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
 	cxa_logger_warn(&netClientIn->super.logger, "esp reports connection error %d", err);
@@ -420,7 +424,7 @@ static void cb_espRecon(void *arg, sint8 err)
 
 static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, void *const userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	return cxa_fixedFifo_dequeue(&netClientIn->rxFifo, (void*)byteOut) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
@@ -429,10 +433,10 @@ static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, vo
 
 static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn)
 {
-	cxa_esp8266_network_client_t* netClientIn = (cxa_esp8266_network_client_t*)userVarIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	if( !cxa_network_client_isConnected(&netClientIn->super) ) return false;
+	if( !cxa_network_tcpClient_isConnected(&netClientIn->super) ) return false;
 
 	// see if we should immediately transmit or queue
 	if( !netClientIn->sendInProgress )

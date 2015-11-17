@@ -20,7 +20,7 @@
 
 // ******** includes ********
 #include <cxa_mqtt_client.h>
-#include <cxa_network_client.h>
+#include <cxa_network_tcpClient.h>
 
 
 // ******** global macro definitions ********
@@ -37,7 +37,7 @@ struct cxa_mqtt_client_network
 {
 	cxa_mqtt_client_t super;
 
-	cxa_network_client_t *netClient;
+	cxa_network_tcpClient_t *netClient;
 
 	char* username;
 	char* password;

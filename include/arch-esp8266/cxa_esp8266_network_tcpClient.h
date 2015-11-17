@@ -14,11 +14,13 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_ESP8266_NETWORK_CLIENT_H_
-#define CXA_ESP8266_NETWORK_CLIENT_H_
+#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_H_
+#define CXA_ESP8266_NETWORK_TCPCLIENT_H_
 
 
 // ******** includes ********
+#include <cxa_network_tcpClient.h>
+
 #include <stdio.h>
 #include <cxa_config.h>
 #include <cxa_usart.h>
@@ -29,39 +31,38 @@
 #include <c_types.h>
 #include <ip_addr.h>
 #include <espconn.h>
-#include "../arch-common/cxa_network_client.h"
 
 
 // ******** global macro definitions ********
-#ifndef CXA_ESP8266_NETWORK_CLIENT_MAXHOSTNAMELEN_BYTES
-	#define CXA_ESP8266_NETWORK_CLIENT_MAXHOSTNAMELEN_BYTES			64
+#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES
+	#define CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES			64
 #endif
 
-#ifndef CXA_ESP8266_NETWORK_CLIENT_RXBUFFERSIZE_BYTES
-	#define CXA_ESP8266_NETWORK_CLIENT_RXBUFFERSIZE_BYTES			64
+#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES
+	#define CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES			64
 #endif
 
-#ifndef CXA_ESP8266_NETWORK_CLIENT_TXBUFFERSIZE_BYTES
-	#define CXA_ESP8266_NETWORK_CLIENT_TXBUFFERSIZE_BYTES			64
+#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES
+	#define CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES			64
 #endif
 
 
 // ******** global type definitions *********
 /**
  * @public
- * @brief "Forward" declaration of the cxa_esp8266_network_client_t object
+ * @brief "Forward" declaration of the cxa_esp8266_network_tcpClient_t object
  */
-typedef struct cxa_esp8266_network_client cxa_esp8266_network_client_t;
+typedef struct cxa_esp8266_network_tcpClient cxa_esp8266_network_tcpClient_t;
 
 
 /**
  * @private
  */
-struct cxa_esp8266_network_client
+struct cxa_esp8266_network_tcpClient
 {
-	cxa_network_client_t super;
+	cxa_network_tcpClient_t super;
 
-	char targetHostName[CXA_ESP8266_NETWORK_CLIENT_MAXHOSTNAMELEN_BYTES+1];
+	char targetHostName[CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES+1];
 
 	ip_addr_t ip;
 	struct espconn espconn;
@@ -72,10 +73,10 @@ struct cxa_esp8266_network_client
 	cxa_stateMachine_t stateMachine;
 
 	cxa_fixedFifo_t rxFifo;
-	uint8_t rxFifo_raw[CXA_ESP8266_NETWORK_CLIENT_RXBUFFERSIZE_BYTES];
+	uint8_t rxFifo_raw[CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES];
 
 	cxa_fixedFifo_t txFifo;
-	uint8_t txFifo_raw[CXA_ESP8266_NETWORK_CLIENT_TXBUFFERSIZE_BYTES];
+	uint8_t txFifo_raw[CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES];
 	size_t numBytesInPreviousBulkDequeue;
 	bool sendInProgress;
 };
@@ -85,13 +86,13 @@ struct cxa_esp8266_network_client
 /**
  * @private
  */
-void cxa_esp8266_network_client_init(cxa_esp8266_network_client_t *const netClientIn, cxa_timeBase_t* const timeBaseIn);
+void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn, cxa_timeBase_t* const timeBaseIn);
 
 
 /**
  * @private
  */
-void cxa_esp8266_network_client_update(cxa_esp8266_network_client_t *const netClientIn);
+void cxa_esp8266_network_tcpClient_update(cxa_esp8266_network_tcpClient_t *const netClientIn);
 
 
-#endif // CXA_ESP8266_NETWORKCLIENT_H_
+#endif // CXA_ESP8266_NETWORK_TCPCLIENT_H_

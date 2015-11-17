@@ -20,7 +20,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
-#include <cxa_network_clientFactory.h>
+#include <cxa_network_factory.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
@@ -34,8 +34,8 @@
 
 
 // ******** local function prototypes ********
-static void cb_network_onConnect(cxa_network_client_t *const superIn, void* userVarIn);
-static void cb_network_onDisconnect(cxa_network_client_t *const superIn, void* userVarIn);
+static void cb_network_onConnect(cxa_network_tcpClient_t *const superIn, void* userVarIn);
+static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -48,12 +48,12 @@ void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, cxa
 	cxa_assert(timeBaseIn);
 
 	// initialize our network client
-	clientIn->netClient = cxa_network_clientFactory_reserveClient();
+	clientIn->netClient = cxa_network_factory_reserveTcpClient();
 	cxa_assert(clientIn->netClient);
-	cxa_network_client_addListener(clientIn->netClient, cb_network_onConnect, NULL, cb_network_onDisconnect, (void*)clientIn);
+	cxa_network_tcpClient_addListener(clientIn->netClient, cb_network_onConnect, NULL, cb_network_onDisconnect, (void*)clientIn);
 
 	// initialize our super class
-	cxa_mqtt_client_init(&clientIn->super, cxa_network_client_getIoStream(clientIn->netClient), timeBaseIn, clientIdIn);
+	cxa_mqtt_client_init(&clientIn->super, cxa_network_tcpClient_getIoStream(clientIn->netClient), timeBaseIn, clientIdIn);
 }
 
 
@@ -68,12 +68,12 @@ bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clie
 	clientIn->username = usernameIn;
 	clientIn->password = passwordIn;
 
-	return cxa_network_client_connectToHost(clientIn->netClient, hostNameIn, portNumIn, NET_CONNECT_TIMEOUT_MS, autoReconnectIn);
+	return cxa_network_tcpClient_connectToHost(clientIn->netClient, hostNameIn, portNumIn, NET_CONNECT_TIMEOUT_MS, autoReconnectIn);
 }
 
 
 // ******** local function implementations ********
-static void cb_network_onConnect(cxa_network_client_t *const superIn, void* userVarIn)
+static void cb_network_onConnect(cxa_network_tcpClient_t *const superIn, void* userVarIn)
 {
 	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
 	cxa_assert(clientIn);
@@ -83,7 +83,7 @@ static void cb_network_onConnect(cxa_network_client_t *const superIn, void* user
 }
 
 
-static void cb_network_onDisconnect(cxa_network_client_t *const superIn, void* userVarIn)
+static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void* userVarIn)
 {
 
 }

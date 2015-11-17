@@ -16,7 +16,7 @@
  * @author Christopher Armenio
  */
 #include <cxa_assert.h>
-#include <cxa_network_client.h>
+#include <cxa_network_tcpClient.h>
 
 #define CXA_LOG_LEVEL CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
@@ -35,10 +35,10 @@
 
 
 // ******** global function implementations ********
-void cxa_network_client_init(cxa_network_client_t *const netClientIn, cxa_timeBase_t *const timeBaseIn,
-							 cxa_network_client_cb_connectToHost_t cb_connToHostIn,
-							 cxa_network_client_cb_disconnectFromHost_t cb_disconnectIn,
-							 cxa_network_client_cb_isConnected_t cb_isConnected)
+void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn, cxa_timeBase_t *const timeBaseIn,
+							 cxa_network_tcpClient_cb_connectToHost_t cb_connToHostIn,
+							 cxa_network_tcpClient_cb_disconnectFromHost_t cb_disconnectIn,
+							 cxa_network_tcpClient_cb_isConnected_t cb_isConnected)
 {
 	cxa_assert(netClientIn);
 	cxa_assert(timeBaseIn);
@@ -65,20 +65,20 @@ void cxa_network_client_init(cxa_network_client_t *const netClientIn, cxa_timeBa
 }
 
 
-void cxa_network_client_addListener(cxa_network_client_t *const netClientIn,
-									cxa_network_client_cb_onConnect_t cb_onConnectIn,
-									cxa_network_client_cb_onConnectFail_t cb_onConnectFailIn,
-									cxa_network_client_cb_onDisconnect_t cb_onDisconnectIn,
+void cxa_network_tcpClient_addListener(cxa_network_tcpClient_t *const netClientIn,
+									cxa_network_tcpClient_cb_onConnect_t cb_onConnectIn,
+									cxa_network_tcpClient_cb_onConnectFail_t cb_onConnectFailIn,
+									cxa_network_tcpClient_cb_onDisconnect_t cb_onDisconnectIn,
 									void* userVarIn)
 {
 	cxa_assert(netClientIn);
 
-	cxa_network_client_listenerEntry_t newEntry = {.cb_onConnect=cb_onConnectIn, .cb_onConnectFail=cb_onConnectFailIn, .cb_onDisconnect=cb_onDisconnectIn, .userVar=userVarIn};
+	cxa_network_tcpClient_listenerEntry_t newEntry = {.cb_onConnect=cb_onConnectIn, .cb_onConnectFail=cb_onConnectFailIn, .cb_onDisconnect=cb_onDisconnectIn, .userVar=userVarIn};
 	cxa_assert( cxa_array_append(&netClientIn->listeners, &newEntry) );
 }
 
 
-bool cxa_network_client_connectToHost(cxa_network_client_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn)
+bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn)
 {
 	cxa_assert(netClientIn);
 	cxa_assert(hostNameIn);
@@ -87,7 +87,7 @@ bool cxa_network_client_connectToHost(cxa_network_client_t *const netClientIn, c
 }
 
 
-void cxa_network_client_disconnect(cxa_network_client_t *const netClientIn)
+void cxa_network_tcpClient_disconnect(cxa_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
 
@@ -95,7 +95,7 @@ void cxa_network_client_disconnect(cxa_network_client_t *const netClientIn)
 }
 
 
-bool cxa_network_client_isConnected(cxa_network_client_t *const netClientIn)
+bool cxa_network_tcpClient_isConnected(cxa_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
 
@@ -103,7 +103,7 @@ bool cxa_network_client_isConnected(cxa_network_client_t *const netClientIn)
 }
 
 
-cxa_ioStream_t* cxa_network_client_getIoStream(cxa_network_client_t *const netClientIn)
+cxa_ioStream_t* cxa_network_tcpClient_getIoStream(cxa_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
 
