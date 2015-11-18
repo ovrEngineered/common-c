@@ -27,6 +27,7 @@
 
 // ******** includes ********
 #include <stdbool.h>
+#include <cxa_config.h>
 
 
 // ******** global macro definitions ********
