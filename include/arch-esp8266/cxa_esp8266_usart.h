@@ -43,7 +43,8 @@ typedef struct cxa_esp8266_usart cxa_esp8266_usart_t;
 typedef enum
 {
 	CXA_ESP8266_USART_0=0,
-	CXA_ESP8266_USART_1=1
+	CXA_ESP8266_USART_1=1,
+	CXA_ESP8266_USART_0_ALTPINS=255
 }cxa_esp8266_usartId_t;
 
 
