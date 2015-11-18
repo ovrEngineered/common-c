@@ -211,7 +211,7 @@ void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn)
 	cxa_assert(clientIn);
 
 	cxa_stateMachine_update(&clientIn->stateMachine);
-	cxa_mqtt_protocolParser_update(&clientIn->mpp);
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_IDLE ) cxa_mqtt_protocolParser_update(&clientIn->mpp);
 }
 
 
