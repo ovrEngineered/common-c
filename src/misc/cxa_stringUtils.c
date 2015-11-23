@@ -83,6 +83,52 @@ bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn)
 }
 
 
+bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, size_t maxSizeTarget_bytesIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(sourceStringIn);
+
+	// get the current size of the target
+	size_t targetLen_bytes;
+	if( !cxa_stringUtils_strlen(targetStringIn, maxSizeTarget_bytesIn, &targetLen_bytes) ) targetLen_bytes = maxSizeTarget_bytesIn;
+	// ensure that we have space for the null term
+	if( targetLen_bytes > (maxSizeTarget_bytesIn-1) ) return false;
+
+	// now see if we have room for the new string
+	size_t maxBufferSize_sourceString_bytes = maxSizeTarget_bytesIn - targetLen_bytes;
+	size_t sourceLen_bytes;
+	if( !cxa_stringUtils_strlen(sourceStringIn, maxBufferSize_sourceString_bytes, &sourceLen_bytes) ) return false;
+
+	// we apparently have room for the string...do the concatenation
+	for( size_t i = 0; i < sourceLen_bytes; i++ )
+	{
+		targetStringIn[targetLen_bytes+i] = sourceStringIn[i];
+	}
+
+	// null term
+	targetStringIn[targetLen_bytes+sourceLen_bytes] = 0;
+
+	return true;
+}
+
+
+bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, size_t* stringLen_bytesOut)
+{
+	cxa_assert(targetStringIn);
+
+	for( size_t i = 0; i < maxSize_bytesIn; i++ )
+	{
+		if( targetStringIn[i] == 0 )
+		{
+			if( stringLen_bytesOut != NULL ) *stringLen_bytesOut = i;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 bool cxa_stringUtils_equals(const char* str1In, const char* str2In)
 {
 	// if one is false and the other isn't, we can't compare

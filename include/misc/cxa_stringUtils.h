@@ -27,6 +27,7 @@
 
 // ******** includes ********
 #include <stdbool.h>
+#include <stddef.h>
 #include <cxa_config.h>
 
 
@@ -66,6 +67,16 @@ typedef struct
 bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn);
 
 bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn);
+bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, size_t maxSizeTarget_bytesIn);
+
+/**
+ *
+ * @param targetStringIn
+ * @param maxSize_bytesIn maximum _buffer_ size (or maxStrLen-1)
+ * @param stringLen_bytesOut
+ * @return
+ */
+bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, size_t* stringLen_bytesOut);
 
 bool cxa_stringUtils_equals(const char* str1In, const char* str2In);
 bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
