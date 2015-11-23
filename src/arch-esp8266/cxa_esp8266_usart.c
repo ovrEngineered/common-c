@@ -25,13 +25,13 @@
 #include <stdbool.h>
 #include <ets_sys.h>
 #include <esp8266_peri.h>
+#include <cxa_delay.h>
 #include <cxa_assert.h>
 
 #include <user_interface.h>
 
 
 // ******** local macro definitions ********
-#define USART_HW_BUFFER_LEN_BYTES		4			// 0-127
 
 
 // ******** local type definitions ********
@@ -46,7 +46,7 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266_usartId_t idIn, const uint32_t baudRate_bpsIn)
+void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266_usartId_t idIn, const uint32_t baudRate_bpsIn, uint32_t interCharDelay_msIn)
 {
 	cxa_assert(usartIn);
 	cxa_assert( (idIn == CXA_ESP8266_USART_0) ||
@@ -55,6 +55,7 @@ void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266
 
 	// save our references
 	usartIn->id = idIn;
+	usartIn->interCharDelay_ms = interCharDelay_msIn;
 	
 	// setup our pins
 	uint32_t tmp;
@@ -143,6 +144,7 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 		// now send our data
 		USF(usartIn->id) = ((uint8_t*)buffIn)[i];
+		cxa_delay_ms(usartIn->interCharDelay_ms);
 	}
 	
 	return true;
