@@ -245,7 +245,7 @@ bool cxa_fixedByteBuffer_get_lengthPrefixedCString_uint16BE(cxa_fixedByteBuffer_
 
 	if( ptrOut != NULL ) *ptrOut = lclPtrOut;
 	if( numBytesOut != NULL ) *numBytesOut = lclNumBytesOut;
-	if( *isNullTerminatedOut ) *isNullTerminatedOut = (lclNumBytesOut > 0) ? (lclPtrOut[lclNumBytesOut-1] == 0) : false;
+	if( isNullTerminatedOut ) *isNullTerminatedOut = (lclNumBytesOut > 0) ? (lclPtrOut[lclNumBytesOut-1] == 0) : false;
 
 	return true;
 }
