@@ -129,6 +129,15 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn);
 void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
 
 /**
+ * @public
+ * @brief Returns the system logger. Should be used for debugging only
+ * (eg. on systems that don't support native printf)
+ *
+ * @return The system logger
+ */
+cxa_logger_t* cxa_logger_getSysLog(void);
+
+/**
  * @private
  */
 void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...);

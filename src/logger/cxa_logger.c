@@ -106,6 +106,12 @@ void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...)
 }
 
 
+cxa_logger_t* cxa_logger_getSysLog(void)
+{
+	return &sysLog;
+}
+
+
 void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
 {
 	cxa_assert(loggerIn);
