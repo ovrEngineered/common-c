@@ -14,41 +14,41 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_MQTT_CLIENT_NETWORK_H_
-#define CXA_MQTT_CLIENT_NETWORKH_
+#ifndef CXA_PROTOCOLPARSER_MQTT_H_
+#define CXA_PROTOCOLPARSER_MQTT_H_
 
 
 // ******** includes ********
-#include <cxa_mqtt_client.h>
-#include <cxa_network_tcpClient.h>
+#include <cxa_protocolParser.h>
+#include <cxa_mqtt_message.h>
+#include <cxa_stateMachine.h>
 
 
 // ******** global macro definitions ********
 
 
 // ******** global type definitions *********
-typedef struct cxa_mqtt_client_network cxa_mqtt_client_network_t;
-
-
-/**
- * @private
- */
-struct cxa_mqtt_client_network
+typedef struct
 {
-	cxa_mqtt_client_t super;
+	cxa_protocolParser_t super;
 
-	cxa_network_tcpClient_t *netClient;
-
-	char* username;
-	uint8_t* password;
-	uint16_t passwordLen_bytes;
-};
+	cxa_stateMachine_t stateMachine;
+	size_t remainingBytesToReceive;
+}cxa_protocolParser_mqtt_t;
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn);
-bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clientIn, char *const hostNameIn, uint16_t portNumIn,
-										   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn, bool autoReconnectIn);
+void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, cxa_timeBase_t *const timeBaseIn);
 
 
-#endif // CXA_MQTT_CLIENT_H_
+/**
+ * @public
+ * @brief Updates the protocol parser (and internal state machine).
+ * MUST be called on a regular basis for proper operation
+ *
+ * @param[in] mppIn pointer to the pre-initialized protocolParser
+ */
+void cxa_protocolParser_mqtt_update(cxa_protocolParser_mqtt_t *const mppIn);
+
+
+#endif // CXA_PROTOCOLPARSER_MQTT_H_

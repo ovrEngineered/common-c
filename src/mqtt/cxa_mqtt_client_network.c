@@ -58,7 +58,7 @@ void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, cxa
 
 
 bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clientIn, char *const hostNameIn, uint16_t portNumIn,
-										   char *const usernameIn, char *const passwordIn, bool autoReconnectIn)
+										   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn, bool autoReconnectIn)
 {
 	cxa_assert(clientIn);
 	cxa_assert(clientIn->netClient);
@@ -67,6 +67,7 @@ bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clie
 	// have to save these for later
 	clientIn->username = usernameIn;
 	clientIn->password = passwordIn;
+	clientIn->passwordLen_bytes = passwordLen_bytesIn;
 
 	return cxa_network_tcpClient_connectToHost(clientIn->netClient, hostNameIn, portNumIn, NET_CONNECT_TIMEOUT_MS, autoReconnectIn);
 }
@@ -79,12 +80,15 @@ static void cb_network_onConnect(cxa_network_tcpClient_t *const superIn, void* u
 	cxa_assert(clientIn);
 
 	// we're connected (network-wise), start the mqtt connect
-	cxa_mqtt_client_connect(&clientIn->super, clientIn->username, clientIn->password);
+	cxa_mqtt_client_connect(&clientIn->super, clientIn->username, clientIn->password, clientIn->passwordLen_bytes);
 }
 
 
 static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void* userVarIn)
 {
+	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
+	cxa_assert(clientIn);
 
+	cxa_mqtt_client_disconnect(&clientIn->super);
 }
 

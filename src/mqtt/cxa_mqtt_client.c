@@ -21,6 +21,13 @@
 // ******** includes ********
 #include <string.h>
 #include <cxa_assert.h>
+#include <cxa_mqtt_messageFactory.h>
+#include <cxa_mqtt_message_connack.h>
+#include <cxa_mqtt_message_connect.h>
+#include <cxa_mqtt_message_pingRequest.h>
+#include <cxa_mqtt_message_subscribe.h>
+#include <cxa_mqtt_message_suback.h>
+#include <cxa_mqtt_message_publish.h>
 #include <cxa_stringUtils.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
@@ -49,12 +56,12 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
 
-static void protoParseCb_onConnAck(cxa_mqtt_protocolParser_t *const mppIn, bool sessionPresentIn, cxa_mqtt_protocolParser_connAck_returnCode_t retCodeIn, void *const userVarIn);
-static void protoParseCb_onPingResp(cxa_mqtt_protocolParser_t *const mppIn, void *const userVarIn);
-static void protoParseCb_onSubAck(cxa_mqtt_protocolParser_t *const mppIn, uint16_t packetIdIn, cxa_mqtt_protocolParser_subAck_returnCode_t retCodeIn, void *const userVarIn);
-static void protoParseCb_onPublish(cxa_mqtt_protocolParser_t *const mppIn,
-									bool dupIn, cxa_mqtt_protocolParser_qosLevel_t qosIn, bool retainIn, char* topicNameIn, uint16_t packetIdIn,
-									void* payloadIn, size_t payloadLen_bytesIn, void *const userVarIn);
+static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
+
+static void handleMessage_connAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn);
+static void handleMessage_pingResp(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn);
+static void handleMessage_subAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn);
+static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn);
 
 static bool doesTopicMatchFilter(char* topicIn, char* filterIn);
 
@@ -81,9 +88,13 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	cxa_timeDiff_init(&clientIn->td_sendKeepAlive, timeBaseIn, true);
 	cxa_timeDiff_init(&clientIn->td_receiveKeepAlive, timeBaseIn, true);
 
+	// get a message (and buffer) for our protocol parser
+	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getFreeMessage_empty();
+	cxa_assert(msg);
+
 	// setup our protocol parser
-	cxa_mqtt_protocolParser_init(&clientIn->mpp, iosIn);
-	cxa_mqtt_protocolParser_addListener(&clientIn->mpp, protoParseCb_onConnAck, protoParseCb_onPingResp, protoParseCb_onSubAck, protoParseCb_onPublish, (void*)clientIn);
+	cxa_protocolParser_mqtt_init(&clientIn->mpp, iosIn, msg->buffer, timeBaseIn);
+	cxa_protocolParser_addPacketListener(&clientIn->mpp.super, protoParseCb_onPacketReceived, (void*)clientIn);
 
 	// setup our logger
 	cxa_logger_init(&clientIn->logger, "mqttC");
@@ -116,19 +127,23 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 }
 
 
-bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, char *const passwordIn)
+bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn)
 {
 	cxa_assert(clientIn);
 
 	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_IDLE ) return false;
 
-	// send our connect packet
-	cxa_logger_info(&clientIn->logger, "connect requested");
-	if( !cxa_mqtt_protocolParser_writePacket_connect(&clientIn->mpp, clientIn->clientId, usernameIn, passwordIn, true, KEEP_ALIVE_TIMEOUT_S) )
+	// reserve/initialize/send message
+	cxa_mqtt_message_t* msg = NULL;
+	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
+			!cxa_mqtt_message_connect_init(msg, clientIn->clientId, usernameIn, passwordIn, passwordLen_bytesIn, true, KEEP_ALIVE_TIMEOUT_S) ||
+			!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
 	{
-		cxa_logger_warn(&clientIn->logger, "failed to send CONNECT ctrlPacket");
+		cxa_logger_warn(&clientIn->logger, "failed to reserve/initialize/send CONNECT ctrlPacket");
+		if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 		return false;
 	}
+	if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_CONNECTING);
 	return true;
@@ -154,7 +169,7 @@ void cxa_mqtt_client_disconnect(cxa_mqtt_client_t *const clientIn)
 }
 
 
-bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_protocolParser_qosLevel_t qosIn, bool retainIn,
+bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
 							 char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn)
 {
 	cxa_assert(clientIn);
@@ -163,14 +178,16 @@ bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_protoco
 	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return false;
 
 	cxa_logger_trace(&clientIn->logger, "publish '%s' %d bytes", topicNameIn, payloadLen_bytesIn);
-	return cxa_mqtt_protocolParser_writePacket_publish(&clientIn->mpp, qosIn, retainIn, topicNameIn, payloadIn, payloadLen_bytesIn);
+	//return cxa_mqtt_protocolParser_writePacket_publish(&clientIn->mpp, qosIn, retainIn, topicNameIn, payloadIn, payloadLen_bytesIn);
+	return false;
 }
 
 
-void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFilterIn, cxa_mqtt_protocolParser_qosLevel_t qosIn, cxa_mqtt_client_cb_onPublish_t cb_onPublishIn, void* userVarIn)
+void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFilterIn, cxa_mqtt_qosLevel_t qosIn, cxa_mqtt_client_cb_onPublish_t cb_onPublishIn, void* userVarIn)
 {
 	cxa_assert(clientIn);
 	cxa_assert(topicFilterIn);
+	cxa_assert(strlen(topicFilterIn) <= CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES);
 	cxa_assert(cb_onPublishIn);
 
 	// make sure we don't have exact duplicates
@@ -188,21 +205,26 @@ void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFil
 	cxa_mqtt_client_subscriptionEntry_t newEntry = {
 			.state=CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_UNACKNOWLEDGED,
 			.packetId=clientIn->currPacketId++,
-			.topicFilter=topicFilterIn,
 			.qos = qosIn,
 			.cb_onPublish=cb_onPublishIn,
 			.userVar=userVarIn
 	};
+	strlcpy(newEntry.topicFilter, topicFilterIn, sizeof(newEntry.topicFilter));
 	cxa_assert( cxa_array_append(&clientIn->subscriptions, &newEntry) );
 
 	// try to actually send our subscribe (if we're connected)
 	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_CONNECTED )
 	{
-		if( !cxa_mqtt_protocolParser_writePacket_subscribe(&clientIn->mpp, newEntry.packetId, topicFilterIn, qosIn) )
+		cxa_mqtt_message_t* msg = NULL;
+		if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
+				!cxa_mqtt_message_subscribe_init(msg, newEntry.packetId, topicFilterIn, qosIn) ||
+				!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
 		{
-			cxa_logger_warn(&clientIn->logger, "subscribe failed, subscription inoperable");
+			cxa_logger_warn(&clientIn->logger, "subscribe reserve/initialize/send failed, subscription inoperable");
 		}
+		if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 	}
+
 }
 
 
@@ -211,7 +233,7 @@ void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn)
 	cxa_assert(clientIn);
 
 	cxa_stateMachine_update(&clientIn->stateMachine);
-	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_IDLE ) cxa_mqtt_protocolParser_update(&clientIn->mpp);
+	cxa_protocolParser_mqtt_update(&clientIn->mpp);
 }
 
 
@@ -258,10 +280,14 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 		currSubscription->state = CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_UNACKNOWLEDGED;
 
 		cxa_logger_trace(&clientIn->logger, "subscribing to stored '%s'", currSubscription->topicFilter);
-		if( !cxa_mqtt_protocolParser_writePacket_subscribe(&clientIn->mpp, currSubscription->packetId, currSubscription->topicFilter, currSubscription->qos) )
+		cxa_mqtt_message_t* msg = NULL;
+		if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
+				!cxa_mqtt_message_subscribe_init(msg, currSubscription->packetId, currSubscription->topicFilter, currSubscription->qos) ||
+				!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
 		{
-			cxa_logger_warn(&clientIn->logger, "subscribe failed, subscription inoperable");
+			cxa_logger_warn(&clientIn->logger, "subscribe reserve/initialize/send failed, subscription inoperable");
 		}
+		if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 	}
 
 	// notify our listeners
@@ -283,7 +309,14 @@ static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVa
 	if( (KEEP_ALIVE_TIMEOUT_S != 0) && cxa_timeDiff_isElapsed_recurring_ms(&clientIn->td_sendKeepAlive, (KEEP_ALIVE_TIMEOUT_S * 1000)) )
 	{
 		cxa_logger_trace(&clientIn->logger, "sending PINGREQ");
-		if( !cxa_mqtt_protocolParser_writePacket_pingReq(&clientIn->mpp) ) cxa_logger_warn(&clientIn->logger, "failed to tx PINGREQ");
+		cxa_mqtt_message_t* msg = NULL;
+		if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
+				!cxa_mqtt_message_pingRequest_init(msg) ||
+				!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
+		{
+			cxa_logger_warn(&clientIn->logger, "failed to reserve/initialize/send PINGREQ ctrlPacket");
+		}
+		if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 	}
 
 	// make sure we are receiving pings
@@ -310,81 +343,147 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVa
 }
 
 
-static void protoParseCb_onConnAck(cxa_mqtt_protocolParser_t *const mppIn, bool sessionPresentIn, cxa_mqtt_protocolParser_connAck_returnCode_t retCodeIn, void *const userVarIn)
+static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn)
 {
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
 
-	if( retCodeIn == CXA_MQTT_CONNACK_RETCODE_ACCEPTED )
+	// if we're not supposed to be processing data, don't do it
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
+
+	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getMessage_byBuffer(packetIn);
+	if( msg == NULL ) return;
+
+	cxa_mqtt_message_type_t msgType = cxa_mqtt_message_getType(msg);
+	switch( msgType )
+	{
+		case CXA_MQTT_MSGTYPE_CONNACK:
+			handleMessage_connAck(clientIn, msg);
+			break;
+
+		case CXA_MQTT_MSGTYPE_PINGRESP:
+			handleMessage_pingResp(clientIn, msg);
+			break;
+
+		case CXA_MQTT_MSGTYPE_SUBACK:
+			handleMessage_subAck(clientIn, msg);
+			break;
+
+		case CXA_MQTT_MSGTYPE_PUBLISH:
+			handleMessage_publish(clientIn, msg);
+			break;
+
+		default:
+			cxa_logger_trace(&clientIn->logger, "got unknown msgType: %d", msgType);
+			break;
+	}
+}
+
+
+static void handleMessage_connAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn)
+{
+	cxa_assert(clientIn);
+	cxa_assert(msgIn);
+
+	cxa_mqtt_connAck_returnCode_t retCode = CXA_MQTT_CONNACK_RETCODE_UNKNOWN;
+	if( cxa_mqtt_message_connack_getReturnCode(msgIn, &retCode ) && (retCode == CXA_MQTT_CONNACK_RETCODE_ACCEPTED) )
 	{
 		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_CONNECTED);
 		return;
 	}
 	else
 	{
-		cxa_logger_warn(&clientIn->logger, "connection refused: %s", cxa_mqtt_protocolParser_getStringForConnAckRetCode(retCodeIn));
+		cxa_logger_warn(&clientIn->logger, "connection refused: %d", retCode);
 		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+		return;
 	}
 }
 
 
-static void protoParseCb_onPingResp(cxa_mqtt_protocolParser_t *const mppIn, void *const userVarIn)
+static void handleMessage_pingResp(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn)
 {
-	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
+	cxa_assert(msgIn);
 
 	cxa_logger_trace(&clientIn->logger, "got PINGRESP");
-
 	cxa_timeDiff_setStartTime_now(&clientIn->td_receiveKeepAlive);
 }
 
 
-static void protoParseCb_onSubAck(cxa_mqtt_protocolParser_t *const mppIn, uint16_t packetIdIn, cxa_mqtt_protocolParser_subAck_returnCode_t retCodeIn, void *const userVarIn)
+static void handleMessage_subAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn)
 {
-	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
+	cxa_assert(msgIn);
 
-	cxa_logger_trace(&clientIn->logger, "got SUBACK for packetId %d: %d", packetIdIn, retCodeIn);
-
-	cxa_array_iterate(&clientIn->subscriptions, currSubscription, cxa_mqtt_client_subscriptionEntry_t)
+	cxa_mqtt_subAck_returnCode_t retCode;
+	uint16_t packetId;
+	if( cxa_mqtt_message_suback_getPacketId(msgIn, &packetId) && cxa_mqtt_message_suback_getReturnCode(msgIn, &retCode) )
 	{
-		if( currSubscription == NULL ) continue;
-		if( (currSubscription->state == CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_UNACKNOWLEDGED) && (currSubscription->packetId == packetIdIn) )
+		cxa_logger_trace(&clientIn->logger, "got SUBACK for packetId %d: %d", packetId, retCode);
+
+		cxa_array_iterate(&clientIn->subscriptions, currSubscription, cxa_mqtt_client_subscriptionEntry_t)
 		{
-			// found our subscription...what we do now depends on whether it was successful
-			if( retCodeIn == CXA_MQTT_SUBACK_RETCODE_FAILURE )
+			if( currSubscription == NULL ) continue;
+			if( (currSubscription->state == CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_UNACKNOWLEDGED) && (currSubscription->packetId == packetId) )
 			{
-				currSubscription->state = CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_REFUSED;
-				cxa_logger_warn(&clientIn->logger, "server refused subscription to '%s'", currSubscription->topicFilter);
-			}
-			else
-			{
-				currSubscription->state = CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_ACKNOWLEDGED;
-				cxa_logger_info(&clientIn->logger, "subscription to '%s' successful", currSubscription->topicFilter);
+				// found our subscription...what we do now depends on whether it was successful
+				if( retCode == CXA_MQTT_SUBACK_RETCODE_FAILURE )
+				{
+					currSubscription->state = CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_REFUSED;
+					cxa_logger_warn(&clientIn->logger, "server refused subscription to '%s'", currSubscription->topicFilter);
+				}
+				else
+				{
+					currSubscription->state = CXA_MQTT_CLIENT_SUBSCRIPTION_STATE_ACKNOWLEDGED;
+					cxa_logger_info(&clientIn->logger, "subscription to '%s' successful", currSubscription->topicFilter);
+				}
 			}
 		}
-	}
+	} else cxa_logger_warn(&clientIn->logger, "malformed SUBACK");
 }
 
 
-static void protoParseCb_onPublish(cxa_mqtt_protocolParser_t *const mppIn,
-									bool dupIn, cxa_mqtt_protocolParser_qosLevel_t qosIn, bool retainIn, char* topicNameIn, uint16_t packetIdIn,
-									void* payloadIn, size_t payloadLen_bytesIn, void *const userVarIn)
+static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn)
 {
-	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
+	cxa_assert(msgIn);
 
 	// iterate through our subscriptions to figure out where this goes
-	cxa_array_iterate(&clientIn->subscriptions, currSubscription, cxa_mqtt_client_subscriptionEntry_t)
+	char *topicName;
+	void *payload;
+	size_t topicNameLen_bytes, payloadSize_bytes;
+	if( cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) && cxa_mqtt_message_publish_getPayload(msgIn, &payload, &payloadSize_bytes) )
 	{
-		if( currSubscription == NULL ) continue;
+		// @TODO this is a hack...MQTT spec says all string are not null-terminated...
+		// I don't want to change the message data (add null) but I want to print the topic
+		// so we'll null term for the print, then un-null term
 
-		if( doesTopicMatchFilter(topicNameIn, currSubscription->topicFilter) && currSubscription->cb_onPublish )
+		char oldVal = topicName[topicNameLen_bytes];
+		topicName[topicNameLen_bytes] = 0;
+		cxa_logger_trace(&clientIn->logger, "got PUBLISH '%s'", topicName);
+		topicName[topicNameLen_bytes] = oldVal;
+
+		cxa_array_iterate(&clientIn->subscriptions, currSubscription, cxa_mqtt_client_subscriptionEntry_t)
 		{
-			currSubscription->cb_onPublish(clientIn, topicNameIn, payloadIn, payloadLen_bytesIn,currSubscription->userVar);
+			if( currSubscription == NULL ) continue;
+
+			// @TODO this is a hack...I'm using paho's topic matching code...but it expects a null-terminated string
+			// MQTT spec says all string are not null-terminated...I don't want to change the message data (add null)
+			// so we'll null term for the check, then un-null term
+
+			char oldVal = topicName[topicNameLen_bytes];
+			topicName[topicNameLen_bytes] = 0;
+			bool doesTopicMatch = doesTopicMatchFilter(topicName, currSubscription->topicFilter);
+			topicName[topicNameLen_bytes] = oldVal;
+
+			if( doesTopicMatch && currSubscription->cb_onPublish )
+			{
+				currSubscription->cb_onPublish(clientIn, msgIn, topicName, topicNameLen_bytes, payload, payloadSize_bytes, currSubscription->userVar);
+			}
 		}
-	}
+	} else cxa_logger_warn(&clientIn->logger, "malformed PUBLISH");
 }
+
 
 
 // taken from: http://git.eclipse.org/c/paho/org.eclipse.paho.mqtt.embedded-c.git/tree/MQTTClient-C/src/MQTTClient.c
