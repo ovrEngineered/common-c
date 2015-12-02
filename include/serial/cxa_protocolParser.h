@@ -37,7 +37,6 @@
 #include <cxa_array.h>
 #include <cxa_ioStream.h>
 #include <cxa_logger_header.h>
-#include <cxa_stateMachine.h>
 #include <cxa_timeBase.h>
 #include <cxa_timeDiff.h>
 
@@ -96,6 +95,30 @@ typedef void (*cxa_protocolParser_cb_packetReceived_t)(cxa_fixedByteBuffer_t *co
 /**
  * @private
  */
+typedef bool (*cxa_protocolParser_scm_isInErrorState_t)(cxa_protocolParser_t *const superIn);
+
+
+/**
+ * @private
+ */
+typedef bool (*cxa_protocolParser_scm_canSetBuffer_t)(cxa_protocolParser_t *const superIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_protocolParser_scm_gotoIdle_t)(cxa_protocolParser_t *const superIn);
+
+
+/**
+ * @private
+ */
+typedef bool (*cxa_protocolParser_scm_writeBytes_t)(cxa_protocolParser_t *const superIn, cxa_fixedByteBuffer_t *const fbbIn);
+
+
+/**
+ * @private
+ */
 typedef struct
 {
 	cxa_protocolParser_cb_ioExceptionOccurred_t cb_exception;
@@ -132,30 +155,24 @@ struct cxa_protocolParser
 	bool isReceptionTimeoutEnabled;
 	cxa_timeDiff_t td_timeout;
 
-	cxa_stateMachine_t stateMachine;
 	cxa_ioStream_t* ioStream;
 	
 	cxa_fixedByteBuffer_t* currBuffer;
+
+	cxa_protocolParser_scm_isInErrorState_t scm_isInError;
+	cxa_protocolParser_scm_canSetBuffer_t scm_canSetBuffer;
+	cxa_protocolParser_scm_gotoIdle_t scm_gotoIdle;
+	cxa_protocolParser_scm_writeBytes_t scm_writeBytes;
 };
 
 
 // ******** global function prototypes ********
 /**
- * @public
- * @brief Initializes the protocol parser object
- *
- * @param[in] ppIn pointer to the pre-allocated protocolParser
- * 		to initialize
- * @param[in] ioStreamIn the ioStream on which to send/receive
- * 		packets (may or may not be bound at this point)
- * @param[in] buffIn the initial buffer which should be used to
- * 		receive packets. May be NULL if this will be set later
- * 		(but protocolParser will not operate)
- * @param[in] timeBaseIn the timeBase which shall be used to judge
- * 		reception timeouts (may be null if no timeouts are desired)
+ * @protected
  */
-void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn,
-							 cxa_timeBase_t *const timeBaseIn);
+void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, cxa_timeBase_t *const timeBaseIn,
+							 cxa_protocolParser_scm_isInErrorState_t scm_isInErrorIn, cxa_protocolParser_scm_canSetBuffer_t scm_canSetBufferIn,
+							 cxa_protocolParser_scm_gotoIdle_t scm_gotoIdleIn, cxa_protocolParser_scm_writeBytes_t scm_writeBytesIn);
 
 /**
  * @public
@@ -245,14 +262,23 @@ bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedB
  */
 bool cxa_protocolParser_writePacket_bytes(cxa_protocolParser_t *const ppIn, void* bytesIn, size_t numBytesIn);
 
+
 /**
- * @public
- * @brief Updates the protocol parser (and internal state machine).
- * MUST be called on a regular basis for proper operation
- *
- * @param[in] ppIn pointer to the pre-initialized protocolParser
+ * @protected
  */
-void cxa_protocolParser_update(cxa_protocolParser_t *const ppIn);
+void cxa_protocolParser_notify_ioException(cxa_protocolParser_t *const ppIn);
+
+
+/**
+ * @protected
+ */
+void cxa_protocolParser_notify_receptionTimeout(cxa_protocolParser_t *const ppIn);
+
+
+/**
+ * @protected
+ */
+void cxa_protocolParser_notify_packetReceived(cxa_protocolParser_t *const ppIn, cxa_fixedByteBuffer_t *const packetIn);
 
 
 #endif // CXA_PROTOCOLPARSER_H_
