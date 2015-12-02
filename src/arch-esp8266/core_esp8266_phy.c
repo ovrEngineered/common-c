@@ -23,6 +23,7 @@
  #include <stdint.h>
  #include <stddef.h>
  #include <stdbool.h>
+ #include <user_interface.h>
 
 static uint8_t phy_init_data[128] =
 {
@@ -233,6 +234,12 @@ static uint8_t phy_init_data[128] =
     [113] = 0,
 };
 
+extern int __get_adc_mode(void) __attribute__((weak));
+extern int __get_adc_mode(void)
+{
+    return 33; // default ADC mode
+}
+
 extern int __real_register_chipv6_phy(uint8_t* init_data);
 extern int __wrap_register_chipv6_phy(uint8_t* unused) {
     phy_init_data[107] = __get_adc_mode();
@@ -243,12 +250,6 @@ extern int __get_rf_mode(void)  __attribute__((weak));
 extern int __get_rf_mode(void)
 {
     return 0;  // default mode
-}
-
-extern int __get_adc_mode(void) __attribute__((weak));
-extern int __get_adc_mode(void)
-{
-    return 33; // default ADC mode
 }
 
 extern void __run_user_rf_pre_init(void) __attribute__((weak));

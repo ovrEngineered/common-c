@@ -29,6 +29,7 @@
 
 
 // ******** local function prototypes ********
+extern void ets_delay_us(long);
 
 
 // ********  local variable declarations *********
