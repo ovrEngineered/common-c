@@ -436,6 +436,10 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
+	// handle a zero-size buffer appropriately
+	if( bufferSize_bytesIn != 0 ) { cxa_assert(buffIn); }
+	else { return true; }
+
 	if( !cxa_network_tcpClient_isConnected(&netClientIn->super) ) return false;
 
 	// see if we should immediately transmit or queue
