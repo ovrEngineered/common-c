@@ -27,6 +27,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <cxa_assert.h>
+#include <cxa_numberUtils.h>
 
 
 // ******** local macro definitions ********
@@ -80,6 +81,21 @@ bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn)
 	if( (targetStringIn == NULL) || (elementIn == NULL) ) return false;
 
 	return (strstr(targetStringIn, elementIn) != NULL);
+}
+
+
+bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn)
+{
+	if( (targetStringIn == NULL) || (elementIn == NULL) ) return false;
+
+	for( size_t i = 0; i < targetStringLen_bytesIn; i++ )
+	{
+		if( (i + elementLen_bytesIn) > targetStringLen_bytesIn ) return false;
+
+		if( strncmp(&targetStringIn[i], elementIn, elementLen_bytesIn) == 0 ) return true;
+	}
+
+	return false;
 }
 
 

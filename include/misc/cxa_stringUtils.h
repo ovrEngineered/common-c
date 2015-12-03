@@ -67,6 +67,7 @@ typedef struct
 bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn);
 
 bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn);
+bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
 bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, size_t maxSizeTarget_bytesIn);
 
 /**
