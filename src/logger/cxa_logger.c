@@ -40,6 +40,7 @@
 // ******** local function prototypes ********
 static inline void checkSysLogInit(void);
 static void writeField(char *const stringIn, size_t maxFieldLenIn);
+static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn);
 
 
 // ********  local variable declarations *********
@@ -112,6 +113,33 @@ cxa_logger_t* cxa_logger_getSysLog(void)
 }
 
 
+void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const char* untermStringIn, size_t untermStrLen_bytesIn, const char* postFixIn)
+{
+	cxa_assert(loggerIn);
+	cxa_assert(loggerIn);
+	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
+				(levelIn == CXA_LOG_LEVEL_WARN) ||
+				(levelIn == CXA_LOG_LEVEL_INFO) ||
+				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
+				(levelIn == CXA_LOG_LEVEL_TRACE) );
+	cxa_assert(untermStringIn);
+	checkSysLogInit();
+
+	// if we don't have an ioStream, don't worry about it!
+	if( ioStream == NULL ) return;
+
+	// common header
+	writeHeader(loggerIn, levelIn);
+
+	if( prefixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)prefixIn);
+	cxa_ioStream_writeBytes(ioStream, (void *const)untermStringIn, untermStrLen_bytesIn);
+	if( postFixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)postFixIn);
+
+	// print EOL
+	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+}
+
+
 void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
 {
 	cxa_assert(loggerIn);
@@ -125,6 +153,64 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
+
+	// common header
+	writeHeader(loggerIn, levelIn);
+
+	// our buffer for this go-round
+	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
+
+	// now do our VARARGS
+	va_list varArgs;
+	va_start(varArgs, formatIn);
+	int expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
+	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
+	if( sizeof(buff) < expectedNumBytesWritten )
+	{
+		cxa_ioStream_writeBytes(ioStream, CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
+	}
+	va_end(varArgs);
+
+	// print EOL
+	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+}
+
+
+// ******** local function implementations ********
+static inline void checkSysLogInit(void)
+{
+	if( !isSysLogInit )
+	{
+		// mark init first since we'll have a stack overflow (recursive call if not)
+		isSysLogInit = true;
+		cxa_logger_init(&sysLog, "sysLog");
+	}
+}
+
+
+static void writeField(char *const stringIn, size_t maxFieldLenIn)
+{
+	size_t stringLen_bytes = strlen(stringIn);
+
+	if( stringLen_bytes > maxFieldLenIn )
+	{
+		cxa_ioStream_writeBytes(ioStream, stringIn, maxFieldLenIn-strlen(CXA_LOGGER_TRUNCATE_STRING));
+		cxa_ioStream_writeBytes(ioStream, CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
+	}
+	else
+	{
+		cxa_ioStream_writeBytes(ioStream, stringIn, stringLen_bytes);
+		for( size_t i = stringLen_bytes; i < maxFieldLenIn; i++ )
+		{
+			cxa_ioStream_writeByte(ioStream, ' ');
+		}
+	}
+}
+
+
+static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
+{
+	cxa_assert(loggerIn);
 
 	// figure out our level text
 	char *levelText = "UNKN";
@@ -176,50 +262,4 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 	// level text
 	writeField(levelText, 5);
 	cxa_ioStream_writeByte(ioStream, ' ');
-
-	// now do our VARARGS
-	va_list varArgs;
-	va_start(varArgs, formatIn);
-	int expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
-	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
-	if( sizeof(buff) < expectedNumBytesWritten )
-	{
-		cxa_ioStream_writeBytes(ioStream, CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
-	}
-	va_end(varArgs);
-
-	// print EOL
-	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-}
-
-
-// ******** local function implementations ********
-static inline void checkSysLogInit(void)
-{
-	if( !isSysLogInit )
-	{
-		// mark init first since we'll have a stack overflow (recursive call if not)
-		isSysLogInit = true;
-		cxa_logger_init(&sysLog, "sysLog");
-	}
-}
-
-
-static void writeField(char *const stringIn, size_t maxFieldLenIn)
-{
-	size_t stringLen_bytes = strlen(stringIn);
-
-	if( stringLen_bytes > maxFieldLenIn )
-	{
-		cxa_ioStream_writeBytes(ioStream, stringIn, maxFieldLenIn-strlen(CXA_LOGGER_TRUNCATE_STRING));
-		cxa_ioStream_writeBytes(ioStream, CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
-	}
-	else
-	{
-		cxa_ioStream_writeBytes(ioStream, stringIn, stringLen_bytes);
-		for( size_t i = stringLen_bytes; i < maxFieldLenIn; i++ )
-		{
-			cxa_ioStream_writeByte(ioStream, ' ');
-		}
-	}
 }

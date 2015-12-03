@@ -137,6 +137,8 @@ void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
  */
 cxa_logger_t* cxa_logger_getSysLog(void);
 
+void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const char* untermStringIn, size_t untermStrLen_bytesIn, const char* postFixIn);
+
 /**
  * @private
  */
