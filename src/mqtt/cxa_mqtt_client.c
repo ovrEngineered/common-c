@@ -454,14 +454,7 @@ static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	size_t topicNameLen_bytes, payloadSize_bytes;
 	if( cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) && cxa_mqtt_message_publish_getPayload(msgIn, &payload, &payloadSize_bytes) )
 	{
-		// @TODO this is a hack...MQTT spec says all string are not null-terminated...
-		// I don't want to change the message data (add null) but I want to print the topic
-		// so we'll null term for the print, then un-null term
-
-		char oldVal = topicName[topicNameLen_bytes];
-		topicName[topicNameLen_bytes] = 0;
-		cxa_logger_trace(&clientIn->logger, "got PUBLISH '%s'", topicName);
-		topicName[topicNameLen_bytes] = oldVal;
+		cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_TRACE, "got PUBLISH '", topicName, topicNameLen_bytes, "'");
 
 		cxa_array_iterate(&clientIn->subscriptions, currSubscription, cxa_mqtt_client_subscriptionEntry_t)
 		{
