@@ -201,6 +201,22 @@ bool cxa_linkedField_remove_cString(cxa_linkedField_t *const fbbLfIn, const size
 }
 
 
+bool cxa_linkedField_removeFrom_lengthPrefixedField_uint16BE(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, const uint16_t numBytesToRemove)
+{
+	cxa_assert(fbbLfIn);
+
+	// figure out how long our field is and make sure we can actually remove the bytes
+	uint16_t fieldLen_bytes;
+	if( !cxa_linkedField_get_lengthPrefixedField_uint16BE_inPlace(fbbLfIn, indexIn, NULL, &fieldLen_bytes) || (numBytesToRemove > fieldLen_bytes) ) return false;
+
+	// do the removal
+	if( !cxa_linkedField_remove(fbbLfIn, indexIn+2, numBytesToRemove) ) return false;
+
+	// update our length prefix
+	return cxa_linkedField_replace_uint16BE(fbbLfIn, indexIn, (fieldLen_bytes - numBytesToRemove));
+}
+
+
 bool cxa_linkedField_clear(cxa_linkedField_t *const fbbLfIn)
 {
 	cxa_assert(fbbLfIn);
@@ -369,6 +385,25 @@ size_t cxa_linkedField_getSize_bytes(cxa_linkedField_t *const fbbLfIn)
 	if( !validateChain(fbbLfIn, true) ) return 0;
 
 	return fbbLfIn->currSize_bytes;
+}
+
+
+bool cxa_linkedField_prependTo_lengthPrefixedField_uint16BE(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn)
+{
+	cxa_assert(fbbLfIn);
+
+	// figure out how long our field originally was
+	uint16_t fieldLen_bytes;
+	if( !cxa_linkedField_get_lengthPrefixedField_uint16BE_inPlace(fbbLfIn, indexIn, NULL, &fieldLen_bytes) ) return false;
+
+	// make sure we have room
+	if( (UINT16_MAX - numBytesIn) < fieldLen_bytes ) return false;
+
+	// do the insert
+	if( !cxa_linkedField_insert(fbbLfIn, indexIn+2, ptrIn, numBytesIn) ) return false;
+
+	// update our length prefix
+	return cxa_linkedField_replace_uint16BE(fbbLfIn, indexIn, (fieldLen_bytes + numBytesIn));
 }
 
 

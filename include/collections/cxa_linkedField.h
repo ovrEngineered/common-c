@@ -28,6 +28,7 @@
 
 // ******** includes ********
 #include <stdbool.h>
+#include <string.h>
 #include <cxa_fixedByteBuffer.h>
 
 
@@ -58,6 +59,7 @@
 
 #define cxa_linkedField_replace_uint8(fbbLfIn, indexIn, uint8In)			cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){(uint8In)}, 1)
 #define cxa_linkedField_replace_uint16LE(fbbLfIn, indexIn, uint16In)		cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
+#define cxa_linkedField_replace_uint16BE(fbbLfIn, indexIn, uint16In)		cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8)), ((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0))}, 2)
 #define cxa_linkedField_replace_uint32LE(fbbLfIn, indexIn, uint32In)		cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
 #define cxa_linkedField_replace_float(fbbLfIn, indexIn, floatIn)			cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t*)&(floatIn), 4)
 
@@ -109,6 +111,7 @@ bool cxa_linkedField_append_lengthPrefixedField_uint16BE(cxa_linkedField_t *cons
 
 bool cxa_linkedField_remove(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, const size_t numBytesIn);
 bool cxa_linkedField_remove_cString(cxa_linkedField_t *const fbbLfIn, const size_t indexIn);
+bool cxa_linkedField_removeFrom_lengthPrefixedField_uint16BE(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, const uint16_t numBytesToRemove);
 
 bool cxa_linkedField_clear(cxa_linkedField_t *const fbbLfIn);
 
@@ -122,6 +125,8 @@ bool cxa_linkedField_replace(cxa_linkedField_t *const fbbLfIn, const size_t inde
 bool cxa_linkedField_replace_cstring(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char *const stringIn);
 
 bool cxa_linkedField_insert(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
+
+bool cxa_linkedField_prependTo_lengthPrefixedField_uint16BE(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
 
 size_t cxa_linkedField_getSize_bytes(cxa_linkedField_t *const fbbLfIn);
 size_t cxa_linkedField_getMaxSize_bytes(cxa_linkedField_t *const fbbLfIn);
