@@ -237,6 +237,16 @@ void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn)
 }
 
 
+void cxa_mqtt_client_internalDisconnect(cxa_mqtt_client_t *const clientIn)
+{
+	cxa_assert(clientIn);
+
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
+
+	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+}
+
+
 // ******** local function implementations ********
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {

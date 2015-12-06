@@ -184,6 +184,16 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 				}
 			}
 
+			// if we made it here, we couldn't find the right method...see if we have a catchall
+			if( currNode->cb_catchall != NULL )
+			{
+				// only return if the catchall was successful
+				char* fullMethod = currPath - strlen(REQ_PREFIX);
+				size_t fullMethodLen_bytes = currPathLen_bytes + strlen(REQ_PREFIX);
+
+				if( currNode->cb_catchall(currNode, fullMethod, fullMethodLen_bytes, msgIn, currNode->catchAll_userVar) ) return;
+			}
+
 			// if we made it here, we coudn't find the right method
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown method: '", currPath, currPathLen_bytes, "'");
 			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, &fbb_retParams);

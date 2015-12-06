@@ -73,6 +73,14 @@ bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clie
 }
 
 
+void cxa_mqtt_client_network_internalDisconnect(cxa_mqtt_client_network_t *const clientIn)
+{
+	cxa_assert(clientIn);
+
+	cxa_network_tcpClient_disconnect(clientIn->netClient);
+}
+
+
 // ******** local function implementations ********
 static void cb_network_onConnect(cxa_network_tcpClient_t *const superIn, void* userVarIn)
 {
@@ -89,6 +97,6 @@ static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void
 	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
 	cxa_assert(clientIn);
 
-	cxa_mqtt_client_disconnect(&clientIn->super);
+	cxa_mqtt_client_internalDisconnect(&clientIn->super);
 }
 

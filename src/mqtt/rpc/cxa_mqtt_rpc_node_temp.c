@@ -56,8 +56,8 @@ void cxa_mqtt_rpc_node_temp_init_subnode(cxa_mqtt_rpc_node_temp_t *const nodeIn,
 	//cxa_mqtt_rpc_node_init_subNode(&nodeIn->super, parentNodeIn, nameIn);
 
 	// set some initial values
-	nodeIn->upperBound_c = HUGE_VALF;
-	nodeIn->lowerBound_c = -HUGE_VALF;
+	//nodeIn->upperBound_c = HUGE_VALF;
+	//nodeIn->lowerBound_c = -HUGE_VALF;
 
 	// setup our sample timeDiff
 	cxa_timeDiff_init(&nodeIn->td_sample, timeBaseIn, false);

@@ -14,33 +14,44 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_MQTT_RPC_BRIDGE_H_
-#define CXA_MQTT_RPC_BRIDGE_H_
+#ifndef CXA_MQTT_RPC_NODE_BRIDGE_SINGLE_H_
+#define CXA_MQTT_RPC_NODE_BRIDGE_SINGLE_H_
 
 
 // ******** includes ********
+#include <cxa_mqtt_rpc_node_bridge.h>
 #include <cxa_array.h>
 #include <cxa_ioStream.h>
 #include <cxa_logger_header.h>
+#include <cxa_mqtt_rpc_node.h>
 #include <cxa_protocolParser_mqtt.h>
-#include <cxa_mqtt_rpc_node_bridge.h>
 #include <cxa_config.h>
 
 
 // ******** global macro definitions ********
+#ifndef CXA_MQTT_RPC_NODE_BRIDGE_CLIENTID_MAXLEN_BYTES
+	#define CXA_MQTT_RPC_NODE_BRIDGE_CLIENTID_MAXLEN_BYTES			17
+#endif
 
 
 // ******** global type definitions *********
-typedef struct cxa_mqtt_rpc_bridge cxa_mqtt_rpc_bridge_t;
+typedef struct cxa_mqtt_rpc_node_bridge_single cxa_mqtt_rpc_node_bridge_single_t;
 
 
-struct cxa_mqtt_rpc_bridge
+/**
+ * @private
+ */
+struct cxa_mqtt_rpc_node_bridge_single
 {
-	cxa_protocolParser_mqtt_t mpp;
+	cxa_mqtt_rpc_node_bridge_t super;
+
+	bool hasClientAuthed;
+	char clientId[CXA_MQTT_RPC_NODE_BRIDGE_CLIENTID_MAXLEN_BYTES+1];
 };
 
 
 // ******** global function prototypes ********
+void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn,
+										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn);
 
-
-#endif // CXA_MQTT_RPC_BRIDGE_H_
+#endif // CXA_MQTT_RPC_NODEBRIDGE_SINGLE_H_

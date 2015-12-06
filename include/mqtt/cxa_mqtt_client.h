@@ -137,4 +137,9 @@ void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFil
 void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn);
 
 
+/**
+ * @protected
+ */
+void cxa_mqtt_client_internalDisconnect(cxa_mqtt_client_t *const clientIn);
+
 #endif // CXA_MQTT_CLIENT_H_
