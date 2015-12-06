@@ -49,6 +49,8 @@ typedef enum
 
 
 // ******** global function prototypes ********
+bool cxa_mqtt_message_connack_init(cxa_mqtt_message_t *const msgIn, bool isSessionPresentIn, cxa_mqtt_connAck_returnCode_t retCodeIn);
+
 bool cxa_mqtt_message_connack_isSessionPresent(cxa_mqtt_message_t *const msgIn, bool *const isSessionPresentOut);
 bool cxa_mqtt_message_connack_getReturnCode(cxa_mqtt_message_t *const msgIn, cxa_mqtt_connAck_returnCode_t *const returnCodeOut);
 

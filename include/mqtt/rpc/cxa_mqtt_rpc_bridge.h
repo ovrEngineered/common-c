@@ -22,7 +22,7 @@
 #include <cxa_array.h>
 #include <cxa_ioStream.h>
 #include <cxa_logger_header.h>
-#include <cxa_mqtt_protocolParser.h>
+#include <cxa_protocolParser_mqtt.h>
 #include <cxa_mqtt_rpc_node_bridge.h>
 #include <cxa_config.h>
 
@@ -31,6 +31,13 @@
 
 
 // ******** global type definitions *********
+typedef struct cxa_mqtt_rpc_bridge cxa_mqtt_rpc_bridge_t;
+
+
+struct cxa_mqtt_rpc_bridge
+{
+	cxa_protocolParser_mqtt_t mpp;
+};
 
 
 // ******** global function prototypes ********

@@ -62,12 +62,43 @@ bool cxa_mqtt_message_publish_getPayload(cxa_mqtt_message_t *const msgIn, void**
 
 	// get a pointer to our data
 	void* payloadPtr = cxa_linkedField_get_pointerToIndex(&msgIn->fields_publish.field_payload, 0);
-	if( payloadPtr == NULL ) return false;
 
 	if( payloadOut != NULL ) *payloadOut = payloadPtr;
 	if( payloadSize_bytesOut != NULL ) *payloadSize_bytesOut = cxa_linkedField_getSize_bytes(&msgIn->fields_publish.field_payload);
 
 	return true;
+}
+
+
+bool cxa_mqtt_message_publish_topicName_trimToPointer(cxa_mqtt_message_t *const msgIn, char *const ptrIn)
+{
+	cxa_assert(msgIn);
+	cxa_assert(ptrIn);
+
+	if( !msgIn->areFieldsConfigured || (cxa_mqtt_message_getType(msgIn) != CXA_MQTT_MSGTYPE_PUBLISH) ) return false;
+
+	// get our topic name and make sure it's appropriate
+	char* topicName;
+	size_t topicNameLen_bytes;
+	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return false;
+	if( topicName > ptrIn ) return false;
+
+	// make sure we don't go out of bounds
+	size_t numBytesToTrimFromLeft = ptrIn - topicName;
+	if( numBytesToTrimFromLeft > topicNameLen_bytes ) return false;
+
+	return cxa_linkedField_removeFrom_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_topicName, 0, numBytesToTrimFromLeft);
+}
+
+
+bool cxa_mqtt_message_publish_topicName_prependCString(cxa_mqtt_message_t *const msgIn, char *const stringIn)
+{
+	cxa_assert(msgIn);
+	cxa_assert(stringIn);
+
+	if( !msgIn->areFieldsConfigured || (cxa_mqtt_message_getType(msgIn) != CXA_MQTT_MSGTYPE_PUBLISH) ) return false;
+
+	return cxa_linkedField_prependTo_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_topicName, 0, (uint8_t*)stringIn, strlen(stringIn));
 }
 
 
@@ -80,12 +111,22 @@ bool cxa_mqtt_message_publish_validateReceivedBytes(cxa_mqtt_message_t *const ms
 	if( !cxa_fixedByteBuffer_get_lengthPrefixedCString_uint16BE(msgIn->buffer, cxa_linkedField_getStartIndexOfNextField(&msgIn->field_remainingLength), NULL, &numBytesInTopicName, NULL) ||
 			!cxa_linkedField_initChild(&msgIn->fields_publish.field_topicName, &msgIn->field_remainingLength, numBytesInTopicName+2) ) return false;
 
-	// packet id
-	if( !cxa_linkedField_initChild_fixedLen(&msgIn->fields_publish.field_packetId, &msgIn->fields_publish.field_topicName, 2) ) return false;
+	// check our QOS level
+	uint8_t packetTypeAndFlags;
+	if( !cxa_linkedField_get_uint8(&msgIn->field_packetTypeAndFlags, 0, packetTypeAndFlags) ) return false;
+	cxa_mqtt_qosLevel_t qos = (packetTypeAndFlags >> 1) & 0x03;
+	cxa_linkedField_t* prevField = &msgIn->fields_publish.field_topicName;
+
+	// packet id (if present)
+	if( qos != CXA_MQTT_QOS_ATMOST_ONCE )
+	{
+		if( !cxa_linkedField_initChild_fixedLen(&msgIn->fields_publish.field_packetId, prevField, 2) ) return false;
+		prevField = &msgIn->fields_publish.field_packetId;
+	}
 
 	// payload
-	uint16_t numBytesInPayload = cxa_fixedByteBuffer_getSize_bytes(msgIn->buffer) - cxa_linkedField_getStartIndexOfNextField(&msgIn->fields_publish.field_packetId);
-	if( !cxa_linkedField_initChild(&msgIn->fields_publish.field_payload, &msgIn->fields_publish.field_packetId, numBytesInPayload) ) return false;
+	uint16_t numBytesInPayload = cxa_fixedByteBuffer_getSize_bytes(msgIn->buffer) - cxa_linkedField_getStartIndexOfNextField(prevField);
+	if( !cxa_linkedField_initChild(&msgIn->fields_publish.field_payload, prevField, numBytesInPayload) ) return false;
 
 	return true;
 }

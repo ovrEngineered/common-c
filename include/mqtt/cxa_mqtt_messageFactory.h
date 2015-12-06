@@ -31,6 +31,7 @@
 // ******** includes ********
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_mqtt_message.h>
+#include <cxa_config.h>
 
 
 // ******** global macro definitions ********

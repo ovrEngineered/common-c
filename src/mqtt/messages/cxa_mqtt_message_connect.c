@@ -150,6 +150,36 @@ bool cxa_mqtt_message_connect_cleanSessionRequested(cxa_mqtt_message_t *const ms
 }
 
 
+bool cxa_mqtt_message_connect_getClientId(cxa_mqtt_message_t *const msgIn, char** clientIdOut, uint16_t* clientIdLen_bytesOut)
+{
+	cxa_assert(msgIn);
+
+	return cxa_linkedField_get_lengthPrefixedCString_uint16BE_inPlace(&msgIn->fields_connect.field_clientId, 0, clientIdOut, clientIdLen_bytesOut);
+}
+
+
+bool cxa_mqtt_message_connect_getUsername(cxa_mqtt_message_t *const msgIn, char** usernameOut, uint16_t* usernameLen_bytesOut)
+{
+	cxa_assert(msgIn);
+
+	bool hasUsername;
+	if( !cxa_mqtt_message_connect_hasUsername(msgIn, &hasUsername) || !hasUsername ) return false;
+
+	return cxa_linkedField_get_lengthPrefixedCString_uint16BE_inPlace(&msgIn->fields_connect.field_username, 0, usernameOut, usernameLen_bytesOut);
+}
+
+
+bool cxa_mqtt_message_connect_getPassword(cxa_mqtt_message_t *const msgIn, uint8_t** passwordOut, uint16_t *passwordLen_bytesOut)
+{
+	cxa_assert(msgIn);
+
+	bool hasPassword;
+	if( !cxa_mqtt_message_connect_hasPassword(msgIn, &hasPassword) || !hasPassword ) return false;
+
+	return cxa_linkedField_get_lengthPrefixedField_uint16BE_inPlace(&msgIn->fields_connect.field_password, 0, (void**)passwordOut, passwordLen_bytesOut);
+}
+
+
 bool cxa_mqtt_message_connect_validateReceivedBytes(cxa_mqtt_message_t *const msgIn)
 {
 	cxa_assert(msgIn);

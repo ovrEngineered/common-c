@@ -46,6 +46,10 @@ bool cxa_mqtt_message_connect_hasUsername(cxa_mqtt_message_t *const msgIn, bool 
 bool cxa_mqtt_message_connect_hasPassword(cxa_mqtt_message_t *const msgIn, bool *const hasPasswordOut);
 bool cxa_mqtt_message_connect_cleanSessionRequested(cxa_mqtt_message_t *const msgIn, bool *const cleanSessionRequestedOut);
 
+bool cxa_mqtt_message_connect_getClientId(cxa_mqtt_message_t *const msgIn, char** clientIdOut, uint16_t* clientIdLen_bytesOut);
+bool cxa_mqtt_message_connect_getUsername(cxa_mqtt_message_t *const msgIn, char** usernameOut, uint16_t* usernameLen_bytesOut);
+bool cxa_mqtt_message_connect_getPassword(cxa_mqtt_message_t *const msgIn, uint8_t** passwordOut, uint16_t* passwordLen_bytesOut);
+
 /**
  * @protected
  */

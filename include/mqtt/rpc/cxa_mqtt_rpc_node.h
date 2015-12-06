@@ -73,7 +73,8 @@ typedef cxa_mqtt_rpc_methodRetVal_t (*cxa_mqtt_rpc_cb_method_t)(cxa_mqtt_rpc_nod
 /**
  * @public
  */
-typedef void (*cxa_mqtt_rpc_cb_catchall_t)(cxa_mqtt_rpc_node_t *const nodeIn, char *const remainingTopicIn, size_t remainingTopicLen_bytes, cxa_mqtt_message_t *const msgIn);
+typedef bool (*cxa_mqtt_rpc_cb_catchall_t)(cxa_mqtt_rpc_node_t *const nodeIn, char *const remainingTopicIn, size_t remainingTopicLen_bytes,
+											cxa_mqtt_message_t *const msgIn, void* userVarIn);
 
 
 /**

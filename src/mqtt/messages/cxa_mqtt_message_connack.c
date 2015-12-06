@@ -33,6 +33,30 @@
 
 
 // ******** global function implementations ********
+bool cxa_mqtt_message_connack_init(cxa_mqtt_message_t *const msgIn, bool isSessionPresentIn, cxa_mqtt_connAck_returnCode_t retCodeIn)
+{
+	cxa_assert(msgIn);
+
+	// fixed header 1
+	if( !cxa_linkedField_initRoot_fixedLen(&msgIn->field_packetTypeAndFlags, msgIn->buffer, 0, 1) ||
+			!cxa_linkedField_append_uint8(&msgIn->field_packetTypeAndFlags, (CXA_MQTT_MSGTYPE_CONNACK << 4) ) ) return false;
+
+	// remaining length
+	if( !cxa_linkedField_initChild(&msgIn->field_remainingLength, &msgIn->field_packetTypeAndFlags, 0) ) return false;
+
+	// session present (connect ack flags)
+	if( !cxa_linkedField_initChild_fixedLen(&msgIn->fields_connack.field_sessionPresent, &msgIn->field_remainingLength, 1) ||
+			!cxa_linkedField_append_uint8(&msgIn->fields_connack.field_sessionPresent, isSessionPresentIn) ) return false;
+
+	// connect return code
+	if( !cxa_linkedField_initChild_fixedLen(&msgIn->fields_connack.field_returnCode, &msgIn->fields_connack.field_sessionPresent, 1) ||
+				!cxa_linkedField_append_uint8(&msgIn->fields_connack.field_returnCode, retCodeIn) ) return false;
+
+	msgIn->areFieldsConfigured = true;
+	return true;
+}
+
+
 bool cxa_mqtt_message_connack_isSessionPresent(cxa_mqtt_message_t *const msgIn, bool *const isSessionPresentOut)
 {
 	cxa_assert(msgIn);

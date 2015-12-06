@@ -116,7 +116,7 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 	uint16_t id;
 	if( (payloadIn == NULL) || (payloadLen_bytesIn < 2) )
 	{
-		cxa_logger_warn(&nodeIn->super.logger, "malformed request");
+		cxa_logger_warn(&nodeIn->super.logger, "malformed request: %p %d", payloadIn, payloadLen_bytesIn);
 		return;
 	}
 	cxa_fixedByteBuffer_init_inPlace(&fbb_params, payloadLen_bytesIn, payloadIn, payloadLen_bytesIn);
@@ -146,7 +146,7 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 		if( (currNodeNameLen_bytes > currPathLen_bytes) || !cxa_stringUtils_startsWith(currPath, currNode->name) )
 		{
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown node '", currPath, currPathLen_bytes, "'");
-			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, NULL);
+			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, &fbb_retParams);
 			return;
 		}
 		// we know that the currPath starts with our node name...move our path forward
@@ -157,7 +157,7 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 		if( (currPathLen_bytes < 1) || (*currPath != '/') )
 		{
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "malformed path '", currPath, currPathLen_bytes, "'");
-			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, NULL);
+			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, &fbb_retParams);
 			return;
 		}
 		currPath++;
@@ -182,39 +182,41 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 					if( currMethodEntry->cb_method != NULL ) currMethodEntry->cb_method(currNode, &fbb_params, &fbb_retParams, currMethodEntry->userVar);
 					return;
 				}
-
-				// if we made it here, we coudn't find the right method
-				cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown method: '", currPath, currPathLen_bytes, "'");
-				sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, NULL);
-				return;
 			}
+
+			// if we made it here, we coudn't find the right method
+			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown method: '", currPath, currPathLen_bytes, "'");
+			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, &fbb_retParams);
 			return;
 		}
 		else
 		{
 			// start looking for a subnode
-			cxa_array_iterate(&currNode->subNodes, currSubNode, cxa_mqtt_rpc_node_t)
+			bool continueToNextPathComponent = false;
+			cxa_array_iterate(&currNode->subNodes, currSubNode, cxa_mqtt_rpc_node_t*)
 			{
-				if( currSubNode == NULL ) continue;
+				if( (currSubNode == NULL) ) continue;
 
-				size_t currSubNodeNameLen_bytes = strlen(currNode->name);
-				if( (currSubNodeNameLen_bytes <= currPathLen_bytes) && cxa_stringUtils_startsWith(currPath, currSubNode->name) )
+				size_t currSubNodeNameLen_bytes = strlen((*currSubNode)->name);
+				if( (currSubNodeNameLen_bytes <= currPathLen_bytes) && cxa_stringUtils_startsWith(currPath, (*currSubNode)->name) )
 				{
-					currNode = currSubNode;
-					continue;
+					currNode = *currSubNode;
+					continueToNextPathComponent = true;
+					break;
 				}
 			}
+			if( continueToNextPathComponent ) continue;
 
 			// if we made it here, we couldn't find the right subnode...see if we have a catchall
 			if( currNode->cb_catchall != NULL )
 			{
-				currNode->cb_catchall(currNode, currPath, currPathLen_bytes, msgIn);
-				return;
+				// only return if the catchall was successful
+				if( currNode->cb_catchall(currNode, currPath, currPathLen_bytes, msgIn, currNode->catchAll_userVar) ) return;
 			}
 
-			// no catchall...error
+			// no catchall (or it wasn't successful)...error
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown node '", currPath, currPathLen_bytes, "'");
-			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_NODE_DNE, NULL);
+			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_NODE_DNE, &fbb_retParams);
 			return;
 		}
 	}
@@ -235,8 +237,6 @@ static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicName
 		cxa_logger_warn(&nodeIn->super.logger, "problem assembling response");
 		return;
 	}
-
-	cxa_logger_trace(&nodeIn->super.logger, "wtf: '%s'", respTopic);
 
 	cxa_mqtt_client_publish(nodeIn->mqttClient, CXA_MQTT_QOS_ATMOST_ONCE, false, respTopic,
 							cxa_fixedByteBuffer_get_pointerToIndex(fbb_retParamsIn, 0),
