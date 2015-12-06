@@ -19,6 +19,7 @@
 
 
 // ******** includes ********
+#include <stdbool.h>
 #include <cxa_timeBase.h>
 
 
@@ -48,6 +49,8 @@ void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t
 										 cxa_esp8266_wifiManager_ssid_cb_t cb_lostAssociationWithSsid,
 										 cxa_esp8266_wifiManager_ssid_cb_t cb_associateWithSsidFailed,
 										 void *userVarIn);
+
+bool cxa_esp8266_wifiManager_isAssociated(void);
 
 void cxa_esp8266_wifiManager_start(void);
 void cxa_esp8266_wifiManager_update(void);

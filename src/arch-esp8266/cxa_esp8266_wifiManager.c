@@ -170,6 +170,12 @@ void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t
 }
 
 
+bool cxa_esp8266_wifiManager_isAssociated(void)
+{
+	return (cxa_stateMachine_getCurrentState(&stateMachine) == STATE_ASSOCIATED);
+}
+
+
 void cxa_esp8266_wifiManager_start(void)
 {
 	cxa_assert(cxa_stateMachine_getCurrentState(&stateMachine) == STATE_INIT);
