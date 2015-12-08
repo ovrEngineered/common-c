@@ -24,7 +24,7 @@
 #include <cxa_mqtt_message.h>
 #include <cxa_mqtt_messageFactory.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
