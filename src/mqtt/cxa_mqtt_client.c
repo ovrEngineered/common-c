@@ -30,7 +30,7 @@
 #include <cxa_mqtt_message_publish.h>
 #include <cxa_stringUtils.h>
 
-#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
@@ -178,7 +178,16 @@ bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLeve
 	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return false;
 
 	cxa_logger_trace(&clientIn->logger, "publish '%s' %d bytes", topicNameIn, payloadLen_bytesIn);
-	//return cxa_mqtt_protocolParser_writePacket_publish(&clientIn->mpp, qosIn, retainIn, topicNameIn, payloadIn, payloadLen_bytesIn);
+
+	cxa_mqtt_message_t* msg = NULL;
+	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
+			!cxa_mqtt_message_publish_init(msg, false, qosIn, retainIn, topicNameIn, clientIn->currPacketId++, payloadIn, payloadLen_bytesIn) ||
+			!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
+	{
+		cxa_logger_warn(&clientIn->logger, "publish reserve/initialize/send failed, dropped");
+	}
+	if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+
 	return false;
 }
 
