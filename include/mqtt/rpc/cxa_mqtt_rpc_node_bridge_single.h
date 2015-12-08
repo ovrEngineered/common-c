@@ -51,7 +51,7 @@ struct cxa_mqtt_rpc_node_bridge_single
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn,
-										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn);
+void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn, const char *nameFmtIn, ...);
 
 #endif // CXA_MQTT_RPC_NODEBRIDGE_SINGLE_H_

@@ -61,8 +61,9 @@ struct cxa_mqtt_rpc_node_bridge_multi
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_rpc_node_bridge_multi_init(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn,
+void cxa_mqtt_rpc_node_bridge_multi_init(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
 										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn,
-										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn);
+										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
+										 const char *nameFmtIn, ...);
 
 #endif // CXA_MQTT_RPC_NODEBRIDGE_MULTI_H_

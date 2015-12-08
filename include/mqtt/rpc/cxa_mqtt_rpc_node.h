@@ -40,6 +40,14 @@
 	#define CXA_MQTT_RPCNODE_MAXLEN_RETURNPARAMS_BYTES	64
 #endif
 
+#ifndef CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES
+	#define CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES			16
+#endif
+
+#ifndef CXA_MQTT_RPCNODE_MAXLEN_METHOD_BYTES
+	#define CXA_MQTT_RPCNODE_MAXLEN_METHOD_BYTES			24
+#endif
+
 
 // ******** global type definitions *********
 /**
@@ -66,8 +74,8 @@ typedef enum
  * @public
  */
 typedef cxa_mqtt_rpc_methodRetVal_t (*cxa_mqtt_rpc_cb_method_t)(cxa_mqtt_rpc_node_t *const nodeIn,
-		cxa_fixedByteBuffer_t *const paramsIn, cxa_fixedByteBuffer_t *const returnParamsOut,
-		void* userVarIn);
+																cxa_fixedByteBuffer_t *const paramsIn, cxa_fixedByteBuffer_t *const returnParamsOut,
+																void* userVarIn);
 
 
 /**
@@ -83,7 +91,7 @@ typedef bool (*cxa_mqtt_rpc_cb_catchall_t)(cxa_mqtt_rpc_node_t *const nodeIn,
  */
 typedef struct
 {
-	char* name;
+	char name[CXA_MQTT_RPCNODE_MAXLEN_METHOD_BYTES];
 	cxa_mqtt_rpc_cb_method_t cb_method;
 
 	void* userVar;
@@ -96,7 +104,7 @@ typedef struct
 struct cxa_mqtt_rpc_node
 {
 	cxa_mqtt_rpc_node_t* parentNode;
-	char* name;
+	char name[CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES];
 	bool isRootNode;
 
 	cxa_array_t subNodes;
@@ -113,7 +121,7 @@ struct cxa_mqtt_rpc_node
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_rpc_node_init(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn);
+void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, va_list varArgsIn);
 
 void cxa_mqtt_rpc_node_addMethod(cxa_mqtt_rpc_node_t *const nodeIn, char *const nameIn, cxa_mqtt_rpc_cb_method_t cb_methodIn, void* userVarIn);
 void cxa_mqtt_rpc_node_setCatchAll(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_cb_catchall_t cb_catchallIn, void *userVarIn);

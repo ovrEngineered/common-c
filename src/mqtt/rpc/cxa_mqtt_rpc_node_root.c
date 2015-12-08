@@ -37,7 +37,6 @@
 
 
 // ******** local function prototypes ********
-static bool getTopicFilterForNode(cxa_mqtt_rpc_node_root_t* const nodeIn, char* topicOut, size_t topicMaxLen_bytesIn);
 static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 									char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
 static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicNameIn, uint16_t idIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbb_retParamsIn);
@@ -47,35 +46,35 @@ static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicName
 
 
 // ******** global function implementations ********
-void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, char *const nameIn, char *const rootPrefixIn, cxa_mqtt_client_t* const clientIn)
+void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, char *const rootPrefixIn, const char *nameFmtIn, ...)
 {
 	cxa_assert(nodeIn);
-	cxa_assert(nameIn);
+	cxa_assert(nameFmtIn);
 	cxa_assert(clientIn);
 
 	// save our references
 	nodeIn->mqttClient = clientIn;
 
-	// create our name and root prefix
-	nodeIn->nameAndRootPrefix[0] = 0;
+	// initialize our super class
+	va_list varArgs;
+	va_start(varArgs, nameFmtIn);
+	cxa_mqtt_rpc_node_vinit(&nodeIn->super, NULL, nameFmtIn, varArgs);
+	va_end(varArgs);
+
+	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
+	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
+	subscriptTopic[0] = 0;
 	if( rootPrefixIn != NULL )
 	{
-		cxa_assert( cxa_stringUtils_concat(nodeIn->nameAndRootPrefix, rootPrefixIn, sizeof(nodeIn->nameAndRootPrefix)) );
-		cxa_assert( cxa_stringUtils_concat(nodeIn->nameAndRootPrefix, "/", sizeof(nodeIn->nameAndRootPrefix)) );
+		cxa_assert( cxa_stringUtils_concat(subscriptTopic, rootPrefixIn, sizeof(subscriptTopic)) );
+		cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/", sizeof(subscriptTopic)) );
 	}
-	cxa_assert( cxa_stringUtils_concat(nodeIn->nameAndRootPrefix, nameIn, sizeof(nodeIn->nameAndRootPrefix)) );
+	cxa_assert( cxa_stringUtils_concat(subscriptTopic, nodeIn->super.name, sizeof(subscriptTopic)) );
+	cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/#", sizeof(subscriptTopic)) );
 
+	// save our prefix length (+1 is for path separator)
+	nodeIn->prefixLen_bytes = (rootPrefixIn == NULL) ? 0 : strlen(rootPrefixIn)+1;
 
-	// initialize our super class
-	cxa_mqtt_rpc_node_init(&nodeIn->super, NULL, nodeIn->nameAndRootPrefix);
-	cxa_logger_trace(&nodeIn->super.logger, "%s", nodeIn->nameAndRootPrefix);
-
-	// we can subscribe immediately because the mqtt client will cache subscribes
-	// if we're offline
-	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
-	// yup...subscribe us
-	subscriptTopic[0] = 0;
-	cxa_assert( getTopicFilterForNode(nodeIn, subscriptTopic, sizeof(subscriptTopic)) );
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
 }
 
@@ -89,32 +88,17 @@ cxa_mqtt_client_t* cxa_mqtt_rpc_node_root_getMqttClient(cxa_mqtt_rpc_node_root_t
 
 
 // ******** local function implementations ********
-static bool getTopicFilterForNode(cxa_mqtt_rpc_node_root_t* const nodeIn, char* topicOut, size_t topicMaxLen_bytesIn)
-{
-	cxa_assert(nodeIn);
-	cxa_assert(topicOut);
-
-	if( !cxa_mqtt_rpc_node_getTopicForNode(&nodeIn->super, topicOut, topicMaxLen_bytesIn) ) return false;
-
-	// if we're the originator of this request, add the separator and wildcard
-	if( !cxa_stringUtils_concat(topicOut, "/#", topicMaxLen_bytesIn) ) return false;
-
-	// if we made it here, we're good to go!
-	return true;
-}
-
-
-
 static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 									char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn)
 {
+	cxa_assert(topicNameIn);
 	cxa_mqtt_rpc_node_root_t* nodeIn = (cxa_mqtt_rpc_node_root_t*)userVarIn;
 	cxa_assert(nodeIn);
 
 	// this is probably a good point to get the id of the message
 	cxa_fixedByteBuffer_t fbb_params;
 	uint16_t id;
-	if( (payloadIn == NULL) || (payloadLen_bytesIn < 2) )
+	if( (payloadIn == NULL) || (payloadLen_bytesIn < 2) || (topicNameLen_bytesIn < nodeIn->prefixLen_bytes) )
 	{
 		cxa_logger_warn(&nodeIn->super.logger, "malformed request: %p %d", payloadIn, payloadLen_bytesIn);
 		return;
@@ -128,6 +112,11 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 		cxa_fixedByteBuffer_init_inPlace(&fbb_params, payloadLen_bytesIn-2, &(((uint8_t*)payloadIn)[2]), payloadLen_bytesIn-2);
 		hasParams = true;
 	}
+
+	// wipe our prefix from the incoming topic
+	topicNameIn += nodeIn->prefixLen_bytes;
+	topicNameLen_bytesIn -= nodeIn->prefixLen_bytes;
+	printf("'%s\r\n", topicNameIn);
 
 	// after this point, we'll be sending a response...so get it ready
 	// our return parameters +1 byte for return success

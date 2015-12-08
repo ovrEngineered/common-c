@@ -51,17 +51,20 @@ static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const superIn, char *const remai
 
 
 // ******** global function implementations ********
-void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn,
-										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn)
+void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn, const char *nameFmtIn, ...)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(parentNodeIn);
-	cxa_assert(nameIn);
 	cxa_assert(iosIn);
 	cxa_assert(timeBaseIn);
+	cxa_assert(nameFmtIn);
 
 	// initialize our super class
-	cxa_mqtt_rpc_node_bridge_init(&nodeIn->super, parentNodeIn, nameIn, iosIn, timeBaseIn, bridgeAuthCb, (void*)nodeIn);
+	va_list varArgs;
+	va_start(varArgs, nameFmtIn);
+	cxa_mqtt_rpc_node_bridge_vinit(&nodeIn->super, parentNodeIn, iosIn, timeBaseIn, bridgeAuthCb, (void*)nodeIn, nameFmtIn, varArgs);
+	va_end(varArgs);
 	cxa_mqtt_rpc_node_setCatchAll(&nodeIn->super.super, rpcCb_catchall, (void*)nodeIn);
 
 	// set some defaults

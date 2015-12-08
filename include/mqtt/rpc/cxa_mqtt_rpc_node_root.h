@@ -26,10 +26,6 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_MQTT_RPC_NODE_ROOT_MAXLEN_NAME_AND_ROOTPREFIX_BYTES
-	#define CXA_MQTT_RPC_NODE_ROOT_MAXLEN_NAME_AND_ROOTPREFIX_BYTES			24
-#endif
-
 
 
 // ******** global type definitions *********
@@ -44,13 +40,12 @@ struct cxa_mqtt_rpc_node_root
 	cxa_mqtt_rpc_node_t super;
 
 	cxa_mqtt_client_t* mqttClient;
-
-	char nameAndRootPrefix[CXA_MQTT_RPC_NODE_ROOT_MAXLEN_NAME_AND_ROOTPREFIX_BYTES+1];
+	size_t prefixLen_bytes;
 };
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, char *const nameIn, char *const rootPrefixIn, cxa_mqtt_client_t* const clientIn);
+void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, char *const rootPrefixIn, const char *nameFmtIn, ...);
 cxa_mqtt_client_t* cxa_mqtt_rpc_node_root_getMqttClient(cxa_mqtt_rpc_node_root_t *const nodeIn);
 
 #endif // CXA_MQTT_RPC_NODE_ROOT_H_

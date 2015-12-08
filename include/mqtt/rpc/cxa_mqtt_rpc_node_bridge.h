@@ -68,9 +68,10 @@ struct cxa_mqtt_rpc_node_bridge
 /**
  * @protected
  */
-void cxa_mqtt_rpc_node_bridge_init(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn,
+void cxa_mqtt_rpc_node_bridge_vinit(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
 										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn,
-										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn);
+										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
+										 const char *nameFmtIn, va_list varArgsIn);
 
 void cxa_mqtt_rpc_node_bridge_update(cxa_mqtt_rpc_node_bridge_t *const nodeIn);
 

@@ -43,14 +43,17 @@ static bool getTopicForNodeAndNotification(cxa_mqtt_rpc_node_t *const nodeIn, ch
 
 
 // ******** global function implementations ********
-void cxa_mqtt_rpc_node_init(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn)
+void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(nodeIn);
-	cxa_assert(nameIn);
+	cxa_assert(nameFmtIn);
 
 	// save our references
 	nodeIn->parentNode = parentNodeIn;
-	nodeIn->name = nameIn;
+
+	// assemble our name
+	vsnprintf(nodeIn->name, CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES, nameFmtIn, varArgsIn);
+	nodeIn->name[CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES-1] = 0;
 
 	// setup our subnodes, methods, catchalls
 	cxa_array_initStd(&nodeIn->subNodes, nodeIn->subNodes_raw);
@@ -59,7 +62,7 @@ void cxa_mqtt_rpc_node_init(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node
 	nodeIn->catchAll_userVar = NULL;
 
 	// setup our logger
-	cxa_logger_vinit(&nodeIn->logger, "mRpcNode_%s", nameIn);
+	cxa_logger_vinit(&nodeIn->logger, "mRpcNode_%s", nodeIn->name);
 
 	// add as a subnode (if we have a parent)
 	if( nodeIn->parentNode != NULL ) cxa_assert( cxa_array_append(&nodeIn->parentNode->subNodes, (void*)&nodeIn) );
@@ -69,14 +72,14 @@ void cxa_mqtt_rpc_node_init(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node
 void cxa_mqtt_rpc_node_addMethod(cxa_mqtt_rpc_node_t *const nodeIn, char *const nameIn, cxa_mqtt_rpc_cb_method_t cb_methodIn, void* userVarIn)
 {
 	cxa_assert(nodeIn);
-	cxa_assert(nameIn);
 	cxa_assert(cb_methodIn);
 
 	cxa_mqtt_rpc_node_methodEntry_t newEntry = {
-		.name = nameIn,
 		.cb_method = cb_methodIn,
 		.userVar = userVarIn
 	};
+	cxa_assert(nameIn && (strlen(nameIn) < (sizeof(newEntry.name)-1)) );
+	strlcpy(newEntry.name, nameIn, sizeof(newEntry.name));
 	cxa_assert( cxa_array_append(&nodeIn->methods, &newEntry) );
 }
 

@@ -53,19 +53,20 @@ static void sendMessage_connack(cxa_mqtt_rpc_node_bridge_t *const nodeIn, bool i
 
 
 // ******** global function implementations ********
-void cxa_mqtt_rpc_node_bridge_init(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, char *const nameIn,
+void cxa_mqtt_rpc_node_bridge_vinit(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
 										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn,
-										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn)
+										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
+										 const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(parentNodeIn);
-	cxa_assert(nameIn);
 	cxa_assert(iosIn);
 	cxa_assert(timeBaseIn);
 	cxa_assert(cb_authIn);
+	cxa_assert(nameFmtIn);
 
 	// initialize our super class
-	cxa_mqtt_rpc_node_init(&nodeIn->super, parentNodeIn, nameIn);
+	cxa_mqtt_rpc_node_vinit(&nodeIn->super, parentNodeIn, nameFmtIn, varArgsIn);
 
 	// set some defaults
 	nodeIn->isSingle = true;
