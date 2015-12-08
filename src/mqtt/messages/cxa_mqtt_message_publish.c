@@ -36,11 +36,38 @@
 
 
 // ******** global function implementations ********
-bool cxa_mqtt_message_publish_init(cxa_mqtt_message_t *const msgIn, bool dupIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn, char *const topicNameIn, uint16_t packedIdIn, void *const payloadIn, size_t payloadSize_bytesIn)
+bool cxa_mqtt_message_publish_init(cxa_mqtt_message_t *const msgIn, bool dupIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn, char *const topicNameIn, uint16_t packedIdIn, void *const payloadIn, uint16_t payloadSize_bytesIn)
 {
 	cxa_assert(msgIn);
+	cxa_assert(topicNameIn);
+	if( payloadSize_bytesIn > 0 ) cxa_assert(payloadIn);
 
-	return false;
+	// fixed header 1
+	if( !cxa_linkedField_initRoot_fixedLen(&msgIn->field_packetTypeAndFlags, msgIn->buffer, 0, 1) ||
+			!cxa_linkedField_append_uint8(&msgIn->field_packetTypeAndFlags, ((CXA_MQTT_MSGTYPE_PUBLISH << 4) | (dupIn << 3) | (qosIn < 1) | retainIn)) ) return false;
+
+	// remaining length
+	if( !cxa_linkedField_initChild(&msgIn->field_remainingLength, &msgIn->field_packetTypeAndFlags, 0) ) return false;
+
+	// topic name
+	if( !cxa_linkedField_initChild(&msgIn->fields_publish.field_topicName, &msgIn->field_remainingLength, 0) ||
+			!cxa_linkedField_append_lengthPrefixedCString_uint16BE(&msgIn->fields_publish.field_topicName, topicNameIn, false) ) return false;
+	cxa_linkedField_t* prevField = &msgIn->fields_publish.field_topicName;
+
+	// packet identifier (if higher-level QOS)
+	if( qosIn != CXA_MQTT_QOS_ATMOST_ONCE )
+	{
+		if( !cxa_linkedField_initRoot_fixedLen(&msgIn->fields_publish.field_packetId, msgIn->buffer, 0, 2) ||
+					!cxa_linkedField_append_uint16BE(&msgIn->fields_publish.field_packetId, packedIdIn) ) return false;
+		prevField = &msgIn->fields_publish.field_packetId;
+	}
+
+	// payload
+	if( !cxa_linkedField_initChild(&msgIn->fields_publish.field_payload, prevField, 0) ) return false;
+	if( payloadIn != NULL ) if( !cxa_linkedField_append_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_payload, payloadIn, payloadSize_bytesIn) ) return false;
+
+	msgIn->areFieldsConfigured = true;
+	return true;
 }
 
 
