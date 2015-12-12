@@ -26,6 +26,7 @@
 #include <avr/interrupt.h>
 #include <cxa_assert.h>
 #include <cxa_criticalSection.h>
+#include <cxa_delay.h>
 #include <cxa_xmega_clockController.h>
 #include <cxa_xmega_pmic.h>
 
@@ -40,6 +41,10 @@
 
 #ifndef CXA_XMEGA_USART_RX_INT_LEVEL
 	#define CXA_XMEGA_USART_RX_INT_LEVEL		USART_RXCINTLVL_MED_gc
+#endif
+
+#ifndef CXA_XMEGA_USART_TX_INT_LEVEL
+	#define CXA_XMEGA_USART_TX_INT_LEVEL		USART_DREINTLVL_MED_gc
 #endif
 
 
@@ -121,8 +126,9 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 		cxa_gpio_setDirection(usartIn->rts, CXA_GPIO_DIR_OUTPUT);
 	}
 	
-	// setup our receive fifo
+	// setup our fifos
 	cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void *const)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
+	cxa_fixedFifo_init(&usartIn->txFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->txFifo_raw), (void *const)usartIn->txFifo_raw, sizeof(usartIn->txFifo_raw));
 	
 	// enable power to our module
 	usart_moduleClock_enable(usartIn);
@@ -142,9 +148,9 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 	usart_connectToPort(usartIn);
 	usartIn->avrUsart->CTRLB |= USART_TXEN_bm | USART_RXEN_bm;
 	
-	// finally, clear and enable interrupts
+	// finally, clear and enable rx interrupt (disable tx interrupt)
 	usartIn->avrUsart->STATUS = 0;
-	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCF) | CXA_XMEGA_USART_RX_INT_LEVEL;
+	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCCF) | CXA_XMEGA_USART_RX_INT_LEVEL;
 	
 	// setup our ioStream (last once everything is setup)
 	cxa_ioStream_init(&usartIn->super.ioStream);
@@ -347,20 +353,46 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 {
 	cxa_xmega_usart_t* usartIn = (cxa_xmega_usart_t*)userVarIn;
 	cxa_assert(usartIn);
-	
-	for( size_t i = 0; i < bufferSize_bytesIn; i++ )
+
+	size_t currByteIndex = 0;
+	for( currByteIndex = 0; currByteIndex < bufferSize_bytesIn; currByteIndex++ )
 	{
-		// wait for previous transmission to finish
-		while( !(usartIn->avrUsart->STATUS & USART_DREIF_bm) );
-	
+		// try to queue it up
+		if( !cxa_fixedFifo_queue(&usartIn->txFifo, &(((uint8_t*)buffIn)[currByteIndex])) ) break;
+	}
+
+	// we either maxed our buffer, or we're done inserting...start sending
+	bool isTxInterruptEnabled = (usartIn->avrUsart->CTRLA & 0x03);
+	if( !isTxInterruptEnabled )
+	{
+		// send our current byte
+		char txChar;
+		if( cxa_fixedFifo_dequeue(&usartIn->txFifo, &txChar) )
+		{
+			usartIn->avrUsart->DATA = txChar;
+			usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xFC) | CXA_XMEGA_USART_TX_INT_LEVEL;
+		}
+	}
+
+	// try to add the rest
+	while( (currByteIndex < bufferSize_bytesIn) )
+	{
+		if( cxa_fixedFifo_queue(&usartIn->txFifo, &(((uint8_t*)buffIn)[currByteIndex])) ) currByteIndex++;
+	}
+
+
+	/*
 		// now that our previous transmission has finished, make sure our
 		// receiver is ready to receive (if handshaking is enabled)
 		while( usartIn->isHandshakingEnabled && (cxa_gpio_getValue(usartIn->cts) != RTS_CTS_OK) );
-	
+
 		// now send our data
 		usartIn->avrUsart->DATA = ((uint8_t*)buffIn)[i];
+
+		// wait for our interchar delay (if we're not using hardware handshaking AND we have one set
+		if( !usartIn->isHandshakingEnabled && (usartIn->interCharDelay_ms > 0) ) cxa_delay_ms(usartIn->interCharDelay_ms);
 	}
-	
+	*/
 	return true;
 }
 
@@ -406,33 +438,73 @@ static inline void rxIsr(USART_t *const avrUsartIn)
 }
 
 
+static inline void txIsr(USART_t *const avrUsartIn)
+{
+	cxa_assert(avrUsartIn);
+	cxa_xmega_usart_t *const cxaUsartIn = avrCxaUsartMap_getCxaUsart_fromAvrUsart(avrUsartIn);
+	cxa_assert(cxaUsartIn);
+
+	char txChar;
+	if( cxa_fixedFifo_dequeue(&cxaUsartIn->txFifo, &txChar) )
+	{
+		cxaUsartIn->avrUsart->DATA = txChar;
+	}
+	else
+	{
+		// no more data...stop interrupts
+		cxaUsartIn->avrUsart->CTRLA &= 0xFC;
+	}
+}
+
+
 CXA_XMEGA_ISR_START(USARTC0_RXC_vect)
 {
 	rxIsr(&USARTC0);
 }CXA_XMEGA_ISR_END
 
+CXA_XMEGA_ISR_START(USARTC0_DRE_vect)
+{
+	txIsr(&USARTC0);
+}CXA_XMEGA_ISR_END
 
 CXA_XMEGA_ISR_START(USARTC1_RXC_vect)
 {
 	rxIsr(&USARTC1);
 }CXA_XMEGA_ISR_END
 
+CXA_XMEGA_ISR_START(USARTC1_DRE_vect)
+{
+	txIsr(&USARTC1);
+}CXA_XMEGA_ISR_END
 
 CXA_XMEGA_ISR_START(USARTD0_RXC_vect)
 {
 	rxIsr(&USARTD0);
 }CXA_XMEGA_ISR_END
 
+CXA_XMEGA_ISR_START(USARTD0_DRE_vect)
+{
+	txIsr(&USARTD0);
+}CXA_XMEGA_ISR_END
 
 CXA_XMEGA_ISR_START(USARTD1_RXC_vect)
 {
 	rxIsr(&USARTD1);
 }CXA_XMEGA_ISR_END
 
+CXA_XMEGA_ISR_START(USARTD1_DRE_vect)
+{
+	txIsr(&USARTD1);
+}CXA_XMEGA_ISR_END
 
 CXA_XMEGA_ISR_START(USARTE0_RXC_vect)
 {
 	rxIsr(&USARTE0);
+}CXA_XMEGA_ISR_END
+
+CXA_XMEGA_ISR_START(USARTE0_DRE_vect)
+{
+	txIsr(&USARTE0);
 }CXA_XMEGA_ISR_END
 
 
@@ -440,6 +512,11 @@ CXA_XMEGA_ISR_START(USARTE0_RXC_vect)
 CXA_XMEGA_ISR_START(USARTE1_RXC_vect)
 {
 	rxIsr(&USARTE1);
+}CXA_XMEGA_ISR_END
+
+CXA_XMEGA_ISR_START(USARTE1_DRE_vect)
+{
+	txIsr(&USARTE1);
 }CXA_XMEGA_ISR_END
 #endif
 
@@ -449,10 +526,20 @@ CXA_XMEGA_ISR_START(USARTF0_RXC_vect)
 	rxIsr(&USARTF0);
 }CXA_XMEGA_ISR_END
 
+CXA_XMEGA_ISR_START(USARTF0_DRE_vect)
+{
+	txIsr(&USARTF0);
+}CXA_XMEGA_ISR_END
+
 
 #ifdef USARTF1
 CXA_XMEGA_ISR_START(USARTF1_RXC_vect)
 {
 	rxIsr(&USARTF1);
+}CXA_XMEGA_ISR_END
+
+CXA_XMEGA_ISR_START(USARTF1_DRE_vect)
+{
+	txIsr(&USARTF1);
 }CXA_XMEGA_ISR_END
 #endif

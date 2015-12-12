@@ -57,6 +57,10 @@
 	#define CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES			8
 #endif
 
+#ifndef CXA_XMEGA_USART_TX_FIFO_SIZE_BYTES
+	#define CXA_XMEGA_USART_TX_FIFO_SIZE_BYTES			8
+#endif
+
 
 // ******** global type definitions *********
 /**
@@ -78,6 +82,9 @@ struct cxa_xmega_usart
 	cxa_fixedFifo_t rxFifo;
 	uint8_t rxFifo_raw[CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES];
 	
+	cxa_fixedFifo_t txFifo;
+	uint8_t txFifo_raw[CXA_XMEGA_USART_TX_FIFO_SIZE_BYTES];
+
 	bool isHandshakingEnabled;
 	cxa_gpio_t *cts;
 	cxa_gpio_t *rts;
