@@ -157,8 +157,8 @@ struct cxa_fixedFifo
 {
 	void *bufferLoc;
 	
-	size_t insertIndex;
-	size_t removeIndex;
+	volatile size_t insertIndex;
+	volatile size_t removeIndex;
 
 	size_t datatypeSize_bytes;
 	size_t maxNumElements;
