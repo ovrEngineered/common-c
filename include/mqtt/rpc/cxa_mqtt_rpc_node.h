@@ -19,6 +19,7 @@
 
 
 // ******** includes ********
+#include <stdarg.h>
 #include <cxa_array.h>
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_logger_header.h>
