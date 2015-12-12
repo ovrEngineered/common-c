@@ -116,7 +116,6 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 	// wipe our prefix from the incoming topic
 	topicNameIn += nodeIn->prefixLen_bytes;
 	topicNameLen_bytesIn -= nodeIn->prefixLen_bytes;
-	printf("'%s\r\n", topicNameIn);
 
 	// after this point, we'll be sending a response...so get it ready
 	// our return parameters +1 byte for return success
