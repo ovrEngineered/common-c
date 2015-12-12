@@ -368,7 +368,8 @@ static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn,
 	cxa_assert(clientIn);
 
 	// if we're not supposed to be processing data, don't do it
-	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
+#warning required for demo code
+	//if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
 
 	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getMessage_byBuffer(packetIn);
 	if( msg == NULL ) return;
