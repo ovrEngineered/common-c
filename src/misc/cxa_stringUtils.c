@@ -128,6 +128,34 @@ bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, si
 }
 
 
+bool cxa_stringUtils_concat_withLengths(char *targetStringIn, size_t maxSizeTarget_bytesIn, const char *sourceStringIn, size_t sourceStringLen_bytesIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(sourceStringIn);
+
+	// get the current size of the target
+	size_t targetLen_bytes;
+	if( !cxa_stringUtils_strlen(targetStringIn, maxSizeTarget_bytesIn, &targetLen_bytes) ) targetLen_bytes = maxSizeTarget_bytesIn;
+	// ensure that we have space for the null term
+	if( targetLen_bytes > (maxSizeTarget_bytesIn-1) ) return false;
+
+	// now see if we have room for the new string (and null term)
+	size_t maxBufferSize_sourceString_bytes = maxSizeTarget_bytesIn - targetLen_bytes;
+	if( maxBufferSize_sourceString_bytes < (sourceStringLen_bytesIn+1) ) return false;
+
+	// we apparently have room for the string...do the concatenation
+	for( size_t i = 0; i < sourceStringLen_bytesIn; i++ )
+	{
+		targetStringIn[targetLen_bytes+i] = sourceStringIn[i];
+	}
+
+	// null term
+	targetStringIn[targetLen_bytes+sourceStringLen_bytesIn] = 0;
+
+	return true;
+}
+
+
 bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, size_t* stringLen_bytesOut)
 {
 	cxa_assert(targetStringIn);
