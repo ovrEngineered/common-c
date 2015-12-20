@@ -180,15 +180,34 @@ bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLeve
 	cxa_logger_trace(&clientIn->logger, "publish '%s' %d bytes", topicNameIn, payloadLen_bytesIn);
 
 	cxa_mqtt_message_t* msg = NULL;
+	bool retVal = true;
 	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
 			!cxa_mqtt_message_publish_init(msg, false, qosIn, retainIn, topicNameIn, clientIn->currPacketId++, payloadIn, payloadLen_bytesIn) ||
 			!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
 	{
 		cxa_logger_warn(&clientIn->logger, "publish reserve/initialize/send failed, dropped");
+		retVal = false;
 	}
 	if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 
-	return false;
+	return retVal;
+}
+
+
+bool cxa_mqtt_client_publish_message(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn)
+{
+	cxa_assert(clientIn);
+	cxa_assert(msgIn);
+
+	cxa_logger_trace(&clientIn->logger, "publish message");
+	bool retVal = true;
+	if( !cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msgIn)) )
+	{
+		cxa_logger_warn(&clientIn->logger, "publish send failed, dropped");
+		retVal = false;
+	}
+
+	return retVal;
 }
 
 
@@ -368,8 +387,7 @@ static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn,
 	cxa_assert(clientIn);
 
 	// if we're not supposed to be processing data, don't do it
-#warning required for demo code
-	//if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
 
 	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getMessage_byBuffer(packetIn);
 	if( msg == NULL ) return;
@@ -471,7 +489,8 @@ static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	// iterate through our subscriptions to figure out where this goes
 	char *topicName;
 	void *payload;
-	size_t topicNameLen_bytes, payloadSize_bytes;
+	uint16_t topicNameLen_bytes;
+	size_t payloadSize_bytes;
 	if( cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) && cxa_mqtt_message_publish_getPayload(msgIn, &payload, &payloadSize_bytes) )
 	{
 		cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_TRACE, "got PUBLISH '", topicName, topicNameLen_bytes, "'");

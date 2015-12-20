@@ -21,16 +21,16 @@
 // ******** includes ********
 #include <math.h>
 #include <string.h>
-#include <cxa_stringUtils.h>
 #include <cxa_assert.h>
+#include <cxa_mqtt_message_publish.h>
+#include <cxa_stringUtils.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
 
 
 // ******** local macro definitions ********
-#define REQ_PREFIX					"::"
-#define RESP_PREFIX					"/rpcResp"
+
 
 
 // ******** local type definitions ********
@@ -39,7 +39,7 @@
 // ******** local function prototypes ********
 static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 									char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
-static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicNameIn, uint16_t idIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbb_retParamsIn);
+static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicNameIn, uint16_t topicLen_bytesIn, uint16_t idIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbb_retParamsIn);
 
 
 // ********  local variable declarations *********
@@ -60,6 +60,7 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	va_start(varArgs, nameFmtIn);
 	cxa_mqtt_rpc_node_vinit(&nodeIn->super, NULL, nameFmtIn, varArgs);
 	va_end(varArgs);
+	nodeIn->super.isRootNode = true;
 
 	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
 	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
@@ -72,7 +73,13 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	cxa_assert( cxa_stringUtils_concat(subscriptTopic, nodeIn->super.name, sizeof(subscriptTopic)) );
 	cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/#", sizeof(subscriptTopic)) );
 
-	// save our prefix length (+1 is for path separator)
+	// save our prefix and length (+1 is for path separator)
+	nodeIn->prefix[0] = 0;
+	if( rootPrefixIn != NULL )
+	{
+		cxa_assert( cxa_stringUtils_concat(nodeIn->prefix, rootPrefixIn, sizeof(nodeIn->prefix)) );
+		cxa_assert( cxa_stringUtils_concat(nodeIn->prefix, "/", sizeof(nodeIn->prefix)) );
+	}
 	nodeIn->prefixLen_bytes = (rootPrefixIn == NULL) ? 0 : strlen(rootPrefixIn)+1;
 
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
@@ -84,6 +91,37 @@ cxa_mqtt_client_t* cxa_mqtt_rpc_node_root_getMqttClient(cxa_mqtt_rpc_node_root_t
 	cxa_assert(nodeIn);
 
 	return nodeIn->mqttClient;
+}
+
+
+char* cxa_mqtt_rpc_node_root_getPrefix(cxa_mqtt_rpc_node_root_t *const nodeIn)
+{
+	cxa_assert(nodeIn);
+
+	return nodeIn->prefix;
+}
+
+
+void cxa_mqtt_rpc_node_root_handleInternalPublish(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_message_t *const msgIn)
+{
+	cxa_assert(nodeIn);
+
+	// get our topic name and length
+	char* topicName;
+	uint16_t topicLen_bytes;
+	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicLen_bytes) ) return;
+
+	// see if it's a response (if so, we need to do some extra processing)
+	if( cxa_stringUtils_startsWith(topicName, CXA_MQTT_RPCNODE_RESP_PREFIX) )
+	{
+		// response...see if we have anyone locally looking for this response
+		cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_TRACE, "got response '", topicName, topicLen_bytes, "'");
+
+		// if we made it here, we don't have anyone locally looking for this response...
+		// pass up through our client (maybe someone there is looking for it)
+		cxa_logger_trace(&nodeIn->super.logger, "unknown response, forwarding");
+		cxa_mqtt_client_publish_message(nodeIn->mqttClient, msgIn);
+	}
 }
 
 
@@ -134,7 +172,7 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 		if( (currNodeNameLen_bytes > currPathLen_bytes) || !cxa_stringUtils_startsWith(currPath, currNode->name) )
 		{
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown node '", currPath, currPathLen_bytes, "'");
-			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, &fbb_retParams);
+			sendResponse(nodeIn, topicNameIn, topicNameLen_bytesIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, &fbb_retParams);
 			return;
 		}
 		// we know that the currPath starts with our node name...move our path forward
@@ -145,18 +183,18 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 		if( (currPathLen_bytes < 1) || (*currPath != '/') )
 		{
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "malformed path '", currPath, currPathLen_bytes, "'");
-			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, &fbb_retParams);
+			sendResponse(nodeIn, topicNameIn, topicNameLen_bytesIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_MALFORMED_PATH, &fbb_retParams);
 			return;
 		}
 		currPath++;
 		currPathLen_bytes--;
 
 		// once we've reached here, we should either be a subNode name or a method name
-		if( (currPathLen_bytes > strlen(REQ_PREFIX)) && cxa_stringUtils_startsWith(currPath, REQ_PREFIX) )
+		if( (currPathLen_bytes > strlen(CXA_MQTT_RPCNODE_REQ_PREFIX)) && cxa_stringUtils_startsWith(currPath, CXA_MQTT_RPCNODE_REQ_PREFIX) )
 		{
 			// move the path forward
-			currPath += strlen(REQ_PREFIX);
-			currPathLen_bytes -= strlen(REQ_PREFIX);
+			currPath += strlen(CXA_MQTT_RPCNODE_REQ_PREFIX);
+			currPathLen_bytes -= strlen(CXA_MQTT_RPCNODE_REQ_PREFIX);
 
 			// start looking for a method
 			cxa_array_iterate(&currNode->methods, currMethodEntry, cxa_mqtt_rpc_node_methodEntry_t)
@@ -167,7 +205,9 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 				if( (currMethodNameLen_bytes == currPathLen_bytes) && strcmp(currMethodEntry->name, currPath) )
 				{
 					cxa_logger_trace(&nodeIn->super.logger, "found method '%s'", currMethodEntry->name);
-					if( currMethodEntry->cb_method != NULL ) currMethodEntry->cb_method(currNode, &fbb_params, &fbb_retParams, currMethodEntry->userVar);
+					cxa_mqtt_rpc_methodRetVal_t retVal = CXA_MQTT_RPC_METHODRETVAL_SUCCESS;
+					if( currMethodEntry->cb_method != NULL ) retVal = currMethodEntry->cb_method(currNode, &fbb_params, &fbb_retParams, currMethodEntry->userVar);
+					sendResponse(nodeIn, topicNameIn, topicNameLen_bytesIn, id, retVal, &fbb_retParams);
 					return;
 				}
 			}
@@ -176,15 +216,15 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 			if( currNode->cb_catchall != NULL )
 			{
 				// only return if the catchall was successful
-				char* fullMethod = currPath - strlen(REQ_PREFIX);
-				size_t fullMethodLen_bytes = currPathLen_bytes + strlen(REQ_PREFIX);
+				char* fullMethod = currPath - strlen(CXA_MQTT_RPCNODE_REQ_PREFIX);
+				size_t fullMethodLen_bytes = currPathLen_bytes + strlen(CXA_MQTT_RPCNODE_REQ_PREFIX);
 
 				if( currNode->cb_catchall(currNode, fullMethod, fullMethodLen_bytes, msgIn, currNode->catchAll_userVar) ) return;
 			}
 
 			// if we made it here, we coudn't find the right method
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown method: '", currPath, currPathLen_bytes, "'");
-			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, &fbb_retParams);
+			sendResponse(nodeIn, topicNameIn, topicNameLen_bytesIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, &fbb_retParams);
 			return;
 		}
 		else
@@ -214,22 +254,22 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 
 			// no catchall (or it wasn't successful)...error
 			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "unknown node '", currPath, currPathLen_bytes, "'");
-			sendResponse(nodeIn, topicNameIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_NODE_DNE, &fbb_retParams);
+			sendResponse(nodeIn, topicNameIn, topicNameLen_bytesIn, id, CXA_MQTT_RPC_METHODRETVAL_FAIL_NODE_DNE, &fbb_retParams);
 			return;
 		}
 	}
 }
 
 
-static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicNameIn, uint16_t idIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbb_retParamsIn)
+static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicNameIn, uint16_t topicLen_bytesIn, uint16_t idIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbb_retParamsIn)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(fbb_retParamsIn);
 
-	char respTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES+1] = RESP_PREFIX;
+	char respTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES+1] = CXA_MQTT_RPCNODE_RESP_PREFIX "/";
 	char id_str[9];
 	sprintf(id_str, "/%d/%d", idIn, retValIn);
-	if( !cxa_stringUtils_concat(respTopic, topicNameIn, sizeof(respTopic)) ||
+	if( !cxa_stringUtils_concat_withLengths(respTopic, sizeof(respTopic), topicNameIn, topicLen_bytesIn ) ||
 		!cxa_stringUtils_concat(respTopic, id_str, sizeof(respTopic)) )
 	{
 		cxa_logger_warn(&nodeIn->super.logger, "problem assembling response");

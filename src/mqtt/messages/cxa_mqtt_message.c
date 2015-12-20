@@ -23,6 +23,7 @@
 #include <cxa_mqtt_message_pingRequest.h>
 #include <cxa_mqtt_message_pingResponse.h>
 #include <cxa_mqtt_message_suback.h>
+#include <cxa_mqtt_message_subscribe.h>
 #include <cxa_mqtt_message_publish.h>
 
 #define CXA_LOG_LEVEL				CXA_LOG_LEVEL_TRACE
@@ -110,6 +111,7 @@ bool cxa_mqtt_message_validateReceivedBytes(cxa_mqtt_message_t *const msgIn)
 			break;
 
 		case CXA_MQTT_MSGTYPE_SUBSCRIBE:
+			didMsgValidate = cxa_mqtt_message_subscribe_validateReceivedBytes(msgIn);
 			break;
 
 		case CXA_MQTT_MSGTYPE_SUBACK:

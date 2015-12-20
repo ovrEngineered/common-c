@@ -35,7 +35,6 @@
 
 
 // ******** local function prototypes ********
-static cxa_mqtt_client_t* getMqttClient(cxa_mqtt_rpc_node_t *const nodeIn);
 static bool getTopicForNodeAndNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, char* topicOut, size_t maxTopicLen_bytesIn);
 
 
@@ -48,8 +47,9 @@ void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_nod
 	cxa_assert(nodeIn);
 	cxa_assert(nameFmtIn);
 
-	// save our references
+	// save our references and set some defaults
 	nodeIn->parentNode = parentNodeIn;
+	nodeIn->isRootNode = false;
 
 	// assemble our name
 	vsnprintf(nodeIn->name, CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES, nameFmtIn, varArgsIn);
@@ -98,20 +98,7 @@ bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, ch
 	cxa_assert(nodeIn);
 	cxa_assert(notiNameIn);
 
-	// get our mqtt client first
-	cxa_mqtt_client_t* mqttClient = getMqttClient(nodeIn);
-
-	// now get our publish topic and publish
-	char publishTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
-	if( (mqttClient == NULL) ||
-			!getTopicForNodeAndNotification(nodeIn, "temp_c", publishTopic, sizeof(publishTopic)) ||
-			!cxa_mqtt_client_publish(mqttClient, CXA_MQTT_QOS_ATMOST_ONCE, false, publishTopic, dataIn, dataSize_bytesIn) )
-	{
-		cxa_logger_warn(&nodeIn->logger, "error publishing notification '%s'", notiNameIn);
-		return false;
-	}
-
-	return true;
+	return false;
 }
 
 
@@ -135,25 +122,23 @@ bool cxa_mqtt_rpc_node_getTopicForNode(cxa_mqtt_rpc_node_t *const nodeIn, char* 
 }
 
 
-// ******** local function implementations ********
-static cxa_mqtt_client_t* getMqttClient(cxa_mqtt_rpc_node_t *const nodeIn)
+cxa_mqtt_rpc_node_root_t* cxa_mqtt_rpc_node_getRootNode(cxa_mqtt_rpc_node_t *const nodeIn)
 {
 	cxa_assert(nodeIn);
 
-	if( nodeIn->parentNode != NULL )
+	cxa_mqtt_rpc_node_t* currNode = nodeIn;
+	while( currNode != NULL )
 	{
-		return getMqttClient(nodeIn->parentNode);
-	}
-	else
-	{
-		// this is _probably_ a root node
-		return cxa_mqtt_rpc_node_root_getMqttClient((cxa_mqtt_rpc_node_root_t*)nodeIn);
+		if( currNode->isRootNode ) return (cxa_mqtt_rpc_node_root_t*)currNode;
+
+		currNode = currNode->parentNode;
 	}
 
 	return NULL;
 }
 
 
+// ******** local function implementations ********
 static bool getTopicForNodeAndNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, char* topicOut, size_t maxTopicLen_bytesIn)
 {
 	cxa_assert(nodeIn);

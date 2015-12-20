@@ -30,24 +30,27 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_MQTT_RPCNODE_MAXNUM_SUBNODES
-	#define CXA_MQTT_RPCNODE_MAXNUM_SUBNODES			4
+	#define CXA_MQTT_RPCNODE_MAXNUM_SUBNODES				4
 #endif
 
 #ifndef CXA_MQTT_RPCNODE_MAXNUM_METHODS
-	#define CXA_MQTT_RPCNODE_MAXNUM_METHODS				8
+	#define CXA_MQTT_RPCNODE_MAXNUM_METHODS					8
 #endif
 
 #ifndef CXA_MQTT_RPCNODE_MAXLEN_RETURNPARAMS_BYTES
-	#define CXA_MQTT_RPCNODE_MAXLEN_RETURNPARAMS_BYTES	64
+	#define CXA_MQTT_RPCNODE_MAXLEN_RETURNPARAMS_BYTES		64
 #endif
 
 #ifndef CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES
-	#define CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES			16
+	#define CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES				16
 #endif
 
 #ifndef CXA_MQTT_RPCNODE_MAXLEN_METHOD_BYTES
 	#define CXA_MQTT_RPCNODE_MAXLEN_METHOD_BYTES			24
 #endif
+
+#define CXA_MQTT_RPCNODE_REQ_PREFIX							"::"
+#define CXA_MQTT_RPCNODE_RESP_PREFIX						"/rpcResp"
 
 
 // ******** global type definitions *********
@@ -55,6 +58,12 @@
  * @public
  */
 typedef struct cxa_mqtt_rpc_node cxa_mqtt_rpc_node_t;
+
+
+/**
+ * @public
+ */
+typedef struct cxa_mqtt_rpc_node_root cxa_mqtt_rpc_node_root_t;
 
 
 /**
@@ -122,14 +131,40 @@ struct cxa_mqtt_rpc_node
 
 
 // ******** global function prototypes ********
+/**
+ * @protected
+ */
 void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, va_list varArgsIn);
 
+
+/**
+ * @public
+ */
 void cxa_mqtt_rpc_node_addMethod(cxa_mqtt_rpc_node_t *const nodeIn, char *const nameIn, cxa_mqtt_rpc_cb_method_t cb_methodIn, void* userVarIn);
+
+
+/**
+ * @protected
+ */
 void cxa_mqtt_rpc_node_setCatchAll(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_cb_catchall_t cb_catchallIn, void *userVarIn);
 
+
+/**
+ * @public
+ */
 bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn, void* dataIn, size_t dataSize_bytesIn);
 
+
+/**
+ * @protected
+ */
 bool cxa_mqtt_rpc_node_getTopicForNode(cxa_mqtt_rpc_node_t *const nodeIn, char* topicOut, size_t maxTopicLen_bytesIn);
+
+
+/**
+ * @protected
+ */
+cxa_mqtt_rpc_node_root_t* cxa_mqtt_rpc_node_getRootNode(cxa_mqtt_rpc_node_t *const nodeIn);
 
 
 #endif // CXA_MQTT_RPC_NODE_H_

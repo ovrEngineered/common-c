@@ -40,13 +40,22 @@
 // ******** global type definitions *********
 typedef struct cxa_mqtt_rpc_node_bridge cxa_mqtt_rpc_node_bridge_t;
 
+
+typedef enum
+{
+	CXA_MQTT_RPC_NODE_BRIDGE_AUTH_ALLOW,
+	CXA_MQTT_RPC_NODE_BRIDGE_AUTH_DISALLOW,
+	CXA_MQTT_RPC_NODE_BRIDGE_AUTH_IGNORE
+}cxa_mqtt_rpc_node_bridge_authorization_t;
+
+
 /**
  * @public
  */
-typedef char* (*cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t)(char *const clientIdIn, size_t clientIdLen_bytes,
-																	char *const usernameIn, size_t usernameLen_bytesIn,
-																	uint8_t *const passwordIn, size_t passwordLen_bytesIn,
-																	void *userVarIn);
+typedef cxa_mqtt_rpc_node_bridge_authorization_t (*cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t)(char *const clientIdIn, size_t clientIdLen_bytes,
+																										char *const usernameIn, size_t usernameLen_bytesIn,
+																										uint8_t *const passwordIn, size_t passwordLen_bytesIn,
+																										void *userVarIn);
 
 
 /**
@@ -57,7 +66,7 @@ struct cxa_mqtt_rpc_node_bridge
 	cxa_mqtt_rpc_node_t super;
 
 	bool isSingle;
-	cxa_protocolParser_mqtt_t mpp;
+	cxa_protocolParser_mqtt_t *mpp;
 
 	cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_auth;
 	void* userVar_auth;
@@ -69,10 +78,8 @@ struct cxa_mqtt_rpc_node_bridge
  * @protected
  */
 void cxa_mqtt_rpc_node_bridge_vinit(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
-										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn,
+										 cxa_protocolParser_mqtt_t *const mppIn,
 										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
 										 const char *nameFmtIn, va_list varArgsIn);
-
-void cxa_mqtt_rpc_node_bridge_update(cxa_mqtt_rpc_node_bridge_t *const nodeIn);
 
 #endif // CXA_MQTT_RPC_NODEBRIDGE_H_

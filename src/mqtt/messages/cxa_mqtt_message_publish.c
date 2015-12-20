@@ -44,7 +44,7 @@ bool cxa_mqtt_message_publish_init(cxa_mqtt_message_t *const msgIn, bool dupIn, 
 
 	// fixed header 1
 	if( !cxa_linkedField_initRoot_fixedLen(&msgIn->field_packetTypeAndFlags, msgIn->buffer, 0, 1) ||
-			!cxa_linkedField_append_uint8(&msgIn->field_packetTypeAndFlags, ((CXA_MQTT_MSGTYPE_PUBLISH << 4) | (dupIn << 3) | (qosIn < 1) | retainIn)) ) return false;
+			!cxa_linkedField_append_uint8(&msgIn->field_packetTypeAndFlags, ((CXA_MQTT_MSGTYPE_PUBLISH << 4) | (dupIn << 3) | (qosIn << 1) | retainIn)) ) return false;
 
 	// remaining length
 	if( !cxa_linkedField_initChild(&msgIn->field_remainingLength, &msgIn->field_packetTypeAndFlags, 0) ) return false;
@@ -71,7 +71,7 @@ bool cxa_mqtt_message_publish_init(cxa_mqtt_message_t *const msgIn, bool dupIn, 
 }
 
 
-bool cxa_mqtt_message_publish_getTopicName(cxa_mqtt_message_t *const msgIn, char** topicNameOut, size_t *const topicNameLen_bytesOut)
+bool cxa_mqtt_message_publish_getTopicName(cxa_mqtt_message_t *const msgIn, char** topicNameOut, uint16_t *const topicNameLen_bytesOut)
 {
 	cxa_assert(msgIn);
 
@@ -106,12 +106,12 @@ bool cxa_mqtt_message_publish_topicName_trimToPointer(cxa_mqtt_message_t *const 
 
 	// get our topic name and make sure it's appropriate
 	char* topicName;
-	size_t topicNameLen_bytes;
+	uint16_t topicNameLen_bytes;
 	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return false;
 	if( topicName > ptrIn ) return false;
 
 	// make sure we don't go out of bounds
-	size_t numBytesToTrimFromLeft = ptrIn - topicName;
+	uint16_t numBytesToTrimFromLeft = ptrIn - topicName;
 	if( numBytesToTrimFromLeft > topicNameLen_bytes ) return false;
 
 	return cxa_linkedField_removeFrom_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_topicName, 0, numBytesToTrimFromLeft);

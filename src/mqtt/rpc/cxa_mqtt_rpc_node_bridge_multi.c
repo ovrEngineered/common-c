@@ -39,6 +39,10 @@
 
 
 // ******** local function prototypes ********
+static cxa_mqtt_rpc_node_bridge_authorization_t bridgeAuthCb(char *const clientIdIn, size_t clientIdLen_bytes,
+															 char *const usernameIn, size_t usernameLen_bytesIn,
+															 uint8_t *const passwordIn, size_t passwordLen_bytesIn,
+															 void *userVarIn);
 static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const nodeIn, char *const remainingTopicIn, size_t remainingTopicLen_bytes, cxa_mqtt_message_t *const msgIn, void* userVarIn);
 
 
@@ -47,30 +51,60 @@ static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const nodeIn, char *const remain
 
 // ******** global function implementations ********
 void cxa_mqtt_rpc_node_bridge_multi_init(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
-										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn,
-										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
+										 cxa_protocolParser_mqtt_t *const mppIn,
 										 const char *nameFmtIn, ...)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(parentNodeIn);
-	cxa_assert(iosIn);
-	cxa_assert(timeBaseIn);
-	cxa_assert(cb_authIn);
+	cxa_assert(mppIn);
 	cxa_assert(nameFmtIn);
 
 	// initialize our super class
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
-	cxa_mqtt_rpc_node_bridge_vinit(&nodeIn->super, parentNodeIn, iosIn, timeBaseIn, cb_authIn, authCbUserVarIn, nameFmtIn, varArgs);
+	cxa_mqtt_rpc_node_bridge_vinit(&nodeIn->super, parentNodeIn, mppIn, bridgeAuthCb, (void*)nodeIn, nameFmtIn, varArgs);
 	va_end(varArgs);
 	cxa_mqtt_rpc_node_setCatchAll(&nodeIn->super.super, rpcCb_catchall, (void*)nodeIn);
+
+	// set some defaults
+	nodeIn->cb_localAuth = NULL;
+	nodeIn->localAuthUserVar = NULL;
 
 	// setup our remote nodes
 	cxa_array_initStd(&nodeIn->remoteNodes, nodeIn->remoteNodes_raw);
 }
 
 
+void cxa_mqtt_rpc_node_bridge_multi_setAuthCb(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn, cxa_mqtt_rpc_node_bridge_multi_cb_authenticateClient_t authCbIn, void *const userVarIn)
+{
+	cxa_assert(nodeIn);
+
+	nodeIn->cb_localAuth = authCbIn;
+	nodeIn->localAuthUserVar = userVarIn;
+}
+
+
 // ******** local function implementations ********
+static cxa_mqtt_rpc_node_bridge_authorization_t bridgeAuthCb(char *const clientIdIn, size_t clientIdLen_bytes,
+															 char *const usernameIn, size_t usernameLen_bytesIn,
+															 uint8_t *const passwordIn, size_t passwordLen_bytesIn,
+															 void *userVarIn)
+{
+	cxa_mqtt_rpc_node_bridge_multi_t* nodeIn = (cxa_mqtt_rpc_node_bridge_multi_t*)userVarIn;
+	cxa_assert(nodeIn);
+
+	// we need an authorization callback first...
+	if( nodeIn->cb_localAuth == NULL ) return CXA_MQTT_RPC_NODE_BRIDGE_AUTH_IGNORE;
+
+	cxa_mqtt_rpc_node_bridge_multi_remoteNodeEntry_t newEntry;
+
+
+
+	// we need an authorization callback first...
+	return CXA_MQTT_RPC_NODE_BRIDGE_AUTH_IGNORE;
+}
+
+
 static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const superIn, char *const remainingTopicIn, size_t remainingTopicLen_bytes, cxa_mqtt_message_t *const msgIn, void* userVarIn)
 {
 	cxa_mqtt_rpc_node_bridge_multi_t* nodeIn = (cxa_mqtt_rpc_node_bridge_multi_t*)superIn;
@@ -107,7 +141,7 @@ static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const superIn, char *const remai
 			}
 
 			// send the message
-			if( !cxa_protocolParser_writePacket(&nodeIn->super.mpp.super, cxa_mqtt_message_getBuffer(msgIn)) )
+			if( !cxa_protocolParser_writePacket(&nodeIn->super.mpp->super, cxa_mqtt_message_getBuffer(msgIn)) )
 			{
 				cxa_logger_warn(&nodeIn->super.super.logger, "error forwarding message");
 			}

@@ -34,9 +34,14 @@
 #endif
 
 
-
 // ******** global type definitions *********
 typedef struct cxa_mqtt_rpc_node_bridge_multi cxa_mqtt_rpc_node_bridge_multi_t;
+
+typedef cxa_mqtt_rpc_node_bridge_authorization_t (*cxa_mqtt_rpc_node_bridge_multi_cb_authenticateClient_t)(char *const clientIdIn, size_t clientIdLen_bytes,
+																											char *const usernameIn, size_t usernameLen_bytesIn,
+																											uint8_t *const passwordIn, size_t passwordLen_bytesIn,
+																											char* provisionedNameOut, size_t maxProvisionedNameLen_bytesIn,
+																											void *userVarIn);
 
 /**
  * @private
@@ -57,13 +62,19 @@ struct cxa_mqtt_rpc_node_bridge_multi
 
 	cxa_array_t remoteNodes;
 	cxa_mqtt_rpc_node_bridge_multi_remoteNodeEntry_t remoteNodes_raw[CXA_MQTT_RPC_NODE_BRIDGE_MAXNUM_REMOTE_NODES];
+
+	cxa_mqtt_rpc_node_bridge_multi_cb_authenticateClient_t cb_localAuth;
+	void* localAuthUserVar;
 };
 
 
 // ******** global function prototypes ********
 void cxa_mqtt_rpc_node_bridge_multi_init(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
-										 cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn,
-										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
+										 cxa_protocolParser_mqtt_t *const mppIn,
 										 const char *nameFmtIn, ...);
+
+
+
+void cxa_mqtt_rpc_node_bridge_multi_setAuthCb(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn, cxa_mqtt_rpc_node_bridge_multi_cb_authenticateClient_t authCbIn, void *const userVarIn);
 
 #endif // CXA_MQTT_RPC_NODEBRIDGE_MULTI_H_

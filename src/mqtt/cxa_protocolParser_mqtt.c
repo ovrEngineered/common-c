@@ -189,6 +189,7 @@ static void rxStateCb_waitFixedHeader1_state(cxa_stateMachine_t *const smIn, voi
 	uint8_t rxByte;
 	if( cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
+		bool doFlagsMatch = false;
 		switch( cxa_mqtt_message_rxBytes_getType(rxByte) )
 		{
 			case CXA_MQTT_MSGTYPE_CONNECT:
@@ -197,44 +198,40 @@ static void rxStateCb_waitFixedHeader1_state(cxa_stateMachine_t *const smIn, voi
 			case CXA_MQTT_MSGTYPE_PINGRESP:
 			case CXA_MQTT_MSGTYPE_SUBACK:
 				// make sure the flags match
-				if( (rxByte & 0x0F) == 0 )
-				{
-					// clear our buffer and add the first byte
-					cxa_fixedByteBuffer_clear(mppIn->super.currBuffer);
+				doFlagsMatch = (rxByte & 0x0F) == 0;
+				break;
 
-					if( cxa_fixedByteBuffer_append_uint8(mppIn->super.currBuffer, rxByte) )
-					{
-						// start our reception timeout timeDiff
-						if( mppIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
-
-						cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_WAIT_REMAINING_LEN);
-						return;
-					}
-					else cxa_logger_warn(&mppIn->super.logger, ERR_FBB_OVERFLOW);
-				} else cxa_logger_warn(&mppIn->super.logger, ERR_MALFORMED_HEADER);
+			case CXA_MQTT_MSGTYPE_SUBSCRIBE:
+				// make sure the flags match
+				doFlagsMatch = (rxByte & 0x0F) == 0x02;
 				break;
 
 			case CXA_MQTT_MSGTYPE_PUBLISH:
 				// flags don't matter for this one (can be anything)
-
-				// clear our buffer and add the first byte
-				cxa_fixedByteBuffer_clear(mppIn->super.currBuffer);
-
-				if( cxa_fixedByteBuffer_append_uint8(mppIn->super.currBuffer, rxByte) )
-				{
-					// start our reception timeout timeDiff
-					if( mppIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
-
-					cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_WAIT_REMAINING_LEN);
-					return;
-				}
-				else cxa_logger_warn(&mppIn->super.logger, ERR_FBB_OVERFLOW);
+				doFlagsMatch = true;
 				break;
 
 			default:
 				cxa_logger_warn(&mppIn->super.logger, "unknown header byte: 0x%02X", rxByte);
-				break;
+				return;
 		}
+
+		// if we made it here, we at least know what kind of packet this is...
+		if( doFlagsMatch )
+		{
+			// clear our buffer and add the first byte
+			cxa_fixedByteBuffer_clear(mppIn->super.currBuffer);
+
+			if( cxa_fixedByteBuffer_append_uint8(mppIn->super.currBuffer, rxByte) )
+			{
+				// start our reception timeout timeDiff
+				if( mppIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
+
+				cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_WAIT_REMAINING_LEN);
+				return;
+			}
+			else cxa_logger_warn(&mppIn->super.logger, ERR_FBB_OVERFLOW);
+		} else cxa_logger_warn(&mppIn->super.logger, ERR_MALFORMED_HEADER);
 	}
 }
 
