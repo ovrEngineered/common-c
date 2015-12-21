@@ -48,7 +48,15 @@
 typedef struct cxa_mqtt_client cxa_mqtt_client_t;
 
 
+typedef enum
+{
+	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_AUTH,
+	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT
+}cxa_mqtt_client_connectFailureReason_t;
+
+
 typedef void (*cxa_mqtt_client_cb_onConnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
+typedef void (*cxa_mqtt_client_cb_onConnectFailed_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
 typedef void (*cxa_mqtt_client_cb_onDisconnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 
 typedef void (*cxa_mqtt_client_cb_onPublish_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
@@ -62,6 +70,7 @@ typedef struct
 {
 	cxa_mqtt_client_cb_onConnect_t cb_onConnect;
 	cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnect;
+	cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFail;
 
 	void* userVar;
 }cxa_mqtt_client_listenerEntry_t;
@@ -112,6 +121,7 @@ struct cxa_mqtt_client
 
 	cxa_logger_t logger;
 
+	uint16_t keepAliveTimeout_s;
 	char* clientId;
 	bool hasSentConnectPacket;
 	uint16_t currPacketId;
@@ -119,14 +129,16 @@ struct cxa_mqtt_client
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn);
+void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn);
 
 void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
+								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
 								 void *const userVarIn);
 
 bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);
+bool cxa_mqtt_client_isConnecting(cxa_mqtt_client_t *const clientIn);
 bool cxa_mqtt_client_isConnected(cxa_mqtt_client_t *const clientIn);
 void cxa_mqtt_client_disconnect(cxa_mqtt_client_t *const clientIn);
 

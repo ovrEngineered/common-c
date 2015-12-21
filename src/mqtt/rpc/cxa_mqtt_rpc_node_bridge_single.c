@@ -46,9 +46,7 @@ static cxa_mqtt_rpc_node_bridge_authorization_t bridgeAuthCb(char *const clientI
 															 void *userVarIn);
 
 static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const superIn, char *const remainingTopicIn, size_t remainingTopicLen_bytes, cxa_mqtt_message_t *const msgIn, void* userVarIn);
-
-static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
-static void handleMessage_publish(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_message_t *const msgIn);
+static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqtt_message_t *const msgIn);
 
 
 // ********  local variable declarations *********
@@ -66,7 +64,7 @@ void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *con
 	// initialize our super class
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
-	cxa_mqtt_rpc_node_bridge_vinit(&nodeIn->super, parentNodeIn, mppIn, bridgeAuthCb, (void*)nodeIn, nameFmtIn, varArgs);
+	cxa_mqtt_rpc_node_bridge_vinit(&nodeIn->super, parentNodeIn, mppIn, scm_handlePublish, bridgeAuthCb, (void*)nodeIn, nameFmtIn, varArgs);
 	va_end(varArgs);
 	cxa_mqtt_rpc_node_setCatchAll(&nodeIn->super.super, rpcCb_catchall, (void*)nodeIn);
 
@@ -75,9 +73,6 @@ void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *con
 	nodeIn->hasClientAuthed = false;
 	nodeIn->cb_localAuth = NULL;
 	nodeIn->localAuthUserVar = NULL;
-
-	// listen specifically for publishes
-	cxa_protocolParser_addPacketListener(&nodeIn->super.mpp->super, protoParseCb_onPacketReceived, (void*)nodeIn);
 }
 
 
@@ -172,31 +167,14 @@ static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const superIn, char *const remai
 }
 
 
-static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn)
+static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqtt_message_t *const msgIn)
 {
-	cxa_mqtt_rpc_node_bridge_single_t* nodeIn = (cxa_mqtt_rpc_node_bridge_single_t*)userVarIn;
-	cxa_assert(nodeIn);
-
-	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getMessage_byBuffer(packetIn);
-	if( msg == NULL ) return;
-
-	cxa_mqtt_message_type_t msgType = cxa_mqtt_message_getType(msg);
-	switch( msgType )
-	{
-		case CXA_MQTT_MSGTYPE_PUBLISH:
-			handleMessage_publish(nodeIn, msg);
-			break;
-
-		default:
-			break;
-	}
-}
-
-
-static void handleMessage_publish(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_message_t *const msgIn)
-{
+	cxa_mqtt_rpc_node_bridge_single_t* nodeIn = (cxa_mqtt_rpc_node_bridge_single_t*)superIn;
 	cxa_assert(nodeIn);
 	cxa_assert(msgIn);
+
+	// make sure we actually have a client
+	if( !nodeIn->hasClientAuthed ) return;
 
 	// get our topic name and length
 	char* topicName;

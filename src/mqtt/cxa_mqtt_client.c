@@ -35,7 +35,6 @@
 
 
 // ******** local macro definitions ********
-#define KEEP_ALIVE_TIMEOUT_S			10
 #define CONNACK_TIMEOUT_MS				5000
 #define SUBACK_TIMEOUT_MS				5000
 
@@ -70,7 +69,7 @@ static bool doesTopicMatchFilter(char* topicIn, char* filterIn);
 
 
 // ******** global function implementations ********
-void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn)
+void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn)
 {
 	cxa_assert(clientIn);
 	cxa_assert(iosIn);
@@ -84,6 +83,7 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	// setup some initial values
 	clientIn->hasSentConnectPacket = false;
 	clientIn->currPacketId = 0;
+	clientIn->keepAliveTimeout_s = keepAliveTimeout_sIn;
 	cxa_timeDiff_init(&clientIn->td_timeout, timeBaseIn, true);
 	cxa_timeDiff_init(&clientIn->td_sendKeepAlive, timeBaseIn, true);
 	cxa_timeDiff_init(&clientIn->td_receiveKeepAlive, timeBaseIn, true);
@@ -117,12 +117,19 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 
 void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
+								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
 								 void *const userVarIn)
 {
 	cxa_assert(clientIn);
 
-	cxa_mqtt_client_listenerEntry_t newEntry = {.cb_onConnect=cb_onConnectIn, .cb_onDisconnect=cb_onDisconnectIn, .userVar=userVarIn};
+	cxa_mqtt_client_listenerEntry_t newEntry =
+	{
+		.cb_onConnect=cb_onConnectIn,
+		.cb_onConnectFail=cb_onConnectFailIn,
+		.cb_onDisconnect=cb_onDisconnectIn,
+		.userVar=userVarIn
+	};
 	cxa_assert( cxa_array_append(&clientIn->listeners, &newEntry) );
 }
 
@@ -136,7 +143,7 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 	// reserve/initialize/send message
 	cxa_mqtt_message_t* msg = NULL;
 	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
-			!cxa_mqtt_message_connect_init(msg, clientIn->clientId, usernameIn, passwordIn, passwordLen_bytesIn, true, KEEP_ALIVE_TIMEOUT_S) ||
+			!cxa_mqtt_message_connect_init(msg, clientIn->clientId, usernameIn, passwordIn, passwordLen_bytesIn, true, clientIn->keepAliveTimeout_s) ||
 			!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
 	{
 		cxa_logger_warn(&clientIn->logger, "failed to reserve/initialize/send CONNECT ctrlPacket");
@@ -147,6 +154,14 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_CONNECTING);
 	return true;
+}
+
+
+bool cxa_mqtt_client_isConnecting(cxa_mqtt_client_t *const clientIn)
+{
+	cxa_assert(clientIn);
+
+	return (cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_CONNECTING);
 }
 
 
@@ -294,6 +309,14 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 	if( cxa_timeDiff_isElapsed_ms(&clientIn->td_timeout, CONNACK_TIMEOUT_MS) )
 	{
 		cxa_logger_warn(&clientIn->logger, "failed to receive CONNACK packet");
+
+		// notify our listeners
+		cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+		{
+			if( currListener == NULL ) continue;
+			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT, currListener->userVar);
+		}
+
 		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 		return;
 	}
@@ -344,7 +367,7 @@ static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVa
 	cxa_assert(clientIn);
 
 	// see if we need to send a ping
-	if( (KEEP_ALIVE_TIMEOUT_S != 0) && cxa_timeDiff_isElapsed_recurring_ms(&clientIn->td_sendKeepAlive, (KEEP_ALIVE_TIMEOUT_S * 1000)) )
+	if( (clientIn->keepAliveTimeout_s != 0) && cxa_timeDiff_isElapsed_recurring_ms(&clientIn->td_sendKeepAlive, (clientIn->keepAliveTimeout_s * 1000)) )
 	{
 		cxa_logger_trace(&clientIn->logger, "sending PINGREQ");
 		cxa_mqtt_message_t* msg = NULL;
@@ -358,9 +381,11 @@ static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVa
 	}
 
 	// make sure we are receiving pings
-	if( (KEEP_ALIVE_TIMEOUT_S != 0) && cxa_timeDiff_isElapsed_recurring_ms(&clientIn->td_receiveKeepAlive, (KEEP_ALIVE_TIMEOUT_S * 1000 * 2)) )
+	if( (clientIn->keepAliveTimeout_s != 0) && cxa_timeDiff_isElapsed_recurring_ms(&clientIn->td_receiveKeepAlive, (clientIn->keepAliveTimeout_s * 1000 * 2)) )
 	{
 		cxa_logger_warn(&clientIn->logger, "no PINGRESP, server may be unresponsive");
+		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+		return;
 	}
 }
 
@@ -432,6 +457,14 @@ static void handleMessage_connAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	else
 	{
 		cxa_logger_warn(&clientIn->logger, "connection refused: %d", retCode);
+
+		// notify our listeners
+		cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+		{
+			if( currListener == NULL ) continue;
+			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_AUTH, currListener->userVar);
+		}
+
 		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 		return;
 	}
