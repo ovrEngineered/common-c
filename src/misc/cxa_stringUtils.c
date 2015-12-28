@@ -76,6 +76,28 @@ bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixSt
 }
 
 
+bool cxa_stringUtils_endsWith_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* suffixStringIn)
+{
+	// if one is false and the other isn't, we can't compare
+	if( (targetStringIn == NULL) != (suffixStringIn == NULL) ) return false;
+	// if they're both NULL, they're equal
+	if( (targetStringIn == NULL) && (suffixStringIn == NULL) ) return true;
+
+	// make sure we have enough chars in our target string
+	size_t suffixStringLen_bytes = strlen(suffixStringIn);
+	if( suffixStringLen_bytes > targetStringLen_bytesIn ) return false;
+
+	// iterate our characters
+	for( size_t i = 0; i < suffixStringLen_bytes; i++ )
+	{
+		if( targetStringIn[targetStringLen_bytesIn-1-i] != suffixStringIn[suffixStringLen_bytes-1-i] ) return false;
+	}
+
+	// if we made it here, target string starts with prefix string
+	return true;
+}
+
+
 bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn)
 {
 	if( (targetStringIn == NULL) || (elementIn == NULL) ) return false;

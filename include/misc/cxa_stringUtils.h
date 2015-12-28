@@ -65,6 +65,7 @@ typedef struct
 
 // ******** global function prototypes ********
 bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn);
+bool cxa_stringUtils_endsWith_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* suffixStringIn);
 
 bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn);
 bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
