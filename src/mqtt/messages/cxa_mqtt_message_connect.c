@@ -41,10 +41,15 @@ static bool getConnectFlags(cxa_mqtt_message_t *const msgIn, uint8_t *const conn
 
 
 // ******** global function implementations ********
-bool cxa_mqtt_message_connect_init(cxa_mqtt_message_t *const msgIn, char* clientIdIn, char* usernameIn, uint8_t* passwordIn, uint16_t passwordLen_bytesIn, bool cleanSessionIn, uint16_t keepAlive_sIn)
+bool cxa_mqtt_message_connect_init(cxa_mqtt_message_t *const msgIn, char* clientIdIn,
+								   char* usernameIn, uint8_t* passwordIn, uint16_t passwordLen_bytesIn,
+								   cxa_mqtt_qosLevel_t willQosIn, bool willRetainIn, const char* willTopicIn, void *const willPayloadIn, size_t willPayloadLen_bytesIn,
+								   bool cleanSessionIn, uint16_t keepAlive_sIn)
 {
 	cxa_assert(msgIn);
 	cxa_assert(clientIdIn);
+	if( passwordLen_bytesIn > 0 ) cxa_assert(passwordIn != NULL);
+	if( willPayloadLen_bytesIn > 0 ) cxa_assert(willPayloadIn != NULL);
 
 	// get the clientId length
 	size_t cidLen_bytes = strlen(clientIdIn);
@@ -66,7 +71,9 @@ bool cxa_mqtt_message_connect_init(cxa_mqtt_message_t *const msgIn, char* client
 			!cxa_linkedField_append_uint8(&msgIn->fields_connect.field_protocolLevel, PROTOCOL_LEVEL) ) return false;
 
 	// connect flags
-	uint8_t connectFlags = ((usernameIn != NULL) ? 0x80 : 0x00) | ((passwordIn != NULL) ? 0x40 : 0x00) | (cleanSessionIn ? 0x02 :0x00);
+	bool hasWill = (willTopicIn != NULL) && (strlen(willTopicIn) > 0);
+	uint8_t connectFlags = ((usernameIn != NULL) ? 0x80 : 0x00) | ((passwordIn != NULL) ? 0x40 : 0x00) | (cleanSessionIn ? 0x02 :0x00) |
+			(hasWill ? (willRetainIn << 5) : 0x00) | (hasWill ? (willQosIn << 3) : 0x00) | (hasWill ? 0x04 : 0x00);
 	if( !cxa_linkedField_initChild_fixedLen(&msgIn->fields_connect.field_connectFlags, &msgIn->fields_connect.field_protocolLevel, 1) ||
 				!cxa_linkedField_append_uint8(&msgIn->fields_connect.field_connectFlags, connectFlags) ) return false;
 
@@ -79,7 +86,17 @@ bool cxa_mqtt_message_connect_init(cxa_mqtt_message_t *const msgIn, char* client
 				!cxa_linkedField_append_lengthPrefixedCString_uint16BE(&msgIn->fields_connect.field_clientId, clientIdIn, false) ) return false;
 	cxa_linkedField_t* prevField = &msgIn->fields_connect.field_clientId;
 
-	// @TODO will topic and message (if present)
+	// will topic and message (if present)
+	if( hasWill )
+	{
+		if( !cxa_linkedField_initChild(&msgIn->fields_connect.field_willTopic, prevField, 0) ||
+				!cxa_linkedField_append_lengthPrefixedCString_uint16BE(&msgIn->fields_connect.field_willTopic, willTopicIn, false) ) return false;
+		prevField = &msgIn->fields_connect.field_willTopic;
+
+		if( !cxa_linkedField_initChild(&msgIn->fields_connect.field_willMessage, prevField, 0) ) return false;
+		if( (willPayloadIn != NULL) && !cxa_linkedField_append_lengthPrefixedField_uint16BE(&msgIn->fields_connect.field_willMessage, willPayloadIn, willPayloadLen_bytesIn) ) return false;
+		prevField = &msgIn->fields_connect.field_willMessage;
+	}
 
 	// username (if present)
 	if( usernameIn != NULL )

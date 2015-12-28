@@ -28,6 +28,7 @@
 
 // ******** local macro definitions ********
 #define NET_CONNECT_TIMEOUT_MS				10000
+#define KEEPALIVE_TIMEOUT_S					10
 
 
 // ******** local type definitions ********
@@ -53,7 +54,7 @@ void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, cxa
 	cxa_network_tcpClient_addListener(clientIn->netClient, cb_network_onConnect, NULL, cb_network_onDisconnect, (void*)clientIn);
 
 	// initialize our super class
-	cxa_mqtt_client_init(&clientIn->super, cxa_network_tcpClient_getIoStream(clientIn->netClient), timeBaseIn, clientIdIn);
+	cxa_mqtt_client_init(&clientIn->super, cxa_network_tcpClient_getIoStream(clientIn->netClient), KEEPALIVE_TIMEOUT_S, timeBaseIn, clientIdIn);
 }
 
 

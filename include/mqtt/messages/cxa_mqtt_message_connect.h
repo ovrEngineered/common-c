@@ -39,7 +39,10 @@
 
 
 // ******** global function prototypes ********
-bool cxa_mqtt_message_connect_init(cxa_mqtt_message_t *const msgIn, char* clientIdIn, char* usernameIn, uint8_t* passwordIn, uint16_t passwordLen_bytesIn, bool cleanSessionIn, uint16_t keepAlive_sIn);
+bool cxa_mqtt_message_connect_init(cxa_mqtt_message_t *const msgIn, char* clientIdIn,
+								   char* usernameIn, uint8_t* passwordIn, uint16_t passwordLen_bytesIn,
+								   cxa_mqtt_qosLevel_t willQosIn, bool willRetainIn, const char* willTopicIn, void *const willPayloadIn, size_t willPayloadLen_bytesIn,
+								   bool cleanSessionIn, uint16_t keepAlive_sIn);
 
 bool cxa_mqtt_message_connect_hasWill(cxa_mqtt_message_t *const msgIn, bool *const hasWillOut);
 bool cxa_mqtt_message_connect_hasUsername(cxa_mqtt_message_t *const msgIn, bool *const hasUsernameOut);

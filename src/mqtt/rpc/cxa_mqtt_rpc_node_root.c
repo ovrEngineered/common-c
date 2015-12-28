@@ -30,13 +30,14 @@
 
 
 // ******** local macro definitions ********
-
+#define CLIENT_STATE_TOPIC			"_state"
 
 
 // ******** local type definitions ********
 
 
 // ******** local function prototypes ********
+static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 									char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
 static void sendResponse(cxa_mqtt_rpc_node_root_t *const nodeIn, char* topicNameIn, uint16_t topicLen_bytesIn, uint16_t idIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbb_retParamsIn);
@@ -62,17 +63,6 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	va_end(varArgs);
 	nodeIn->super.isRootNode = true;
 
-	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
-	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
-	subscriptTopic[0] = 0;
-	if( rootPrefixIn != NULL )
-	{
-		cxa_assert( cxa_stringUtils_concat(subscriptTopic, rootPrefixIn, sizeof(subscriptTopic)) );
-		cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/", sizeof(subscriptTopic)) );
-	}
-	cxa_assert( cxa_stringUtils_concat(subscriptTopic, nodeIn->super.name, sizeof(subscriptTopic)) );
-	cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/#", sizeof(subscriptTopic)) );
-
 	// save our prefix and length (+1 is for path separator)
 	nodeIn->prefix[0] = 0;
 	if( rootPrefixIn != NULL )
@@ -82,6 +72,24 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	}
 	nodeIn->prefixLen_bytes = (rootPrefixIn == NULL) ? 0 : strlen(rootPrefixIn)+1;
 
+	// set our last-will-testament message (for status)
+	// publish our state
+	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
+	stateTopic[0] = 0;
+	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->prefix, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/"CLIENT_STATE_TOPIC, sizeof(stateTopic)) );
+	cxa_mqtt_client_setWillMessage(nodeIn->mqttClient, CXA_MQTT_QOS_ATMOST_ONCE, true, stateTopic, ((uint8_t[]){0x00}), 1);
+
+	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
+	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
+	subscriptTopic[0] = 0;
+	cxa_assert( cxa_stringUtils_concat(subscriptTopic, nodeIn->prefix, sizeof(subscriptTopic)) );
+	cxa_assert( cxa_stringUtils_concat(subscriptTopic, nodeIn->super.name, sizeof(subscriptTopic)) );
+	cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/#", sizeof(subscriptTopic)) );
+
+	// register for mqtt events
+	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, (void*)nodeIn);
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
 }
 
@@ -126,6 +134,21 @@ void cxa_mqtt_rpc_node_root_handleInternalPublish(cxa_mqtt_rpc_node_root_t *cons
 
 
 // ******** local function implementations ********
+static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* userVarIn)
+{
+	cxa_mqtt_rpc_node_root_t* nodeIn = (cxa_mqtt_rpc_node_root_t*)userVarIn;
+	cxa_assert(nodeIn);
+
+	// publish our state
+	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
+	stateTopic[0] = 0;
+	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->prefix, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/"CLIENT_STATE_TOPIC, sizeof(stateTopic)) );
+	cxa_mqtt_client_publish(clientIn, CXA_MQTT_QOS_ATMOST_ONCE, true, stateTopic, ((uint8_t[]){0x01}), 1);
+}
+
+
 static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 									char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn)
 {
@@ -138,6 +161,10 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 	uint16_t id;
 	if( (payloadIn == NULL) || (payloadLen_bytesIn < 2) || (topicNameLen_bytesIn < nodeIn->prefixLen_bytes) )
 	{
+		// this _may_ be our client state message...if so, we don't need to log anything
+		if( cxa_stringUtils_endsWith_withLengths(topicNameIn, topicNameLen_bytesIn, CLIENT_STATE_TOPIC) ) return;
+
+		// not our client state message
 		cxa_logger_warn(&nodeIn->super.logger, "malformed request: %p %d", payloadIn, payloadLen_bytesIn);
 		return;
 	}

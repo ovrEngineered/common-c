@@ -105,6 +105,11 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	// setup our subscriptions array
 	cxa_array_initStd(&clientIn->subscriptions, clientIn->subscriptions_raw);
 
+	// setup our will
+	clientIn->will.topic[0] = 0;
+	clientIn->will.payload[0] = 0;
+	clientIn->will.payloadLen_bytes = 0;
+
 	// setup our state machine
 	cxa_stateMachine_init(&clientIn->stateMachine, "mqttClient");
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_IDLE, "idle", NULL, NULL, NULL, (void*)clientIn);
@@ -112,6 +117,30 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTED, "connected", stateCb_connected_enter, stateCb_connected_state, stateCb_connected_leave, (void*)clientIn);
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 	cxa_stateMachine_update(&clientIn->stateMachine);
+}
+
+
+void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
+									char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn)
+{
+	cxa_assert(clientIn);
+	if( payloadLen_bytesIn > 0 ) cxa_assert(payloadIn);
+
+	// this is how we clear a will (for future connects)
+	if( topicNameIn == NULL )
+	{
+		clientIn->will.topic[0] = 0;
+		clientIn->will.payload[0] = 0;
+		clientIn->will.payloadLen_bytes = 0;
+		return;
+	}
+
+	// if we made it here, we are setting a new will
+	clientIn->will.qos = qosIn;
+	clientIn->will.retain = retainIn;
+	cxa_assert( strlcpy(clientIn->will.topic, topicNameIn, sizeof(clientIn->will.topic)) < sizeof(clientIn->will.topic) );
+	if( payloadIn != NULL ) memcpy(clientIn->will.payload, payloadIn, payloadLen_bytesIn);
+	clientIn->will.payloadLen_bytes = payloadLen_bytesIn;
 }
 
 
@@ -143,7 +172,9 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 	// reserve/initialize/send message
 	cxa_mqtt_message_t* msg = NULL;
 	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
-			!cxa_mqtt_message_connect_init(msg, clientIn->clientId, usernameIn, passwordIn, passwordLen_bytesIn, true, clientIn->keepAliveTimeout_s) ||
+			!cxa_mqtt_message_connect_init(msg, clientIn->clientId, usernameIn, passwordIn, passwordLen_bytesIn,
+										   clientIn->will.qos, clientIn->will.retain, clientIn->will.topic, clientIn->will.payload, clientIn->will.payloadLen_bytes,
+										   true, clientIn->keepAliveTimeout_s) ||
 			!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
 	{
 		cxa_logger_warn(&clientIn->logger, "failed to reserve/initialize/send CONNECT ctrlPacket");

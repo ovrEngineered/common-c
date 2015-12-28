@@ -43,6 +43,14 @@
 	#define CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES	64
 #endif
 
+#ifndef CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES
+	#define CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES		32
+#endif
+
+#ifndef CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES
+	#define CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES	1
+#endif
+
 
 // ******** global type definitions *********
 typedef struct cxa_mqtt_client cxa_mqtt_client_t;
@@ -125,11 +133,23 @@ struct cxa_mqtt_client
 	char* clientId;
 	bool hasSentConnectPacket;
 	uint16_t currPacketId;
+
+	struct{
+		cxa_mqtt_qosLevel_t qos;
+		bool retain;
+		char topic[CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES];
+
+		uint8_t payload[CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES];
+		size_t payloadLen_bytes;
+	}will;
 };
 
 
 // ******** global function prototypes ********
 void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn);
+
+void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
+									char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn);
 
 void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
