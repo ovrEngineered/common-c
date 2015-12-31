@@ -31,7 +31,7 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_MQTT_CLIENT_MAXNUM_LISTENERS
-	#define CXA_MQTT_CLIENT_MAXNUM_LISTENERS			1
+	#define CXA_MQTT_CLIENT_MAXNUM_LISTENERS			2
 #endif
 
 #ifndef CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS
