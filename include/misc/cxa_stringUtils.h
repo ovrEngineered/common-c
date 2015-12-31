@@ -84,6 +84,8 @@ bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, 
 bool cxa_stringUtils_equals(const char* str1In, const char* str2In);
 bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
 
+bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn);
+
 cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn);
 
 const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn);

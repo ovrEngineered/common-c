@@ -232,6 +232,42 @@ bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In)
 }
 
 
+bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(stringToReplaceIn);
+	cxa_assert(replacementStringIn);
+
+	// make sure our sizes are appropriate
+	size_t targetStringLen_bytes = strlen(targetStringIn);
+	size_t stringToReplaceLen_bytes = strlen(stringToReplaceIn);
+	size_t replacementStringLen_bytes = strlen(replacementStringIn);
+	if( (targetStringLen_bytes < stringToReplaceLen_bytes) ||
+		(stringToReplaceLen_bytes == 0) ||
+		(replacementStringLen_bytes > stringToReplaceLen_bytes) ) return false;
+
+	// find the first occurrence
+	char* firstOccurrence = strstr(targetStringIn, stringToReplaceIn);
+	if( firstOccurrence == NULL ) return false;
+
+	// got the first occurrence...adjust the string size first (if needed...can only be smaller)
+	size_t adjSize_bytes = stringToReplaceLen_bytes - replacementStringLen_bytes;
+	if( adjSize_bytes > 0 )
+	{
+		// need to remove some bytes
+		memmove((void*)firstOccurrence, (void*)(firstOccurrence+adjSize_bytes),
+				targetStringLen_bytes - (firstOccurrence - targetStringIn) - adjSize_bytes);
+	}
+
+	// now do the actual replacement
+	for( size_t i = 0; i < replacementStringLen_bytes; i++ )
+	{
+		firstOccurrence[i] = replacementStringIn[i];
+	}
+	return true;
+}
+
+
 cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn)
 {
 	cxa_stringUtils_parseResult_t retVal = {.dataType=CXA_STRINGUTILS_DATATYPE_UNKNOWN};
