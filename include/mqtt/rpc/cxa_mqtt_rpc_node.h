@@ -49,8 +49,8 @@
 	#define CXA_MQTT_RPCNODE_MAXLEN_METHOD_BYTES			24
 #endif
 
-#define CXA_MQTT_RPCNODE_REQ_PREFIX							"::"
-#define CXA_MQTT_RPCNODE_RESP_PREFIX						"/rpcResp"
+#define CXA_MQTT_RPCNODE_REQ_PREFIX							"->"
+#define CXA_MQTT_RPCNODE_RESP_PREFIX						"<-"
 
 
 // ******** global type definitions *********
