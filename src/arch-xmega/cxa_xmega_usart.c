@@ -32,12 +32,16 @@
 
 
 // ******** local macro definitions ********
-#define RTS_CTS_OK			0
-#define RTS_CTS_STOP		1
-#define USART0_TX_PIN		3
-#define USART0_RX_PIN		2
-#define USART1_TX_PIN		7
-#define USART1_RX_PIN		6
+#define RTS_CTS_OK								0
+#define RTS_CTS_STOP							1
+#define USART0_TX_PIN							3
+#define USART0_RX_PIN							2
+#define USART1_TX_PIN							7
+#define USART1_RX_PIN							6
+
+#define TXEN_TURNON_DELAY_MS					1
+#define TXEN_TURNOFF_DELAY_MS					1
+
 
 #ifndef CXA_XMEGA_USART_RX_INT_LEVEL
 	#define CXA_XMEGA_USART_RX_INT_LEVEL		USART_RXCINTLVL_MED_gc
@@ -57,7 +61,7 @@ typedef struct
 
 
 // ******** local function prototypes ********
-static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn, cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn);
+static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn, cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn, cxa_gpio_t *const txEnableIn);
 
 static void usart_moduleClock_enable(cxa_xmega_usart_t *const usartIn);
 static void usart_connectToPort(cxa_xmega_usart_t *const usartIn);
@@ -93,19 +97,26 @@ static avrUsart_cxaUsart_map_entry_t avrCxaUsartMap[] = {
 // ******** global function implementations ********
 void cxa_xmega_usart_init_noHH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn)
 {
-	commonInit(usartIn, avrUsartIn, baudRate_bpsIn, NULL, NULL);
+	commonInit(usartIn, avrUsartIn, baudRate_bpsIn, NULL, NULL, NULL);
 }
 
 
 void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn,
 	cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn)
 {
-	commonInit(usartIn, avrUsartIn, baudRate_bpsIn, rtsIn, ctsIn);
+	commonInit(usartIn, avrUsartIn, baudRate_bpsIn, rtsIn, ctsIn, NULL);
+}
+
+
+void cxa_xmega_usart_init_txEnable(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn,
+								   cxa_gpio_t *const txEnableIn)
+{
+	commonInit(usartIn, avrUsartIn, baudRate_bpsIn, NULL, NULL, txEnableIn);
 }
 
 
 // ******** local function implementations ********
-static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn, cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn)
+static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn, cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn, cxa_gpio_t *const txEnableIn)
 {
 	cxa_assert(usartIn);
 	cxa_assert(avrUsartIn);
@@ -114,6 +125,7 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 	usartIn->avrUsart = avrUsartIn;
 	usartIn->cts = ctsIn;
 	usartIn->rts = rtsIn;
+	usartIn->txEnable = txEnableIn;
 	
 	// setup our handshaking pins
 	usartIn->isHandshakingEnabled = (usartIn->cts != NULL) && (usartIn->rts != NULL);
@@ -126,6 +138,14 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 		cxa_gpio_setDirection(usartIn->rts, CXA_GPIO_DIR_OUTPUT);
 	}
 	
+	// setup our txEnable pin
+	usartIn->isTxEnableEnabled = (usartIn->txEnable != NULL);
+	if( usartIn->isTxEnableEnabled )
+	{
+		// initially set to 0
+		cxa_gpio_setValue(usartIn->txEnable, 0);
+	}
+
 	// setup our fifos
 	cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void *const)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
 	cxa_fixedFifo_init(&usartIn->txFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->txFifo_raw), (void *const)usartIn->txFifo_raw, sizeof(usartIn->txFifo_raw));
@@ -369,6 +389,12 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 		char txChar;
 		if( cxa_fixedFifo_dequeue(&usartIn->txFifo, &txChar) )
 		{
+			if( usartIn->txEnable )
+			{
+				cxa_gpio_setValue(usartIn->txEnable, 1);
+				cxa_delay_ms(TXEN_TURNON_DELAY_MS);
+			}
+
 			usartIn->avrUsart->DATA = txChar;
 			usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xFC) | CXA_XMEGA_USART_TX_INT_LEVEL;
 		}
@@ -453,6 +479,11 @@ static inline void txIsr(USART_t *const avrUsartIn)
 	{
 		// no more data...stop interrupts
 		cxaUsartIn->avrUsart->CTRLA &= 0xFC;
+		if( cxaUsartIn->txEnable )
+		{
+			cxa_delay_ms(TXEN_TURNOFF_DELAY_MS);
+			cxa_gpio_setValue(cxaUsartIn->txEnable, 0);
+		}
 	}
 }
 
