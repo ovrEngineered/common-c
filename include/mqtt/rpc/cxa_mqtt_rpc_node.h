@@ -51,6 +51,7 @@
 
 #define CXA_MQTT_RPCNODE_REQ_PREFIX							"->"
 #define CXA_MQTT_RPCNODE_RESP_PREFIX						"<-"
+#define CXA_MQTT_RPCNODE_STATE_TOPIC						"_state"
 
 
 // ******** global type definitions *********
@@ -145,15 +146,21 @@ void cxa_mqtt_rpc_node_addMethod(cxa_mqtt_rpc_node_t *const nodeIn, char *const 
 
 
 /**
- * @protected
+ * @public
  */
-void cxa_mqtt_rpc_node_setCatchAll(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_cb_catchall_t cb_catchallIn, void *userVarIn);
+bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn, char *const methodNameIn, char *const pathToNodeIn, cxa_fixedByteBuffer_t *const paramsIn);
 
 
 /**
  * @public
  */
 bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn, void* dataIn, size_t dataSize_bytesIn);
+
+
+/**
+ * @protected
+ */
+void cxa_mqtt_rpc_node_setCatchAll(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_cb_catchall_t cb_catchallIn, void *userVarIn);
 
 
 /**

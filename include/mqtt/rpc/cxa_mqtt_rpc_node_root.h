@@ -46,6 +46,8 @@ struct cxa_mqtt_rpc_node_root
 
 	char prefix[CXA_MQTT_RPC_NODE_ROOT_MAX_PREFIX_LEN_BYTES];
 	size_t prefixLen_bytes;
+
+	uint16_t currRequestId;
 };
 
 

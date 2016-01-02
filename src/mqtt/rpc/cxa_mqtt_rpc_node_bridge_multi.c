@@ -213,6 +213,10 @@ static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqt
 	char* topicName;
 	uint16_t topicLen_bytes;
 	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicLen_bytes) ) return;
+
+	// this _may_ be our client state message...if so, we don't need to do anything
+	if( cxa_stringUtils_endsWith_withLengths(topicName, topicLen_bytes, CXA_MQTT_RPCNODE_STATE_TOPIC) ) return;
+
 	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "got PUBLISH '", topicName, topicLen_bytes, "'");
 
 	// ensure that our publish topic actually matches one of our remote nodes
@@ -229,15 +233,12 @@ static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqt
 	}
 	if( targetRne == NULL ) return;
 
-	// remember whether this is a request
-	bool isResponse = cxa_stringUtils_startsWith(topicName, CXA_MQTT_RPCNODE_RESP_PREFIX);
-
-	// we'll need to do some unmapping to get the topic name inline with our node structure
-	char* startOfClientId;
-	if( (startOfClientId = strstr(topicName, targetRne->clientId)) == NULL ) return;
-
 	// ok...get rid of everything up to, and including, the clientId (+1 is for separator)
-	if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, startOfClientId+strlen(targetRne->clientId)+1) ) return;
+	if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, topicName+strlen(targetRne->clientId)+1) ) return;
+
+	// prepend our mapped name first
+	if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
+		!cxa_mqtt_message_publish_topicName_prependCString(msgIn, targetRne->mappedName) ) return;
 
 	// now we need to prepend our node structure
 	cxa_mqtt_rpc_node_t* currNode = &nodeIn->super.super;
@@ -254,8 +255,7 @@ static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqt
 		currNode = currNode->parentNode;
 	}
 
-	// if we made it here, we should have a proper topic name (potentially without the response prefix)
-	if( isResponse && !cxa_mqtt_message_publish_topicName_prependCString(msgIn, CXA_MQTT_RPCNODE_RESP_PREFIX) ) return;
+	// if we made it here, we should have a proper topic name
 
 	// now that everything is unmapped...toss to the root node for handling
 	cxa_mqtt_rpc_node_root_t* rootNode = cxa_mqtt_rpc_node_getRootNode(&nodeIn->super.super);

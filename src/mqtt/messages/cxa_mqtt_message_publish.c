@@ -65,6 +65,7 @@ bool cxa_mqtt_message_publish_init(cxa_mqtt_message_t *const msgIn, bool dupIn, 
 	// payload
 	if( !cxa_linkedField_initChild(&msgIn->fields_publish.field_payload, prevField, 0) ) return false;
 	if( (payloadIn != NULL) && !cxa_linkedField_append(&msgIn->fields_publish.field_payload, payloadIn, payloadSize_bytesIn) ) return false;
+
 	msgIn->areFieldsConfigured = true;
 	return true;
 }

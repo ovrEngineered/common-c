@@ -82,7 +82,6 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 
 	// setup some initial values
 	clientIn->hasSentConnectPacket = false;
-	clientIn->currPacketId = 0;
 	clientIn->keepAliveTimeout_s = keepAliveTimeout_sIn;
 	cxa_timeDiff_init(&clientIn->td_timeout, timeBaseIn, true);
 	cxa_timeDiff_init(&clientIn->td_sendKeepAlive, timeBaseIn, true);
@@ -221,21 +220,17 @@ bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLeve
 	cxa_assert(clientIn);
 	cxa_assert(topicNameIn);
 
-	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return false;
-
-	cxa_logger_trace(&clientIn->logger, "publish '%s' %d bytes", topicNameIn, payloadLen_bytesIn);
-
 	cxa_mqtt_message_t* msg = NULL;
-	bool retVal = true;
 	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
-			!cxa_mqtt_message_publish_init(msg, false, qosIn, retainIn, topicNameIn, clientIn->currPacketId++, payloadIn, payloadLen_bytesIn) ||
-			!cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msg)) )
+		!cxa_mqtt_message_publish_init(msg, false, qosIn, retainIn, topicNameIn, clientIn->currPacketId++, payloadIn, payloadLen_bytesIn) )
 	{
-		cxa_logger_warn(&clientIn->logger, "publish reserve/initialize/send failed, dropped");
-		retVal = false;
+		cxa_logger_warn(&clientIn->logger, "publish reserve/initialize failed, dropped");
+		if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+		return false;
 	}
-	if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 
+	bool retVal = cxa_mqtt_client_publish_message(clientIn, msg);
+	cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 	return retVal;
 }
 
@@ -245,7 +240,13 @@ bool cxa_mqtt_client_publish_message(cxa_mqtt_client_t *const clientIn, cxa_mqtt
 	cxa_assert(clientIn);
 	cxa_assert(msgIn);
 
-	cxa_logger_trace(&clientIn->logger, "publish message");
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return false;
+
+	char *topicName;
+	size_t topicNameLen_bytes;
+	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return false;
+
+	cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_INFO, "publish '", topicName, topicNameLen_bytes, "'");
 	bool retVal = true;
 	if( !cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msgIn)) )
 	{
@@ -557,7 +558,7 @@ static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	size_t payloadSize_bytes;
 	if( cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) && cxa_mqtt_message_publish_getPayload(msgIn, &payload, &payloadSize_bytes) )
 	{
-		cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_TRACE, "got PUBLISH '", topicName, topicNameLen_bytes, "'");
+		cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_INFO, "got PUBLISH '", topicName, topicNameLen_bytes, "'");
 
 		cxa_array_iterate(&clientIn->subscriptions, currSubscription, cxa_mqtt_client_subscriptionEntry_t)
 		{

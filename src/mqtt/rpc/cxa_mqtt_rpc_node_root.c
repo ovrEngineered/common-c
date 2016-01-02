@@ -30,7 +30,6 @@
 
 
 // ******** local macro definitions ********
-#define CLIENT_STATE_TOPIC			"_state"
 
 
 // ******** local type definitions ********
@@ -55,6 +54,7 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 
 	// save our references
 	nodeIn->mqttClient = clientIn;
+	nodeIn->currRequestId = 0;
 
 	// initialize our super class
 	va_list varArgs;
@@ -78,7 +78,7 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	stateTopic[0] = 0;
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->prefix, sizeof(stateTopic)) );
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
-	cxa_assert( cxa_stringUtils_concat(stateTopic, "/"CLIENT_STATE_TOPIC, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/"CXA_MQTT_RPCNODE_STATE_TOPIC, sizeof(stateTopic)) );
 	cxa_mqtt_client_setWillMessage(nodeIn->mqttClient, CXA_MQTT_QOS_ATMOST_ONCE, true, stateTopic, ((uint8_t[]){0x00}), 1);
 
 	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
@@ -120,7 +120,7 @@ void cxa_mqtt_rpc_node_root_handleInternalPublish(cxa_mqtt_rpc_node_root_t *cons
 	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicLen_bytes) ) return;
 
 	// see if it's a response (if so, we need to do some extra processing)
-	if( cxa_stringUtils_startsWith(topicName, CXA_MQTT_RPCNODE_RESP_PREFIX) )
+	if( cxa_stringUtils_contains_withLengths(topicName, topicLen_bytes, CXA_MQTT_RPCNODE_RESP_PREFIX, strlen(CXA_MQTT_RPCNODE_RESP_PREFIX)) )
 	{
 		// response...see if we have anyone locally looking for this response
 		cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_TRACE, "got response '", topicName, topicLen_bytes, "'");
@@ -128,6 +128,12 @@ void cxa_mqtt_rpc_node_root_handleInternalPublish(cxa_mqtt_rpc_node_root_t *cons
 		// if we made it here, we don't have anyone locally looking for this response...
 		// pass up through our client (maybe someone there is looking for it)
 		cxa_logger_trace(&nodeIn->super.logger, "unknown response, forwarding");
+		cxa_mqtt_client_publish_message(nodeIn->mqttClient, msgIn);
+	}
+	else
+	{
+		// not really sure what to do with this message...so just forward it
+		cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_TRACE, "forwarding up '", topicName, topicLen_bytes, "'");
 		cxa_mqtt_client_publish_message(nodeIn->mqttClient, msgIn);
 	}
 }
@@ -144,7 +150,7 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 	stateTopic[0] = 0;
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->prefix, sizeof(stateTopic)) );
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
-	cxa_assert( cxa_stringUtils_concat(stateTopic, "/"CLIENT_STATE_TOPIC, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/"CXA_MQTT_RPCNODE_STATE_TOPIC, sizeof(stateTopic)) );
 	cxa_mqtt_client_publish(clientIn, CXA_MQTT_QOS_ATMOST_ONCE, true, stateTopic, ((uint8_t[]){0x01}), 1);
 }
 
@@ -157,7 +163,7 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 	cxa_assert(nodeIn);
 
 	// this _may_ be our client state message...if so, we don't need to do anything
-	if( cxa_stringUtils_endsWith_withLengths(topicNameIn, topicNameLen_bytesIn, CLIENT_STATE_TOPIC) ) return;
+	if( cxa_stringUtils_endsWith_withLengths(topicNameIn, topicNameLen_bytesIn, CXA_MQTT_RPCNODE_STATE_TOPIC) ) return;
 
 	// this _may_ also be a response...if so, we don't need to do anything (for now)
 	if( cxa_stringUtils_contains_withLengths(topicNameIn, topicNameLen_bytesIn, CXA_MQTT_RPCNODE_RESP_PREFIX, strlen(CXA_MQTT_RPCNODE_RESP_PREFIX)) ) return;
@@ -174,7 +180,7 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 	bool hasParams = (payloadIn != NULL);
 	if( hasParams ) cxa_fixedByteBuffer_init_inPlace(&fbb_params, payloadLen_bytesIn, payloadIn, payloadLen_bytesIn);
 
-	// after this point, we'll be sending a response...so get it ready
+	// after this point, we'll be sending a response...so get it ready for
 	// our return parameters +1 byte for return success
 	cxa_fixedByteBuffer_t fbb_retParams;
 	uint8_t fbb_retParams_raw[CXA_MQTT_RPCNODE_MAXLEN_RETURNPARAMS_BYTES];
