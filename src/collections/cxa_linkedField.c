@@ -306,7 +306,7 @@ bool cxa_linkedField_get_lengthPrefixedField_uint16BE_inPlace(cxa_linkedField_t 
 	if( (indexIn + 2 + len_bytes) > cxa_linkedField_getSize_bytes(fbbLfIn) ) return false;
 
 	void* dataPtr = cxa_linkedField_get_pointerToIndex(fbbLfIn, indexIn+2);
-	if( dataPtr == NULL ) return false;
+	if( (len_bytes > 0) && (dataPtr == NULL) ) return false;
 
 	if( dataLen_bytesOut != NULL ) *dataLen_bytesOut = len_bytes;
 	if( dataOut != NULL) *dataOut = dataPtr;
