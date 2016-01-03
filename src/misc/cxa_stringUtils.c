@@ -194,17 +194,23 @@ bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, 
 
 bool cxa_stringUtils_equals(const char* str1In, const char* str2In)
 {
-	// if one is false and the other isn't, we can't compare
+	return cxa_stringUtils_equals_withLengths(str1In, strlen(str1In), str2In, strlen(str2In));
+}
+
+
+bool cxa_stringUtils_equals_withLengths(const char* str1In, size_t str1Len_bytes, const char* str2In, size_t str2Len_bytes)
+{
+	// if one is NULL and the other isn't, we can't compare
 	if( (str1In == NULL) != (str2In == NULL) ) return false;
 	// if they're both NULL, they're equal
 	if( (str1In == NULL) && (str2In == NULL) ) return true;
 
 	// must have the same length
-	if( strlen(str1In) != strlen(str2In) ) return false;
+	if( str1Len_bytes != str2Len_bytes ) return false;
 
 	// if we made it here, they have the same length...we're safe
 	// to use strcmp
-	return (strcmp(str1In, str2In) == 0);
+	return (strncmp(str1In, str2In, str1Len_bytes) == 0);
 }
 
 
@@ -235,7 +241,7 @@ ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t t
 
 	for( size_t i = 0; i < targetStringLen_bytesIn; i++ )
 	{
-		if( (i + elementLen_bytesIn) > targetStringLen_bytesIn ) return false;
+		if( (i + elementLen_bytesIn) > targetStringLen_bytesIn ) break;
 
 		if( strncmp(&targetStringIn[i], elementIn, elementLen_bytesIn) == 0 ) return i;
 	}

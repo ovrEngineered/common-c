@@ -85,6 +85,7 @@ bool cxa_stringUtils_concat_withLengths(char *targetStringIn, size_t maxSizeTarg
 bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, size_t* stringLen_bytesOut);
 
 bool cxa_stringUtils_equals(const char* str1In, const char* str2In);
+bool cxa_stringUtils_equals_withLengths(const char* str1In, size_t str1Len_bytes, const char* str2In, size_t str2Len_bytes);
 bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
 
 ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
