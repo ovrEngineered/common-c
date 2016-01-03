@@ -21,7 +21,6 @@
 
 // ******** includes ********
 #include <cxa_network_factory.h>
-#include <cxa_timeBase.h>
 #include <cxa_esp8266_network_tcpClient.h>
 #include <cxa_esp8266_network_tcpServer.h>
 
@@ -33,7 +32,7 @@
 
 
 // ******** global function prototypes ********
-void cxa_esp8266_network_factory_init(cxa_timeBase_t *const timeBaseIn);
+void cxa_esp8266_network_factory_init(void);
 cxa_esp8266_network_tcpClient_t* cxa_esp8266_network_factory_getTcpClientByEspConn(struct espconn *const connIn);
 cxa_esp8266_network_tcpServer_t* cxa_esp8266_network_factory_getTcpServerByListeningPortNum(int portNumIn);
 void cxa_esp8266_network_factory_update(void);

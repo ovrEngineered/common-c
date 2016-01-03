@@ -44,7 +44,7 @@
 #endif
 
 #ifndef CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES
-	#define CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES		32
+	#define CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES		38
 #endif
 
 #ifndef CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES
@@ -122,7 +122,6 @@ struct cxa_mqtt_client
 	cxa_mqtt_client_subscriptionEntry_t subscriptions_raw[CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS];
 
 	cxa_stateMachine_t stateMachine;
-	cxa_timeBase_t *timeBase;
 	cxa_timeDiff_t td_timeout;
 	cxa_timeDiff_t td_sendKeepAlive;
 	cxa_timeDiff_t td_receiveKeepAlive;
@@ -146,7 +145,7 @@ struct cxa_mqtt_client
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn);
+void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, char *const clientIdIn);
 
 void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
 									char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn);

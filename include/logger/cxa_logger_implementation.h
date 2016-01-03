@@ -29,10 +29,6 @@
 #include <cxa_logger_header.h>
 #include <cxa_ioStream.h>
 
-#ifdef CXA_LOGGER_TIME_ENABLE
-#include <cxa_timeBase.h>
-#endif
-
 
 // ******** global macro definitions ********
 #define CXA_LOG_LEVEL_NONE				0
@@ -95,16 +91,6 @@
  * 		be used to output logging statements
  */
 void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn);
-
-#ifdef CXA_LOGGER_TIME_ENABLE
-/**
- * @public
- * @brief If CXA_LOGGER_TIME_ENABLE is defined, sets the timebase
- * 		whose value will be pre-pended to every logging statement
- * @param nameIn the pre-initialized time base
- */
-void cxa_logger_setGlobalTimeBase(cxa_timeBase_t *const tbIn);
-#endif
 
 /**
  * @public

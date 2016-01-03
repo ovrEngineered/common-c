@@ -69,14 +69,13 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVar
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, cxa_timeBase_t *const timeBaseIn)
+void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn)
 {
 	cxa_assert(mppIn);
 	cxa_assert(ioStreamIn);
-	cxa_assert(timeBaseIn);
 
 	// initialize our super class
-	cxa_protocolParser_init(&mppIn->super, ioStreamIn, buffIn, timeBaseIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
+	cxa_protocolParser_init(&mppIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
 
 	// set some default values
 	mppIn->remainingBytesToReceive = 0;
@@ -225,7 +224,7 @@ static void rxStateCb_waitFixedHeader1_state(cxa_stateMachine_t *const smIn, voi
 			if( cxa_fixedByteBuffer_append_uint8(mppIn->super.currBuffer, rxByte) )
 			{
 				// start our reception timeout timeDiff
-				if( mppIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
+				cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
 
 				cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_WAIT_REMAINING_LEN);
 				return;
@@ -245,7 +244,7 @@ static void rxStateCb_waitRemainingLen_state(cxa_stateMachine_t *const smIn, voi
 	if( cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
 		// reset our reception timeout timeDiff
-		if( mppIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
+		cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
 
 		// add to our buffer
 		if( !cxa_fixedByteBuffer_append_uint8(mppIn->super.currBuffer, rxByte) )
@@ -275,7 +274,7 @@ static void rxStateCb_waitRemainingLen_state(cxa_stateMachine_t *const smIn, voi
 	}
 
 	// check to see if we've had a reception timeout
-	if( mppIn->super.isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&mppIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
+	if( cxa_timeDiff_isElapsed_ms(&mppIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
 	{
 		cxa_protocolParser_notify_receptionTimeout(&mppIn->super);
 		cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_WAIT_FIXEDHEADER_1);
@@ -301,7 +300,7 @@ static void rxStateCb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *
 	if( cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
 		// reset our reception timeout timeDiff
-		if( mppIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
+		cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
 
 		// add to our buffer
 		if( !cxa_fixedByteBuffer_append_uint8(mppIn->super.currBuffer, rxByte) )
@@ -314,7 +313,7 @@ static void rxStateCb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *
 	}
 
 	// check to see if we've had a reception timeout
-	if( mppIn->super.isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&mppIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
+	if( cxa_timeDiff_isElapsed_ms(&mppIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
 	{
 		cxa_protocolParser_notify_receptionTimeout(&mppIn->super);
 		cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_WAIT_FIXEDHEADER_1);

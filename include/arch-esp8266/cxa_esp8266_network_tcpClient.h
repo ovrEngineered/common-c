@@ -86,7 +86,7 @@ struct cxa_esp8266_network_tcpClient
 /**
  * @private
  */
-void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn, cxa_timeBase_t* const timeBaseIn);
+void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn);
 
 
 /**

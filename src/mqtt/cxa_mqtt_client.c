@@ -69,30 +69,28 @@ static bool doesTopicMatchFilter(char* topicIn, char* filterIn);
 
 
 // ******** global function implementations ********
-void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, cxa_timeBase_t *const timeBaseIn, char *const clientIdIn)
+void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, char *const clientIdIn)
 {
 	cxa_assert(clientIn);
 	cxa_assert(iosIn);
-	cxa_assert(timeBaseIn);
 	cxa_assert(clientIdIn);
 
 	// save our references
-	clientIn->timeBase = timeBaseIn;
 	clientIn->clientId = clientIdIn;
 
 	// setup some initial values
 	clientIn->hasSentConnectPacket = false;
 	clientIn->keepAliveTimeout_s = keepAliveTimeout_sIn;
-	cxa_timeDiff_init(&clientIn->td_timeout, timeBaseIn, true);
-	cxa_timeDiff_init(&clientIn->td_sendKeepAlive, timeBaseIn, true);
-	cxa_timeDiff_init(&clientIn->td_receiveKeepAlive, timeBaseIn, true);
+	cxa_timeDiff_init(&clientIn->td_timeout, true);
+	cxa_timeDiff_init(&clientIn->td_sendKeepAlive, true);
+	cxa_timeDiff_init(&clientIn->td_receiveKeepAlive, true);
 
 	// get a message (and buffer) for our protocol parser
 	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getFreeMessage_empty();
 	cxa_assert(msg);
 
 	// setup our protocol parser
-	cxa_protocolParser_mqtt_init(&clientIn->mpp, iosIn, msg->buffer, timeBaseIn);
+	cxa_protocolParser_mqtt_init(&clientIn->mpp, iosIn, msg->buffer);
 	cxa_protocolParser_addPacketListener(&clientIn->mpp.super, protoParseCb_onPacketReceived, (void*)clientIn);
 
 	// setup our logger
@@ -243,7 +241,7 @@ bool cxa_mqtt_client_publish_message(cxa_mqtt_client_t *const clientIn, cxa_mqtt
 	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return false;
 
 	char *topicName;
-	size_t topicNameLen_bytes;
+	uint16_t topicNameLen_bytes;
 	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return false;
 
 	cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_INFO, "publish '", topicName, topicNameLen_bytes, "'");
@@ -553,12 +551,16 @@ static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 
 	// iterate through our subscriptions to figure out where this goes
 	char *topicName;
-	void *payload;
 	uint16_t topicNameLen_bytes;
+	cxa_linkedField_t* lf_payload;
+	void *payload;
 	size_t payloadSize_bytes;
-	if( cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) && cxa_mqtt_message_publish_getPayload(msgIn, &payload, &payloadSize_bytes) )
+	if( cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) && cxa_mqtt_message_publish_getPayload(msgIn, &lf_payload) )
 	{
 		cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_INFO, "got PUBLISH '", topicName, topicNameLen_bytes, "'");
+
+		payloadSize_bytes = cxa_linkedField_getSize_bytes(lf_payload);
+		payload = (payloadSize_bytes > 0) ? cxa_linkedField_get_pointerToIndex(lf_payload, 0) : NULL;
 
 		cxa_array_iterate(&clientIn->subscriptions, currSubscription, cxa_mqtt_client_subscriptionEntry_t)
 		{

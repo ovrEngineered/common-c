@@ -49,7 +49,7 @@ struct cxa_protocolParser_cleProto
 
 
 // ******** global function prototypes ********
-void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePpIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, cxa_timeBase_t *const timeBaseIn);
+void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePpIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn);
 
 
 /**

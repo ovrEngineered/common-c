@@ -35,13 +35,12 @@
 
 
 // ******** global function implementations ********
-void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn, cxa_timeBase_t *const timeBaseIn,
+void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn,
 							 cxa_network_tcpClient_cb_connectToHost_t cb_connToHostIn,
 							 cxa_network_tcpClient_cb_disconnectFromHost_t cb_disconnectIn,
 							 cxa_network_tcpClient_cb_isConnected_t cb_isConnected)
 {
 	cxa_assert(netClientIn);
-	cxa_assert(timeBaseIn);
 	cxa_assert(cb_connToHostIn);
 	cxa_assert(cb_disconnectIn);
 	cxa_assert(cb_isConnected);
@@ -55,7 +54,7 @@ void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn, cxa_
 	cxa_logger_init(&netClientIn->logger, "netClient");
 
 	// setup our timediff for future use
-	cxa_timeDiff_init(&netClientIn->td_genPurp, timeBaseIn, true);
+	cxa_timeDiff_init(&netClientIn->td_genPurp, true);
 
 	// setup our listener array
 	cxa_array_initStd(&netClientIn->listeners, netClientIn->listeners_raw);

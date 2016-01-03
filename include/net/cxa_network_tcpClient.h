@@ -115,7 +115,7 @@ struct cxa_network_tcpClient
 /**
  * @private
  */
-void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn, cxa_timeBase_t *const timeBaseIn,
+void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn,
 							 cxa_network_tcpClient_cb_connectToHost_t cb_connToHostIn,
 							 cxa_network_tcpClient_cb_disconnectFromHost_t cb_disconnectIn,
 							 cxa_network_tcpClient_cb_isConnected_t cb_isConnected);

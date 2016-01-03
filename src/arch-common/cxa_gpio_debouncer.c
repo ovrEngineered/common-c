@@ -39,12 +39,11 @@
 
 
 // ******** global function implementations ********
-void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t *const gpioIn, cxa_timeBase_t *tbIn)
+void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t *const gpioIn)
 {
 	cxa_assert(debounceIn);
 	cxa_assert(gpioIn);
 	cxa_assert(cxa_gpio_getDirection(gpioIn) == CXA_GPIO_DIR_INPUT);
-	cxa_assert(tbIn);
 
 	// save our references
 	debounceIn->gpio = gpioIn;
@@ -54,7 +53,7 @@ void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t 
 	debounceIn->isInTimeoutPeriod = false;
 
 	// setup our timediff
-	cxa_timeDiff_init(&debounceIn->td_debounce, tbIn, false);
+	cxa_timeDiff_init(&debounceIn->td_debounce, false);
 
 	// setup our listener array
 	cxa_array_initStd(&debounceIn->listeners, debounceIn->listeners_raw);

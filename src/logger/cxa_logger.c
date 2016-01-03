@@ -24,6 +24,7 @@
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 #include <cxa_stringUtils.h>
+#include <cxa_timeBase.h>
 
 
 // ******** local macro definitions ********
@@ -50,10 +51,6 @@ static bool isSysLogInit = false;
 static cxa_ioStream_t* ioStream = NULL;
 static size_t largestloggerName_bytes = 0;
 
-#ifdef CXA_LOGGER_TIME_ENABLE
-static cxa_timeBase_t* timeBase = NULL;
-#endif
-
 
 // ******** global function implementations ********
 void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
@@ -63,16 +60,6 @@ void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 	ioStream = ioStreamIn;
 	cxa_logger_vlog(&sysLog, CXA_LOG_LEVEL_INFO, "logging ioStream @ %p", ioStreamIn);
 }
-
-
-#ifdef CXA_LOGGER_TIME_ENABLE
-void cxa_logger_setGlobalTimeBase(cxa_timeBase_t *const tbIn)
-{
-	checkSysLogInit();
-
-	timeBase = tbIn;
-}
-#endif
 
 
 void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
@@ -242,12 +229,9 @@ static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
 
 	// print the time (if enabled)
 	#ifdef CXA_LOGGER_TIME_ENABLE
-		if( timeBase != NULL )
-		{
-			snprintf(buff, sizeof(buff), "%-8lX ", cxa_timeBase_getCount_us(timeBase));
-			// 32-bit integer +space
-			writeField(buff, 9);
-		}
+		snprintf(buff, sizeof(buff), "%-8lX ", cxa_timeBase_getCount_us());
+		// 32-bit integer +space
+		writeField(buff, 9);
 	#endif
 
 

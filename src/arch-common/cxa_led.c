@@ -33,17 +33,16 @@
 
 
 // ******** global function implementations ********
-void cxa_led_init(cxa_led_t *const ledIn, cxa_gpio_t *const gpioIn, cxa_timeBase_t *const timeBaseIn)
+void cxa_led_init(cxa_led_t *const ledIn, cxa_gpio_t *const gpioIn)
 {
 	cxa_assert(ledIn);
 	cxa_assert(gpioIn);
-	cxa_assert(timeBaseIn);
 
 	// save our refences
 	ledIn->gpio = gpioIn;
 
 	// setup our internal state
-	cxa_timeDiff_init(&ledIn->td_blink, timeBaseIn, true);
+	cxa_timeDiff_init(&ledIn->td_blink, true);
 	cxa_led_turnOff(ledIn);
 }
 

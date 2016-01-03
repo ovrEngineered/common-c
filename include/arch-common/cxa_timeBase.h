@@ -18,13 +18,12 @@
  * #### Example Usage: ####
  *
  * @code
- * cxa_<arch>_timeBase_t myTimeBase;
  * // initialization for architecture specific implementation
 *
  * ...
  *
  * // get the current time in microseconds
- * uint32_t currTime_us = cxa_timeBase_getCount_us(&myTimeBase);
+ * uint32_t currTime_us = cxa_timeBase_getCount_us();
  * @endcode
  *
  *
@@ -54,12 +53,6 @@
 
 
 // ******** global type definitions *********
-/**
- * @public
- * @brief "Forward" declaration of the cxa_timeBase_t object
- * (fully opaque type)
- */
-typedef struct cxa_timeBase cxa_timeBase_t;
 
 
 // ******** global function prototypes ********
@@ -67,11 +60,9 @@ typedef struct cxa_timeBase cxa_timeBase_t;
  * @public
  * @brief Returns the current monotonic, relative time in microseconds.
  *
- * @param[in] superIn pointer to a pre-initialized timeBase object 
- *
  * @return the current time of the timeBase, in microseconds
  */
-uint32_t cxa_timeBase_getCount_us(cxa_timeBase_t *const superIn);
+uint32_t cxa_timeBase_getCount_us(void);
 
 
 /**
@@ -80,11 +71,9 @@ uint32_t cxa_timeBase_getCount_us(cxa_timeBase_t *const superIn);
  * After reaching this value, the underlying timing mechanism will overflow to 0.
  * It is not possible to measure time periods longer than this value.
  *
- * @param[in] superIn pointer to a pre-initialized timeBase object 
- *
  * @return the maximum time period measureable by this timeBase
  */
-uint32_t cxa_timeBase_getMaxCount_us(cxa_timeBase_t *const superIn);
+uint32_t cxa_timeBase_getMaxCount_us(void);
 
 
 #endif // CXA_TIMEBASE_H_

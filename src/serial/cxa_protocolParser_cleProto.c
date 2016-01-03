@@ -63,13 +63,13 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVar
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePpIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, cxa_timeBase_t *const timeBaseIn)
+void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePpIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn)
 {
 	cxa_assert(clePpIn);
 	cxa_assert(ioStreamIn);
 
 	// initialize our super class
-	cxa_protocolParser_init(&clePpIn->super, ioStreamIn, buffIn, timeBaseIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
+	cxa_protocolParser_init(&clePpIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
 
 	// setup our state machine
 	cxa_stateMachine_init(&clePpIn->stateMachine, "protocolParser");
@@ -207,7 +207,7 @@ static void rxState_cb_wait0x80_state(cxa_stateMachine_t *const smIn, void *user
 				cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte);
 
 				// start our reception timeout timeDiff
-				if( clePpIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
+				cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
 
 				cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_0x81);
 				return;
@@ -228,7 +228,7 @@ static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *user
 	else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
 		// reset our reception timeout timeDiff
-		if( clePpIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
+		cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
 
 		if( rxByte == 0x81 )
 		{
@@ -246,7 +246,7 @@ static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *user
 	}
 
 	// check to see if we've had a reception timeout
-	if( clePpIn->super.isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&clePpIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
+	if( cxa_timeDiff_isElapsed_ms(&clePpIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
 	{
 		cxa_protocolParser_notify_receptionTimeout(&clePpIn->super);
 		cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_0x80);
@@ -266,7 +266,7 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 	else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
 		// reset our reception timeout timeDiff
-		if( clePpIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
+		cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
 
 		// just append the byte
 		cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte);
@@ -280,7 +280,7 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 	}
 
 	// check to see if we've had a reception timeout
-	if( clePpIn->super.isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&clePpIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
+	if( cxa_timeDiff_isElapsed_ms(&clePpIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
 	{
 			cxa_protocolParser_notify_receptionTimeout(&clePpIn->super);
 			cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_0x80);
@@ -316,7 +316,7 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 			else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 			{
 				// reset our reception timeout timeDiff
-				if( clePpIn->super.isReceptionTimeoutEnabled ) cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
+				cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
 
 				cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte);
 			}
@@ -330,7 +330,7 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 	}
 
 	// check to see if we've had a reception timeout
-	if( clePpIn->super.isReceptionTimeoutEnabled && cxa_timeDiff_isElapsed_ms(&clePpIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
+	if( cxa_timeDiff_isElapsed_ms(&clePpIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
 	{
 			cxa_protocolParser_notify_receptionTimeout(&clePpIn->super);
 			cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_0x80);

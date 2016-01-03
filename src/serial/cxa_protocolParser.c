@@ -42,7 +42,7 @@
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, cxa_timeBase_t *const timeBaseIn,
+void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn,
 							 cxa_protocolParser_scm_isInErrorState_t scm_isInErrorIn, cxa_protocolParser_scm_canSetBuffer_t scm_canSetBufferIn,
 							 cxa_protocolParser_scm_gotoIdle_t scm_gotoIdleIn, cxa_protocolParser_scm_writeBytes_t scm_writeBytesIn)
 {
@@ -61,9 +61,8 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *c
 	ppIn->scm_isInError = scm_isInErrorIn;
 	ppIn->scm_writeBytes = scm_writeBytesIn;
 
-	// setup our timediff (if enabled)
-	ppIn->isReceptionTimeoutEnabled = (timeBaseIn != NULL);
-	if( ppIn->isReceptionTimeoutEnabled ) cxa_timeDiff_init(&ppIn->td_timeout, timeBaseIn, false);
+	// setup our timediff
+	cxa_timeDiff_init(&ppIn->td_timeout, false);
 
 	// setup our logger
 	cxa_logger_init(&ppIn->logger, "protocolParser");

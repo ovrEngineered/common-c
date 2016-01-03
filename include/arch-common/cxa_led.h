@@ -30,7 +30,6 @@
 
 // ******** includes ********
 #include <cxa_gpio.h>
-#include <cxa_timeBase.h>
 #include <cxa_timeDiff.h>
 
 
@@ -58,7 +57,7 @@ typedef struct
 
 
 // ******** global function prototypes ********
-void cxa_led_init(cxa_led_t *const ledIn, cxa_gpio_t *const gpioIn, cxa_timeBase_t *const timeBaseIn);
+void cxa_led_init(cxa_led_t *const ledIn, cxa_gpio_t *const gpioIn);
 
 void cxa_led_turnOn(cxa_led_t *const ledIn);
 void cxa_led_turnOff(cxa_led_t *const ledIn);

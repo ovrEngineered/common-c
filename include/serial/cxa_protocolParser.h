@@ -37,7 +37,6 @@
 #include <cxa_array.h>
 #include <cxa_ioStream.h>
 #include <cxa_logger_header.h>
-#include <cxa_timeBase.h>
 #include <cxa_timeDiff.h>
 
 
@@ -152,7 +151,6 @@ struct cxa_protocolParser
 	cxa_array_t packetListeners;
 	cxa_protocolParser_packetListener_entry_t packetListeners_raw[CXA_PROTOCOLPARSER_MAXNUM_PACKETLISTENERS];
 
-	bool isReceptionTimeoutEnabled;
 	cxa_timeDiff_t td_timeout;
 
 	cxa_ioStream_t* ioStream;
@@ -170,7 +168,7 @@ struct cxa_protocolParser
 /**
  * @protected
  */
-void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, cxa_timeBase_t *const timeBaseIn,
+void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn,
 							 cxa_protocolParser_scm_isInErrorState_t scm_isInErrorIn, cxa_protocolParser_scm_canSetBuffer_t scm_canSetBufferIn,
 							 cxa_protocolParser_scm_gotoIdle_t scm_gotoIdleIn, cxa_protocolParser_scm_writeBytes_t scm_writeBytesIn);
 

@@ -24,6 +24,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <cxa_timeBase.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
@@ -69,7 +70,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn)
 
 
 #ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const char* nameIn, cxa_timeBase_t *const timeBaseIn)
+void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const char* nameIn)
 {
 	cxa_assert(smIn);
 	
@@ -86,7 +87,7 @@ void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const cha
 	#endif
 	
 	// setup our timediff for timed states
-	cxa_timeDiff_init(&smIn->td_timedTransition, timeBaseIn, true);
+	cxa_timeDiff_init(&smIn->td_timedTransition, true);
 	smIn->timedStatesEnabled = true;
 }
 #endif
