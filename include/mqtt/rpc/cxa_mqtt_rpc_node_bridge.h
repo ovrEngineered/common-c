@@ -57,10 +57,6 @@ typedef cxa_mqtt_rpc_node_bridge_authorization_t (*cxa_mqtt_rpc_node_bridge_cb_a
 																										uint8_t *const passwordIn, size_t passwordLen_bytesIn,
 																										void *userVarIn);
 
-/**
- * @protected
- */
-typedef void (*cxa_mqtt_rpc_node_bridge_scm_handlePublish_t)(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqtt_message_t *const msgIn);
 
 /**
  * @private
@@ -74,8 +70,6 @@ struct cxa_mqtt_rpc_node_bridge
 
 	cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_auth;
 	void* userVar_auth;
-
-	cxa_mqtt_rpc_node_bridge_scm_handlePublish_t scm_handlePublish;
 };
 
 
@@ -85,7 +79,6 @@ struct cxa_mqtt_rpc_node_bridge
  */
 void cxa_mqtt_rpc_node_bridge_vinit(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
 										 cxa_protocolParser_mqtt_t *const mppIn,
-										 cxa_mqtt_rpc_node_bridge_scm_handlePublish_t scm_handlePublishIn,
 										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
 										 const char *nameFmtIn, va_list varArgsIn);
 

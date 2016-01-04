@@ -26,6 +26,7 @@
 #include <cxa_mqtt_message_connack.h>
 #include <cxa_mqtt_message_pingResponse.h>
 #include <cxa_mqtt_message_publish.h>
+#include <cxa_mqtt_rpc_message.h>
 #include <cxa_mqtt_rpc_node_root.h>
 #include <cxa_stringUtils.h>
 
@@ -45,8 +46,10 @@ static cxa_mqtt_rpc_node_bridge_authorization_t bridgeAuthCb(char *const clientI
 															 uint8_t *const passwordIn, size_t passwordLen_bytesIn,
 															 void *userVarIn);
 
-static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const superIn, char *const remainingTopicIn, size_t remainingTopicLen_bytes, cxa_mqtt_message_t *const msgIn, void* userVarIn);
-static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqtt_message_t *const msgIn);
+static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_mqtt_message_t *const msgIn);
+static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
+										 char *const remainingTopicIn, uint16_t remainingTopicLen_bytesIn,
+										 cxa_mqtt_message_t *const msgIn);
 
 
 // ********  local variable declarations *********
@@ -54,7 +57,7 @@ static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqt
 
 // ******** global function implementations ********
 void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
-										 cxa_protocolParser_mqtt_t *const mppIn, const char *nameFmtIn, ...)
+										  cxa_protocolParser_mqtt_t *const mppIn, const char *nameFmtIn, ...)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(parentNodeIn);
@@ -64,9 +67,12 @@ void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *con
 	// initialize our super class
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
-	cxa_mqtt_rpc_node_bridge_vinit(&nodeIn->super, parentNodeIn, mppIn, scm_handlePublish, bridgeAuthCb, (void*)nodeIn, nameFmtIn, varArgs);
+	cxa_mqtt_rpc_node_bridge_vinit(&nodeIn->super, parentNodeIn, mppIn, bridgeAuthCb, (void*)nodeIn, nameFmtIn, varArgs);
 	va_end(varArgs);
-	cxa_mqtt_rpc_node_setCatchAll(&nodeIn->super.super, rpcCb_catchall, (void*)nodeIn);
+
+	// setup our subclass methods / overrides
+	nodeIn->super.super.scm_handleMessage_upstream = scm_handleMessage_upstream;
+	nodeIn->super.super.scm_handleMessage_downstream = scm_handleMessage_downstream;
 
 	// set some defaults
 	nodeIn->clientId[0] = 0;
@@ -133,41 +139,7 @@ static cxa_mqtt_rpc_node_bridge_authorization_t bridgeAuthCb(char *const clientI
 }
 
 
-static bool rpcCb_catchall(cxa_mqtt_rpc_node_t *const superIn, char *const remainingTopicIn, size_t remainingTopicLen_bytes, cxa_mqtt_message_t *const msgIn, void* userVarIn)
-{
-	cxa_mqtt_rpc_node_bridge_single_t* nodeIn = (cxa_mqtt_rpc_node_bridge_single_t*)superIn;
-	cxa_assert(nodeIn);
-
-	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "catchall: '", remainingTopicIn, remainingTopicLen_bytes, "'");
-
-	// make sure we have an authenticated client first
-	if( !nodeIn->hasClientAuthed )
-	{
-		cxa_logger_warn(&nodeIn->super.super.logger, "client not yet auth'd, dropping");
-		return false;
-	}
-
-	// go ahead and forward
-	cxa_logger_trace(&nodeIn->super.super.logger, "forwarding to single: '%s'", nodeIn->clientId);
-
-	if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, remainingTopicIn) ||
-		!cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
-		!cxa_mqtt_message_publish_topicName_prependCString(msgIn, nodeIn->clientId) )
-	{
-		cxa_logger_warn(&nodeIn->super.super.logger, "error remapping topic name, dropping");
-		return true;		// return true because we _should_ have handled this
-	}
-
-	// send the message
-	if( !cxa_protocolParser_writePacket(&nodeIn->super.mpp->super, cxa_mqtt_message_getBuffer(msgIn)) )
-	{
-		cxa_logger_warn(&nodeIn->super.super.logger, "error forwarding message");
-	}
-	return true;
-}
-
-
-static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqtt_message_t *const msgIn)
+static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_mqtt_message_t *const msgIn)
 {
 	cxa_mqtt_rpc_node_bridge_single_t* nodeIn = (cxa_mqtt_rpc_node_bridge_single_t*)superIn;
 	cxa_assert(nodeIn);
@@ -178,42 +150,104 @@ static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqt
 
 	// get our topic name and length
 	char* topicName;
-	uint16_t topicLen_bytes;
-	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicLen_bytes) ) return;
+	uint16_t topicNameLen_bytes;
+	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return;
 
 	// this _may_ be our client state message...if so, we don't need to do anything
-	if( cxa_stringUtils_endsWith_withLengths(topicName, topicLen_bytes, CXA_MQTT_RPCNODE_STATE_TOPIC) ) return;
+	if( cxa_stringUtils_endsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_CONNSTATE_TOPIC) ) return;
 
-	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "got PUBLISH '", topicName, topicLen_bytes, "'");
+	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
 
-	// if the topic is not "root-relative", we'll have some extra processing to do
-	if( !cxa_stringUtils_startsWith(topicName, "/") )
+	if( cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, "/", 1) ||
+			cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)))
 	{
+		// this message is addressed from the global root or the local root respectively...send it up!
+		if( superIn->parentNode != NULL ) superIn->parentNode->scm_handleMessage_upstream(superIn->parentNode, msgIn);
+	}
+	else
+	{
+		// we'll need to do some remapping here...
+
 		// ensure that our publish topic actually has our clientId in it
-		if( !cxa_stringUtils_contains_withLengths(topicName, topicLen_bytes, nodeIn->clientId, strlen(nodeIn->clientId)) ) return;
+		if( !cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, nodeIn->clientId, strlen(nodeIn->clientId)) ) return;
 
 		// ok...get rid of everything up to, and including, the clientId (+1 is for separator)
 		if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, topicName+strlen(nodeIn->clientId)+1) ) return;
 
 		// now we need to prepend our node structure
 		cxa_mqtt_rpc_node_t* currNode = &nodeIn->super.super;
-		while( currNode != NULL )
+		while( (currNode != NULL) && (currNode->parentNode != NULL) )
 		{
 			if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
 				!cxa_mqtt_message_publish_topicName_prependCString(msgIn, currNode->name) ) return;
 
-			// if we're the root node, we need to prepend our root prefix (if it exists)
-			if( currNode->isRootNode )
-			{
-				if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, cxa_mqtt_rpc_node_root_getPrefix((cxa_mqtt_rpc_node_root_t*)currNode)) ) return;
-			}
 			currNode = currNode->parentNode;
 		}
+		// and finally our local root prefix
+		if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX) ) return;
 
-		// if we made it here, we should have a proper topic name
+		// message should be now be mapped properly...hand upstream!
+		if( superIn->parentNode != NULL ) superIn->parentNode->scm_handleMessage_upstream(superIn->parentNode, msgIn);
+	}
+}
+
+
+static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
+										 char *const remainingTopicIn, uint16_t remainingTopicLen_bytesIn,
+										 cxa_mqtt_message_t *const msgIn)
+{
+	cxa_mqtt_rpc_node_bridge_single_t* nodeIn = (cxa_mqtt_rpc_node_bridge_single_t*)superIn;
+	cxa_assert(nodeIn);
+	cxa_assert(remainingTopicIn);
+	cxa_assert(msgIn);
+
+	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
+
+	// depends what type of message it is...
+	if( cxa_mqtt_rpc_message_isActionableRequest(msgIn, NULL, NULL, NULL, NULL) )
+	{
+		// this is a request
+
+		// make sure that the topic starts with our name
+		size_t nodeNameLen_bytes = strlen(superIn->name);
+		if( !cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) ) return false;
+
+		// so far so good...remove ourselves from the topic
+		char* currTopic = remainingTopicIn + nodeNameLen_bytes;
+		size_t currTopicLen_bytes = remainingTopicLen_bytesIn - nodeNameLen_bytes;
+
+		// if there is a remaining separator, remove it
+		if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, "/", 1) )
+		{
+			currTopic++;
+			currTopicLen_bytes--;
+		}
+
+		// now make sure we have an authenticated client
+		if( !nodeIn->hasClientAuthed )
+		{
+			cxa_logger_warn(&nodeIn->super.super.logger, "client not yet auth'd, dropping");
+			return false;
+		}
+
+		// go ahead and forward
+		cxa_logger_trace(&nodeIn->super.super.logger, "forwarding to single: '%s'", nodeIn->clientId);
+
+		if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, currTopic) ||
+			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
+			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, nodeIn->clientId) )
+		{
+			cxa_logger_warn(&nodeIn->super.super.logger, "error remapping topic name, dropping");
+			return true;		// return true because we _should_ have handled this
+		}
+
+		// send the message
+		if( !cxa_protocolParser_writePacket(&nodeIn->super.mpp->super, cxa_mqtt_message_getBuffer(msgIn)) )
+		{
+			cxa_logger_warn(&nodeIn->super.super.logger, "error forwarding message");
+		}
+		return true;
 	}
 
-	// now that everything is unmapped (that should be unmapped)...toss to the root node for handling
-	cxa_mqtt_rpc_node_root_t* rootNode = cxa_mqtt_rpc_node_getRootNode(&nodeIn->super.super);
-	if( rootNode != NULL ) cxa_mqtt_rpc_node_root_handleInternalPublish(rootNode, msgIn);
+	return false;
 }

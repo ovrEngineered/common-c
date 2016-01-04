@@ -55,7 +55,7 @@ struct cxa_mqtt_rpc_node_bridge_single
 
 // ******** global function prototypes ********
 void cxa_mqtt_rpc_node_bridge_single_init(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
-										 cxa_protocolParser_mqtt_t *const mppIn, const char *nameFmtIn, ...);
+										  cxa_protocolParser_mqtt_t *const mppIn, const char *nameFmtIn, ...);
 
 void cxa_mqtt_rpc_node_bridge_single_setAuthCb(cxa_mqtt_rpc_node_bridge_single_t *const nodeIn, cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t authCbIn, void *const userVarIn);
 

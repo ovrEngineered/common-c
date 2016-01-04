@@ -81,17 +81,13 @@ bool cxa_mqtt_message_publish_getTopicName(cxa_mqtt_message_t *const msgIn, char
 }
 
 
-bool cxa_mqtt_message_publish_getPayload(cxa_mqtt_message_t *const msgIn, void** payloadOut, size_t *const payloadSize_bytesOut)
+bool cxa_mqtt_message_publish_getPayload(cxa_mqtt_message_t *const msgIn, cxa_linkedField_t **payloadLfOut)
 {
 	cxa_assert(msgIn);
 
 	if( !msgIn->areFieldsConfigured || (cxa_mqtt_message_getType(msgIn) != CXA_MQTT_MSGTYPE_PUBLISH) ) return false;
 
-	// get a pointer to our data
-	void* payloadPtr = cxa_linkedField_get_pointerToIndex(&msgIn->fields_publish.field_payload, 0);
-
-	if( payloadOut != NULL ) *payloadOut = payloadPtr;
-	if( payloadSize_bytesOut != NULL ) *payloadSize_bytesOut = cxa_linkedField_getSize_bytes(&msgIn->fields_publish.field_payload);
+	if( payloadLfOut != NULL ) *payloadLfOut = &msgIn->fields_publish.field_payload;
 
 	return true;
 }
@@ -123,9 +119,18 @@ bool cxa_mqtt_message_publish_topicName_prependCString(cxa_mqtt_message_t *const
 	cxa_assert(msgIn);
 	cxa_assert(stringIn);
 
+	return cxa_mqtt_message_publish_topicName_prependString_withLength(msgIn, stringIn, strlen(stringIn));
+}
+
+
+bool cxa_mqtt_message_publish_topicName_prependString_withLength(cxa_mqtt_message_t *const msgIn, char *const stringIn, size_t stringLen_bytesIn)
+{
+	cxa_assert(msgIn);
+	cxa_assert(stringIn);
+
 	if( !msgIn->areFieldsConfigured || (cxa_mqtt_message_getType(msgIn) != CXA_MQTT_MSGTYPE_PUBLISH) ) return false;
 
-	return cxa_linkedField_prependTo_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_topicName, 0, (uint8_t*)stringIn, strlen(stringIn));
+	return cxa_linkedField_prependTo_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_topicName, 0, (uint8_t*)stringIn, stringLen_bytesIn);
 }
 
 

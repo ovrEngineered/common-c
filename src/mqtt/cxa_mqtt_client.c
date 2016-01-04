@@ -326,6 +326,8 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
 
+	cxa_logger_info(&clientIn->logger, "connecting");
+
 	// reset our connack timeout
 	cxa_timeDiff_setStartTime_now(&clientIn->td_timeout);
 }
@@ -340,6 +342,10 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 	{
 		cxa_logger_warn(&clientIn->logger, "failed to receive CONNACK packet");
 
+		// transition first (so our connectFail listeners can retry if desired)
+		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+		cxa_stateMachine_update(&clientIn->stateMachine);
+
 		// notify our listeners
 		cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
 		{
@@ -347,7 +353,6 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT, currListener->userVar);
 		}
 
-		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 		return;
 	}
 }
@@ -357,6 +362,8 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 {
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
+
+	cxa_logger_info(&clientIn->logger, "connected");
 
 	// start our keepalive process
 	cxa_timeDiff_setStartTime_now(&clientIn->td_sendKeepAlive);

@@ -24,24 +24,23 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_MQTT_RPC_ASYNCREQUESTS_H_
-#define CXA_MQTT_RPC_ASYNCREQUESTS_H_
+#ifndef CXA_MQTT_RPC_MESSAGE_H_
+#define CXA_MQTT_RPC_MESSAGE_H_
 
 
 // ******** includes ********
+#include <stdbool.h>
+#include <cxa_mqtt_message.h>
 
 
 // ******** global macro definitions ********
 
 
 // ******** global type definitions *********
-typedef struct
-{
-
-}cxa_mqtt_rpc_asyncRequest_promise_t;
 
 
 // ******** global function prototypes ********
+bool cxa_mqtt_rpc_message_isActionableRequest(cxa_mqtt_message_t *const msgIn, char** methodNameOut, size_t* methodNameLen_bytesOut, char** idOut, size_t* idLen_bytesOut);
+bool cxa_mqtt_rpc_message_isActionableResponse(cxa_mqtt_message_t *const msgIn, char** methodNameOut, size_t* methodNameLen_bytesOut, char** idOut, size_t* idLen_bytesOut);
 
-
-#endif /* CXA_MQTT_RPC_ASYNCREQUESTS_H_ */
+#endif /* CXA_MQTT_RPC_MESSAGE_H_ */

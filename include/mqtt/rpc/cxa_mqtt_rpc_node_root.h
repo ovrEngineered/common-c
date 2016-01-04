@@ -26,51 +26,32 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_MQTT_RPC_NODE_ROOT_MAX_PREFIX_LEN_BYTES
-	#define CXA_MQTT_RPC_NODE_ROOT_MAX_PREFIX_LEN_BYTES			16
-#endif
 
 
 // ******** global type definitions *********
-typedef struct cxa_mqtt_rpc_node_root cxa_mqtt_rpc_node_root_t;
-
-
 /**
  * @private
  */
-struct cxa_mqtt_rpc_node_root
+typedef struct cxa_mqtt_rpc_node_root
 {
 	cxa_mqtt_rpc_node_t super;
 
 	cxa_mqtt_client_t* mqttClient;
 
-	char prefix[CXA_MQTT_RPC_NODE_ROOT_MAX_PREFIX_LEN_BYTES];
-	size_t prefixLen_bytes;
-
 	uint16_t currRequestId;
-};
+}cxa_mqtt_rpc_node_root_t;
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, char *const rootPrefixIn, const char *nameFmtIn, ...);
+/**
+ * @public
+ */
+void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, const char *nameFmtIn, ...);
 
 
 /**
- * @protected
+ * @public
  */
-cxa_mqtt_client_t* cxa_mqtt_rpc_node_root_getMqttClient(cxa_mqtt_rpc_node_root_t *const nodeIn);
-
-
-/**
- * @protected
- */
-char* cxa_mqtt_rpc_node_root_getPrefix(cxa_mqtt_rpc_node_root_t *const nodeIn);
-
-
-/**
- * @protected
- */
-void cxa_mqtt_rpc_node_root_handleInternalPublish(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_message_t *const msgIn);
-
+void cxa_mqtt_rpc_node_root_update(cxa_mqtt_rpc_node_root_t *const nodeIn);
 
 #endif // CXA_MQTT_RPC_NODE_ROOT_H_

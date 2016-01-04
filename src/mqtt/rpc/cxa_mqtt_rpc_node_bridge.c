@@ -55,14 +55,12 @@ static void sendMessage_connack(cxa_mqtt_rpc_node_bridge_t *const nodeIn, bool i
 // ******** global function implementations ********
 void cxa_mqtt_rpc_node_bridge_vinit(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
 										 cxa_protocolParser_mqtt_t *const mppIn,
-										 cxa_mqtt_rpc_node_bridge_scm_handlePublish_t scm_handlePublishIn,
 										 cxa_mqtt_rpc_node_bridge_cb_authenticateClient_t cb_authIn, void* authCbUserVarIn,
 										 const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(parentNodeIn);
 	cxa_assert(mppIn);
-	cxa_assert(scm_handlePublishIn);
 	cxa_assert(cb_authIn);
 	cxa_assert(nameFmtIn);
 
@@ -71,7 +69,6 @@ void cxa_mqtt_rpc_node_bridge_vinit(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cx
 
 	// save our references
 	nodeIn->mpp = mppIn;
-	nodeIn->scm_handlePublish = scm_handlePublishIn;
 	nodeIn->cb_auth = cb_authIn;
 	nodeIn->userVar_auth = authCbUserVarIn;
 
@@ -104,7 +101,7 @@ static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn,
 			break;
 
 		case CXA_MQTT_MSGTYPE_PUBLISH:
-			nodeIn->scm_handlePublish(nodeIn, msg);
+			nodeIn->super.scm_handleMessage_upstream(&nodeIn->super, msg);
 			break;
 
 		case CXA_MQTT_MSGTYPE_SUBSCRIBE:

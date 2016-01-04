@@ -41,12 +41,12 @@
 // ******** global function prototypes ********
 bool cxa_mqtt_message_publish_init(cxa_mqtt_message_t *const msgIn, bool dupIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn, char *const topicNameIn, uint16_t packedIdIn, void *const payloadIn, uint16_t payloadSize_bytesIn);
 
-
 bool cxa_mqtt_message_publish_getTopicName(cxa_mqtt_message_t *const msgIn, char** topicNameOut, uint16_t *const topicNameLen_bytesOut);
-bool cxa_mqtt_message_publish_getPayload(cxa_mqtt_message_t *const msgIn, void** payloadOut, size_t *const payloadSize_bytesOut);
+bool cxa_mqtt_message_publish_getPayload(cxa_mqtt_message_t *const msgIn, cxa_linkedField_t **payloadLfOut);
 
 bool cxa_mqtt_message_publish_topicName_trimToPointer(cxa_mqtt_message_t *const msgIn, char *const ptrIn);
 bool cxa_mqtt_message_publish_topicName_prependCString(cxa_mqtt_message_t *const msgIn, char *const stringIn);
+bool cxa_mqtt_message_publish_topicName_prependString_withLength(cxa_mqtt_message_t *const msgIn, char *const stringIn, size_t stringLen_bytesIn);
 
 /**
  * @protected
