@@ -177,8 +177,6 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	// this _may_ be our client state message...if so, we don't need to do anything
 	if( cxa_stringUtils_endsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_CONNSTATE_TOPIC) ) return;
 
-	return;
-
 	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
 
 	if( cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, "/", 1) ||
@@ -191,11 +189,26 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	{
 		// we'll need to do some remapping here...
 
-		// ensure that our publish topic actually has our clientId in it
-		//if( !cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, nodeIn->clientId, strlen(nodeIn->clientId)) ) return;
+		// ensure that our publish topic actually matches one of our remote nodes
+		cxa_mqtt_rpc_node_bridge_multi_remoteNodeEntry_t* targetRne = NULL;
+		cxa_array_iterate(&nodeIn->remoteNodes, currRemNode, cxa_mqtt_rpc_node_bridge_multi_remoteNodeEntry_t)
+		{
+			if( currRemNode == NULL ) continue;
+
+			if( cxa_stringUtils_contains_withLengths(topicName, topicNameLen_bytes, currRemNode->clientId, strlen(currRemNode->clientId)) )
+			{
+				targetRne = currRemNode;
+				break;
+			}
+		}
+		if( targetRne == NULL ) return;
 
 		// ok...get rid of everything up to, and including, the clientId (+1 is for separator)
-		//if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, topicName+strlen(nodeIn->clientId)+1) ) return;
+		if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, topicName+strlen(targetRne->clientId)+1) ) return;
+
+		// prepend our mapped name first
+		if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
+			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, targetRne->mappedName) ) return;
 
 		// now we need to prepend our node structure
 		cxa_mqtt_rpc_node_t* currNode = &nodeIn->super.super;
@@ -225,6 +238,9 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	cxa_assert(msgIn);
 
 	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
+
+	char *methodName, *id;
+	size_t methodNameLen_bytes, idLen_bytes;
 
 	// depends what type of message it is...
 	if( cxa_mqtt_rpc_message_isActionableRequest(msgIn, NULL, NULL, NULL, NULL) )
@@ -267,69 +283,35 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 			}
 		}
 	}
+	else if( cxa_mqtt_rpc_message_isActionableResponse(msgIn, &methodName, &methodNameLen_bytes, &id, &idLen_bytes) )
+	{
+		// this is a response...first, we should check to see if we were waiting for this...
+		cxa_array_iterate(&superIn->outstandingRequests, currRequest, cxa_mqtt_rpc_node_outstandingRequest_t)
+		{
+			if( currRequest == NULL ) continue;
+
+			if( cxa_stringUtils_equals_withLengths(currRequest->name, strlen(currRequest->name), methodName, methodNameLen_bytes) &&
+				cxa_stringUtils_equals_withLengths(currRequest->id, strlen(currRequest->id), id, idLen_bytes) )
+			{
+				// we were expecting this response...get the return value (and remove leaving only parameters)
+				cxa_linkedField_t* lf_payload;
+				uint8_t retVal_raw;
+				if( !cxa_mqtt_message_publish_getPayload(msgIn, &lf_payload) ||
+					!cxa_linkedField_get_uint8(lf_payload, 0, retVal_raw) ||
+					!cxa_linkedField_remove(lf_payload, 0, 1) )
+				{
+					cxa_logger_warn(&superIn->logger, "no return value found in response");
+					return true;
+				}
+
+				if( currRequest->cb != NULL ) currRequest->cb(superIn, (cxa_mqtt_rpc_methodRetVal_t)retVal_raw, lf_payload, currRequest->userVar);
+
+				// we're done with this request...remove it (so it doesn't timeout)
+				cxa_array_remove(&superIn->outstandingRequests, currRequest);
+				return true;
+			}
+		}
+	}
 
 	return false;
-}
-
-
-
-static void scm_handlePublish(cxa_mqtt_rpc_node_bridge_t *const superIn, cxa_mqtt_message_t *const msgIn)
-{
-	cxa_mqtt_rpc_node_bridge_multi_t* nodeIn = (cxa_mqtt_rpc_node_bridge_multi_t*)superIn;
-	cxa_assert(nodeIn);
-	cxa_assert(msgIn);
-
-	// get our topic name and length
-	char* topicName;
-	uint16_t topicLen_bytes;
-	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicLen_bytes) ) return;
-
-	// this _may_ be our client state message...if so, we don't need to do anything
-	if( cxa_stringUtils_endsWith_withLengths(topicName, topicLen_bytes, CXA_MQTT_RPCNODE_CONNSTATE_TOPIC) ) return;
-
-	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "got PUBLISH '", topicName, topicLen_bytes, "'");
-
-	// ensure that our publish topic actually matches one of our remote nodes
-	cxa_mqtt_rpc_node_bridge_multi_remoteNodeEntry_t* targetRne = NULL;
-	cxa_array_iterate(&nodeIn->remoteNodes, currRemNode, cxa_mqtt_rpc_node_bridge_multi_remoteNodeEntry_t)
-	{
-		if( currRemNode == NULL ) continue;
-
-		if( cxa_stringUtils_contains_withLengths(topicName, topicLen_bytes, currRemNode->clientId, strlen(currRemNode->clientId)) )
-		{
-			targetRne = currRemNode;
-			break;
-		}
-	}
-	if( targetRne == NULL ) return;
-
-	// ok...get rid of everything up to, and including, the clientId (+1 is for separator)
-	if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, topicName+strlen(targetRne->clientId)+1) ) return;
-
-	// prepend our mapped name first
-	if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
-		!cxa_mqtt_message_publish_topicName_prependCString(msgIn, targetRne->mappedName) ) return;
-
-	// now we need to prepend our node structure
-	cxa_mqtt_rpc_node_t* currNode = &nodeIn->super.super;
-	while( currNode != NULL )
-	{
-		if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
-			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, currNode->name) ) return;
-
-		// if we're the root node, we need to prepend our root prefix (if it exists)
-		/*
-		if( currNode->isRootNode )
-		{
-			if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, cxa_mqtt_rpc_node_root_getPrefix((cxa_mqtt_rpc_node_root_t*)currNode)) ) return;
-		}
-		*/
-		currNode = currNode->parentNode;
-	}
-
-	// if we made it here, we should have a proper topic name
-
-	// now that everything is unmapped...toss to the root node for handling
-	//cxa_mqtt_rpc_node_root_t* rootNode = cxa_mqtt_rpc_node_getRootNode(&nodeIn->super.super);
-	//if( rootNode != NULL ) cxa_mqtt_rpc_node_root_handleInternalPublish(rootNode, msgIn);
 }
