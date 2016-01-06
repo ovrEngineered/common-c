@@ -39,8 +39,8 @@
 #define USART1_TX_PIN							7
 #define USART1_RX_PIN							6
 
-#define TXEN_TURNON_DELAY_MS					1
-#define TXEN_TURNOFF_DELAY_MS					1
+#define TXEN_TURNON_DELAY_MS					10
+#define TXEN_TURNOFF_DELAY_MS					10
 
 
 #ifndef CXA_XMEGA_USART_RX_INT_LEVEL
