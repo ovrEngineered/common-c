@@ -485,6 +485,9 @@ static void handleMessage_connAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	cxa_assert(clientIn);
 	cxa_assert(msgIn);
 
+	// only handle if we are in the appropriate state
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTING ) return;
+
 	cxa_mqtt_connAck_returnCode_t retCode = CXA_MQTT_CONNACK_RETCODE_UNKNOWN;
 	if( cxa_mqtt_message_connack_getReturnCode(msgIn, &retCode ) && (retCode == CXA_MQTT_CONNACK_RETCODE_ACCEPTED) )
 	{

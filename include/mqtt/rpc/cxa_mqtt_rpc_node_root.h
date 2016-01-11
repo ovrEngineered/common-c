@@ -37,6 +37,7 @@ typedef struct cxa_mqtt_rpc_node_root
 	cxa_mqtt_rpc_node_t super;
 
 	cxa_mqtt_client_t* mqttClient;
+	bool shouldReportState;
 
 	uint16_t currRequestId;
 }cxa_mqtt_rpc_node_root_t;
@@ -46,7 +47,8 @@ typedef struct cxa_mqtt_rpc_node_root
 /**
  * @public
  */
-void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, const char *nameFmtIn, ...);
+void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, bool reportStateIn,
+								 const char *nameFmtIn, ...);
 
 
 /**

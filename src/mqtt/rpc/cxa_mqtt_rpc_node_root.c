@@ -48,7 +48,8 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 
 
 // ******** global function implementations ********
-void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, const char *nameFmtIn, ...)
+void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, bool reportStateIn,
+								 const char *nameFmtIn, ...)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(nameFmtIn);
@@ -57,6 +58,7 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	// save our references
 	nodeIn->mqttClient = clientIn;
 	nodeIn->currRequestId = 0;
+	nodeIn->shouldReportState = reportStateIn;
 
 	// initialize our super class
 	va_list varArgs;
@@ -98,6 +100,8 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 {
 	cxa_mqtt_rpc_node_root_t* nodeIn = (cxa_mqtt_rpc_node_root_t*)userVarIn;
 	cxa_assert(nodeIn);
+
+	if( !nodeIn->shouldReportState ) return;
 
 	// publish our state
 	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];

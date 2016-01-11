@@ -99,7 +99,6 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
 									 cxa_mqtt_rpc_cb_methodResponse_t responseCbIn, void* userVarIn)
 {
 	cxa_assert(nodeIn);
-	cxa_assert(pathToNodeIn);
 	cxa_assert(methodNameIn);
 
 	static uint16_t currRequestId = 0;
@@ -132,14 +131,14 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
 	if( (strlen(methodNameIn) >= CXA_MQTT_RPCNODE_MAXLEN_METHOD_BYTES) ||
 		!cxa_mqtt_message_publish_topicName_prependCString(msg, methodNameIn) ||
 		!cxa_mqtt_message_publish_topicName_prependCString(msg, CXA_MQTT_RPCNODE_REQ_PREFIX) ||
-		!cxa_mqtt_message_publish_topicName_prependCString(msg, "/") )
+		((pathToNodeIn != NULL) && !cxa_mqtt_message_publish_topicName_prependCString(msg, "/")) )
 	{
 		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 		return false;
 	}
 
 	// now the path to the node
-	if( !cxa_mqtt_message_publish_topicName_prependCString(msg, pathToNodeIn) )
+	if( (pathToNodeIn != NULL) && !cxa_mqtt_message_publish_topicName_prependCString(msg, pathToNodeIn) )
 	{
 		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 		return false;
@@ -179,8 +178,8 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
 	}
 
 	// excellent...now we need to figure out where this message is headed...
-	if( cxa_stringUtils_startsWith(pathToNodeIn, "/") ||
-		cxa_stringUtils_startsWith(pathToNodeIn, "~/"))
+	if( (pathToNodeIn != NULL) &&
+		(cxa_stringUtils_startsWith(pathToNodeIn, "/") || cxa_stringUtils_startsWith(pathToNodeIn, "~/")) )
 	{
 		// this message is addressed from the global root or the
 		// local root respectively...send it up!

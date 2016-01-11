@@ -62,13 +62,6 @@
  */
 typedef struct cxa_mqtt_rpc_node cxa_mqtt_rpc_node_t;
 
-
-/**
- * @public
- */
-typedef struct cxa_mqtt_rpc_node_root cxa_mqtt_rpc_node_root_t;
-
-
 /**
  * @public
  */

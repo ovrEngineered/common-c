@@ -163,6 +163,9 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	{
 		// this message is addressed from the global root or the local root respectively...send it up!
 		if( superIn->parentNode != NULL ) superIn->parentNode->scm_handleMessage_upstream(superIn->parentNode, msgIn);
+
+		// now that we're done handling the message...clear its topic (so none else can handle it)
+		cxa_mqtt_message_publish_topicName_clear(msgIn);
 	}
 	else
 	{
@@ -188,6 +191,9 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 
 		// message should be now be mapped properly...hand upstream!
 		if( superIn->parentNode != NULL ) superIn->parentNode->scm_handleMessage_upstream(superIn->parentNode, msgIn);
+
+		// now that we're done handling the message...clear its topic (so none else can handle it)
+		cxa_mqtt_message_publish_topicName_clear(msgIn);
 	}
 }
 
@@ -203,25 +209,36 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 
 	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
 
+	char *methodName, *id;
+	size_t methodNameLen_bytes, idLen_bytes;
+
 	// depends what type of message it is...
 	if( cxa_mqtt_rpc_message_isActionableRequest(msgIn, NULL, NULL, NULL, NULL) )
 	{
 		// this is a request
 
-		// make sure that the topic starts with our name
+		char* currTopic = remainingTopicIn;
+		size_t currTopicLen_bytes = remainingTopicLen_bytesIn;
+
 		size_t nodeNameLen_bytes = strlen(superIn->name);
-		if( !cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) ) return false;
-
-		// so far so good...remove ourselves from the topic
-		char* currTopic = remainingTopicIn + nodeNameLen_bytes;
-		size_t currTopicLen_bytes = remainingTopicLen_bytesIn - nodeNameLen_bytes;
-
-		// if there is a remaining separator, remove it
-		if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, "/", 1) )
+		if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) )
 		{
-			currTopic++;
-			currTopicLen_bytes--;
+			// topic begins with our name...remove ourselves from the topic
+			currTopic += nodeNameLen_bytes;
+			currTopicLen_bytes -= nodeNameLen_bytes;
+
+			// if there is a remaining separator, remove it
+			if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, "/", 1) )
+			{
+				currTopic++;
+				currTopicLen_bytes--;
+			}
 		}
+		else if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, CXA_MQTT_RPCNODE_REQ_PREFIX, strlen(CXA_MQTT_RPCNODE_REQ_PREFIX)) )
+		{
+			// starts with a request prefix...this is a request directly for our attached node
+		}
+		else return false;
 
 		// now make sure we have an authenticated client
 		if( !nodeIn->hasClientAuthed )
@@ -247,6 +264,35 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 			cxa_logger_warn(&nodeIn->super.super.logger, "error forwarding message");
 		}
 		return true;
+	}
+	else if( cxa_mqtt_rpc_message_isActionableResponse(msgIn, &methodName, &methodNameLen_bytes, &id, &idLen_bytes) )
+	{
+		// this is a response...first, we should check to see if we were waiting for this...
+		cxa_array_iterate(&superIn->outstandingRequests, currRequest, cxa_mqtt_rpc_node_outstandingRequest_t)
+		{
+			if( currRequest == NULL ) continue;
+
+			if( cxa_stringUtils_equals_withLengths(currRequest->name, strlen(currRequest->name), methodName, methodNameLen_bytes) &&
+				cxa_stringUtils_equals_withLengths(currRequest->id, strlen(currRequest->id), id, idLen_bytes) )
+			{
+				// we were expecting this response...get the return value (and remove leaving only parameters)
+				cxa_linkedField_t* lf_payload;
+				uint8_t retVal_raw;
+				if( !cxa_mqtt_message_publish_getPayload(msgIn, &lf_payload) ||
+					!cxa_linkedField_get_uint8(lf_payload, 0, retVal_raw) ||
+					!cxa_linkedField_remove(lf_payload, 0, 1) )
+				{
+					cxa_logger_warn(&superIn->logger, "no return value found in response");
+					return true;
+				}
+
+				if( currRequest->cb != NULL ) currRequest->cb(superIn, (cxa_mqtt_rpc_methodRetVal_t)retVal_raw, lf_payload, currRequest->userVar);
+
+				// we're done with this request...remove it (so it doesn't timeout)
+				cxa_array_remove(&superIn->outstandingRequests, currRequest);
+				return true;
+			}
+		}
 	}
 
 	return false;

@@ -93,6 +93,13 @@ void cxa_mqtt_rpc_node_bridge_multi_setAuthCb(cxa_mqtt_rpc_node_bridge_multi_t *
 }
 
 
+size_t cxa_mqtt_rpc_node_bridge_multi_getNumRemoteNodes(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn)
+{
+	cxa_assert(nodeIn);
+	return cxa_array_getSize_elems(&nodeIn->remoteNodes);
+}
+
+
 void cxa_mqtt_rpc_node_bridge_multi_clearRemoteNodes(cxa_mqtt_rpc_node_bridge_multi_t *const nodeIn)
 {
 	cxa_assert(nodeIn);
@@ -166,13 +173,11 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	cxa_assert(nodeIn);
 	cxa_assert(msgIn);
 
-	// make sure we actually have a client
-	//if( !nodeIn->hasClientAuthed ) return;
-
 	// get our topic name and length
 	char* topicName;
 	uint16_t topicNameLen_bytes;
-	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return;
+	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ||
+		(topicName == NULL) || (topicNameLen_bytes == 0) ) return;
 
 	// this _may_ be our client state message...if so, we don't need to do anything
 	if( cxa_stringUtils_endsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_CONNSTATE_TOPIC) ) return;
@@ -180,10 +185,13 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
 
 	if( cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, "/", 1) ||
-			cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)))
+		cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)))
 	{
 		// this message is addressed from the global root or the local root respectively...send it up!
 		if( superIn->parentNode != NULL ) superIn->parentNode->scm_handleMessage_upstream(superIn->parentNode, msgIn);
+
+		// now that we're done handling the message...clear its topic (so none else can handle it)
+		cxa_mqtt_message_publish_topicName_clear(msgIn);
 	}
 	else
 	{
@@ -224,6 +232,9 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 
 		// message should be now be mapped properly...hand upstream!
 		if( superIn->parentNode != NULL ) superIn->parentNode->scm_handleMessage_upstream(superIn->parentNode, msgIn);
+
+		// now that we're done handling the message...clear its topic (so none else can handle it)
+		cxa_mqtt_message_publish_topicName_clear(msgIn);
 	}
 }
 
