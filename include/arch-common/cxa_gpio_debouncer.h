@@ -21,7 +21,6 @@
 // ******** includes ********
 #include <cxa_array.h>
 #include <cxa_gpio.h>
-#include <cxa_timeBase.h>
 #include <cxa_timeDiff.h>
 #include <cxa_config.h>
 
@@ -69,9 +68,11 @@ struct cxa_gpio_debouncer
 
 
 // ******** global function prototypes ********
-void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t *const gpioIn, cxa_timeBase_t *tbIn);
+void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t *const gpioIn);
 
 void cxa_gpio_debouncer_addListener(cxa_gpio_debouncer_t *const debouncerIn, cxa_gpio_debouncer_cb_onTransition_t cb_onTransition, void *userVarIn);
+
+bool cxa_gpio_debouncer_getCurrentValue(cxa_gpio_debouncer_t *const debouncerIn);
 
 void cxa_gpio_debouncer_update(cxa_gpio_debouncer_t *const debouncerIn);
 

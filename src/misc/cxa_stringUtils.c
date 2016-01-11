@@ -27,6 +27,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <cxa_assert.h>
+#include <cxa_numberUtils.h>
 
 
 // ******** local macro definitions ********
@@ -56,18 +57,44 @@ static dataType_string_mapEntry_t DT_STRING_MAP[] =
 // ******** global function implementations ********
 bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn)
 {
-	// if one is false and the other isn't, we can't compare
-	if( (targetStringIn == NULL) != (prefixStringIn == NULL) ) return false;
-	// if they're both NULL, they're equal
-	if( (targetStringIn == NULL) && (prefixStringIn == NULL) ) return true;
+	size_t targetStringLen_bytes = (targetStringIn != NULL) ? strlen(targetStringIn) : 0;
+	size_t prefixStringLen_bytes = (prefixStringIn != NULL) ? strlen(prefixStringIn) : 0;
 
+	return cxa_stringUtils_startsWith_withLengths(targetStringIn, targetStringLen_bytes, prefixStringIn, prefixStringLen_bytes);
+}
+
+
+bool cxa_stringUtils_startsWith_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* prefixStringIn, size_t prefixStringLen_bytesIn)
+{
 	// make sure we have enough chars in our target string
-	if( strlen(prefixStringIn) > strlen(targetStringIn) ) return false;
+	if( prefixStringLen_bytesIn > targetStringLen_bytesIn ) return false;
 
 	// iterate our characters
-	for( size_t i = 0; i < strlen(prefixStringIn); i++ )
+	for( size_t i = 0; i < prefixStringLen_bytesIn; i++ )
 	{
 		if( targetStringIn[i] != prefixStringIn[i] ) return false;
+	}
+
+	// if we made it here, target string starts with prefix string
+	return true;
+}
+
+
+bool cxa_stringUtils_endsWith_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* suffixStringIn)
+{
+	// if one is false and the other isn't, we can't compare
+	if( (targetStringIn == NULL) != (suffixStringIn == NULL) ) return false;
+	// if they're both NULL, they're equal
+	if( (targetStringIn == NULL) && (suffixStringIn == NULL) ) return true;
+
+	// make sure we have enough chars in our target string
+	size_t suffixStringLen_bytes = strlen(suffixStringIn);
+	if( suffixStringLen_bytes > targetStringLen_bytesIn ) return false;
+
+	// iterate our characters
+	for( size_t i = 0; i < suffixStringLen_bytes; i++ )
+	{
+		if( targetStringIn[targetStringLen_bytesIn-1-i] != suffixStringIn[suffixStringLen_bytes-1-i] ) return false;
 	}
 
 	// if we made it here, target string starts with prefix string
@@ -79,23 +106,111 @@ bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn)
 {
 	if( (targetStringIn == NULL) || (elementIn == NULL) ) return false;
 
-	return (strstr(targetStringIn, elementIn) != NULL);
+	return cxa_stringUtils_contains_withLengths(targetStringIn, strlen(targetStringIn), elementIn, strlen(elementIn));
+}
+
+
+bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn)
+{
+	if( (targetStringIn == NULL) || (elementIn == NULL) ) return false;
+
+	return (cxa_stringUtils_indexOf_withLengths(targetStringIn, targetStringLen_bytesIn, elementIn, elementLen_bytesIn) >= 0);
+}
+
+
+bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, size_t maxSizeTarget_bytesIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(sourceStringIn);
+
+	// get the current size of the target
+	size_t targetLen_bytes;
+	if( !cxa_stringUtils_strlen(targetStringIn, maxSizeTarget_bytesIn, &targetLen_bytes) ) targetLen_bytes = maxSizeTarget_bytesIn;
+	// ensure that we have space for the null term
+	if( targetLen_bytes > (maxSizeTarget_bytesIn-1) ) return false;
+
+	// now see if we have room for the new string
+	size_t maxBufferSize_sourceString_bytes = maxSizeTarget_bytesIn - targetLen_bytes;
+	size_t sourceLen_bytes;
+	if( !cxa_stringUtils_strlen(sourceStringIn, maxBufferSize_sourceString_bytes, &sourceLen_bytes) ) return false;
+
+	// we apparently have room for the string...do the concatenation
+	for( size_t i = 0; i < sourceLen_bytes; i++ )
+	{
+		targetStringIn[targetLen_bytes+i] = sourceStringIn[i];
+	}
+
+	// null term
+	targetStringIn[targetLen_bytes+sourceLen_bytes] = 0;
+
+	return true;
+}
+
+
+bool cxa_stringUtils_concat_withLengths(char *targetStringIn, size_t maxSizeTarget_bytesIn, const char *sourceStringIn, size_t sourceStringLen_bytesIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(sourceStringIn);
+
+	// get the current size of the target
+	size_t targetLen_bytes;
+	if( !cxa_stringUtils_strlen(targetStringIn, maxSizeTarget_bytesIn, &targetLen_bytes) ) targetLen_bytes = maxSizeTarget_bytesIn;
+	// ensure that we have space for the null term
+	if( targetLen_bytes > (maxSizeTarget_bytesIn-1) ) return false;
+
+	// now see if we have room for the new string (and null term)
+	size_t maxBufferSize_sourceString_bytes = maxSizeTarget_bytesIn - targetLen_bytes;
+	if( maxBufferSize_sourceString_bytes < (sourceStringLen_bytesIn+1) ) return false;
+
+	// we apparently have room for the string...do the concatenation
+	for( size_t i = 0; i < sourceStringLen_bytesIn; i++ )
+	{
+		targetStringIn[targetLen_bytes+i] = sourceStringIn[i];
+	}
+
+	// null term
+	targetStringIn[targetLen_bytes+sourceStringLen_bytesIn] = 0;
+
+	return true;
+}
+
+
+bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, size_t* stringLen_bytesOut)
+{
+	cxa_assert(targetStringIn);
+
+	for( size_t i = 0; i < maxSize_bytesIn; i++ )
+	{
+		if( targetStringIn[i] == 0 )
+		{
+			if( stringLen_bytesOut != NULL ) *stringLen_bytesOut = i;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 
 bool cxa_stringUtils_equals(const char* str1In, const char* str2In)
 {
-	// if one is false and the other isn't, we can't compare
+	return cxa_stringUtils_equals_withLengths(str1In, strlen(str1In), str2In, strlen(str2In));
+}
+
+
+bool cxa_stringUtils_equals_withLengths(const char* str1In, size_t str1Len_bytes, const char* str2In, size_t str2Len_bytes)
+{
+	// if one is NULL and the other isn't, we can't compare
 	if( (str1In == NULL) != (str2In == NULL) ) return false;
 	// if they're both NULL, they're equal
 	if( (str1In == NULL) && (str2In == NULL) ) return true;
 
 	// must have the same length
-	if( strlen(str1In) != strlen(str2In) ) return false;
+	if( str1Len_bytes != str2Len_bytes ) return false;
 
 	// if we made it here, they have the same length...we're safe
 	// to use strcmp
-	return (strcmp(str1In, str2In) == 0);
+	return (strncmp(str1In, str2In, str1Len_bytes) == 0);
 }
 
 
@@ -116,6 +231,73 @@ bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In)
 	}
 
 	// if we made it here, the strings were identical
+	return true;
+}
+
+
+ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn)
+{
+	if( (targetStringIn == NULL) || (elementIn == NULL) ) return -2;
+
+	for( size_t i = 0; i < targetStringLen_bytesIn; i++ )
+	{
+		if( (i + elementLen_bytesIn) > targetStringLen_bytesIn ) break;
+
+		if( strncmp(&targetStringIn[i], elementIn, elementLen_bytesIn) == 0 ) return i;
+	}
+
+	return -1;
+}
+
+
+bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(stringToReplaceIn);
+	cxa_assert(replacementStringIn);
+
+	size_t targetStringLen_bytes = strlen(targetStringIn);
+	size_t stringToReplaceLen_bytes = strlen(stringToReplaceIn);
+	size_t replacementStringLen_bytes = strlen(replacementStringIn);
+
+	return cxa_stringUtils_replaceFirstOccurance_withLengths(targetStringIn, targetStringLen_bytes,
+															 stringToReplaceIn, stringToReplaceLen_bytes,
+															 replacementStringIn, replacementStringLen_bytes);
+}
+
+
+bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
+													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
+													   const char *replacementStringIn, size_t replacementStringLen_bytesIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(stringToReplaceIn);
+	cxa_assert(replacementStringIn);
+
+	// make sure our sizes are appropriate
+	if( (targetStringLen_bytesIn < stringToReplaceLen_bytesIn) ||
+		(stringToReplaceLen_bytesIn == 0) ||
+		(replacementStringLen_bytesIn > stringToReplaceLen_bytesIn) ) return false;
+
+	// find the first occurrence
+	ssize_t indexOfFirstOccurence = cxa_stringUtils_indexOf_withLengths(targetStringIn, targetStringLen_bytesIn, stringToReplaceIn, stringToReplaceLen_bytesIn);
+	if( indexOfFirstOccurence < 0 ) return false;
+	char* firstOccurrence = (char*)&(targetStringIn[indexOfFirstOccurence]);
+
+	// got the first occurrence...adjust the string size first (if needed...can only be smaller)
+	size_t adjSize_bytes = stringToReplaceLen_bytesIn - replacementStringLen_bytesIn;
+	if( adjSize_bytes > 0 )
+	{
+		// need to remove some bytes
+		memmove((void*)firstOccurrence, (void*)(firstOccurrence+adjSize_bytes),
+				targetStringLen_bytesIn - (firstOccurrence - targetStringIn) - adjSize_bytes);
+	}
+
+	// now do the actual replacement
+	for( size_t i = 0; i < replacementStringLen_bytesIn; i++ )
+	{
+		firstOccurrence[i] = replacementStringIn[i];
+	}
 	return true;
 }
 

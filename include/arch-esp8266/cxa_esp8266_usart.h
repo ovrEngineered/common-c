@@ -43,7 +43,8 @@ typedef struct cxa_esp8266_usart cxa_esp8266_usart_t;
 typedef enum
 {
 	CXA_ESP8266_USART_0=0,
-	CXA_ESP8266_USART_1=1
+	CXA_ESP8266_USART_1=1,
+	CXA_ESP8266_USART_0_ALTPINS=255
 }cxa_esp8266_usartId_t;
 
 
@@ -55,6 +56,7 @@ struct cxa_esp8266_usart
 	cxa_usart_t super;
 
 	cxa_esp8266_usartId_t id;
+	uint32_t interCharDelay_ms;
 };
 
 
@@ -62,7 +64,7 @@ struct cxa_esp8266_usart
 /**
  * @public
  */
-void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266_usartId_t idIn, const uint32_t baudRate_bpsIn);
+void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266_usartId_t idIn, const uint32_t baudRate_bpsIn, uint32_t interCharDelay_msIn);
 
 
 #endif // CXA_ESP8266_USART_H_

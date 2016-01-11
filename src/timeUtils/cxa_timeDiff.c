@@ -38,13 +38,11 @@
 
 
 // ******** global function implementations ********
-void cxa_timeDiff_init(cxa_timeDiff_t *const tdIn, cxa_timeBase_t *const tbIn, bool setStartTimeIn)
+void cxa_timeDiff_init(cxa_timeDiff_t *const tdIn, bool setStartTimeIn)
 {
 	cxa_assert(tdIn);
-	cxa_assert(tbIn);
 	
 	// save our internal state
-	tdIn->tb = tbIn;
 	tdIn->isFirstCycle = true;
 	
 	if( setStartTimeIn ) cxa_timeDiff_setStartTime_now(tdIn);
@@ -56,7 +54,7 @@ void cxa_timeDiff_setStartTime_now(cxa_timeDiff_t *const tdIn)
 	cxa_assert(tdIn);
 	
 	tdIn->isFirstCycle = false;
-	tdIn->startTime_us = cxa_timeBase_getCount_us(tdIn->tb);	
+	tdIn->startTime_us = cxa_timeBase_getCount_us();
 }
 
 
@@ -64,10 +62,10 @@ uint32_t cxa_timeDiff_getElapsedTime_ms(cxa_timeDiff_t *const tdIn)
 {
 	cxa_assert(tdIn);
 	
-	uint32_t curr_us = cxa_timeBase_getCount_us(tdIn->tb);
+	uint32_t curr_us = cxa_timeBase_getCount_us();
 	uint32_t elapsedTime_us = (curr_us >= tdIn->startTime_us) ?
 							  (curr_us - tdIn->startTime_us) :
-							  ((cxa_timeBase_getMaxCount_us(tdIn->tb) - tdIn->startTime_us) + curr_us);
+							  ((cxa_timeBase_getMaxCount_us() - tdIn->startTime_us) + curr_us);
 	return elapsedTime_us / 1000;
 }
 

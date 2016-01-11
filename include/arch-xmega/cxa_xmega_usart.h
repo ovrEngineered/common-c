@@ -57,6 +57,10 @@
 	#define CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES			8
 #endif
 
+#ifndef CXA_XMEGA_USART_TX_FIFO_SIZE_BYTES
+	#define CXA_XMEGA_USART_TX_FIFO_SIZE_BYTES			8
+#endif
+
 
 // ******** global type definitions *********
 /**
@@ -78,9 +82,15 @@ struct cxa_xmega_usart
 	cxa_fixedFifo_t rxFifo;
 	uint8_t rxFifo_raw[CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES];
 	
+	cxa_fixedFifo_t txFifo;
+	uint8_t txFifo_raw[CXA_XMEGA_USART_TX_FIFO_SIZE_BYTES];
+
 	bool isHandshakingEnabled;
 	cxa_gpio_t *cts;
 	cxa_gpio_t *rts;
+
+	bool isTxEnableEnabled;
+	cxa_gpio_t *txEnable;
 };
 
 
@@ -130,5 +140,18 @@ void cxa_xmega_usart_init_noHH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsa
 void cxa_xmega_usart_init_HH(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn,
 	cxa_gpio_t *const rtsIn, cxa_gpio_t *const ctsIn);
 
+
+/**
+ * @public
+ * @brief Initializes the specified USART for situations that require no hardware handshaking BUT require use of a
+ * 		TX enable line (eg. RS485 level shifter)
+ *
+ * @param[in] usartIn pointer to a pre-allocated USART object
+ * @param[in] avrUsartIn pointer to a USART_t struct that defines the hardware USART to be used (eg. USARTC0)
+ * @param[in] baudRate_bpsIn the desired baud rate, in bits-per-second
+ * @param txEnableIn pointer to a pre-configured GPIO line that will serve as the TX enable line
+ */
+void cxa_xmega_usart_init_txEnable(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, const uint32_t baudRate_bpsIn,
+								   cxa_gpio_t *const txEnableIn);
 
 #endif // CXA_XMEGA_USART_H_

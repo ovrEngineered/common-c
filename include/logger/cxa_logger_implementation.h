@@ -29,10 +29,6 @@
 #include <cxa_logger_header.h>
 #include <cxa_ioStream.h>
 
-#ifdef CXA_LOGGER_TIME_ENABLE
-#include <cxa_timeBase.h>
-#endif
-
 
 // ******** global macro definitions ********
 #define CXA_LOG_LEVEL_NONE				0
@@ -96,16 +92,6 @@
  */
 void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn);
 
-#ifdef CXA_LOGGER_TIME_ENABLE
-/**
- * @public
- * @brief If CXA_LOGGER_TIME_ENABLE is defined, sets the timebase
- * 		whose value will be pre-pended to every logging statement
- * @param nameIn the pre-initialized time base
- */
-void cxa_logger_setGlobalTimeBase(cxa_timeBase_t *const tbIn);
-#endif
-
 /**
  * @public
  * @brief Initializes a logger with the given name
@@ -127,6 +113,17 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn);
  * 		logger object)
  */
 void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
+
+/**
+ * @public
+ * @brief Returns the system logger. Should be used for debugging only
+ * (eg. on systems that don't support native printf)
+ *
+ * @return The system logger
+ */
+cxa_logger_t* cxa_logger_getSysLog(void);
+
+void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const char* untermStringIn, size_t untermStrLen_bytesIn, const char* postFixIn);
 
 /**
  * @private

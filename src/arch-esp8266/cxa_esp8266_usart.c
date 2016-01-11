@@ -25,11 +25,13 @@
 #include <stdbool.h>
 #include <ets_sys.h>
 #include <esp8266_peri.h>
+#include <cxa_delay.h>
 #include <cxa_assert.h>
+
+#include <user_interface.h>
 
 
 // ******** local macro definitions ********
-#define USART_HW_BUFFER_LEN_BYTES		4			// 0-127
 
 
 // ******** local type definitions ********
@@ -44,20 +46,23 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266_usartId_t idIn, const uint32_t baudRate_bpsIn)
+void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266_usartId_t idIn, const uint32_t baudRate_bpsIn, uint32_t interCharDelay_msIn)
 {
 	cxa_assert(usartIn);
 	cxa_assert( (idIn == CXA_ESP8266_USART_0) ||
-				(idIn == CXA_ESP8266_USART_1) );
+				(idIn == CXA_ESP8266_USART_1) ||
+				(idIn == CXA_ESP8266_USART_0_ALTPINS) );
 
 	// save our references
 	usartIn->id = idIn;
+	usartIn->interCharDelay_ms = interCharDelay_msIn;
 	
 	// setup our pins
 	uint32_t tmp;
 	switch(usartIn->id)
 	{
 		case CXA_ESP8266_USART_0:
+		case CXA_ESP8266_USART_0_ALTPINS:
 			// enable RX pin
 			GPC(3) = (GPC(3) & (0xF << GPCI)); 	//SOURCE(GPIO) | DRIVER(NORMAL) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
 			GPEC = (1 << 3);					//Disable
@@ -69,6 +74,15 @@ void cxa_esp8266_usart_init_noHH(cxa_esp8266_usart_t *const usartIn, cxa_esp8266
 			GPEC = (1 << 1);					//Disable
 			GPF(1) = GPFFS(GPFFS_BUS(1));		//Set mode to BUS (RX0, TX0, TX1, SPI, HSPI or CLK depending in the pin)
 			GPF(1) |= (1 << GPFPU);				//enable pullup on RX
+
+			// swap the pins if desired
+			if( usartIn->id == CXA_ESP8266_USART_0_ALTPINS )
+			{
+				system_uart_swap();
+				// we require the USART0 id for further configuration...since the user never sees this
+				// value again, it shouldn't be a big deal to change it internally
+				usartIn->id = CXA_ESP8266_USART_0;
+			}
 			break;
 
 		case CXA_ESP8266_USART_1:
@@ -130,6 +144,7 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 		// now send our data
 		USF(usartIn->id) = ((uint8_t*)buffIn)[i];
+		cxa_delay_ms(usartIn->interCharDelay_ms);
 	}
 	
 	return true;

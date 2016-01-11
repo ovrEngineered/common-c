@@ -35,34 +35,32 @@
 
 
 // ********  local variable declarations *********
+static cxa_xmega_timer32_t* timer = NULL;
 
 
 // ******** global function implementations ********
-void cxa_xmega_timeBase_init_timer32(cxa_timeBase_t *const tbIn, cxa_xmega_timer32_t *const timerIn)
+void cxa_xmega_timeBase_init_timer32(cxa_xmega_timer32_t *const timerIn)
 {
-	cxa_assert(tbIn);
 	cxa_assert(timerIn);
 	
 	// save our references
-	tbIn->timer = timerIn;	
+	timer = timerIn;
 }
 
 
-uint32_t cxa_timeBase_getCount_us(cxa_timeBase_t *const superIn)
+uint32_t cxa_timeBase_getCount_us(void)
 {
-	cxa_assert(superIn);
-	cxa_timeBase_t *tbIn = (cxa_timeBase_t*)superIn;
+	cxa_assert(timer);
 	
-	return cxa_xmega_timer32_getCount(tbIn->timer) * (1000000 / cxa_xmega_timer32_getResolution_cntsPerS(tbIn->timer));
+	return cxa_xmega_timer32_getCount(timer) * (1000000 / cxa_xmega_timer32_getResolution_cntsPerS(timer));
 }
 
 
-uint32_t cxa_timeBase_getMaxCount_us(cxa_timeBase_t *const superIn)
+uint32_t cxa_timeBase_getMaxCount_us(void)
 {
-	cxa_assert(superIn);
-	cxa_timeBase_t *tbIn = (cxa_timeBase_t*)superIn;
+	cxa_assert(timer);
 	
-	return cxa_xmega_timer32_getMaxVal_cnts(tbIn->timer) * (1000000 / cxa_xmega_timer32_getResolution_cntsPerS(tbIn->timer));
+	return cxa_xmega_timer32_getMaxVal_cnts(timer) * (1000000 / cxa_xmega_timer32_getResolution_cntsPerS(timer));
 }
 
 

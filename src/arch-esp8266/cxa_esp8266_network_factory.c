@@ -52,7 +52,6 @@ typedef struct
 
 // ********  local variable declarations *********
 static bool isInit = false;
-static cxa_timeBase_t* timeBase;
 static cxa_array_t clients;
 static clientEntry_t clients_raw[MAXNUM_CLIENTS];
 static cxa_array_t servers;
@@ -60,11 +59,8 @@ static serverEntry_t servers_raw[MAXNUM_SERVERS];
 
 
 // ******** global function implementations ********
-void cxa_esp8266_network_factory_init(cxa_timeBase_t *const timeBaseIn)
+void cxa_esp8266_network_factory_init(void)
 {
-	cxa_assert(timeBaseIn);
-
-	timeBase = timeBaseIn;
 	cxa_array_init_inPlace(&clients, sizeof(*clients_raw), (sizeof(clients_raw)/sizeof(*clients_raw)), clients_raw, sizeof(clients_raw));
 	cxa_array_init_inPlace(&servers, sizeof(*servers_raw), (sizeof(servers_raw)/sizeof(*servers_raw)), servers_raw, sizeof(servers_raw));
 
@@ -149,7 +145,7 @@ cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(void)
 		{
 			currEntry->isUsed = true;
 			// initialize our client
-			cxa_esp8266_network_tcpClient_init(&currEntry->client, timeBase);
+			cxa_esp8266_network_tcpClient_init(&currEntry->client);
 			return &currEntry->client.super;
 		}
 	}

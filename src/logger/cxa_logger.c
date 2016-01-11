@@ -24,6 +24,7 @@
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 #include <cxa_stringUtils.h>
+#include <cxa_timeBase.h>
 
 
 // ******** local macro definitions ********
@@ -40,6 +41,7 @@
 // ******** local function prototypes ********
 static inline void checkSysLogInit(void);
 static void writeField(char *const stringIn, size_t maxFieldLenIn);
+static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn);
 
 
 // ********  local variable declarations *********
@@ -48,10 +50,6 @@ static bool isSysLogInit = false;
 
 static cxa_ioStream_t* ioStream = NULL;
 static size_t largestloggerName_bytes = 0;
-
-#ifdef CXA_LOGGER_TIME_ENABLE
-static cxa_timeBase_t* timeBase = NULL;
-#endif
 
 
 // ******** global function implementations ********
@@ -62,16 +60,6 @@ void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 	ioStream = ioStreamIn;
 	cxa_logger_vlog(&sysLog, CXA_LOG_LEVEL_INFO, "logging ioStream @ %p", ioStreamIn);
 }
-
-
-#ifdef CXA_LOGGER_TIME_ENABLE
-void cxa_logger_setGlobalTimeBase(cxa_timeBase_t *const tbIn)
-{
-	checkSysLogInit();
-
-	timeBase = tbIn;
-}
-#endif
 
 
 void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
@@ -106,6 +94,39 @@ void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...)
 }
 
 
+cxa_logger_t* cxa_logger_getSysLog(void)
+{
+	return &sysLog;
+}
+
+
+void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const char* untermStringIn, size_t untermStrLen_bytesIn, const char* postFixIn)
+{
+	cxa_assert(loggerIn);
+	cxa_assert(loggerIn);
+	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
+				(levelIn == CXA_LOG_LEVEL_WARN) ||
+				(levelIn == CXA_LOG_LEVEL_INFO) ||
+				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
+				(levelIn == CXA_LOG_LEVEL_TRACE) );
+	cxa_assert(untermStringIn);
+	checkSysLogInit();
+
+	// if we don't have an ioStream, don't worry about it!
+	if( ioStream == NULL ) return;
+
+	// common header
+	writeHeader(loggerIn, levelIn);
+
+	if( prefixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)prefixIn);
+	cxa_ioStream_writeBytes(ioStream, (void *const)untermStringIn, untermStrLen_bytesIn);
+	if( postFixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)postFixIn);
+
+	// print EOL
+	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+}
+
+
 void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
 {
 	cxa_assert(loggerIn);
@@ -120,56 +141,11 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
 
-	// figure out our level text
-	char *levelText = "UNKN";
-	switch( levelIn )
-	{
-		case CXA_LOG_LEVEL_ERROR:
-			levelText = "ERROR";
-			break;
-
-		case CXA_LOG_LEVEL_WARN:
-			levelText = "WARN";
-			break;
-
-		case CXA_LOG_LEVEL_INFO:
-			levelText = "INFO";
-			break;
-
-		case CXA_LOG_LEVEL_DEBUG:
-			levelText = "DEBUG";
-			break;
-
-		case CXA_LOG_LEVEL_TRACE:
-			levelText = "TRACE";
-			break;
-	}
+	// common header
+	writeHeader(loggerIn, levelIn);
 
 	// our buffer for this go-round
 	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
-
-	// print the time (if enabled)
-	#ifdef CXA_LOGGER_TIME_ENABLE
-		if( timeBase != NULL )
-		{
-			snprintf(buff, sizeof(buff), "%-8lX ", cxa_timeBase_getCount_us(timeBase));
-			// 32-bit integer +space
-			writeField(buff, 9);
-		}
-	#endif
-
-
-	// print the name
-	writeField(loggerIn->name, largestloggerName_bytes);
-
-	// pointer (id of logger)
-	// 4+ includes [,], optional 0x (depends on printf implementation), terminating space
-	snprintf(buff, sizeof(buff), "[%p]", loggerIn);
-	writeField(buff, 5+(2*sizeof(void*)));
-
-	// level text
-	writeField(levelText, 5);
-	cxa_ioStream_writeByte(ioStream, ' ');
 
 	// now do our VARARGS
 	va_list varArgs;
@@ -216,4 +192,58 @@ static void writeField(char *const stringIn, size_t maxFieldLenIn)
 			cxa_ioStream_writeByte(ioStream, ' ');
 		}
 	}
+}
+
+
+static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
+{
+	cxa_assert(loggerIn);
+
+	// figure out our level text
+	char *levelText = "UNKN";
+	switch( levelIn )
+	{
+		case CXA_LOG_LEVEL_ERROR:
+			levelText = "ERROR";
+			break;
+
+		case CXA_LOG_LEVEL_WARN:
+			levelText = "WARN";
+			break;
+
+		case CXA_LOG_LEVEL_INFO:
+			levelText = "INFO";
+			break;
+
+		case CXA_LOG_LEVEL_DEBUG:
+			levelText = "DEBUG";
+			break;
+
+		case CXA_LOG_LEVEL_TRACE:
+			levelText = "TRACE";
+			break;
+	}
+
+	// our buffer for this go-round
+	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
+
+	// print the time (if enabled)
+	#ifdef CXA_LOGGER_TIME_ENABLE
+		snprintf(buff, sizeof(buff), "%-8lX ", cxa_timeBase_getCount_us());
+		// 32-bit integer +space
+		writeField(buff, 9);
+	#endif
+
+
+	// print the name
+	writeField(loggerIn->name, largestloggerName_bytes);
+
+	// pointer (id of logger)
+	// 4+ includes [,], optional 0x (depends on printf implementation), terminating space
+	snprintf(buff, sizeof(buff), "[%p]", loggerIn);
+	writeField(buff, 5+(2*sizeof(void*)));
+
+	// level text
+	writeField(levelText, 5);
+	cxa_ioStream_writeByte(ioStream, ' ');
 }

@@ -19,7 +19,8 @@
 
 
 // ******** includes ********
-#include <cxa_timeBase.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 
 // ******** global macro definitions ********
@@ -38,7 +39,7 @@ typedef void (*cxa_esp8266_wifiManager_ssid_cb_t)(const char *const ssidIn, void
 
 
 // ******** global function prototypes ********
-void cxa_esp8266_wifiManager_init(const char* configModeSsidIn, cxa_timeBase_t *const timeBaseIn);
+void cxa_esp8266_wifiManager_init(const char* configModeSsidIn);
 void cxa_esp8266_wifiManager_addStoredNetwork(const char* ssidIn, const char* passphrase);
 void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t cb_configModeEnter,
 										 cxa_esp8266_wifiManager_configMode_numConnStationsChanged_cb_t cb_numConnStationsChanged,
@@ -48,6 +49,8 @@ void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t
 										 cxa_esp8266_wifiManager_ssid_cb_t cb_lostAssociationWithSsid,
 										 cxa_esp8266_wifiManager_ssid_cb_t cb_associateWithSsidFailed,
 										 void *userVarIn);
+
+bool cxa_esp8266_wifiManager_isAssociated(void);
 
 void cxa_esp8266_wifiManager_start(void);
 void cxa_esp8266_wifiManager_update(void);

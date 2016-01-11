@@ -101,6 +101,21 @@ bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *con
 }
 
 
+bool cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const uint16_t numBytesIn)
+{
+	cxa_assert(fbbIn);
+	if( numBytesIn > 0 ) cxa_assert(ptrIn);
+
+	// make sure we have room for the operation
+	if( (sizeof(numBytesIn) + numBytesIn) < cxa_fixedByteBuffer_getFreeSize_bytes(fbbIn) ) return false;
+
+	// first the size
+	if( !cxa_fixedByteBuffer_append_uint16LE(fbbIn, numBytesIn) ) return false;
+	// now the actual data
+	return cxa_fixedByteBuffer_append(fbbIn, ptrIn, numBytesIn);
+}
+
+
 bool cxa_fixedByteBuffer_remove(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, const size_t numBytesIn)
 {
 	cxa_assert(fbbIn);
@@ -197,6 +212,40 @@ bool cxa_fixedByteBuffer_get_cString_inPlace(cxa_fixedByteBuffer_t *const fbbIn,
 	// set our output parameters
 	if( stringOut != NULL ) *stringOut = targetString;
 	if( strLen_bytesOut != NULL ) *strLen_bytesOut = strlen(targetString);
+
+	return true;
+}
+
+
+bool cxa_fixedByteBuffer_get_lengthPrefixedField_uint16BE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t** ptrOut, uint16_t* numBytesOut)
+{
+	cxa_assert(fbbIn);
+
+	// get our length bytes
+	uint16_t numBytes;
+	if( !cxa_fixedByteBuffer_get_uint16BE(fbbIn, indexIn, numBytes) ) return false;
+
+	// make sure we have enough bytes in the buffer for this operation
+	if( (indexIn + 2 + numBytes) > cxa_fixedByteBuffer_getSize_bytes(fbbIn) ) return false;
+
+	if( ptrOut != NULL ) *ptrOut = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, indexIn+2);
+	if( numBytesOut != NULL ) *numBytesOut = numBytes;
+
+	return true;
+}
+
+
+bool cxa_fixedByteBuffer_get_lengthPrefixedCString_uint16BE(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, char** ptrOut, uint16_t* numBytesOut, bool *isNullTerminatedOut)
+{
+	cxa_assert(fbbIn);
+
+	char* lclPtrOut;
+	uint16_t lclNumBytesOut;
+	if( !cxa_fixedByteBuffer_get_lengthPrefixedField_uint16BE(fbbIn, indexIn, (uint8_t**)&lclPtrOut, &lclNumBytesOut) ) return false;
+
+	if( ptrOut != NULL ) *ptrOut = lclPtrOut;
+	if( numBytesOut != NULL ) *numBytesOut = lclNumBytesOut;
+	if( isNullTerminatedOut ) *isNullTerminatedOut = (lclNumBytesOut > 0) ? (lclPtrOut[lclNumBytesOut-1] == 0) : false;
 
 	return true;
 }

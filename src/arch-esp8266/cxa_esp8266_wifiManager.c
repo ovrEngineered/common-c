@@ -92,7 +92,7 @@ static uint8_t numPreviouslyConnectedStations = 0;
 
 
 // ******** global function implementations ********
-void cxa_esp8266_wifiManager_init(const char* configModeSsidIn, cxa_timeBase_t *const timeBaseIn)
+void cxa_esp8266_wifiManager_init(const char* configModeSsidIn)
 {
 	cxa_logger_init(&logger, "wifiMgr");
 
@@ -118,7 +118,7 @@ void cxa_esp8266_wifiManager_init(const char* configModeSsidIn, cxa_timeBase_t *
 	cxa_array_initStd(&storedNetworks, storedNetworks_raw);
 
 	// setup our internal timing mechanisms
-	cxa_timeDiff_init(&td_genPurpose, timeBaseIn, true);
+	cxa_timeDiff_init(&td_genPurpose, true);
 
 	// setup our state machine
 	cxa_stateMachine_init(&stateMachine, "wifiMgr");
@@ -167,6 +167,12 @@ void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t
 	newListener.userVarIn = userVarIn;
 
 	cxa_assert(cxa_array_append(&listeners, &newListener));
+}
+
+
+bool cxa_esp8266_wifiManager_isAssociated(void)
+{
+	return (cxa_stateMachine_getCurrentState(&stateMachine) == STATE_ASSOCIATED);
 }
 
 

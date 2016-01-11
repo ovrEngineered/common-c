@@ -97,8 +97,8 @@ bool cxa_fixedFifo_queue(cxa_fixedFifo_t *const fifoIn, void *const elemIn)
 	
 	// if we made it here, we should add our element
 	memcpy((void*)(((uint8_t*)fifoIn->bufferLoc) + (fifoIn->insertIndex * fifoIn->datatypeSize_bytes)), elemIn, fifoIn->datatypeSize_bytes);
-	fifoIn->insertIndex++;
-	if( fifoIn->insertIndex >= fifoIn->maxNumElements ) fifoIn->insertIndex = 0;
+	size_t newInsertIndex = fifoIn->insertIndex + 1;
+	fifoIn->insertIndex = (newInsertIndex >= fifoIn->maxNumElements) ? 0 : newInsertIndex;
 	
 	return true;
 }
@@ -123,8 +123,8 @@ bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 	{
 		memcpy(elemOut, (const void*)(((uint8_t*)fifoIn->bufferLoc) + (fifoIn->removeIndex * fifoIn->datatypeSize_bytes)), fifoIn->datatypeSize_bytes);
 	}
-	fifoIn->removeIndex++;
-	if( fifoIn->removeIndex >= fifoIn->maxNumElements ) fifoIn->removeIndex = 0;
+	size_t newRemoveIndex = fifoIn->removeIndex + 1;
+	fifoIn->removeIndex = (newRemoveIndex >= fifoIn->maxNumElements) ? 0 : newRemoveIndex;
 	
 	#if CXA_FF_MAX_LISTENERS > 0
 		// notify our listeners
@@ -206,9 +206,12 @@ bool cxa_fixedFifo_isFull(cxa_fixedFifo_t *const fifoIn)
 {
 	cxa_assert(fifoIn);
 	
-	return (fifoIn->removeIndex != 0) ?
-		((fifoIn->removeIndex-1) == fifoIn->insertIndex) :
-		(fifoIn->insertIndex == (fifoIn->maxNumElements-1));
+	size_t lcl_removeIndex = fifoIn->removeIndex;
+	size_t lcl_insertIndex = fifoIn->insertIndex;
+
+	return (lcl_removeIndex != 0) ?
+		((lcl_removeIndex-1) == lcl_insertIndex) :
+		(lcl_insertIndex == (fifoIn->maxNumElements-1));
 }
 
 

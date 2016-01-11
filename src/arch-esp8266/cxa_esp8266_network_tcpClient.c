@@ -15,11 +15,13 @@
  *
  * @author Christopher Armenio
  */
+#include <cxa_esp8266_network_tcpClient.h>
+
+
+// ******** includes ********
 #include <string.h>
 #include <cxa_assert.h>
-#include <cxa_esp8266_network_tcpClient.h>
 #include <cxa_esp8266_network_factory.h>
-
 #include <user_interface.h>
 
 
@@ -68,13 +70,12 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn, cxa_timeBase_t* const timeBaseIn)
+void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
-	cxa_assert(timeBaseIn);
 
 	// initialize our super class
-	cxa_network_tcpClient_init(&netClientIn->super, timeBaseIn, cb_connectToHost, cb_disconnectFromHost, cb_isConnected);
+	cxa_network_tcpClient_init(&netClientIn->super, cb_connectToHost, cb_disconnectFromHost, cb_isConnected);
 
 	// setup our fifos (backing our ioStream)
 	cxa_fixedFifo_initStd(&netClientIn->rxFifo, CXA_FF_ON_FULL_DROP, netClientIn->rxFifo_raw);
@@ -435,6 +436,10 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 {
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
+
+	// handle a zero-size buffer appropriately
+	if( bufferSize_bytesIn != 0 ) { cxa_assert(buffIn); }
+	else { return true; }
 
 	if( !cxa_network_tcpClient_isConnected(&netClientIn->super) ) return false;
 

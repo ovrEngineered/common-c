@@ -27,6 +27,9 @@
 
 // ******** includes ********
 #include <stdbool.h>
+#include <stddef.h>
+#include <cxa_config.h>
+#include <cxa_fixedByteBuffer.h>
 
 
 // ******** global macro definitions ********
@@ -63,11 +66,34 @@ typedef struct
 
 // ******** global function prototypes ********
 bool cxa_stringUtils_startsWith(const char* targetStringIn, const char* prefixStringIn);
+bool cxa_stringUtils_startsWith_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* prefixStringIn, size_t prefixStringLen_bytesIn);
+bool cxa_stringUtils_endsWith_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* suffixStringIn);
 
 bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn);
+bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
+
+bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, size_t maxSizeTarget_bytesIn);
+bool cxa_stringUtils_concat_withLengths(char *targetStringIn, size_t maxSizeTarget_bytesIn, const char *sourceStringIn, size_t sourceStringLen_bytesIn);
+
+/**
+ *
+ * @param targetStringIn
+ * @param maxSize_bytesIn maximum _buffer_ size (or maxStrLen-1)
+ * @param stringLen_bytesOut
+ * @return
+ */
+bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, size_t* stringLen_bytesOut);
 
 bool cxa_stringUtils_equals(const char* str1In, const char* str2In);
+bool cxa_stringUtils_equals_withLengths(const char* str1In, size_t str1Len_bytes, const char* str2In, size_t str2Len_bytes);
 bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
+
+ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
+
+bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn);
+bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
+													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
+													   const char *replacementStringIn, size_t replacementStringLen_bytesIn);
 
 cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn);
 

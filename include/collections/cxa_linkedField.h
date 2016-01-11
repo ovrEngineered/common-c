@@ -28,15 +28,20 @@
 
 // ******** includes ********
 #include <stdbool.h>
+#include <string.h>
 #include <cxa_fixedByteBuffer.h>
 
 
 // ******** global macro definitions ********
 #define cxa_linkedField_append_uint8(fbbLfIn, uint8In)						cxa_linkedField_append((fbbLfIn), (uint8_t[]){(uint8In)}, 1)
 #define cxa_linkedField_append_uint16LE(fbbLfIn, uint16In)					cxa_linkedField_append((fbbLfIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
+#define cxa_linkedField_append_uint16BE(fbbLfIn, uint16In)					cxa_linkedField_append((fbbLfIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8)), ((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0))}, 2)
 #define cxa_linkedField_append_uint32LE(fbbLfIn, uint32In)					cxa_linkedField_append((fbbLfIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
 #define cxa_linkedField_append_float(fbbLfIn, floatIn)						cxa_linkedField_append((fbbLfIn), (uint8_t*)&(floatIn), 4)
 #define cxa_linkedField_append_cString(fbbLfIn, strIn)						cxa_linkedField_append((fbbLfIn), (uint8_t*)(strIn), (strlen(strIn)+1))
+
+#define cxa_linkedField_append_lengthPrefixedCString_uint16BE(fbbLfIn, strIn, includeNullTermIn)	\
+	cxa_linkedField_append_lengthPrefixedField_uint16BE((fbbLfIn), (uint8_t*)(strIn), strlen(strIn) + ((includeNullTermIn) ? 1 : 0))
 
 #define cxa_linkedField_remove_uint8(fbbLfIn, indexIn)						cxa_linkedField_remove((fbbLfIn), (indexIn), 1)
 #define cxa_linkedField_remove_uint16(fbbLfIn, indexIn)						cxa_linkedField_remove((fbbLfIn), (indexIn), 2)
@@ -45,11 +50,16 @@
 
 #define cxa_linkedField_get_uint8(fbbLfIn, indexIn, uint8Out)				cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(uint8Out), 1)
 #define cxa_linkedField_get_uint16LE(fbbLfIn, indexIn, uint16Out)			cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(uint16Out), 2)
+#define cxa_linkedField_get_uint16BE(fbbLfIn, indexIn, uint16Out)			cxa_linkedField_get((fbbLfIn), (indexIn), true, (uint8_t*)&(uint16Out), 2)
 #define cxa_linkedField_get_uint32LE(fbbLfIn, indexIn, uint32Out)			cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(uint32Out), 4)
 #define cxa_linkedField_get_float(fbbLfIn, indexIn, floatOut)				cxa_linkedField_get((fbbLfIn), (indexIn), false, (uint8_t*)&(floatOut), 4)
 
+#define cxa_linkedField_get_lengthPrefixedCString_uint16BE_inPlace(fbbLfIn, indexIn, strOut, strLen_bytesOut)	\
+	cxa_linkedField_get_lengthPrefixedField_uint16BE_inPlace(fbbLfIn, indexIn, (void**)strOut, (uint16_t*)strLen_bytesOut)
+
 #define cxa_linkedField_replace_uint8(fbbLfIn, indexIn, uint8In)			cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){(uint8In)}, 1)
 #define cxa_linkedField_replace_uint16LE(fbbLfIn, indexIn, uint16In)		cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0)), ((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8))}, 2)
+#define cxa_linkedField_replace_uint16BE(fbbLfIn, indexIn, uint16In)		cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){((uint8_t)((((uint16_t)(uint16In)) & 0xFF00) >> 8)), ((uint8_t)((((uint16_t)(uint16In)) & 0x00FF) >> 0))}, 2)
 #define cxa_linkedField_replace_uint32LE(fbbLfIn, indexIn, uint32In)		cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t[]){ ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)) }, 4)
 #define cxa_linkedField_replace_float(fbbLfIn, indexIn, floatIn)			cxa_linkedField_replace((fbbLfIn), (indexIn), (uint8_t*)&(floatIn), 4)
 
@@ -97,18 +107,26 @@ bool cxa_linkedField_initChild(cxa_linkedField_t *const fbbLfIn, cxa_linkedField
 bool cxa_linkedField_initChild_fixedLen(cxa_linkedField_t *const fbbLfIn, cxa_linkedField_t *const prevFbbLfIn, const size_t maxLen_bytesIn);
 
 bool cxa_linkedField_append(cxa_linkedField_t *const fbbLfIn, uint8_t *const ptrIn, const size_t numBytesIn);
+bool cxa_linkedField_append_lengthPrefixedField_uint16BE(cxa_linkedField_t *const fbbLfIn, uint8_t *const ptrIn, const uint16_t numBytesIn);
+
 bool cxa_linkedField_remove(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, const size_t numBytesIn);
 bool cxa_linkedField_remove_cString(cxa_linkedField_t *const fbbLfIn, const size_t indexIn);
+bool cxa_linkedField_removeFrom_lengthPrefixedField_uint16BE(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, const uint16_t numBytesToRemove);
+
+bool cxa_linkedField_clear(cxa_linkedField_t *const fbbLfIn);
 
 uint8_t* cxa_linkedField_get_pointerToIndex(cxa_linkedField_t *const fbbLfIn, const size_t indexIn);
 bool cxa_linkedField_get(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, bool transposeIn, uint8_t *const valOut, const size_t numBytesIn);
 bool cxa_linkedField_get_cstring(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char *const stringOut, size_t maxOutputSize_bytes);
 bool cxa_linkedField_get_cstring_inPlace(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char ** stringOut, size_t *strLen_bytesOut);
+bool cxa_linkedField_get_lengthPrefixedField_uint16BE_inPlace(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, void ** dataOut, uint16_t *dataLen_bytesOut);
 
 bool cxa_linkedField_replace(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
 bool cxa_linkedField_replace_cstring(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, char *const stringIn);
 
 bool cxa_linkedField_insert(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
+
+bool cxa_linkedField_prependTo_lengthPrefixedField_uint16BE(cxa_linkedField_t *const fbbLfIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
 
 size_t cxa_linkedField_getSize_bytes(cxa_linkedField_t *const fbbLfIn);
 size_t cxa_linkedField_getMaxSize_bytes(cxa_linkedField_t *const fbbLfIn);

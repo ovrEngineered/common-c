@@ -38,7 +38,6 @@
 	#include <cxa_logger_header.h>
 #endif
 #ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-	#include <cxa_timeBase.h>
 	#include <cxa_timeDiff.h>
 #endif
 
@@ -122,7 +121,7 @@ struct cxa_stateMachine
 void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn);
 
 #ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const char* nameIn, cxa_timeBase_t *const timeBaseIn);
+void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const char* nameIn);
 #endif
 
 void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,

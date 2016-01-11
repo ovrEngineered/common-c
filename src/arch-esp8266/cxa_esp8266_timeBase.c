@@ -37,26 +37,20 @@
 
 
 // ******** global function implementations ********
-void cxa_esp8266_timeBase_init(cxa_timeBase_t *const tbIn)
+void cxa_esp8266_timeBase_init(void)
 {
-	cxa_assert(tbIn);
-	
 	// nothing to do here
 }
 
 
-uint32_t cxa_timeBase_getCount_us(cxa_timeBase_t *const superIn)
+uint32_t cxa_timeBase_getCount_us(void)
 {
-	cxa_assert(superIn);
-
 	return system_get_time();
 }
 
 
-uint32_t cxa_timeBase_getMaxCount_us(cxa_timeBase_t *const superIn)
+uint32_t cxa_timeBase_getMaxCount_us(void)
 {
-	cxa_assert(superIn);
-	
 	return UINT32_MAX;
 }
 

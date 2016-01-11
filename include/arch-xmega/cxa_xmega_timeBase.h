@@ -45,7 +45,6 @@
 
 // ******** includes ********
 #include <stdint.h>
-#include <cxa_timeBase.h>
 #include <cxa_xmega_timer32.h>
 
 
@@ -53,27 +52,19 @@
 
 
 // ******** global type definitions *********
-/**
- * @private
- */
-struct cxa_timeBase
-{
-	cxa_xmega_timer32_t *timer;
-};
 
 
 // ******** global function prototypes ********
 /**
  * @public
- * @brief Initializes a timeBase object to use a pre-configured ::cxa_xmega_timer32_t object as a counter.
+ * @brief Initializes the timeBase object to use a pre-configured ::cxa_xmega_timer32_t object as a counter.
  * The ::cxa_xmega_timer32_t should have already been configured as a free-running timer with a
  * sane resolution (eg. such a resolution that the overflow period of the 32-bit timer is signficantly
- * longer than the longest time period measured with this timeBase)
+ * longer than the longest time period measured with the timeBase)
  *
- * @param[in] tbIn pointer to a pre-allocated XMega timeBase object
  * @param[in] timerIn pre-configured XMega 32-bit timer
  */
-void cxa_xmega_timeBase_init_timer32(cxa_timeBase_t *const tbIn, cxa_xmega_timer32_t *const timerIn);
+void cxa_xmega_timeBase_init_timer32(cxa_xmega_timer32_t *const timerIn);
 
 
 #endif // CXA_XMEGA_TIMEBASE_H_

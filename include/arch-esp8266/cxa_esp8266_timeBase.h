@@ -27,20 +27,13 @@
 
 
 // ******** global type definitions *********
-/**
- * @private
- */
-struct cxa_timeBase
-{
-	void* _placeHolder;
-};
 
 
 // ******** global function prototypes ********
 /**
  * @public
  */
-void cxa_esp8266_timeBase_init(cxa_timeBase_t *const tbIn);
+void cxa_esp8266_timeBase_init(void);
 
 
 #endif // CXA_ESP826_TIMEBASE_H_

@@ -39,11 +39,11 @@
 #endif
 
 #ifndef CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES
-	#define CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES			64
+	#define CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES			128
 #endif
 
 #ifndef CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES
-	#define CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES			64
+	#define CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES			128
 #endif
 
 
@@ -86,7 +86,7 @@ struct cxa_esp8266_network_tcpClient
 /**
  * @private
  */
-void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn, cxa_timeBase_t* const timeBaseIn);
+void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn);
 
 
 /**

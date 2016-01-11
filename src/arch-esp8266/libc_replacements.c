@@ -40,6 +40,16 @@
 #include "user_interface.h"
 
 
+// prototypes to get rid of compiler warnings
+int tolower(int c);
+int isspace(int c);
+int isalpha(int c);
+int isdigit(int c);
+int islower(int c);
+int isupper(int c);
+int isprint(int c);
+
+
 //int ICACHE_RAM_ATTR puts(const char * str) {
 int puts(const char * str) {
     return os_printf("%s", str);
