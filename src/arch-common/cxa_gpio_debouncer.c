@@ -72,6 +72,14 @@ void cxa_gpio_debouncer_addListener(cxa_gpio_debouncer_t *const debouncerIn, cxa
 }
 
 
+bool cxa_gpio_debouncer_getCurrentValue(cxa_gpio_debouncer_t *const debouncerIn)
+{
+	cxa_assert(debouncerIn);
+
+	return cxa_gpio_getValue(debouncerIn->gpio);
+}
+
+
 void cxa_gpio_debouncer_update(cxa_gpio_debouncer_t *const debouncerIn)
 {
 	cxa_assert(debouncerIn);

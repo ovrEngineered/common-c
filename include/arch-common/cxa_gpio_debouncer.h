@@ -72,6 +72,8 @@ void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t 
 
 void cxa_gpio_debouncer_addListener(cxa_gpio_debouncer_t *const debouncerIn, cxa_gpio_debouncer_cb_onTransition_t cb_onTransition, void *userVarIn);
 
+bool cxa_gpio_debouncer_getCurrentValue(cxa_gpio_debouncer_t *const debouncerIn);
+
 void cxa_gpio_debouncer_update(cxa_gpio_debouncer_t *const debouncerIn);
 
 #endif // CXA_GPIO_DEBOUNCER_H_
