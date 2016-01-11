@@ -119,6 +119,8 @@ bool cxa_mqtt_message_publish_topicName_prependCString(cxa_mqtt_message_t *const
 	cxa_assert(msgIn);
 	cxa_assert(stringIn);
 
+	if( !msgIn->areFieldsConfigured || (cxa_mqtt_message_getType(msgIn) != CXA_MQTT_MSGTYPE_PUBLISH) ) return false;
+
 	return cxa_mqtt_message_publish_topicName_prependString_withLength(msgIn, stringIn, strlen(stringIn));
 }
 
@@ -131,6 +133,23 @@ bool cxa_mqtt_message_publish_topicName_prependString_withLength(cxa_mqtt_messag
 	if( !msgIn->areFieldsConfigured || (cxa_mqtt_message_getType(msgIn) != CXA_MQTT_MSGTYPE_PUBLISH) ) return false;
 
 	return cxa_linkedField_prependTo_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_topicName, 0, (uint8_t*)stringIn, stringLen_bytesIn);
+}
+
+
+bool cxa_mqtt_message_publish_topicName_clear(cxa_mqtt_message_t *const msgIn)
+{
+	cxa_assert(msgIn);
+
+	if( !msgIn->areFieldsConfigured || (cxa_mqtt_message_getType(msgIn) != CXA_MQTT_MSGTYPE_PUBLISH) ) return false;
+
+	// get our topic name and make sure it's appropriate
+	char* topicName;
+	uint16_t topicNameLen_bytes;
+	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return false;
+
+	// make sure we don't go out of bounds
+	uint16_t numBytesToTrimFromLeft = topicNameLen_bytes;
+	return cxa_linkedField_removeFrom_lengthPrefixedField_uint16BE(&msgIn->fields_publish.field_topicName, 0, numBytesToTrimFromLeft);
 }
 
 

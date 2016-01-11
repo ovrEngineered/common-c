@@ -47,6 +47,7 @@ bool cxa_mqtt_message_publish_getPayload(cxa_mqtt_message_t *const msgIn, cxa_li
 bool cxa_mqtt_message_publish_topicName_trimToPointer(cxa_mqtt_message_t *const msgIn, char *const ptrIn);
 bool cxa_mqtt_message_publish_topicName_prependCString(cxa_mqtt_message_t *const msgIn, char *const stringIn);
 bool cxa_mqtt_message_publish_topicName_prependString_withLength(cxa_mqtt_message_t *const msgIn, char *const stringIn, size_t stringLen_bytesIn);
+bool cxa_mqtt_message_publish_topicName_clear(cxa_mqtt_message_t *const msgIn);
 
 /**
  * @protected
