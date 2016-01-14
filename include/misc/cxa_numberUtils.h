@@ -30,8 +30,12 @@
 
 
 // ******** global macro definitions ********
-#define CXA_MAX(x, y) (((x) > (y)) ? (x) : (y))
-#define CXA_MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define CXA_MAX(x, y) 								(((x) > (y)) ? (x) : (y))
+#define CXA_MIN(x, y) 								(((x) < (y)) ? (x) : (y))
+
+#define CXA_CLAMP_HIGH(val, max)					((val) = CXA_MIN((val), (max)))
+#define CXA_CLAMP_LOW(val, min)						((val) = CXA_MAX((val), (min)))
+#define CXA_CLAMP_LOW_HIGH(val, min, max)			((val) = CXA_CLAMP_HIGH(CXA_CLAMP_LOW((val), (min)), (max)))
 
 
 // ******** global type definitions *********
