@@ -257,14 +257,7 @@ static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *user
 {
 	// get our config and validate
 	struct station_config* targetConfig = cxa_array_get(&storedNetworks, targetNetworkIndex);
-	if( targetConfig == NULL )
-	{
-		// no more network configurations...enter configuration mode...
-		cxa_logger_info(&logger, "out of stored networks...entering configuration mode");
-		cxa_stateMachine_transition(&stateMachine, STATE_CONFIG_MODE);
-		return;
-	}
-	if( strlen((char*)targetConfig->ssid) == 0 )
+	if( (targetConfig == NULL) || (strlen((char*)targetConfig->ssid) == 0) )
 	{
 		cxa_logger_warn(&logger, "invalid stored network at index %d, skipping", targetNetworkIndex);
 		targetNetworkIndex++;
@@ -305,6 +298,7 @@ static void stateCb_associating_state(cxa_stateMachine_t *const smIn, void *user
 		case STATION_CONNECT_FAIL:
 			cxa_logger_debug(&logger, "associate failure: %d", connStatus);
 			targetNetworkIndex++;
+			if( targetNetworkIndex >= cxa_array_getSize_elems(&storedNetworks) ) targetNetworkIndex = 0;
 			cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
 			return;
 			break;
