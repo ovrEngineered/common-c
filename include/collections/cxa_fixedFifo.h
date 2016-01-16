@@ -206,6 +206,15 @@ void cxa_fixedFifo_addListener(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_cb_n
 
 /**
  * @public
+ * @brief Clears the contents of the FIFO
+ *
+ * @param[in] fifoIn pointer to the pre-initialized FIFO object
+ */
+void cxa_fixedFifo_clear(cxa_fixedFifo_t *const fifoIn);
+
+
+/**
+ * @public
  * @brief Queues an element in the FIFO
  *
  * @param[in] fifoIn pointer to the pre-initialized FIFO object

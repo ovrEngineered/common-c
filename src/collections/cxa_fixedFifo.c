@@ -76,6 +76,15 @@ void cxa_fixedFifo_addListener(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_cb_n
 #endif
 
 
+void cxa_fixedFifo_clear(cxa_fixedFifo_t *const fifoIn)
+{
+	cxa_assert(fifoIn);
+
+	fifoIn->insertIndex = 0;
+	fifoIn->removeIndex = 0;
+}
+
+
 bool cxa_fixedFifo_queue(cxa_fixedFifo_t *const fifoIn, void *const elemIn)
 {
 	cxa_assert(fifoIn);
