@@ -63,21 +63,21 @@ typedef void (*cxa_network_tcpClient_cb_onDisconnect_t)(cxa_network_tcpClient_t 
  * @private
  * Used for network client subclasses
  */
-typedef bool (*cxa_network_tcpClient_cb_connectToHost_t)(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
+typedef bool (*cxa_network_tcpClient_scm_connectToHost_t)(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn);
 
 
 /**
  * @private
  * Used for network client subclasses
  */
-typedef void (*cxa_network_tcpClient_cb_disconnectFromHost_t)(cxa_network_tcpClient_t *const superIn);
+typedef void (*cxa_network_tcpClient_scm_disconnectFromHost_t)(cxa_network_tcpClient_t *const superIn);
 
 
 /**
  * @private
  * Used for network client subclasses
  */
-typedef bool (*cxa_network_tcpClient_cb_isConnected_t)(cxa_network_tcpClient_t *const superIn);
+typedef bool (*cxa_network_tcpClient_scm_isConnected_t)(cxa_network_tcpClient_t *const superIn);
 
 
 typedef struct
@@ -98,9 +98,9 @@ struct cxa_network_tcpClient
 	cxa_ioStream_t ioStream;
 
 	// subclass methods
-	cxa_network_tcpClient_cb_connectToHost_t cb_connToHost;
-	cxa_network_tcpClient_cb_disconnectFromHost_t cb_disconnect;
-	cxa_network_tcpClient_cb_isConnected_t cb_isConnected;
+	cxa_network_tcpClient_scm_connectToHost_t scm_connToHost;
+	cxa_network_tcpClient_scm_disconnectFromHost_t scm_disconnect;
+	cxa_network_tcpClient_scm_isConnected_t scm_isConnected;
 
 	cxa_timeDiff_t td_genPurp;
 
@@ -116,9 +116,9 @@ struct cxa_network_tcpClient
  * @private
  */
 void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn,
-							 cxa_network_tcpClient_cb_connectToHost_t cb_connToHostIn,
-							 cxa_network_tcpClient_cb_disconnectFromHost_t cb_disconnectIn,
-							 cxa_network_tcpClient_cb_isConnected_t cb_isConnected);
+							 cxa_network_tcpClient_scm_connectToHost_t scm_connToHostIn,
+							 cxa_network_tcpClient_scm_disconnectFromHost_t scm_disconnectIn,
+							 cxa_network_tcpClient_scm_isConnected_t scm_isConnected);
 
 /**
  * @public
@@ -133,7 +133,7 @@ void cxa_network_tcpClient_addListener(cxa_network_tcpClient_t *const netClientI
 /**
  * @public
  */
-bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
+bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn);
 
 
 /**
@@ -143,8 +143,7 @@ void cxa_network_tcpClient_disconnect(cxa_network_tcpClient_t *const netClientIn
 
 
 /**
- * @param netClientIn
- * @return
+ * @public
  */
 bool cxa_network_tcpClient_isConnected(cxa_network_tcpClient_t *const netClientIn);
 

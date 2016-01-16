@@ -35,7 +35,9 @@
 
 
 // ******** local function prototypes ********
+static void scm_onDisconnect(cxa_mqtt_client_t* const superIn);
 static void cb_network_onConnect(cxa_network_tcpClient_t *const superIn, void* userVarIn);
+static void cb_network_onConnectFail(cxa_network_tcpClient_t *const tcpClientIn, void* userVarIn);
 static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void* userVarIn);
 
 
@@ -50,15 +52,20 @@ void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, cha
 	// initialize our network client
 	clientIn->netClient = cxa_network_factory_reserveTcpClient();
 	cxa_assert(clientIn->netClient);
-	cxa_network_tcpClient_addListener(clientIn->netClient, cb_network_onConnect, NULL, cb_network_onDisconnect, (void*)clientIn);
+	cxa_network_tcpClient_addListener(clientIn->netClient,
+									  cb_network_onConnect, cb_network_onConnectFail, cb_network_onDisconnect,
+									  (void*)clientIn);
 
 	// initialize our super class
 	cxa_mqtt_client_init(&clientIn->super, cxa_network_tcpClient_getIoStream(clientIn->netClient), KEEPALIVE_TIMEOUT_S, clientIdIn);
+
+	// setup our overrides
+	clientIn->super.scm_onDisconnect = scm_onDisconnect;
 }
 
 
 bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clientIn, char *const hostNameIn, uint16_t portNumIn,
-										   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn, bool autoReconnectIn)
+										   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn)
 {
 	cxa_assert(clientIn);
 	cxa_assert(clientIn->netClient);
@@ -69,19 +76,20 @@ bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clie
 	clientIn->password = passwordIn;
 	clientIn->passwordLen_bytes = passwordLen_bytesIn;
 
-	return cxa_network_tcpClient_connectToHost(clientIn->netClient, hostNameIn, portNumIn, NET_CONNECT_TIMEOUT_MS, autoReconnectIn);
+	return cxa_network_tcpClient_connectToHost(clientIn->netClient, hostNameIn, portNumIn, NET_CONNECT_TIMEOUT_MS);
 }
 
 
-void cxa_mqtt_client_network_internalDisconnect(cxa_mqtt_client_network_t *const clientIn)
+// ******** local function implementations ********
+static void scm_onDisconnect(cxa_mqtt_client_t* const superIn)
 {
+	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)superIn;
 	cxa_assert(clientIn);
 
 	cxa_network_tcpClient_disconnect(clientIn->netClient);
 }
 
 
-// ******** local function implementations ********
 static void cb_network_onConnect(cxa_network_tcpClient_t *const superIn, void* userVarIn)
 {
 	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
@@ -92,11 +100,20 @@ static void cb_network_onConnect(cxa_network_tcpClient_t *const superIn, void* u
 }
 
 
+static void cb_network_onConnectFail(cxa_network_tcpClient_t *const tcpClientIn, void* userVarIn)
+{
+	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
+	cxa_assert(clientIn);
+
+	cxa_mqtt_client_notify_connectFail(&clientIn->super, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK);
+}
+
+
 static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void* userVarIn)
 {
 	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
 	cxa_assert(clientIn);
 
-	cxa_mqtt_client_internalDisconnect(&clientIn->super);
+	cxa_mqtt_client_notify_disconnect(&clientIn->super);
 }
 

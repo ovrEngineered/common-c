@@ -58,6 +58,7 @@ typedef struct cxa_mqtt_client cxa_mqtt_client_t;
 
 typedef enum
 {
+	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK,
 	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_AUTH,
 	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT
 }cxa_mqtt_client_connectFailureReason_t;
@@ -69,6 +70,12 @@ typedef void (*cxa_mqtt_client_cb_onDisconnect_t)(cxa_mqtt_client_t *const clien
 
 typedef void (*cxa_mqtt_client_cb_onPublish_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 		char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_mqtt_client_scm_onDisconnect_t)(cxa_mqtt_client_t* const superIn);
 
 
 /**
@@ -130,7 +137,6 @@ struct cxa_mqtt_client
 
 	uint16_t keepAliveTimeout_s;
 	char* clientId;
-	bool hasSentConnectPacket;
 	uint16_t currPacketId;
 
 	struct{
@@ -141,6 +147,8 @@ struct cxa_mqtt_client
 		uint8_t payload[CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES];
 		size_t payloadLen_bytes;
 	}will;
+
+	cxa_mqtt_client_scm_onDisconnect_t scm_onDisconnect;
 };
 
 
@@ -157,7 +165,6 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 void *const userVarIn);
 
 bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);
-bool cxa_mqtt_client_isConnecting(cxa_mqtt_client_t *const clientIn);
 bool cxa_mqtt_client_isConnected(cxa_mqtt_client_t *const clientIn);
 void cxa_mqtt_client_disconnect(cxa_mqtt_client_t *const clientIn);
 
@@ -171,8 +178,15 @@ void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn);
 
 
 /**
+ * @protecvted
+ */
+void cxa_mqtt_client_notify_connectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn);
+
+
+/**
  * @protected
  */
-void cxa_mqtt_client_internalDisconnect(cxa_mqtt_client_t *const clientIn);
+void cxa_mqtt_client_notify_disconnect(cxa_mqtt_client_t *const clientIn);
+
 
 #endif // CXA_MQTT_CLIENT_H_

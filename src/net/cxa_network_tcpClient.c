@@ -36,19 +36,19 @@
 
 // ******** global function implementations ********
 void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn,
-							 cxa_network_tcpClient_cb_connectToHost_t cb_connToHostIn,
-							 cxa_network_tcpClient_cb_disconnectFromHost_t cb_disconnectIn,
-							 cxa_network_tcpClient_cb_isConnected_t cb_isConnected)
+							 cxa_network_tcpClient_scm_connectToHost_t scm_connToHostIn,
+							 cxa_network_tcpClient_scm_disconnectFromHost_t scm_disconnectIn,
+							 cxa_network_tcpClient_scm_isConnected_t scm_isConnected)
 {
 	cxa_assert(netClientIn);
-	cxa_assert(cb_connToHostIn);
-	cxa_assert(cb_disconnectIn);
-	cxa_assert(cb_isConnected);
+	cxa_assert(scm_connToHostIn);
+	cxa_assert(scm_disconnectIn);
+	cxa_assert(scm_isConnected);
 
 	// save our references
-	netClientIn->cb_connToHost = cb_connToHostIn;
-	netClientIn->cb_disconnect = cb_disconnectIn;
-	netClientIn->cb_isConnected = cb_isConnected;
+	netClientIn->scm_connToHost = scm_connToHostIn;
+	netClientIn->scm_disconnect = scm_disconnectIn;
+	netClientIn->scm_isConnected = scm_isConnected;
 
 	// setup our logger
 	cxa_logger_init(&netClientIn->logger, "netClient");
@@ -77,12 +77,12 @@ void cxa_network_tcpClient_addListener(cxa_network_tcpClient_t *const netClientI
 }
 
 
-bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn)
+bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn)
 {
 	cxa_assert(netClientIn);
 	cxa_assert(hostNameIn);
 
-	return netClientIn->cb_connToHost(netClientIn, hostNameIn, portNumIn, timeout_msIn, autoReconnectIn);
+	return netClientIn->scm_connToHost(netClientIn, hostNameIn, portNumIn, timeout_msIn);
 }
 
 
@@ -90,7 +90,7 @@ void cxa_network_tcpClient_disconnect(cxa_network_tcpClient_t *const netClientIn
 {
 	cxa_assert(netClientIn);
 
-	netClientIn->cb_disconnect(netClientIn);
+	netClientIn->scm_disconnect(netClientIn);
 }
 
 
@@ -98,7 +98,7 @@ bool cxa_network_tcpClient_isConnected(cxa_network_tcpClient_t *const netClientI
 {
 	cxa_assert(netClientIn);
 
-	return netClientIn->cb_isConnected(netClientIn);
+	return netClientIn->scm_isConnected(netClientIn);
 }
 
 

@@ -51,9 +51,9 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
 
-static bool cb_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn);
-static void cb_disconnectFromHost(cxa_network_tcpClient_t *const superIn);
-static bool cb_isConnected(cxa_network_tcpClient_t *const superIn);
+static bool scm_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn);
+static void scm_disconnectFromHost(cxa_network_tcpClient_t *const superIn);
+static bool scm_isConnected(cxa_network_tcpClient_t *const superIn);
 
 static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_arg);
 static void cb_espConnected(void *arg);
@@ -75,7 +75,7 @@ void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const n
 	cxa_assert(netClientIn);
 
 	// initialize our super class
-	cxa_network_tcpClient_init(&netClientIn->super, cb_connectToHost, cb_disconnectFromHost, cb_isConnected);
+	cxa_network_tcpClient_init(&netClientIn->super, scm_connectToHost, scm_disconnectFromHost, scm_isConnected);
 
 	// setup our fifos (backing our ioStream)
 	cxa_fixedFifo_initStd(&netClientIn->rxFifo, CXA_FF_ON_FULL_DROP, netClientIn->rxFifo_raw);
@@ -181,7 +181,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 	netClientIn->espconn.type = ESPCONN_TCP;
 	netClientIn->espconn.state = ESPCONN_NONE;
 
-	// register for our callbacks
+	// register our connection callbacks
 	espconn_regist_connectcb(&netClientIn->espconn, cb_espConnected);
 	espconn_regist_disconcb(&netClientIn->espconn, cb_espDisconnected);
 	espconn_regist_reconcb(&netClientIn->espconn, cb_espRecon);
@@ -207,7 +207,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
 		}
 
-		cxa_stateMachine_transition(&netClientIn->stateMachine, (netClientIn->autoReconnect ? CONN_STATE_CONNECTING : CONN_STATE_IDLE));
+		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
 		return;
 	}
 }
@@ -218,9 +218,16 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
+	cxa_logger_info(&netClientIn->super.logger, "connected");
+
 	// register for received and sent data
 	espconn_regist_recvcb(&netClientIn->espconn, cb_espRx);
 	espconn_regist_sentcb(&netClientIn->espconn, cb_espSent);
+
+	// reset our queue
+	netClientIn->sendInProgress = false;
+	cxa_fixedFifo_clear(&netClientIn->rxFifo);
+	cxa_fixedFifo_clear(&netClientIn->txFifo);
 
 	// bind to our ioStream
 	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
@@ -251,7 +258,7 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVa
 }
 
 
-static bool cb_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn, bool autoReconnectIn)
+static bool scm_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn)
 {
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
@@ -263,7 +270,6 @@ static bool cb_connectToHost(cxa_network_tcpClient_t *const superIn, char *const
 	strlcpy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
 	netClientIn->tcp.remote_port = portNumIn;
 	netClientIn->connectTimeout_ms = timeout_msIn;
-	netClientIn->autoReconnect = autoReconnectIn;
 	cxa_logger_info(&netClientIn->super.logger, "connect requested to %s:%d", netClientIn->targetHostName, netClientIn->tcp.remote_port);
 
 	// start our timeout
@@ -276,16 +282,28 @@ static bool cb_connectToHost(cxa_network_tcpClient_t *const superIn, char *const
 }
 
 
-static void cb_disconnectFromHost(cxa_network_tcpClient_t *const superIn)
+static void scm_disconnectFromHost(cxa_network_tcpClient_t *const superIn)
 {
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
-	if( (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED)) espconn_disconnect(&netClientIn->espconn);
+	cxa_logger_info(&netClientIn->super.logger, "disconnect requested");
+
+	// disconnect if we need to
+	if( (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED) )
+	{
+		espconn_disconnect(&netClientIn->espconn);
+	}
+	else
+	{
+		// mainly for the DNS Lookup state
+		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
+		cxa_stateMachine_update(&netClientIn->stateMachine);
+	}
 }
 
 
-static bool cb_isConnected(cxa_network_tcpClient_t *const superIn)
+static bool scm_isConnected(cxa_network_tcpClient_t *const superIn)
 {
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
@@ -300,6 +318,9 @@ static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_a
 	struct espconn *conn = (struct espconn*)callback_arg;
 	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
+
+	// make sure we are in a proper state to handle this
+	if( (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) != CONN_STATE_DNS_LOOKUP) ) return;
 
 	if( ipaddr == NULL )
 	{
@@ -322,7 +343,10 @@ static void cb_espConnected(void *arg)
 	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
-	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTED);
+	if( cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTING )
+	{
+		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTED);
+	}
 	return;
 }
 
@@ -334,18 +358,10 @@ static void cb_espDisconnected(void *arg)
 	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
-	if( netClientIn->autoReconnect )
-	{
-		cxa_logger_info(&netClientIn->super.logger, "disconnect, auto re-connecting");
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTING);
-		return;
-	}
-	else
-	{
-		cxa_logger_info(&netClientIn->super.logger, "disconnected");
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-		return;
-	}
+	cxa_logger_info(&netClientIn->super.logger, "disconnected");
+
+	// make sure we're idle
+	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
 }
 
 
@@ -407,19 +423,9 @@ static void cb_espRecon(void *arg, sint8 err)
 	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
 	cxa_assert(netClientIn);
 
-	cxa_logger_warn(&netClientIn->super.logger, "esp reports connection error %d", err);
-	if( netClientIn->autoReconnect )
-	{
-		cxa_logger_info(&netClientIn->super.logger, "disconnect, auto re-connecting");
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTING);
-		return;
-	}
-	else
-	{
-		cxa_logger_info(&netClientIn->super.logger, "disconnected");
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-		return;
-	}
+	espconn_disconnect(conn);
+	cxa_logger_warn(&netClientIn->super.logger, "esp reports connection error %d, disconnected", err);
+	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
 }
 
 

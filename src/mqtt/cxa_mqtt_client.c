@@ -79,8 +79,8 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	clientIn->clientId = clientIdIn;
 
 	// setup some initial values
-	clientIn->hasSentConnectPacket = false;
 	clientIn->keepAliveTimeout_s = keepAliveTimeout_sIn;
+	clientIn->scm_onDisconnect = NULL;
 	cxa_timeDiff_init(&clientIn->td_timeout, true);
 	cxa_timeDiff_init(&clientIn->td_sendKeepAlive, true);
 	cxa_timeDiff_init(&clientIn->td_receiveKeepAlive, true);
@@ -166,6 +166,8 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 
 	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_IDLE ) return false;
 
+	cxa_logger_info(&clientIn->logger, "sending CONNECT packet");
+
 	// reserve/initialize/send message
 	cxa_mqtt_message_t* msg = NULL;
 	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
@@ -185,14 +187,6 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 }
 
 
-bool cxa_mqtt_client_isConnecting(cxa_mqtt_client_t *const clientIn)
-{
-	cxa_assert(clientIn);
-
-	return (cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_CONNECTING);
-}
-
-
 bool cxa_mqtt_client_isConnected(cxa_mqtt_client_t *const clientIn)
 {
 	cxa_assert(clientIn);
@@ -207,6 +201,9 @@ void cxa_mqtt_client_disconnect(cxa_mqtt_client_t *const clientIn)
 
 	cxa_logger_info(&clientIn->logger, "disconnect requested");
 	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
+
+	// now let our lower-level connection know that we're disconnecting
+	if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
 
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 }
@@ -310,13 +307,29 @@ void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn)
 }
 
 
-void cxa_mqtt_client_internalDisconnect(cxa_mqtt_client_t *const clientIn)
+void cxa_mqtt_client_notify_connectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn)
 {
 	cxa_assert(clientIn);
 
-	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_IDLE ) return;
+	// notify all of our listeners
+	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, reasonIn, currListener->userVar);
+	}
+}
 
+
+void cxa_mqtt_client_notify_disconnect(cxa_mqtt_client_t *const clientIn)
+{
+	cxa_assert(clientIn);
+
+	// we only want to notify our clients if we're connected
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return;
+
+	// transition (state_leave should notify our listeners)
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+	cxa_stateMachine_update(&clientIn->stateMachine);
 }
 
 
@@ -325,8 +338,6 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userV
 {
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
-
-	cxa_logger_info(&clientIn->logger, "connecting");
 
 	// reset our connack timeout
 	cxa_timeDiff_setStartTime_now(&clientIn->td_timeout);
@@ -346,7 +357,10 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 		cxa_stateMachine_update(&clientIn->stateMachine);
 
-		// notify our listeners
+		// now let our lower-level connection know that we're disconnecting
+		if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
+
+		// finally notify our listeners of the failure
 		cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
 		{
 			if( currListener == NULL ) continue;
@@ -432,6 +446,9 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVa
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
 
+	// now let our lower-level connection know that we're disconnecting
+	if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
+
 	// send disconnect message
 
 	// notify our listeners
@@ -498,15 +515,19 @@ static void handleMessage_connAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	{
 		cxa_logger_warn(&clientIn->logger, "connection refused: %d", retCode);
 
+		// transition first (so our connectFail listeners can retry if desired)
+		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+		cxa_stateMachine_update(&clientIn->stateMachine);
+
+		// now let our lower-level connection know that we're disconnecting
+		if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
+
 		// notify our listeners
 		cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
 		{
 			if( currListener == NULL ) continue;
 			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_AUTH, currListener->userVar);
 		}
-
-		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
-		return;
 	}
 }
 
