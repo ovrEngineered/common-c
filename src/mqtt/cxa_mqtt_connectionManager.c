@@ -36,8 +36,12 @@
 #define SSID							"BeerSmart"
 #define KEY								"pineapple14"
 
-#define MQTT_SERVER						"m11.cloudmqtt.com"
-#define MQTT_SERVER_PORTNUM				13164
+//#define MQTT_SERVER						"m11.cloudmqtt.com"
+//#define MQTT_SERVER_PORTNUM				13164
+
+#define MQTT_SERVER						"m10.cloudmqtt.com"
+#define MQTT_SERVER_PORTNUM				17754
+
 #define MQTT_SERVER_USERNAME			"arsinio"
 #define MQTT_SERVER_PASSWORD			"tmpPasswd"
 
@@ -68,8 +72,7 @@ static void wifiManCb_lostAssociation(const char *const ssidIn, void* userVarIn)
 static void wifiManCb_configMode_enter(void* userVarIn);
 
 static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
-static void mqttClientCb_onConnectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
-static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
+static void mqttClientCb_onIdle(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 
 static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
@@ -126,7 +129,7 @@ void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn)
 
 	// and our mqtt client
 	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString());
-	cxa_mqtt_client_addListener(&mqttClient.super, mqttClientCb_onConnect, mqttClientCb_onConnectFail, mqttClientCb_onDisconnect, NULL);
+	cxa_mqtt_client_addListener(&mqttClient.super, mqttClientCb_onIdle, mqttClientCb_onConnect, NULL, NULL, NULL);
 }
 
 
@@ -226,15 +229,8 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 }
 
 
-static void mqttClientCb_onConnectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn)
+static void mqttClientCb_onIdle(cxa_mqtt_client_t *const clientIn, void* userVarIn)
 {
-	cxa_logger_warn(&logger, "connection failed");
-	cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
-}
-
-
-static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* userVarIn)
-{
-	cxa_logger_warn(&logger, "disconnected");
+	cxa_logger_warn(&logger, "connection failed/disconnected");
 	cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
 }
