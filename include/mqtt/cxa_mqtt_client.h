@@ -148,6 +148,7 @@ struct cxa_mqtt_client
 		size_t payloadLen_bytes;
 	}will;
 
+	cxa_mqtt_client_connectFailureReason_t connFailReason;
 	cxa_mqtt_client_scm_onDisconnect_t scm_onDisconnect;
 };
 

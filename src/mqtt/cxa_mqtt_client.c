@@ -44,7 +44,9 @@ typedef enum
 {
 	MQTT_STATE_IDLE,
 	MQTT_STATE_CONNECTING,
-	MQTT_STATE_CONNECTED
+	MQTT_STATE_CONNECTED,
+	MQTT_STATE_CONNECTFAIL,
+	MQTT_STATE_DISCONNECT
 }state_t;
 
 
@@ -54,6 +56,8 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_disconnect_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 
 static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
 
@@ -112,6 +116,8 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_IDLE, "idle", NULL, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTED, "connected", stateCb_connected_enter, stateCb_connected_state, stateCb_connected_leave, (void*)clientIn);
+	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTFAIL, "connFail", stateCb_connectFail_enter, NULL, NULL, (void*)clientIn);
+	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_DISCONNECT, "disconnect", stateCb_disconnect_enter, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 	cxa_stateMachine_update(&clientIn->stateMachine);
 }
@@ -311,12 +317,11 @@ void cxa_mqtt_client_notify_connectFail(cxa_mqtt_client_t *const clientIn, cxa_m
 {
 	cxa_assert(clientIn);
 
-	// notify all of our listeners
-	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
-	{
-		if( currListener == NULL ) continue;
-		if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, reasonIn, currListener->userVar);
-	}
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_IDLE ) return;
+
+	clientIn->connFailReason = reasonIn;
+	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_CONNECTFAIL);
+	//cxa_stateMachine_update(&clientIn->stateMachine);
 }
 
 
@@ -329,7 +334,7 @@ void cxa_mqtt_client_notify_disconnect(cxa_mqtt_client_t *const clientIn)
 
 	// transition (state_leave should notify our listeners)
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
-	cxa_stateMachine_update(&clientIn->stateMachine);
+	//cxa_stateMachine_update(&clientIn->stateMachine);
 }
 
 
@@ -353,20 +358,9 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 	{
 		cxa_logger_warn(&clientIn->logger, "failed to receive CONNACK packet");
 
-		// transition first (so our connectFail listeners can retry if desired)
-		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
-		cxa_stateMachine_update(&clientIn->stateMachine);
-
-		// now let our lower-level connection know that we're disconnecting
-		if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
-
-		// finally notify our listeners of the failure
-		cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
-		{
-			if( currListener == NULL ) continue;
-			if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT, currListener->userVar);
-		}
-
+		// manually transition (to maintain separation between high-level and low-level reasons)
+		clientIn->connFailReason = CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT;
+		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_CONNECTFAIL);
 		return;
 	}
 }
@@ -435,7 +429,7 @@ static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVa
 	if( (clientIn->keepAliveTimeout_s != 0) && cxa_timeDiff_isElapsed_recurring_ms(&clientIn->td_receiveKeepAlive, (clientIn->keepAliveTimeout_s * 1000 * 2)) )
 	{
 		cxa_logger_warn(&clientIn->logger, "no PINGRESP, server may be unresponsive");
-		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_DISCONNECT);
 		return;
 	}
 }
@@ -446,17 +440,47 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVa
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
 
-	// now let our lower-level connection know that we're disconnecting
-	if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
-
-	// send disconnect message
-
 	// notify our listeners
 	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
 	{
 		if( currListener == NULL ) continue;
 		if( currListener->cb_onDisconnect != NULL ) currListener->cb_onDisconnect(clientIn, currListener->userVar);
 	}
+}
+
+
+static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+{
+	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
+	cxa_assert(clientIn);
+
+	// let our lower-level connection know that we're disconnecting
+	if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
+
+	// notify our listeners of the failure
+	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(clientIn, clientIn->connFailReason, currListener->userVar);
+	}
+
+	// return to idle
+	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+}
+
+
+static void stateCb_disconnect_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+{
+	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
+	cxa_assert(clientIn);
+
+	// send disconnect message
+
+	// let our lower-level connection know that we're disconnecting
+	if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
+
+	// return to idle
+	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 }
 
 
