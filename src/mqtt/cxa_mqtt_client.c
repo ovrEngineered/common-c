@@ -51,11 +51,11 @@ typedef enum
 
 
 // ******** local function prototypes ********
+static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_disconnect_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
 
@@ -113,13 +113,12 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 
 	// setup our state machine
 	cxa_stateMachine_init(&clientIn->stateMachine, "mqttClient");
-	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_IDLE, "idle", NULL, NULL, NULL, (void*)clientIn);
+	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_IDLE, "idle", stateCb_idle_enter, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, (void*)clientIn);
-	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTED, "connected", stateCb_connected_enter, stateCb_connected_state, stateCb_connected_leave, (void*)clientIn);
+	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTED, "connected", stateCb_connected_enter, stateCb_connected_state, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTFAIL, "connFail", stateCb_connectFail_enter, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_DISCONNECT, "disconnect", stateCb_disconnect_enter, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
-	cxa_stateMachine_update(&clientIn->stateMachine);
 }
 
 
@@ -148,6 +147,7 @@ void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_
 
 
 void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
+								 cxa_mqtt_client_cb_onConnect_t cb_onIdleIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
 								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
@@ -157,6 +157,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 
 	cxa_mqtt_client_listenerEntry_t newEntry =
 	{
+		.cb_onIdle=cb_onIdleIn,
 		.cb_onConnect=cb_onConnectIn,
 		.cb_onConnectFail=cb_onConnectFailIn,
 		.cb_onDisconnect=cb_onDisconnectIn,
@@ -170,7 +171,9 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 {
 	cxa_assert(clientIn);
 
-	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_IDLE ) return false;
+	state_t currState = cxa_stateMachine_getCurrentState(&clientIn->stateMachine);
+	if( (currState == MQTT_STATE_CONNECTING) ||
+		(currState == MQTT_STATE_CONNECTED) ) return false;
 
 	cxa_logger_info(&clientIn->logger, "sending CONNECT packet");
 
@@ -339,6 +342,20 @@ void cxa_mqtt_client_notify_disconnect(cxa_mqtt_client_t *const clientIn)
 
 
 // ******** local function implementations ********
+static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+{
+	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
+	cxa_assert(clientIn);
+
+	// notify our listeners
+	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onIdle != NULL ) currListener->cb_onIdle(clientIn, currListener->userVar);
+	}
+}
+
+
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
@@ -435,20 +452,6 @@ static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVa
 }
 
 
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
-	cxa_assert(clientIn);
-
-	// notify our listeners
-	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
-	{
-		if( currListener == NULL ) continue;
-		if( currListener->cb_onDisconnect != NULL ) currListener->cb_onDisconnect(clientIn, currListener->userVar);
-	}
-}
-
-
 static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
@@ -476,8 +479,17 @@ static void stateCb_disconnect_enter(cxa_stateMachine_t *const smIn, void *userV
 
 	// send disconnect message
 
+	cxa_logger_info(&clientIn->logger, "disconnected");
+
 	// let our lower-level connection know that we're disconnecting
 	if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
+
+	// notify our listeners
+	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onDisconnect != NULL ) currListener->cb_onDisconnect(clientIn, currListener->userVar);
+	}
 
 	// return to idle
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
