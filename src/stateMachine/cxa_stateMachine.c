@@ -49,7 +49,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn)
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
 	
-	// set some sensible default
+	// set some sensible defaults
 	smIn->currState = NULL;
 	smIn->nextState = NULL;
 	
@@ -94,11 +94,12 @@ void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const cha
 
 
 void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,
-	cxa_stateMachine_cb_t cb_enterIn, cxa_stateMachine_cb_t cb_stateIn, cxa_stateMachine_cb_t cb_leaveIn,
+	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn,
 	void *userVarIn)
 {
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
+	cxa_assert(idIn != CXA_STATE_MACHINE_STATE_UNKNOWN);
 
 	// make sure we don't already have this state added
 	cxa_assert(getState_byId(smIn, idIn) == NULL);
@@ -117,11 +118,12 @@ void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const c
 
 #ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
 void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn, int nextStateIdIn, uint32_t stateTime_msIn,
-	cxa_stateMachine_cb_t cb_enterIn, cxa_stateMachine_cb_t cb_stateIn, cxa_stateMachine_cb_t cb_leaveIn, void *userVarIn)
+	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn, void *userVarIn)
 {
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
 	cxa_assert(smIn->timedStatesEnabled);
+	cxa_assert(idIn != CXA_STATE_MACHINE_STATE_UNKNOWN);
 
 	// make sure we don't already have this state added
 	cxa_assert(getState_byId(smIn, idIn) == NULL);
@@ -169,7 +171,12 @@ void cxa_stateMachine_update(cxa_stateMachine_t *const smIn)
 	if( smIn->nextState != NULL )
 	{
 		// call the leave function of our old state
-		if((smIn->currState != NULL) && (smIn->currState->cb_leave != NULL)) smIn->currState->cb_leave(smIn, smIn->currState->userVar);
+		int prevStateId = CXA_STATE_MACHINE_STATE_UNKNOWN;
+		if( smIn->currState != NULL )
+		{
+			prevStateId = smIn->currState->stateId;
+			if( smIn->currState->cb_leave != NULL ) smIn->currState->cb_leave(smIn, smIn->nextState->stateId, smIn->currState->userVar);
+		}
 				
 		// actually do our transition
 		smIn->currState = smIn->nextState;
@@ -180,7 +187,7 @@ void cxa_stateMachine_update(cxa_stateMachine_t *const smIn)
 		#endif
 				
 		// call the enter function of our new state
-		if( smIn->currState->cb_enter != NULL ) smIn->currState->cb_enter(smIn, smIn->currState->userVar);
+		if( smIn->currState->cb_enter != NULL ) smIn->currState->cb_enter(smIn, prevStateId, smIn->currState->userVar);
 		
 		#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
 			if( smIn->timedStatesEnabled && (smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) ) cxa_timeDiff_setStartTime_now(&smIn->td_timedTransition);

@@ -47,6 +47,8 @@
 	#define CXA_STATE_MACHINE_MAX_NUM_STATES				16
 #endif
 
+#define CXA_STATE_MACHINE_STATE_UNKNOWN						-1
+
 
 // ******** global type definitions *********
 /**
@@ -58,7 +60,9 @@ typedef struct cxa_stateMachine cxa_stateMachine_t;
 /**
  * @public
  */
-typedef void (*cxa_stateMachine_cb_t)(cxa_stateMachine_t *const smIn, void *userVarIn);
+typedef void (*cxa_stateMachine_cb_enter_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+typedef void (*cxa_stateMachine_cb_state_t)(cxa_stateMachine_t *const smIn, void *userVarIn);
+typedef void (*cxa_stateMachine_cb_leave_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 
 
 /**
@@ -83,9 +87,9 @@ typedef struct
 	int stateId;
 	const char* stateName;
 	
-	cxa_stateMachine_cb_t cb_enter;
-	cxa_stateMachine_cb_t cb_state;
-	cxa_stateMachine_cb_t cb_leave;
+	cxa_stateMachine_cb_enter_t cb_enter;
+	cxa_stateMachine_cb_state_t cb_state;
+	cxa_stateMachine_cb_leave_t cb_leave;
 	void *userVar;
 	
 	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
@@ -125,12 +129,12 @@ void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const cha
 #endif
 
 void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,
-	cxa_stateMachine_cb_t cb_enterIn, cxa_stateMachine_cb_t cb_stateIn, cxa_stateMachine_cb_t cb_leaveIn,
+	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn,
 	void *userVarIn);
 	
 #ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
 void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn, int nextStateIdIn, uint32_t stateTime_msIn,
-	cxa_stateMachine_cb_t cb_enterIn, cxa_stateMachine_cb_t cb_stateIn, cxa_stateMachine_cb_t cb_leaveIn, void *userVarIn);
+	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn, void *userVarIn);
 #endif
 	
 void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn);
