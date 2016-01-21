@@ -63,6 +63,7 @@ struct cxa_esp8266_network_tcpClient
 	cxa_network_tcpClient_t super;
 
 	char targetHostName[CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES+1];
+	bool useTls;
 
 	ip_addr_t ip;
 	struct espconn espconn;

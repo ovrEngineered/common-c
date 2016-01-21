@@ -33,18 +33,6 @@
 
 
 // ******** local macro definitions ********
-#define SSID							"BeerSmart"
-#define KEY								"pineapple14"
-
-//#define MQTT_SERVER						"m11.cloudmqtt.com"
-//#define MQTT_SERVER_PORTNUM				13164
-
-#define MQTT_SERVER						"m10.cloudmqtt.com"
-#define MQTT_SERVER_PORTNUM				17754
-
-#define MQTT_SERVER_USERNAME			"arsinio"
-#define MQTT_SERVER_PASSWORD			"tmpPasswd"
-
 #define BLINKPERIODMS_ON_CONFIG			100
 #define BLINKPERIODMS_OFF_CONFIG		500
 #define BLINKPERIODMS_ON_ASSOC			500
@@ -72,14 +60,15 @@ static void wifiManCb_lostAssociation(const char *const ssidIn, void* userVarIn)
 static void wifiManCb_configMode_enter(void* userVarIn);
 
 static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
-static void mqttClientCb_onIdle(cxa_mqtt_client_t *const clientIn, void* userVarIn);
+static void mqttClientCb_onConnectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
+static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 
-static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -92,14 +81,34 @@ static uint32_t connStandoff_ms;
 static cxa_stateMachine_t stateMachine;
 static cxa_logger_t logger;
 
+static char* wifi_ssid;
+static char* wifi_passphrase;
+static char* mqtt_hostName;
+static uint16_t mqtt_portNum;
+static bool mqtt_useTls;
+static char* mqtt_username;
+static uint8_t* mqtt_password;
+static uint16_t mqtt_passwordLen_bytes;
+
 
 // ******** global function implementations ********
-void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn)
+void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn,
+							   const char* ssidIn, const char* passphraseIn,
+							   char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
+							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn)
 {
 	cxa_assert(ledConnIn);
 
 	// save our references
 	cxa_led_init(&led_conn, ledConnIn);
+	wifi_ssid = (char*)ssidIn;
+	wifi_passphrase = (char*)passphraseIn;
+	mqtt_hostName = hostNameIn;
+	mqtt_portNum = portNumIn;
+	mqtt_useTls = useTlsIn;
+	mqtt_username = usernameIn;
+	mqtt_password = passwordIn;
+	mqtt_passwordLen_bytes = passwordLen_bytesIn;
 
 	// setup our connection standoff
 	cxa_timeDiff_init(&td_connStandoff, true);
@@ -121,7 +130,7 @@ void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn)
 	// setup our WiFi
 	cxa_esp8266_wifiManager_init(NULL);
 	cxa_esp8266_wifiManager_addListener(wifiManCb_configMode_enter, NULL, NULL, NULL, wifiManCb_associated, wifiManCb_lostAssociation, NULL, NULL);
-	cxa_esp8266_wifiManager_addStoredNetwork(SSID, KEY);
+	cxa_esp8266_wifiManager_addStoredNetwork(wifi_ssid, wifi_passphrase);
 	cxa_esp8266_wifiManager_start();
 
 	// now setup our network connection
@@ -129,7 +138,7 @@ void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn)
 
 	// and our mqtt client
 	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString());
-	cxa_mqtt_client_addListener(&mqttClient.super, mqttClientCb_onIdle, mqttClientCb_onConnect, NULL, NULL, NULL);
+	cxa_mqtt_client_addListener(&mqttClient.super, mqttClientCb_onConnect, mqttClientCb_onConnectFail, mqttClientCb_onDisconnect, NULL);
 }
 
 
@@ -151,54 +160,6 @@ void cxa_mqtt_connManager_update(void)
 
 
 // ******** local function implementations ********
-static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	cxa_logger_info(&logger, "associating");
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_ASSOC,  BLINKPERIODMS_OFF_ASSOC);
-}
-
-
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	cxa_logger_info(&logger, "connecting");
-
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONNECTING, BLINKPERIODMS_OFF_CONNECTING);
-	cxa_mqtt_client_network_connectToHost(&mqttClient, MQTT_SERVER, MQTT_SERVER_PORTNUM, MQTT_SERVER_USERNAME, (uint8_t*)MQTT_SERVER_PASSWORD, strlen(MQTT_SERVER_PASSWORD));
-}
-
-
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	cxa_logger_info(&logger, "connected");
-
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONNECTED, BLINKPERIODMS_OFF_CONNECTED);
-}
-
-
-static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	connStandoff_ms = rand() % 1000 + 500;
-	cxa_logger_info(&logger, "retry connection after %d ms", connStandoff_ms);
-	cxa_timeDiff_setStartTime_now(&td_connStandoff);
-}
-
-
-static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	if( cxa_timeDiff_isElapsed_ms(&td_connStandoff, connStandoff_ms) )
-	{
-		cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
-	}
-}
-
-
-static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	cxa_logger_info(&logger, "config mode");
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONFIG, BLINKPERIODMS_OFF_CONFIG);
-}
-
-
 static void wifiManCb_associated(const char *const ssidIn, void* userVarIn)
 {
 	cxa_logger_info(&logger, "associated");
@@ -229,8 +190,69 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 }
 
 
-static void mqttClientCb_onIdle(cxa_mqtt_client_t *const clientIn, void* userVarIn)
+static void mqttClientCb_onConnectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn)
 {
-	cxa_logger_warn(&logger, "connection failed/disconnected");
-	cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
+	if( cxa_stateMachine_getCurrentState(&stateMachine) == STATE_CONNECTING )
+	{
+		cxa_logger_warn(&logger, "connection failed: %d", reasonIn);
+		cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
+	}
+}
+
+
+static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* userVarIn)
+{
+	if( cxa_stateMachine_getCurrentState(&stateMachine) == STATE_CONNECTED )
+	{
+		cxa_logger_warn(&logger, "disconnected");
+		cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
+	}
+}
+
+
+static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+{
+	cxa_logger_info(&logger, "associating");
+	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_ASSOC,  BLINKPERIODMS_OFF_ASSOC);
+}
+
+
+static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+{
+	cxa_logger_info(&logger, "connecting");
+
+	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONNECTING, BLINKPERIODMS_OFF_CONNECTING);
+	cxa_mqtt_client_network_connectToHost(&mqttClient, mqtt_hostName, mqtt_portNum, mqtt_useTls, mqtt_username, mqtt_password, mqtt_passwordLen_bytes);
+}
+
+
+static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+{
+	cxa_logger_info(&logger, "connected");
+
+	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONNECTED, BLINKPERIODMS_OFF_CONNECTED);
+}
+
+
+static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+{
+	connStandoff_ms = rand() % 1000 + 500;
+	cxa_logger_info(&logger, "retry connection after %d ms", connStandoff_ms);
+	cxa_timeDiff_setStartTime_now(&td_connStandoff);
+}
+
+
+static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *userVarIn)
+{
+	if( cxa_timeDiff_isElapsed_ms(&td_connStandoff, connStandoff_ms) )
+	{
+		cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+	}
+}
+
+
+static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+{
+	cxa_logger_info(&logger, "config mode");
+	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONFIG, BLINKPERIODMS_OFF_CONFIG);
 }

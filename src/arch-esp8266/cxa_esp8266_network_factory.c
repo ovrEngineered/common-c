@@ -57,6 +57,12 @@ static clientEntry_t clients_raw[MAXNUM_CLIENTS];
 static cxa_array_t servers;
 static serverEntry_t servers_raw[MAXNUM_SERVERS];
 
+// client-only implementation (see http://bbs.espressif.com/viewtopic.php?t=385 for server implementation)
+unsigned char *default_certificate;
+unsigned int default_certificate_len = 0;
+unsigned char *default_private_key;
+unsigned int default_private_key_len = 0;
+
 
 // ******** global function implementations ********
 void cxa_esp8266_network_factory_init(void)

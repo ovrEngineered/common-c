@@ -83,7 +83,7 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/#", sizeof(subscriptTopic)) );
 
 	// register for mqtt events
-	cxa_mqtt_client_addListener(nodeIn->mqttClient, NULL, mqttClientCb_onConnect, NULL, NULL, (void*)nodeIn);
+	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, (void*)nodeIn);
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
 }
 

@@ -48,15 +48,15 @@ static void scm_gotoIdle(cxa_protocolParser_t *const superIn);
 static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuffer_t *const fbbIn);
 
 
-static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void rxState_cb_wait0x80_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -156,7 +156,7 @@ static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuf
 }
 
 
-static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)userVarIn;
 	cxa_assert(clePpIn);
@@ -179,7 +179,7 @@ static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarI
 }
 
 
-static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)userVarIn;
 	cxa_assert(clePpIn);
@@ -372,7 +372,7 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 }
 
 
-static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)userVarIn;
 	cxa_assert(clePpIn);

@@ -42,7 +42,10 @@
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn);
+void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn,
+							   const char* ssidIn, const char* passphraseIn,
+							   char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
+							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);
 cxa_mqtt_client_t* cxa_mqtt_connManager_getMqttClient(void);
 
 void cxa_mqtt_connManager_update(void);

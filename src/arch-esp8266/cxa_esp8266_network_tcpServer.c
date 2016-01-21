@@ -43,9 +43,9 @@ typedef enum
 
 
 // ******** local function prototypes ********
-static void stateCb_listening_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_listening_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 
 static bool cb_listen(cxa_network_tcpServer_t *const superIn, uint16_t portNumIn);
 static void cb_disconnectFromClient(cxa_network_tcpServer_t *const superIn);
@@ -96,7 +96,7 @@ void cxa_esp8266_network_tcpServer_update(cxa_esp8266_network_tcpServer_t *const
 
 
 // ******** local function implementations ********
-static void stateCb_listening_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_listening_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_esp8266_network_tcpServer_t* tcpServerIn = (cxa_esp8266_network_tcpServer_t*)userVarIn;
 	cxa_assert(tcpServerIn);
@@ -113,7 +113,7 @@ static void stateCb_listening_enter(cxa_stateMachine_t *const smIn, void *userVa
 }
 
 
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_esp8266_network_tcpServer_t* tcpServerIn = (cxa_esp8266_network_tcpServer_t*)userVarIn;
 	cxa_assert(tcpServerIn);
@@ -135,7 +135,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, void *userVa
 }
 
 
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_esp8266_network_tcpServer_t* tcpServerIn = (cxa_esp8266_network_tcpServer_t*)userVarIn;
 	cxa_assert(tcpServerIn);

@@ -60,15 +60,15 @@ typedef struct
 
 
 // ******** local function prototypes ********
-static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_configMode_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_configMode_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_configMode_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_associating_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_associated_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_associateFailed_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_associateFailed_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -201,7 +201,7 @@ void cxa_esp8266_wifiManager_update(void)
 
 
 // ******** local function implementations ********
-static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_configMode_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	wifi_set_opmode(SOFTAP_MODE);
 	wifi_softap_set_config_current(&configModeCfg);
@@ -238,7 +238,7 @@ static void stateCb_configMode_state(cxa_stateMachine_t *const smIn, void *userV
 }
 
 
-static void stateCb_configMode_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_configMode_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	wifi_softap_dhcps_stop();
 	wifi_set_opmode(NULL_MODE);
@@ -253,7 +253,7 @@ static void stateCb_configMode_leave(cxa_stateMachine_t *const smIn, void *userV
 }
 
 
-static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	// get our config and validate
 	struct station_config* targetConfig = cxa_array_get(&storedNetworks, targetNetworkIndex);
@@ -311,7 +311,7 @@ static void stateCb_associating_state(cxa_stateMachine_t *const smIn, void *user
 }
 
 
-static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	struct station_config* targetConfig = cxa_array_get(&storedNetworks, targetNetworkIndex);
 	lastAssociatedNetwork = targetConfig;
@@ -337,7 +337,7 @@ static void stateCb_associated_state(cxa_stateMachine_t *const smIn, void *userV
 }
 
 
-static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	// lost our connection...notify our listeners
 	cxa_array_iterate(&listeners, currListener, listener_t)
@@ -349,7 +349,7 @@ static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, void *userV
 }
 
 
-static void stateCb_associateFailed_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void stateCb_associateFailed_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_logger_warn(&logger, "failed to associate with any known network, falling back to config mode");
 	cxa_stateMachine_transition(&stateMachine, STATE_CONFIG_MODE);

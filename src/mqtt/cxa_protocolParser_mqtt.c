@@ -55,14 +55,14 @@ static bool scm_canSetBuffer(cxa_protocolParser_t *const superIn);
 static void scm_gotoIdle(cxa_protocolParser_t *const superIn);
 static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuffer_t *const fbbIn);
 
-static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void rxStateCb_waitFixedHeader1_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxStateCb_waitRemainingLen_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxStateCb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void rxStateCb_processPacket_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void rxStateCb_processPacket_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -148,7 +148,7 @@ static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuf
 }
 
 
-static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_protocolParser_mqtt_t* mppIn = (cxa_protocolParser_mqtt_t*)userVarIn;
 	cxa_assert(mppIn);
@@ -171,7 +171,7 @@ static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarI
 }
 
 
-static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_protocolParser_mqtt_t* mppIn = (cxa_protocolParser_mqtt_t*)userVarIn;
 	cxa_assert(mppIn);
@@ -322,7 +322,7 @@ static void rxStateCb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *
 }
 
 
-static void rxStateCb_processPacket_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxStateCb_processPacket_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn,void *userVarIn)
 {
 	cxa_protocolParser_mqtt_t *mppIn = (cxa_protocolParser_mqtt_t*)userVarIn;
 	cxa_assert(mppIn);
@@ -344,7 +344,7 @@ static void rxStateCb_processPacket_enter(cxa_stateMachine_t *const smIn, void *
 }
 
 
-static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_protocolParser_mqtt_t* mppIn = (cxa_protocolParser_mqtt_t*)userVarIn;
 	cxa_assert(mppIn);

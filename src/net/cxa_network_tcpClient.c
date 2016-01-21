@@ -77,12 +77,12 @@ void cxa_network_tcpClient_addListener(cxa_network_tcpClient_t *const netClientI
 }
 
 
-bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn)
+bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,  uint32_t timeout_msIn)
 {
 	cxa_assert(netClientIn);
 	cxa_assert(hostNameIn);
 
-	return netClientIn->scm_connToHost(netClientIn, hostNameIn, portNumIn, timeout_msIn);
+	return netClientIn->scm_connToHost(netClientIn, hostNameIn, portNumIn, useTlsIn, timeout_msIn);
 }
 
 

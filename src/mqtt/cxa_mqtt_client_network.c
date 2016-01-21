@@ -64,7 +64,7 @@ void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, cha
 }
 
 
-bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clientIn, char *const hostNameIn, uint16_t portNumIn,
+bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clientIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
 										   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn)
 {
 	cxa_assert(clientIn);
@@ -76,7 +76,10 @@ bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clie
 	clientIn->password = passwordIn;
 	clientIn->passwordLen_bytes = passwordLen_bytesIn;
 
-	return cxa_network_tcpClient_connectToHost(clientIn->netClient, hostNameIn, portNumIn, NET_CONNECT_TIMEOUT_MS);
+	// let our super class know we are connecting
+	cxa_mqtt_client_super_connectingTransport(&clientIn->super);
+
+	return cxa_network_tcpClient_connectToHost(clientIn->netClient, hostNameIn, portNumIn, useTlsIn, NET_CONNECT_TIMEOUT_MS);
 }
 
 
@@ -105,7 +108,7 @@ static void cb_network_onConnectFail(cxa_network_tcpClient_t *const tcpClientIn,
 	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
 	cxa_assert(clientIn);
 
-	cxa_mqtt_client_notify_connectFail(&clientIn->super, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK);
+	cxa_mqtt_client_super_connectFail(&clientIn->super, CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK);
 }
 
 
@@ -114,6 +117,6 @@ static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void
 	cxa_mqtt_client_network_t *clientIn = (cxa_mqtt_client_network_t*)userVarIn;
 	cxa_assert(clientIn);
 
-	cxa_mqtt_client_notify_disconnect(&clientIn->super);
+	cxa_mqtt_client_super_disconnect(&clientIn->super);
 }
 

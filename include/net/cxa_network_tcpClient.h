@@ -63,7 +63,7 @@ typedef void (*cxa_network_tcpClient_cb_onDisconnect_t)(cxa_network_tcpClient_t 
  * @private
  * Used for network client subclasses
  */
-typedef bool (*cxa_network_tcpClient_scm_connectToHost_t)(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn);
+typedef bool (*cxa_network_tcpClient_scm_connectToHost_t)(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn, uint32_t timeout_msIn);
 
 
 /**
@@ -133,7 +133,7 @@ void cxa_network_tcpClient_addListener(cxa_network_tcpClient_t *const netClientI
 /**
  * @public
  */
-bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, uint32_t timeout_msIn);
+bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn, uint32_t timeout_msIn);
 
 
 /**

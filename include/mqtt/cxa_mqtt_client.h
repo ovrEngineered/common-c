@@ -56,15 +56,17 @@
 typedef struct cxa_mqtt_client cxa_mqtt_client_t;
 
 
+/**
+ * @public
+ */
 typedef enum
 {
-	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK,
-	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_AUTH,
-	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT
+	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK,//!< CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK
+	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_AUTH,   //!< CXA_MQTT_CLIENT_CONNECTFAIL_REASON_AUTH
+	CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT //!< CXA_MQTT_CLIENT_CONNECTFAIL_REASON_TIMEOUT
 }cxa_mqtt_client_connectFailureReason_t;
 
 
-typedef void (*cxa_mqtt_client_cb_onIdle_t)(cxa_mqtt_client_t *const clientIn, void *userVarIn);
 typedef void (*cxa_mqtt_client_cb_onConnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 typedef void (*cxa_mqtt_client_cb_onConnectFailed_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
 typedef void (*cxa_mqtt_client_cb_onDisconnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
@@ -84,7 +86,6 @@ typedef void (*cxa_mqtt_client_scm_onDisconnect_t)(cxa_mqtt_client_t* const supe
  */
 typedef struct
 {
-	cxa_mqtt_client_cb_onIdle_t cb_onIdle;
 	cxa_mqtt_client_cb_onConnect_t cb_onConnect;
 	cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnect;
 	cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFail;
@@ -162,7 +163,6 @@ void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_
 									char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn);
 
 void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
-								 cxa_mqtt_client_cb_onConnect_t cb_onIdleIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
 								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
@@ -182,15 +182,11 @@ void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn);
 
 
 /**
- * @protecvted
- */
-void cxa_mqtt_client_notify_connectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn);
-
-
-/**
  * @protected
  */
-void cxa_mqtt_client_notify_disconnect(cxa_mqtt_client_t *const clientIn);
+void cxa_mqtt_client_super_connectingTransport(cxa_mqtt_client_t *const clientIn);
+void cxa_mqtt_client_super_connectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn);
+void cxa_mqtt_client_super_disconnect(cxa_mqtt_client_t *const clientIn);
 
 
 #endif // CXA_MQTT_CLIENT_H_
