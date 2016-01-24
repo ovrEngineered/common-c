@@ -26,6 +26,8 @@
 #include <avr/io.h>
 #include <cxa_assert.h>
 #include <cxa_criticalSection.h>
+#include <cxa_delay.h>
+
 #include <cxa_xmega_ccp.h>
 #include <cxa_xmega_pmic.h>
 
@@ -156,6 +158,41 @@ void cxa_xmega_clockController_internalOsc_disable(const cxa_xmega_clockControll
 	OSC.CTRL &= ~(1 << oscIn);
 	
 	cxa_criticalSection_exit();
+}
+
+
+void cxa_xmega_clockController_enableDfll_int32768Hz(void)
+{
+	switch( CLK.CTRL )
+	{
+		case CXA_XMEGA_CC_INTOSC_2MHZ:
+			// make sure the 32KHz reference is enabled
+			cxa_xmega_clockController_internalOsc_enable(CXA_XMEGA_CC_INTOSC_32KHZ);
+
+			// reference 32KHz internal OSC
+			OSC_DFLLCTRL = 0x00;
+
+			// enable the DFLL
+			cxa_delay_ms(100);
+			DFLLRC2M.CTRL = 0x01;
+			break;
+
+		case CXA_XMEGA_CC_INTOSC_32MHZ:
+			// make sure the 32KHz reference is enabled
+			cxa_xmega_clockController_internalOsc_enable(CXA_XMEGA_CC_INTOSC_32KHZ);
+
+			// reference 32KHz internal OSC
+			OSC_DFLLCTRL = 0x00;
+
+			// enable the DFLL
+			cxa_delay_ms(100);
+			DFLLRC32M.CTRL = 0x01;
+			break;
+
+		default:
+			// we only support 2MHz or 32MHz
+			cxa_assert(false);
+	}
 }
 
 

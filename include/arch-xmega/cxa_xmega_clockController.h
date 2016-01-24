@@ -98,11 +98,18 @@ void cxa_xmega_clockController_internalOsc_enable(const cxa_xmega_clockControlle
 
 /**
  * @public
- * @brief disables the specified internal oscillator.
+ * @brief Disables the specified internal oscillator.
  *
  * @param[in] oscIn the desired internal oscillator to disable
  */
 void cxa_xmega_clockController_internalOsc_disable(const cxa_xmega_clockController_internalOsc_t oscIn);
 
+
+/**
+ * @public
+ * @brief Enabled the Digital Frequency-Locked Loop to mitigate voltage
+ * 		and temperature drift of the clock
+ */
+void cxa_xmega_clockController_enableDfll_int32768Hz(void);
 
 #endif // CXA_XMEGA_CLOCK_CONTROLLER_H_
