@@ -21,6 +21,7 @@
 // ******** includes ********
 #include <stdarg.h>
 #include <string.h>
+#include <inttypes.h>
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 #include <cxa_stringUtils.h>
@@ -229,7 +230,7 @@ static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
 
 	// print the time (if enabled)
 	#ifdef CXA_LOGGER_TIME_ENABLE
-		snprintf(buff, sizeof(buff), "%-8lX ", cxa_timeBase_getCount_us());
+		snprintf(buff, sizeof(buff), "%-8" PRIx32, cxa_timeBase_getCount_us());
 		// 32-bit integer +space
 		writeField(buff, 9);
 	#endif
