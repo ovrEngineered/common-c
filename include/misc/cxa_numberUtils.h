@@ -27,6 +27,8 @@
 
 // ******** includes ********
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 
 // ******** global macro definitions ********
@@ -42,6 +44,9 @@
 
 
 // ******** global function prototypes ********
+uint16_t cxa_numberUtils_crc16_oneShot(void* dataIn, size_t dataLen_bytesIn);
+
+uint16_t cxa_numberUtils_crc16_step(uint16_t crcIn, uint8_t byteIn);
 
 
 #endif // CXA_NUMBERUTILS_H_
