@@ -60,9 +60,9 @@ typedef struct cxa_stateMachine cxa_stateMachine_t;
 /**
  * @public
  */
-typedef void (*cxa_stateMachine_cb_enter_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+typedef void (*cxa_stateMachine_cb_enter_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, void* userVarIn);
 typedef void (*cxa_stateMachine_cb_state_t)(cxa_stateMachine_t *const smIn, void *userVarIn);
-typedef void (*cxa_stateMachine_cb_leave_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+typedef void (*cxa_stateMachine_cb_leave_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn);
 
 
 /**
@@ -136,6 +136,8 @@ void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const c
 void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn, int nextStateIdIn, uint32_t stateTime_msIn,
 	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn, void *userVarIn);
 #endif
+
+void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateIdIn);
 	
 void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn);
 int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn);

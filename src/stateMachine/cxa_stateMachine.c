@@ -142,6 +142,16 @@ void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, c
 #endif
 
 
+void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateIdIn)
+{
+	cxa_assert(smIn);
+	cxa_assert( cxa_stateMachine_getCurrentState(smIn) == CXA_STATE_MACHINE_STATE_UNKNOWN );
+
+	cxa_stateMachine_transition(smIn, stateIdIn);
+	cxa_stateMachine_update(smIn);
+}
+
+
 void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn)
 {
 	cxa_assert(smIn);
@@ -159,7 +169,7 @@ int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn)
 {
 	cxa_assert(smIn);
 	
-	return (smIn->currState != NULL) ? smIn->currState->stateId : -1;
+	return (smIn->currState != NULL) ? smIn->currState->stateId : CXA_STATE_MACHINE_STATE_UNKNOWN;
 }
 
 
