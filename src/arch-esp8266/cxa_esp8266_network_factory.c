@@ -26,10 +26,17 @@
 #include <cxa_esp8266_network_tcpServer.h>
 #include <cxa_logger_implementation.h>
 
+#include <cxa_config.h>
+
 
 // ******** local macro definitions ********
-#define MAXNUM_CLIENTS		2
-#define MAXNUM_SERVERS		2
+#ifndef CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS
+	#define CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS		2
+#endif
+
+#ifndef CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS
+	#define CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS		2
+#endif
 
 
 // ******** local type definitions ********
@@ -52,23 +59,23 @@ typedef struct
 
 // ********  local variable declarations *********
 static bool isInit = false;
-static cxa_array_t clients;
-static clientEntry_t clients_raw[MAXNUM_CLIENTS];
-static cxa_array_t servers;
-static serverEntry_t servers_raw[MAXNUM_SERVERS];
 
-// client-only implementation (see http://bbs.espressif.com/viewtopic.php?t=385 for server implementation)
-unsigned char *default_certificate;
-unsigned int default_certificate_len = 0;
-unsigned char *default_private_key;
-unsigned int default_private_key_len = 0;
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS > 0
+static cxa_array_t clients;
+static clientEntry_t clients_raw[CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS];
+#endif
+
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS > 0
+static cxa_array_t servers;
+static serverEntry_t servers_raw[CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS];
+#endif
 
 
 // ******** global function implementations ********
 void cxa_esp8266_network_factory_init(void)
 {
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS > 0
 	cxa_array_init_inPlace(&clients, sizeof(*clients_raw), (sizeof(clients_raw)/sizeof(*clients_raw)), clients_raw, sizeof(clients_raw));
-	cxa_array_init_inPlace(&servers, sizeof(*servers_raw), (sizeof(servers_raw)/sizeof(*servers_raw)), servers_raw, sizeof(servers_raw));
 
 	// mark each of our clients as unused
 	cxa_array_iterate(&clients, currEntry, clientEntry_t)
@@ -77,6 +84,12 @@ void cxa_esp8266_network_factory_init(void)
 
 		currEntry->isUsed = false;
 	}
+#endif
+
+
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS > 0
+	cxa_array_init_inPlace(&servers, sizeof(*servers_raw), (sizeof(servers_raw)/sizeof(*servers_raw)), servers_raw, sizeof(servers_raw));
+
 	// mark each of our servers as unused
 	cxa_array_iterate(&servers, currEntry, serverEntry_t)
 	{
@@ -84,36 +97,9 @@ void cxa_esp8266_network_factory_init(void)
 
 		currEntry->isUsed = false;
 	}
+#endif
 
 	isInit = true;
-}
-
-
-cxa_esp8266_network_tcpClient_t* cxa_esp8266_network_factory_getTcpClientByEspConn(struct espconn *const connIn)
-{
-	cxa_assert(isInit);
-
-	cxa_array_iterate(&clients, currEntry, clientEntry_t)
-	{
-		if( &currEntry->client.espconn == connIn ) return &currEntry->client;
-	}
-
-	// if we made it here, we have an unknown connection
-	return NULL;
-}
-
-
-cxa_esp8266_network_tcpServer_t* cxa_esp8266_network_factory_getTcpServerByListeningPortNum(int portNumIn)
-{
-	cxa_assert(isInit);
-
-	cxa_array_iterate(&servers, currEntry, serverEntry_t)
-	{
-		if( currEntry->server.espconn_listen.proto.tcp->local_port == portNumIn ) return &currEntry->server;
-	}
-
-	// if we made it here, we have an unknown connection
-	return NULL;
 }
 
 
@@ -122,20 +108,24 @@ void cxa_esp8266_network_factory_update(void)
 	cxa_assert(isInit);
 
 	// update our clients
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS > 0
 	cxa_array_iterate(&clients, currEntry, clientEntry_t)
 	{
 		if( currEntry == NULL ) continue;
 
 		if( currEntry->isUsed ) cxa_esp8266_network_tcpClient_update(&currEntry->client);
 	}
+#endif
 
 	// update our servers
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS > 0
 	cxa_array_iterate(&servers, currEntry, serverEntry_t)
 	{
 		if( currEntry == NULL ) continue;
 
 		if( currEntry->isUsed ) cxa_esp8266_network_tcpServer_update(&currEntry->server);
 	}
+#endif
 }
 
 
@@ -143,6 +133,7 @@ cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(void)
 {
 	cxa_assert(isInit);
 
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS > 0
 	cxa_array_iterate(&clients, currEntry, clientEntry_t)
 	{
 		if( currEntry == NULL ) continue;
@@ -155,6 +146,9 @@ cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(void)
 			return &currEntry->client.super;
 		}
 	}
+#else
+	cxa_assert(0);
+#endif
 
 	// if we made it here, we don't have any free clients
 	return NULL;
@@ -165,6 +159,7 @@ void cxa_network_factory_freeTcpClient(cxa_network_tcpClient_t *const clientIn)
 {
 	cxa_assert(isInit);
 
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_CLIENTS > 0
 	cxa_array_iterate(&clients, currEntry, clientEntry_t)
 	{
 		if( currEntry == NULL ) continue;
@@ -175,6 +170,10 @@ void cxa_network_factory_freeTcpClient(cxa_network_tcpClient_t *const clientIn)
 			return;
 		}
 	}
+#else
+	cxa_assert(0);
+#endif
+
 }
 
 
@@ -182,6 +181,7 @@ cxa_network_tcpServer_t* cxa_network_factory_reserveTcpServer(void)
 {
 	cxa_assert(isInit);
 
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS > 0
 	cxa_array_iterate(&servers, currEntry, serverEntry_t)
 	{
 		if( currEntry == NULL ) continue;
@@ -194,6 +194,9 @@ cxa_network_tcpServer_t* cxa_network_factory_reserveTcpServer(void)
 			return &currEntry->server.super;
 		}
 	}
+#else
+	cxa_assert(0);
+#endif
 
 	// if we made it here, we don't have any free servers
 	return NULL;
@@ -204,6 +207,7 @@ void cxa_network_factory_freeTcpServer(cxa_network_tcpServer_t *const serverIn)
 {
 	cxa_assert(isInit);
 
+#if CXA_ESP8266_NETWORKFACTORY_MAXNUM_SERVERS > 0
 	cxa_array_iterate(&servers, currEntry, serverEntry_t)
 	{
 		if( currEntry == NULL ) continue;
@@ -214,6 +218,9 @@ void cxa_network_factory_freeTcpServer(cxa_network_tcpServer_t *const serverIn)
 			return;
 		}
 	}
+#else
+	cxa_assert(0);
+#endif
 }
 
 

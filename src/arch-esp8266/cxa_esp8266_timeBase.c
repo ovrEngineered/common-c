@@ -20,8 +20,8 @@
 
 // ******** includes ********
 #include <stddef.h>
-#include <user_interface.h>
 #include <cxa_assert.h>
+#include <espressif/esp_system.h>
 
 
 // ******** local macro definitions ********
@@ -45,7 +45,7 @@ void cxa_esp8266_timeBase_init(void)
 
 uint32_t cxa_timeBase_getCount_us(void)
 {
-	return system_get_time();
+	return sdk_system_get_time();
 }
 
 

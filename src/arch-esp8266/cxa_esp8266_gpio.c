@@ -22,9 +22,9 @@
 
 
 // ******** includes ********
-#include <esp8266_peri.h>
-
 #include <cxa_assert.h>
+
+#include <esp8266.h>
 
 
 // ******** local macro definitions ********
@@ -50,7 +50,6 @@ void cxa_esp8266_gpio_init_input(cxa_esp8266_gpio_t *const gpioIn, const uint8_t
 	// save our references
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
-	gpioIn->lastSetVal_nonInverted = false;
 	
 	// set our initial direction
 	cxa_gpio_setDirection(&gpioIn->super, CXA_GPIO_DIR_INPUT);
@@ -66,10 +65,6 @@ void cxa_esp8266_gpio_init_output(cxa_esp8266_gpio_t *const gpioIn, const uint8_
 	// save our references
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
-	gpioIn->lastSetVal_nonInverted = false;
-	
-	// configure the pin for GPIO
-    GPF(gpioIn->pinNum) = GPFFS(GPFFS_GPIO(gpioIn->pinNum));			//Set mode to GPIO
 
 	// set our initial value (before we set direction to avoid glitches)
 	cxa_gpio_setValue(&gpioIn->super, initValIn);
@@ -86,7 +81,6 @@ void cxa_esp8266_gpio_init_safe(cxa_esp8266_gpio_t *const gpioIn, const uint8_t 
 	// save our references
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = CXA_GPIO_POLARITY_NONINVERTED;
-	gpioIn->lastSetVal_nonInverted = false;
 	
 	// don't set any value or direction...just leave everything as it is
 }
@@ -105,15 +99,12 @@ void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t
 	// configure our registers
 	if( gpioIn->direction == CXA_GPIO_DIR_OUTPUT )
 	{
-		GPC(gpioIn->pinNum) = (GPC(gpioIn->pinNum) & (0xF << GPCI));					//SOURCE(GPIO) | DRIVER(NORMAL) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
-		GPES = (1 << gpioIn->pinNum); 													//Enable
+		gpio_enable(gpioIn->pinNum, GPIO_OUTPUT);
 	}
 	else
 	{
-		GPEC = (1 << gpioIn->pinNum); 													//Disable
-		GPC(gpioIn->pinNum) = (GPC(gpioIn->pinNum) & (0xF << GPCI)) | (1 << GPCD); 		//SOURCE(GPIO) | DRIVER(OPEN_DRAIN) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
+		gpio_enable(gpioIn->pinNum, GPIO_INPUT);
 	}
-
 }
 
 
@@ -160,10 +151,7 @@ void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	// get a pointer to our class
 	cxa_esp8266_gpio_t *const gpioIn = (cxa_esp8266_gpio_t *const)superIn;
 
-	gpioIn->lastSetVal_nonInverted = (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn;
-
-	if( gpioIn->lastSetVal_nonInverted ) GPOS = (1 << gpioIn->pinNum);
-	else GPOC = (1 << gpioIn->pinNum);
+	gpio_write(gpioIn->pinNum, (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn);
 }
 
 
@@ -174,7 +162,7 @@ bool cxa_gpio_getValue(cxa_gpio_t *const superIn)
 	// get a pointer to our class
 	cxa_esp8266_gpio_t *const gpioIn = (cxa_esp8266_gpio_t *const)superIn;
 
-	bool retVal_nonInverted = (cxa_gpio_getDirection(superIn) == CXA_GPIO_DIR_INPUT) ? GPIP(gpioIn->pinNum) : gpioIn->lastSetVal_nonInverted;
+	bool retVal_nonInverted = gpio_read(gpioIn->pinNum);
 	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal_nonInverted : retVal_nonInverted;
 }
 

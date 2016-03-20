@@ -17,9 +17,11 @@
  */
 #include "cxa_delay.h"
 
+#include <FreeRTOS.h>
+#include <task.h>
+
 
 // ******** includes ********
-#include <osapi.h>
 
 
 // ******** local macro definitions ********
@@ -29,7 +31,6 @@
 
 
 // ******** local function prototypes ********
-extern void ets_delay_us(long);
 
 
 // ********  local variable declarations *********
@@ -38,7 +39,7 @@ extern void ets_delay_us(long);
 // ******** global function implementations ********
 void cxa_delay_ms(uint16_t delay_msIn)
 {	
-	os_delay_us(delay_msIn * 1000);
+	vTaskDelay(delay_msIn / portTICK_RATE_MS);
 }
 
 

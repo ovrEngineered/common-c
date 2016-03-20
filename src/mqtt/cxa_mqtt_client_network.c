@@ -83,6 +83,29 @@ bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clie
 }
 
 
+bool cxa_mqtt_client_network_connectToHost_clientCert(cxa_mqtt_client_network_t *const clientIn, char *const hostNameIn, uint16_t portNumIn,
+														const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
+														const char* clientCertIn, size_t clientCertLen_bytesIn,
+														const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn)
+{
+	cxa_assert(clientIn);
+	cxa_assert(clientIn->netClient);
+	cxa_assert(hostNameIn);
+	cxa_assert(serverRootCertIn);
+	cxa_assert(clientCertIn);
+	cxa_assert(clientPrivateKeyIn);
+
+	// let our super class know we are connecting
+	cxa_mqtt_client_super_connectingTransport(&clientIn->super);
+
+	return cxa_network_tcpClient_connectToHost_clientCert(clientIn->netClient, hostNameIn, portNumIn,
+														  serverRootCertIn, serverRootCertLen_bytesIn,
+														  clientCertIn, clientCertLen_bytesIn,
+														  clientPrivateKeyIn, clientPrivateKeyLen_bytesIn,
+														  NET_CONNECT_TIMEOUT_MS);
+}
+
+
 // ******** local function implementations ********
 static void scm_onDisconnect(cxa_mqtt_client_t* const superIn)
 {

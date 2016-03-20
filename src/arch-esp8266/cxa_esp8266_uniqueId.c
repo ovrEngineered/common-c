@@ -20,7 +20,7 @@
 
 // ******** includes ********
 #include <stdio.h>
-#include <user_interface.h>
+#include <espressif/esp_system.h>
 
 
 // ******** local macro definitions ********
@@ -60,7 +60,7 @@ char* cxa_uniqueId_getHexString(void)
 // ******** local function implementations ********
 static void init(void)
 {
-	id_bytes = system_get_chip_id();
+	id_bytes = sdk_system_get_chip_id();
 	sprintf(id_str, "%08X", id_bytes);
 	id_str[sizeof(id_str)-1] = 0;
 

@@ -24,27 +24,18 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_ESP8266_WIFIMGR_MAX_NUM_STORED_NETWORKS
-	#define CXA_ESP8266_WIFIMGR_MAX_NUM_STORED_NETWORKS		1
-#endif
 #ifndef CXA_ESP8266_WIFIMGR_MAX_NUM_LISTENERS
 	#define CXA_ESP8266_WIFIMGR_MAX_NUM_LISTENERS		1
 #endif
 
 
 // ******** global type definitions *********
-typedef void (*cxa_esp8266_wifiManager_configMode_cb_t)(void* userVarIn);
-typedef void (*cxa_esp8266_wifiManager_configMode_numConnStationsChanged_cb_t)(uint8_t numConnStations, void* userVar);
 typedef void (*cxa_esp8266_wifiManager_ssid_cb_t)(const char *const ssidIn, void* userVarIn);
 
 
 // ******** global function prototypes ********
-void cxa_esp8266_wifiManager_init(const char* configModeSsidIn);
-void cxa_esp8266_wifiManager_addStoredNetwork(const char* ssidIn, const char* passphrase);
-void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_configMode_cb_t cb_configModeEnter,
-										 cxa_esp8266_wifiManager_configMode_numConnStationsChanged_cb_t cb_numConnStationsChanged,
-										 cxa_esp8266_wifiManager_configMode_cb_t cb_configModeLeave,
-										 cxa_esp8266_wifiManager_ssid_cb_t cb_associatingWithSsid,
+void cxa_esp8266_wifiManager_init(const char* ssidIn, const char* passphraseIn);
+void cxa_esp8266_wifiManager_addListener(cxa_esp8266_wifiManager_ssid_cb_t cb_associatingWithSsid,
 										 cxa_esp8266_wifiManager_ssid_cb_t cb_associatedWithSsid,
 										 cxa_esp8266_wifiManager_ssid_cb_t cb_lostAssociationWithSsid,
 										 cxa_esp8266_wifiManager_ssid_cb_t cb_associateWithSsidFailed,

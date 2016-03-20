@@ -20,51 +20,58 @@
 
 // ******** includes ********
 #include <string.h>
+
 #include <cxa_assert.h>
-#include <cxa_esp8266_network_factory.h>
-#include <user_interface.h>
+#include <cxa_numberUtils.h>
+#include <cxa_stringUtils.h>
+#include <cxa_uniqueId.h>
 
-
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
+
+#include <lwip/err.h>
+#include <lwip/sockets.h>
+#include <lwip/sys.h>
+#include <lwip/netdb.h>
+#include <lwip/dns.h>
+#include <lwip/api.h>
 
 
 // ******** local macro definitions ********
-#define IPADDR_TO_STRINGARG(ip_uint32In)		((ip_uint32In >> 24) & 0x000000FF), ((ip_uint32In >> 16) & 0x000000FF), ((ip_uint32In >> 8) & 0x000000FF), ((ip_uint32In >> 0) & 0x000000FF)
+#define DEBUG_LEVEL 4
 
 
 // ******** local type definitions ********
 typedef enum
 {
-	CONN_STATE_IDLE,
-	CONN_STATE_DNS_LOOKUP,
-	CONN_STATE_CONNECTING,
-	CONN_STATE_CONNECTED,
-}connState_t;
+	STATE_IDLE,
+	STATE_CONNECTING,
+	STATE_CONNECTED,
+	STATE_CONNECT_FAIL
+}state_t;
 
 
 // ******** local function prototypes ********
-static void stateCb_idle_enter(cxa_stateMachine_t *const msIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, int prevStateidIn, void *userVarIn);
-static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
-
-static bool scm_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn, uint32_t timeout_msIn);
+static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn,
+																	 const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
+																	 const char* clientCertIn, size_t clientCertLen_bytesIn,
+																	 const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+																	 uint32_t timeout_msIn);
 static void scm_disconnectFromHost(cxa_network_tcpClient_t *const superIn);
 static bool scm_isConnected(cxa_network_tcpClient_t *const superIn);
 
-static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_arg);
-static void cb_espConnected(void *arg);
-static void cb_espDisconnected(void *arg);
-static void cb_espRx(void *arg, char *data, unsigned short len);
-static void cb_espSent(void *arg);
-static void cb_espRecon(void *arg, sint8 err);
+static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn);
+static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, void *const userVarIn);
 static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
+
+
+static void netconn_tls_debug(void *ctx, int level,
+							  const char *file, int line,
+							  const char *str);
 
 
 // ********  local variable declarations *********
@@ -75,23 +82,24 @@ void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const n
 {
 	cxa_assert(netClientIn);
 
+	// set some defaults
+	netClientIn->tls.initState.areBasicsInitialized = false;
+	netClientIn->tls.initState.crc_clientCert = 0;
+	netClientIn->tls.initState.crc_clientPrivateKey = 0;
+	netClientIn->tls.initState.crc_serverRootCert = 0;
+	netClientIn->targetHostName[0] = 0;
+	netClientIn->targetPortNum[0] = 0;
+	netClientIn->useClientCert = false;
+
+	cxa_stateMachine_init(&netClientIn->stateMachine, "tcpClient");
+	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_IDLE, "idle", NULL, NULL, NULL, (void*)netClientIn);
+	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_CONNECTING, "connecting", NULL, stateCb_connecting_state, NULL, (void*)netClientIn);
+	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, stateCb_connected_leave, (void*)netClientIn);
+	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_CONNECT_FAIL, "connFail", stateCb_connectFail_enter, NULL, NULL, (void*)netClientIn);
+	cxa_stateMachine_setInitialState(&netClientIn->stateMachine, STATE_IDLE);
+
 	// initialize our super class
-	cxa_network_tcpClient_init(&netClientIn->super, scm_connectToHost, scm_disconnectFromHost, scm_isConnected);
-
-	// setup our fifos (backing our ioStream)
-	cxa_fixedFifo_initStd(&netClientIn->rxFifo, CXA_FF_ON_FULL_DROP, netClientIn->rxFifo_raw);
-	cxa_fixedFifo_initStd(&netClientIn->txFifo, CXA_FF_ON_FULL_DROP, netClientIn->txFifo_raw);
-	netClientIn->numBytesInPreviousBulkDequeue = 0;
-	netClientIn->sendInProgress = false;
-
-	// setup our state machine
-	cxa_stateMachine_init(&netClientIn->stateMachine, "netClient");
-	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_IDLE, "idle", stateCb_idle_enter, NULL, NULL, (void*)netClientIn);
-	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_DNS_LOOKUP, "dnsLookup", stateCb_dnsLookup_enter, stateCb_dnsLookup_state, NULL, (void*)netClientIn);
-	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, (void*)netClientIn);
-	cxa_stateMachine_addState(&netClientIn->stateMachine, CONN_STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, stateCb_connected_leave, (void*)netClientIn);
-	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-	cxa_stateMachine_update(&netClientIn->stateMachine);
+	cxa_network_tcpClient_init(&netClientIn->super, NULL, scm_connectToHost_clientCert, scm_disconnectFromHost, scm_isConnected);
 }
 
 
@@ -104,105 +112,158 @@ void cxa_esp8266_network_tcpClient_update(cxa_esp8266_network_tcpClient_t *const
 
 
 // ******** local function implementations ********
-static void stateCb_idle_enter(cxa_stateMachine_t *const msIn, int prevStateIdIn, void *userVarIn)
+static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn,
+																	 const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
+																	 const char* clientCertIn, size_t clientCertLen_bytesIn,
+																	 const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+																	 uint32_t timeout_msIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+	cxa_assert(hostNameIn);
+	cxa_assert(serverRootCertIn);
+	cxa_assert(clientCertIn);
+	cxa_assert(clientPrivateKeyIn);
+
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
-	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
-	{
-		if( currListener == NULL ) continue;
+	// make sure we are currently idle
+	if( cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) != STATE_IDLE ) return false;
 
-		switch( prevStateIdIn )
+	int tmpRet;
+	uint16_t tmpCrc;
+
+	// initialize our basics if needed
+	if( !netClientIn->tls.initState.areBasicsInitialized )
+	{
+		cxa_logger_trace(&netClientIn->super.logger, "initializing TLS basics");
+
+		// basic initialization
+		mbedtls_ssl_init(&netClientIn->tls.sslContext);
+		mbedtls_x509_crt_init(&netClientIn->tls.cert_server);
+		mbedtls_x509_crt_init(&netClientIn->tls.cert_client);
+		mbedtls_pk_init(&netClientIn->tls.client_key_private);
+		mbedtls_ctr_drbg_init(&netClientIn->tls.ctr_drbg);
+		mbedtls_ssl_config_init(&netClientIn->tls.conf);
+		mbedtls_entropy_init(&netClientIn->tls.entropy);
+
+
+		char* personalizationString = cxa_uniqueId_getHexString();
+		tmpRet = mbedtls_ctr_drbg_seed(&netClientIn->tls.ctr_drbg, mbedtls_entropy_func, &netClientIn->tls.entropy,
+										   (const unsigned char *)personalizationString, strlen(personalizationString));
+		if( tmpRet != 0 )
 		{
-			case CONN_STATE_DNS_LOOKUP:
-			case CONN_STATE_CONNECTING:
-				if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
-				break;
-
-			case CONN_STATE_CONNECTED:
-				if( currListener->cb_onDisconnect != NULL ) currListener->cb_onDisconnect(&netClientIn->super, currListener->userVar);
-				break;
-
-			default:
-				break;
+			cxa_logger_warn(&netClientIn->super.logger, "failed to seed tls drbg: %d", tmpRet);
+			return false;
 		}
+		netClientIn->tls.initState.areBasicsInitialized = true;
 	}
-}
 
-
-static void stateCb_dnsLookup_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
-{
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
-	cxa_assert(netClientIn);
-
-	// try to get the ip address to which we'll be connecting
-	switch( espconn_gethostbyname(&netClientIn->espconn, netClientIn->targetHostName, &netClientIn->ip, cb_espDnsFound) )
+	// server CA certificate
+	if( (tmpCrc = cxa_numberUtils_crc16_oneShot((void*)serverRootCertIn, serverRootCertLen_bytesIn)) != netClientIn->tls.initState.crc_serverRootCert )
 	{
-		case ESPCONN_OK:
-			// hostname is an IP or result is already cached...skip to next state
-			cxa_logger_debug(&netClientIn->super.logger, "dnsCache '%s' -> %d.%d.%d.%d", netClientIn->targetHostName, IPADDR_TO_STRINGARG(netClientIn->ip.addr));
-			cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTING);
-			return;
-			break;
-
-		case ESPCONN_INPROGRESS:
-			// queued to send to DNS server...nothing to do here
-			break;
-
-		default:
-			// error
-			cxa_logger_warn(&netClientIn->super.logger, "dns lookup error");
-
-			cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-			return;
-			break;
+		cxa_logger_trace(&netClientIn->super.logger, "parsing server CA cert");
+	    tmpRet = mbedtls_x509_crt_parse(&netClientIn->tls.cert_server, (const unsigned char*)serverRootCertIn, serverRootCertLen_bytesIn);
+	    if( tmpRet < 0 )
+	    {
+	        cxa_logger_warn(&netClientIn->super.logger, "failed to parse server CA cert: %d", tmpRet);
+	        return false;
+	    }
+	    netClientIn->tls.initState.crc_serverRootCert = tmpCrc;
 	}
-}
 
-
-static void stateCb_dnsLookup_state(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
-	cxa_assert(netClientIn);
-
-	if( cxa_timeDiff_isElapsed_ms(&netClientIn->super.td_genPurp, netClientIn->connectTimeout_ms) )
+	// client certificate
+	if( (tmpCrc = cxa_numberUtils_crc16_oneShot((void*)clientCertIn, clientCertLen_bytesIn)) != netClientIn->tls.initState.crc_clientCert )
 	{
-		cxa_logger_warn(&netClientIn->super.logger, "dns lookup timed out");
-
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-		return;
+		cxa_logger_trace(&netClientIn->super.logger, "parsing client certificate");
+		tmpRet = mbedtls_x509_crt_parse(&netClientIn->tls.cert_client, (const unsigned char*)clientCertIn, clientCertLen_bytesIn);
+		if( tmpRet < 0)
+		{
+			cxa_logger_warn(&netClientIn->super.logger, "failed to parse client cert: %d", tmpRet);
+			return false;
+		}
+		netClientIn->tls.initState.crc_clientCert = tmpCrc;
 	}
+
+	// client privatekey
+	if( (tmpCrc = cxa_numberUtils_crc16_oneShot((void*)clientPrivateKeyIn, clientPrivateKeyLen_bytesIn)) != netClientIn->tls.initState.crc_clientPrivateKey )
+	{
+		cxa_logger_trace(&netClientIn->super.logger, "parsing client private key");
+		tmpRet = mbedtls_pk_parse_key(&netClientIn->tls.client_key_private, (const unsigned char*)clientPrivateKeyIn, clientPrivateKeyLen_bytesIn, NULL, 0);
+		if( tmpRet != 0 )
+		{
+			cxa_logger_warn(&netClientIn->super.logger, "failed to parse client private key: %d", tmpRet);
+			return false;
+		}
+		netClientIn->tls.initState.crc_clientPrivateKey = tmpCrc;
+	}
+
+	// server hostname
+	if( !cxa_stringUtils_equals_ignoreCase(hostNameIn, netClientIn->targetHostName) )
+	{
+		cxa_logger_trace(&netClientIn->super.logger, "setting tls hostname");
+		tmpRet = mbedtls_ssl_set_hostname(&netClientIn->tls.sslContext, hostNameIn);
+	    if( tmpRet < 0 )
+	    {
+	    	cxa_logger_warn(&netClientIn->super.logger, "failed to set tls hostname: %d", tmpRet);
+			return false;
+	    }
+	    strlcpy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
+	}
+
+	// SSL configuration
+	cxa_logger_trace(&netClientIn->super.logger, "configuring tls context");
+	tmpRet = mbedtls_ssl_config_defaults(&netClientIn->tls.conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+	if( tmpRet < 0 )
+	{
+		cxa_logger_warn(&netClientIn->super.logger, "tls configuration failed: %d", tmpRet);
+		return false;
+	}
+	cxa_logger_trace(&netClientIn->super.logger, "1");
+    mbedtls_ssl_conf_authmode(&netClientIn->tls.conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+	mbedtls_ssl_conf_ca_chain(&netClientIn->tls.conf, &netClientIn->tls.cert_server, NULL);
+	mbedtls_ssl_conf_rng(&netClientIn->tls.conf, mbedtls_ctr_drbg_random, &netClientIn->tls.ctr_drbg);
+	mbedtls_ssl_conf_own_cert(&netClientIn->tls.conf, &netClientIn->tls.cert_client, &netClientIn->tls.client_key_private);
+	cxa_logger_trace(&netClientIn->super.logger, "2");
+
+#ifdef MBEDTLS_DEBUG_C
+	cxa_logger_trace(&netClientIn->super.logger, "3");
+    mbedtls_debug_set_threshold(DEBUG_LEVEL);
+    mbedtls_ssl_conf_dbg(&netClientIn->tls.conf, netconn_tls_debug, (void*)netClientIn);
+#endif
+
+    cxa_logger_trace(&netClientIn->super.logger, "4");
+	tmpRet = mbedtls_ssl_setup(&netClientIn->tls.sslContext, &netClientIn->tls.conf);
+	if( tmpRet < 0 )
+	{
+		cxa_logger_warn(&netClientIn->super.logger, "tls context configuration failed: %d", tmpRet);
+		return false;
+	}
+
+	cxa_logger_trace(&netClientIn->super.logger, "5");
+
+	// make sure we record other useful information
+	netClientIn->useClientCert = true;
+	snprintf(netClientIn->targetPortNum, sizeof(netClientIn->targetPortNum), "%d", portNumIn);
+	netClientIn->targetPortNum[sizeof(netClientIn->targetPortNum)-1] = 0;
+
+	// start the connection
+	cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECTING);
+
+	return true;
 }
 
 
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void scm_disconnectFromHost(cxa_network_tcpClient_t *const superIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+}
+
+
+static bool scm_isConnected(cxa_network_tcpClient_t *const superIn)
+{
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
-	// setup the local information about the connection
-	netClientIn->tcp.local_port = espconn_port();
-	struct ip_info ipconfig;
-	wifi_get_ip_info(STATION_IF, &ipconfig);
-	memcpy(netClientIn->tcp.local_ip, &ipconfig.ip, sizeof(netClientIn->tcp.local_ip));
-
-	// setup the remote information about the connection
-	memcpy(netClientIn->tcp.remote_ip, &netClientIn->ip.addr, sizeof(netClientIn->tcp.remote_ip));
-
-	// make sure our connection has the right tcp parameters
-	netClientIn->espconn.proto.tcp = &netClientIn->tcp;
-	netClientIn->espconn.type = ESPCONN_TCP;
-	netClientIn->espconn.state = ESPCONN_NONE;
-
-	// register our connection callbacks
-	espconn_regist_connectcb(&netClientIn->espconn, cb_espConnected);
-	espconn_regist_disconcb(&netClientIn->espconn, cb_espDisconnected);
-	espconn_regist_reconcb(&netClientIn->espconn, cb_espRecon);
-
-	// actually connect
-	if( netClientIn->useTls ) espconn_secure_connect(&netClientIn->espconn);
-	else espconn_connect(&netClientIn->espconn);
+	return (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == STATE_CONNECTED);
 }
 
 
@@ -211,13 +272,50 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	if( cxa_timeDiff_isElapsed_ms(&netClientIn->super.td_genPurp, netClientIn->connectTimeout_ms) )
+	if( netClientIn->useClientCert )
 	{
-		cxa_logger_warn(&netClientIn->super.logger, "connect timeout");
+		int tmpRet;
+		mbedtls_net_init(&netClientIn->tls.server_fd);
 
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-		return;
+		cxa_logger_trace(&netClientIn->super.logger, "connecting to '%s:%d", netClientIn->targetHostName, netClientIn->targetPortNum);
+		tmpRet = mbedtls_net_connect(&netClientIn->tls.server_fd, netClientIn->targetHostName, netClientIn->targetPortNum, MBEDTLS_NET_PROTO_TCP);
+		if( tmpRet < 0 )
+		{
+			cxa_logger_warn(&netClientIn->super.logger, "connect failed: %d", tmpRet);
+			cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
+			return;
+		}
+
+		// set the byte IO callbacks for our context/descriptor
+		mbedtls_ssl_set_bio(&netClientIn->tls.sslContext, &netClientIn->tls.server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+		cxa_logger_trace(&netClientIn->super.logger, "performing TLS handshake");
+		while( (tmpRet = mbedtls_ssl_handshake(&netClientIn->tls.sslContext)) != 0 )
+		{
+			if( (tmpRet != MBEDTLS_ERR_SSL_WANT_READ) && (tmpRet != MBEDTLS_ERR_SSL_WANT_WRITE) )
+			{
+				cxa_logger_warn(&netClientIn->super.logger, "TLS handshake failed: %d", tmpRet);
+				cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
+				return;
+			}
+		}
+
+		cxa_logger_trace(&netClientIn->super.logger, "verifying server certificate");
+		if( (tmpRet = mbedtls_ssl_get_verify_result(&netClientIn->tls.sslContext)) != 0)
+		{
+			// for debugging
+			//char vrfy_buf[512];
+			//mbedtls_x509_crt_verify_info(vrfy_buf, sizeof(vrfy_buf), "  ! ", tmpRet);
+			//printf("%s\n", vrfy_buf);
+
+			cxa_logger_warn(&netClientIn->super.logger, "server certificate verification failed: %d", tmpRet);
+			cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
+			return;
+		}
 	}
+	else cxa_assert(false);
+
+	cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECTED);
 }
 
 
@@ -226,18 +324,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	cxa_logger_info(&netClientIn->super.logger, "connected");
-
-	// register for received and sent data
-	espconn_regist_recvcb(&netClientIn->espconn, cb_espRx);
-	espconn_regist_sentcb(&netClientIn->espconn, cb_espSent);
-
-	// reset our queue
-	netClientIn->sendInProgress = false;
-	cxa_fixedFifo_clear(&netClientIn->rxFifo);
-	cxa_fixedFifo_clear(&netClientIn->txFifo);
-
-	// bind to our ioStream
+	// bind our ioStream
 	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
 
 	// notify our listeners
@@ -249,190 +336,36 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 }
 
 
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn)
 {
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
+	// reset our ssl context
+	mbedtls_ssl_session_reset(&netClientIn->tls.sslContext);
 
-	// unbind our ioStream
-	cxa_ioStream_unbind(&netClientIn->super.ioStream);
-}
-
-
-static bool scm_connectToHost(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn, uint32_t timeout_msIn)
-{
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
-	cxa_assert(netClientIn);
-
-	// don't do anything if we're already trying
-	if( cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) != CONN_STATE_IDLE ) return false;
-
-	// copy our target hostname to our local buffer
-	strlcpy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
-	netClientIn->tcp.remote_port = portNumIn;
-	netClientIn->connectTimeout_ms = timeout_msIn;
-	cxa_logger_info(&netClientIn->super.logger, "connect requested to %s:%d", netClientIn->targetHostName, netClientIn->tcp.remote_port);
-
-	netClientIn->useTls = useTlsIn;
-
-	// start our timeout
-	cxa_timeDiff_setStartTime_now(&netClientIn->super.td_genPurp);
-
-	// start the sate machine transition
-	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_DNS_LOOKUP);
-
-	return true;
-}
-
-
-static void scm_disconnectFromHost(cxa_network_tcpClient_t *const superIn)
-{
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
-	cxa_assert(netClientIn);
-
-	cxa_logger_info(&netClientIn->super.logger, "disconnect requested");
-
-	// disconnect if we need to
-	if( (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED) )
+	// notify our listeners
+	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 	{
-		if( netClientIn->useTls ) espconn_secure_disconnect(&netClientIn->espconn);
-		else espconn_disconnect(&netClientIn->espconn);
-	}
-	else
-	{
-		// mainly for the DNS Lookup state
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-		cxa_stateMachine_update(&netClientIn->stateMachine);
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onDisconnect != NULL ) currListener->cb_onDisconnect(&netClientIn->super, currListener->userVar);
 	}
 }
 
 
-static bool scm_isConnected(cxa_network_tcpClient_t *const superIn)
+static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	return (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTED);
-}
-
-
-static void cb_espDnsFound(const char *name, ip_addr_t *ipaddr, void *callback_arg)
-{
-	// find our network client
-	struct espconn *conn = (struct espconn*)callback_arg;
-	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
-	cxa_assert(netClientIn);
-
-	// make sure we are in a proper state to handle this
-	if( (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) != CONN_STATE_DNS_LOOKUP) ) return;
-
-	if( ipaddr == NULL )
+	// notify our listeners
+	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 	{
-		cxa_logger_warn(&netClientIn->super.logger, "dns lookup failed");
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-		return;
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(&netClientIn->super, currListener->userVar);
 	}
 
-	memcpy(&netClientIn->ip, ipaddr, sizeof(netClientIn->ip));
-	cxa_logger_debug(&netClientIn->super.logger, "dns '%s' -> %d.%d.%d.%d", netClientIn->targetHostName, IPADDR_TO_STRINGARG(netClientIn->ip.addr));
-	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTING);
-	return;
-}
-
-
-static void cb_espConnected(void *arg)
-{
-	// find our network client
-	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
-	cxa_assert(netClientIn);
-
-	if( cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == CONN_STATE_CONNECTING )
-	{
-		cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_CONNECTED);
-	}
-	return;
-}
-
-
-static void cb_espDisconnected(void *arg)
-{
-	// find our network client
-	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
-	cxa_assert(netClientIn);
-
-	cxa_logger_info(&netClientIn->super.logger, "disconnected");
-
-	// make sure we're idle
-	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
-}
-
-
-static void cb_espRx(void *arg, char *data, unsigned short len)
-{
-	// find our network client
-	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
-	cxa_assert(netClientIn);
-
-	cxa_logger_trace(&netClientIn->super.logger, "got %d bytes", len);
-
-	// queue in our buffer
-	bool didDropData = false;
-	for( unsigned short i = 0; i < len; i++ )
-	{
-		if( !cxa_fixedFifo_queue(&netClientIn->rxFifo, (void*)&data[i]) ) didDropData = true;
-	}
-
-	if( didDropData ) cxa_logger_warn(&netClientIn->super.logger, "buffer overflow, data dropped");
-}
-
-
-static void cb_espSent(void *arg)
-{
-	// find our network client
-	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
-	cxa_assert(netClientIn);
-
-	// done sending
-	netClientIn->sendInProgress = false;
-
-	// finish the dequeue for any previously started bulk dequeues
-	if( netClientIn->numBytesInPreviousBulkDequeue != 0 )
-	{
-		cxa_logger_trace(&netClientIn->super.logger, "bulk deueueing %d bytes", netClientIn->numBytesInPreviousBulkDequeue);
-		cxa_fixedFifo_bulkDequeue(&netClientIn->txFifo, netClientIn->numBytesInPreviousBulkDequeue);
-		netClientIn->numBytesInPreviousBulkDequeue = 0;
-	}
-
-	// figure out how many bytes we can send in "one shot"
-	void* bytesToSend;
-	size_t numContiguousBytesInFifo = cxa_fixedFifo_bulkDequeue_peek(&netClientIn->txFifo, &bytesToSend);
-	if( numContiguousBytesInFifo > 0 )
-	{
-		uint16_t currNumBytesToSend = (numContiguousBytesInFifo <= UINT16_MAX) ? numContiguousBytesInFifo : UINT16_MAX;
-		cxa_logger_trace(&netClientIn->super.logger, "transmitting %d bytes from queue", currNumBytesToSend);
-		espconn_send(&netClientIn->espconn, bytesToSend, currNumBytesToSend);
-		netClientIn->numBytesInPreviousBulkDequeue = currNumBytesToSend;
-	}
-}
-
-
-static void cb_espRecon(void *arg, sint8 err)
-{
-	// find our network client
-	struct espconn *conn = (struct espconn*)arg;
-	cxa_esp8266_network_tcpClient_t* netClientIn = cxa_esp8266_network_factory_getTcpClientByEspConn(conn);
-	cxa_assert(netClientIn);
-
-	espconn_disconnect(conn);
-	cxa_logger_warn(&netClientIn->super.logger, "esp reports connection error %d, disconnected", err);
-
-	cxa_stateMachine_transition(&netClientIn->stateMachine, CONN_STATE_IDLE);
+	cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_IDLE);
 }
 
 
@@ -441,7 +374,15 @@ static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, vo
 	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	return cxa_fixedFifo_dequeue(&netClientIn->rxFifo, (void*)byteOut) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
+	int tmpRet = mbedtls_ssl_read(&netClientIn->tls.sslContext, byteOut, 1);
+	if( tmpRet < 0 )
+	{
+		cxa_logger_warn(&netClientIn->super.logger, "error during read: %d", tmpRet);
+		cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_IDLE);
+		return CXA_IOSTREAM_READSTAT_ERROR;
+	}
+
+	return (tmpRet > 0) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
 }
 
 
@@ -454,30 +395,48 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 	if( bufferSize_bytesIn != 0 ) { cxa_assert(buffIn); }
 	else { return true; }
 
+	// make sure we are connected
 	if( !cxa_network_tcpClient_isConnected(&netClientIn->super) ) return false;
 
-	// see if we should immediately transmit or queue
-	if( !netClientIn->sendInProgress )
+	int tmpRet;
+	unsigned char* buf = buffIn;
+	do
 	{
-		// immediately transmit...but be careful of the type size mismatch
-		uint16_t currNumBytesToSend = (bufferSize_bytesIn <= UINT16_MAX) ? bufferSize_bytesIn : UINT16_MAX;
-		cxa_logger_trace(&netClientIn->super.logger, "immediately transmitting %d bytes", currNumBytesToSend);
-		if( netClientIn->useTls ) espconn_secure_send(&netClientIn->espconn, buffIn, currNumBytesToSend);
-		else espconn_send(&netClientIn->espconn, buffIn, currNumBytesToSend);
-		netClientIn->sendInProgress = true;
-
-		// queue any remaining bytes
-		size_t numBytesToQueue = bufferSize_bytesIn - currNumBytesToSend;
-		cxa_logger_trace(&netClientIn->super.logger, "queueing %d bytes", numBytesToQueue);
-		if( numBytesToQueue > 0 ) cxa_fixedFifo_bulkQueue(&netClientIn->txFifo, &(((uint8_t*)buffIn)[currNumBytesToSend]), numBytesToQueue);
-	}
-	else
-	{
-		cxa_logger_trace(&netClientIn->super.logger, "immediately queueing %d bytes", bufferSize_bytesIn);
-
-		// we're already in the process of transmitting...esp doesn't buffer internally so we must
-		cxa_fixedFifo_bulkQueue(&netClientIn->txFifo, buffIn, bufferSize_bytesIn);
-	}
+		tmpRet = mbedtls_ssl_write(&netClientIn->tls.sslContext, (const unsigned char*)buf, bufferSize_bytesIn);
+		if( tmpRet > 0 )
+		{
+			buf += tmpRet;
+			bufferSize_bytesIn -= tmpRet;
+		}
+		else if( (tmpRet != MBEDTLS_ERR_SSL_WANT_WRITE) && (tmpRet != MBEDTLS_ERR_SSL_WANT_READ) )
+		{
+			cxa_logger_warn(&netClientIn->super.logger, "error during write: %d", tmpRet);
+			cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_IDLE);
+			return false;
+		}
+	} while( bufferSize_bytesIn > 0 );
 
 	return true;
+}
+
+
+static void netconn_tls_debug(void *ctx, int level,
+							  const char *file, int line,
+							  const char *str)
+{
+	((void) level);
+
+	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)ctx;
+	cxa_assert(netClientIn);
+
+    /* Shorten 'file' from the whole file path to just the filename
+
+       This is a bit wasteful because the macros are compiled in with
+       the full _FILE_ path in each case, so the firmware is bloated out
+       by a few kb. But there's not a lot we can do about it...
+    */
+    char *file_sep = rindex(file, '/');
+    if(file_sep) file = file_sep+1;
+
+    cxa_logger_trace(&netClientIn->super.logger, "%s:%04d: %s", file, line, str);
 }

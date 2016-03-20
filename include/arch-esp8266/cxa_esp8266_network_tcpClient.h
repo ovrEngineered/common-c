@@ -21,16 +21,19 @@
 // ******** includes ********
 #include <cxa_network_tcpClient.h>
 
-#include <stdio.h>
-#include <cxa_config.h>
-#include <cxa_usart.h>
-#include <cxa_fixedFifo.h>
-#include <cxa_gpio.h>
 #include <cxa_stateMachine.h>
 
-#include <c_types.h>
-#include <ip_addr.h>
-#include <espconn.h>
+#include <lwip/api.h>
+
+// config.h should appear before other mbedtls includes
+#include "mbedtls/config.h"
+#include <mbedtls/net.h>
+#include <mbedtls/debug.h>
+#include <mbedtls/ssl.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/error.h>
+#include <mbedtls/certs.h>
 
 
 // ******** global macro definitions ********
@@ -38,12 +41,8 @@
 	#define CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES			64
 #endif
 
-#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES
-	#define CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES			128
-#endif
-
-#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES
-	#define CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES			128
+#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES
+	#define CXA_ESP8266_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES			5
 #endif
 
 
@@ -63,22 +62,32 @@ struct cxa_esp8266_network_tcpClient
 	cxa_network_tcpClient_t super;
 
 	char targetHostName[CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES+1];
-	bool useTls;
-
-	ip_addr_t ip;
-	struct espconn espconn;
-	esp_tcp tcp;
-	uint32_t connectTimeout_ms;
+	ip_addr_t targetIp;
+	char targetPortNum[CXA_ESP8266_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES+1];
 
 	cxa_stateMachine_t stateMachine;
 
-	cxa_fixedFifo_t rxFifo;
-	uint8_t rxFifo_raw[CXA_ESP8266_NETWORK_TCPCLIENT_RXBUFFERSIZE_BYTES];
+	bool useClientCert;
+	struct
+	{
+	    mbedtls_entropy_context entropy;
+	    mbedtls_ctr_drbg_context ctr_drbg;
+	    mbedtls_ssl_context sslContext;
+	    mbedtls_x509_crt cert_server;
+	    mbedtls_x509_crt cert_client;
+	    mbedtls_pk_context client_key_private;
+	    mbedtls_ssl_config conf;
+	    mbedtls_net_context server_fd;
 
-	cxa_fixedFifo_t txFifo;
-	uint8_t txFifo_raw[CXA_ESP8266_NETWORK_TCPCLIENT_TXBUFFERSIZE_BYTES];
-	size_t numBytesInPreviousBulkDequeue;
-	bool sendInProgress;
+	    struct
+		{
+			bool areBasicsInitialized;
+
+			uint16_t crc_serverRootCert;
+			uint16_t crc_clientCert;
+			uint16_t crc_clientPrivateKey;
+		}initState;
+	}tls;
 };
 
 

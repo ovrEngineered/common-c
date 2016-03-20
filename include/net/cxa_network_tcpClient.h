@@ -47,6 +47,7 @@ typedef struct cxa_network_tcpClient cxa_network_tcpClient_t;
  */
 typedef void (*cxa_network_tcpClient_cb_onConnect_t)(cxa_network_tcpClient_t *const clientIn, void* userVarIn);
 
+
 /**
  * @public
  */
@@ -70,6 +71,17 @@ typedef bool (*cxa_network_tcpClient_scm_connectToHost_t)(cxa_network_tcpClient_
  * @private
  * Used for network client subclasses
  */
+typedef bool (*cxa_network_tcpClient_scm_connectToHost_clientCert_t)(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn,
+																	 const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
+																	 const char* clientCertIn, size_t clientCertLen_bytesIn,
+																	 const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+																	 uint32_t timeout_msIn);
+
+
+/**
+ * @private
+ * Used for network client subclasses
+ */
 typedef void (*cxa_network_tcpClient_scm_disconnectFromHost_t)(cxa_network_tcpClient_t *const superIn);
 
 
@@ -80,6 +92,9 @@ typedef void (*cxa_network_tcpClient_scm_disconnectFromHost_t)(cxa_network_tcpCl
 typedef bool (*cxa_network_tcpClient_scm_isConnected_t)(cxa_network_tcpClient_t *const superIn);
 
 
+/**
+ * @private
+ */
 typedef struct
 {
 	cxa_network_tcpClient_cb_onConnect_t cb_onConnect;
@@ -99,6 +114,7 @@ struct cxa_network_tcpClient
 
 	// subclass methods
 	cxa_network_tcpClient_scm_connectToHost_t scm_connToHost;
+	cxa_network_tcpClient_scm_connectToHost_clientCert_t scm_connToHost_clientCert;
 	cxa_network_tcpClient_scm_disconnectFromHost_t scm_disconnect;
 	cxa_network_tcpClient_scm_isConnected_t scm_isConnected;
 
@@ -117,6 +133,7 @@ struct cxa_network_tcpClient
  */
 void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn,
 							 cxa_network_tcpClient_scm_connectToHost_t scm_connToHostIn,
+							 cxa_network_tcpClient_scm_connectToHost_clientCert_t scm_connToHost_clientCertIn,
 							 cxa_network_tcpClient_scm_disconnectFromHost_t scm_disconnectIn,
 							 cxa_network_tcpClient_scm_isConnected_t scm_isConnected);
 
@@ -134,6 +151,16 @@ void cxa_network_tcpClient_addListener(cxa_network_tcpClient_t *const netClientI
  * @public
  */
 bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn, uint32_t timeout_msIn);
+
+
+/**
+ * @public
+ */
+bool cxa_network_tcpClient_connectToHost_clientCert(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn,
+													const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
+													const char* clientCertIn, size_t clientCertLen_bytesIn,
+													const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+													uint32_t timeout_msIn);
 
 
 /**

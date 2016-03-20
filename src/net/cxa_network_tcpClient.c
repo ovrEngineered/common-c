@@ -37,21 +37,23 @@
 // ******** global function implementations ********
 void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn,
 							 cxa_network_tcpClient_scm_connectToHost_t scm_connToHostIn,
+							 cxa_network_tcpClient_scm_connectToHost_clientCert_t scm_connToHost_clientCertIn,
 							 cxa_network_tcpClient_scm_disconnectFromHost_t scm_disconnectIn,
 							 cxa_network_tcpClient_scm_isConnected_t scm_isConnected)
 {
 	cxa_assert(netClientIn);
-	cxa_assert(scm_connToHostIn);
+	cxa_assert((scm_connToHostIn != NULL) || (scm_connToHost_clientCertIn != NULL));
 	cxa_assert(scm_disconnectIn);
 	cxa_assert(scm_isConnected);
 
 	// save our references
 	netClientIn->scm_connToHost = scm_connToHostIn;
+	netClientIn->scm_connToHost_clientCert = scm_connToHost_clientCertIn;
 	netClientIn->scm_disconnect = scm_disconnectIn;
 	netClientIn->scm_isConnected = scm_isConnected;
 
 	// setup our logger
-	cxa_logger_init(&netClientIn->logger, "netClient");
+	cxa_logger_init(&netClientIn->logger, "tcpClient");
 
 	// setup our timediff for future use
 	cxa_timeDiff_init(&netClientIn->td_genPurp, true);
@@ -81,8 +83,23 @@ bool cxa_network_tcpClient_connectToHost(cxa_network_tcpClient_t *const netClien
 {
 	cxa_assert(netClientIn);
 	cxa_assert(hostNameIn);
+	cxa_assert(netClientIn->scm_connToHost);
 
 	return netClientIn->scm_connToHost(netClientIn, hostNameIn, portNumIn, useTlsIn, timeout_msIn);
+}
+
+
+bool cxa_network_tcpClient_connectToHost_clientCert(cxa_network_tcpClient_t *const netClientIn, char *const hostNameIn, uint16_t portNumIn,
+													const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
+													const char* clientCertIn, size_t clientCertLen_bytesIn,
+													const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+													uint32_t timeout_msIn)
+{
+	cxa_assert(netClientIn);
+	cxa_assert(hostNameIn);
+	cxa_assert(netClientIn->scm_connToHost_clientCert);
+
+	return netClientIn->scm_connToHost_clientCert(netClientIn, hostNameIn, portNumIn, serverRootCertIn, serverRootCertLen_bytesIn, clientCertIn, clientCertLen_bytesIn, clientPrivateKeyIn, clientPrivateKeyLen_bytesIn, timeout_msIn);
 }
 
 

@@ -32,9 +32,15 @@
 
 
 // ******** global function prototypes ********
+/**
+ * @public
+ */
 void cxa_esp8266_network_factory_init(void);
-cxa_esp8266_network_tcpClient_t* cxa_esp8266_network_factory_getTcpClientByEspConn(struct espconn *const connIn);
-cxa_esp8266_network_tcpServer_t* cxa_esp8266_network_factory_getTcpServerByListeningPortNum(int portNumIn);
+
+
+/**
+ * @public
+ */
 void cxa_esp8266_network_factory_update(void);
 
 
