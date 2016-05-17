@@ -307,6 +307,10 @@ cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn)
 	cxa_stringUtils_parseResult_t retVal = {.dataType=CXA_STRINGUTILS_DATATYPE_UNKNOWN};
 	if( strIn == NULL ) return retVal;
 
+	#ifndef errno_defined
+	int errno = 0;
+	#endif
+
 	// first things first...see if the string contains a period
 	if( cxa_stringUtils_contains(strIn, ".") )
 	{
