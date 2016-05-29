@@ -37,6 +37,12 @@
 
 
 // ******** global type definitions *********
+/**
+ * @public
+ */
+typedef struct cxa_led cxa_led_t;
+
+
 typedef enum
 {
 	CXA_LED_STATE_OFF,
@@ -44,26 +50,54 @@ typedef enum
 	CXA_LED_STATE_BLINK
 }cxa_led_state_t;
 
-typedef struct
-{
-	cxa_gpio_t* gpio;
 
+/**
+ * @private
+ */
+typedef void (*cxa_led_scm_turnOn_t)(cxa_led_t *const superIn);
+
+/**
+ * @private
+ */
+typedef void (*cxa_led_scm_turnOff_t)(cxa_led_t *const superIn);
+
+/**
+ * @private
+ */
+typedef void (*cxa_led_scm_blink_t)(cxa_led_t *const superIn, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn);
+
+/**
+ * @private
+ */
+typedef void (*cxa_led_scm_setBrightness_t)(cxa_led_t *const superIn, uint8_t brightnessIn);
+
+
+struct cxa_led
+{
 	cxa_led_state_t currState;
 
-	cxa_timeDiff_t td_blink;
-	uint32_t onPeriod_ms;
-	uint32_t offPeriod_ms;
-}cxa_led_t;
+	cxa_led_scm_turnOn_t scm_turnOn;
+	cxa_led_scm_turnOff_t scm_turnOff;
+	cxa_led_scm_blink_t scm_blink;
+	cxa_led_scm_setBrightness_t scm_setBrightness;
+};
 
 
 // ******** global function prototypes ********
-void cxa_led_init(cxa_led_t *const ledIn, cxa_gpio_t *const gpioIn);
+/**
+ * @protected
+ */
+void cxa_led_init(cxa_led_t *const ledIn,
+				  cxa_led_scm_turnOn_t scm_turnOnIn,
+				  cxa_led_scm_turnOff_t scm_turnOffIn,
+				  cxa_led_scm_blink_t scm_blinkIn,
+				  cxa_led_scm_setBrightness_t scm_setBrightnessIn);
 
 void cxa_led_turnOn(cxa_led_t *const ledIn);
 void cxa_led_turnOff(cxa_led_t *const ledIn);
-void cxa_led_blink(cxa_led_t *const ledIn, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn);
 
-void cxa_led_update(cxa_led_t *const ledIn);
+void cxa_led_blink(cxa_led_t *const ledIn, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn);
+void cxa_led_setBrightness(cxa_led_t *const ledIn, uint8_t brightnessIn);
 
 
 #endif /* CXA_LED_H_ */

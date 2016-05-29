@@ -38,28 +38,84 @@
 
 
 // ******** global function implementations ********
-const char* cxa_gpio_direction_toString(const cxa_gpio_direction_t dirIn)
+void cxa_gpio_init(cxa_gpio_t *const gpioIn,
+				   cxa_gpio_scm_setDirection_t scm_setDirectionIn,
+				   cxa_gpio_scm_getDirection_t scm_getDirectionIn,
+				   cxa_gpio_setPolarity_t scm_setPolarityIn,
+				   cxa_gpio_scm_getPolarity_t scm_getPolarityIn,
+				   cxa_gpio_scm_setValue_t scm_setValueIn,
+				   cxa_gpio_scm_getValue_t scm_getValueIn)
 {
-	cxa_assert( (dirIn == CXA_GPIO_DIR_INPUT) ||
-				(dirIn == CXA_GPIO_DIR_OUTPUT) );
+	cxa_assert(gpioIn);
+	cxa_assert(scm_setDirectionIn);
+	cxa_assert(scm_getDirectionIn);
+	cxa_assert(scm_setPolarityIn);
+	cxa_assert(scm_getPolarityIn);
+	cxa_assert(scm_setValueIn);
+	cxa_assert(scm_getValueIn);
 
-	const char* retVal = NULL;
-	switch( dirIn )
-	{
-		case CXA_GPIO_DIR_INPUT:
-			retVal = "input";
-			break;
+	// save our references
+	gpioIn->scm_setDirection = scm_setDirectionIn;
+	gpioIn->scm_getDirection = scm_getDirectionIn;
+	gpioIn->scm_setPolarity = scm_setPolarityIn;
+	gpioIn->scm_getPolarity = scm_getPolarityIn;
+	gpioIn->scm_setValue = scm_setValueIn;
+	gpioIn->scm_getValue = scm_getValueIn;
+}
 
-		case CXA_GPIO_DIR_OUTPUT:
-			retVal = "output";
-			break;
-		
-		default:
-			retVal = "unknown";
-			break;
-	}
+void cxa_gpio_setDirection(cxa_gpio_t *const gpioIn, const cxa_gpio_direction_t dirIn)
+{
+	cxa_assert(gpioIn);
+	cxa_assert(gpioIn->scm_setDirection);
+	gpioIn->scm_setDirection(gpioIn, dirIn);
+}
 
-	return retVal;
+
+cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const gpioIn)
+{
+	cxa_assert(gpioIn);
+	cxa_assert(gpioIn->scm_getDirection);
+	return gpioIn->scm_getDirection(gpioIn);
+}
+
+
+void cxa_gpio_setPolarity(cxa_gpio_t *const gpioIn, const cxa_gpio_polarity_t polarityIn)
+{
+	cxa_assert(gpioIn);
+	cxa_assert(gpioIn->scm_setPolarity);
+	gpioIn->scm_setPolarity(gpioIn, polarityIn);
+}
+
+
+cxa_gpio_polarity_t cxa_gpio_getPolarity(cxa_gpio_t *const gpioIn)
+{
+	cxa_assert(gpioIn);
+	cxa_assert(gpioIn->scm_getPolarity);
+	return gpioIn->scm_getPolarity(gpioIn);
+}
+
+
+void cxa_gpio_setValue(cxa_gpio_t *const gpioIn, const bool valIn)
+{
+	cxa_assert(gpioIn);
+	cxa_assert(gpioIn->scm_setValue);
+	gpioIn->scm_setValue(gpioIn, valIn);
+}
+
+
+bool cxa_gpio_getValue(cxa_gpio_t *const gpioIn)
+{
+	cxa_assert(gpioIn);
+	cxa_assert(gpioIn->scm_getValue);
+	return gpioIn->scm_getValue(gpioIn);
+}
+
+
+void cxa_gpio_toggle(cxa_gpio_t *const gpioIn)
+{
+	cxa_assert(gpioIn);
+
+	cxa_gpio_setValue(gpioIn, !cxa_gpio_getValue(gpioIn));
 }
 
 

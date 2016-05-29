@@ -59,6 +59,9 @@ void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 	checkSysLogInit();
 
 	ioStream = ioStreamIn;
+
+	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
+	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
 	cxa_logger_vlog(&sysLog, CXA_LOG_LEVEL_INFO, "logging ioStream @ %p", ioStreamIn);
 }
 

@@ -74,10 +74,7 @@
  * @public
  * @brief "Forward" declaration of the cxa_gpio_t object
  */
-typedef struct cxa_gpio
-{
-	void* _placeHolder;
-}cxa_gpio_t;
+typedef struct cxa_gpio cxa_gpio_t;
 
 
 /**
@@ -104,7 +101,68 @@ typedef enum
 }cxa_gpio_polarity_t;
 
 
+/**
+ * @private
+ */
+typedef void (*cxa_gpio_scm_setDirection_t)(cxa_gpio_t *const gpioIn, const cxa_gpio_direction_t dirIn);
+
+
+/**
+ * @private
+ */
+typedef cxa_gpio_direction_t (*cxa_gpio_scm_getDirection_t)(cxa_gpio_t *const gpioIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_gpio_setPolarity_t)(cxa_gpio_t *const gpioIn, const cxa_gpio_polarity_t polarityIn);
+
+
+/**
+ * @private
+ */
+typedef cxa_gpio_polarity_t (*cxa_gpio_scm_getPolarity_t)(cxa_gpio_t *const gpioIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_gpio_scm_setValue_t)(cxa_gpio_t *const gpioIn, const bool valIn);
+
+
+/**
+ * @private
+ */
+typedef bool (*cxa_gpio_scm_getValue_t)(cxa_gpio_t *const gpioIn);
+
+
+/**
+ * @private
+ */
+struct cxa_gpio
+{
+	cxa_gpio_scm_setDirection_t scm_setDirection;
+	cxa_gpio_scm_getDirection_t scm_getDirection;
+	cxa_gpio_setPolarity_t scm_setPolarity;
+	cxa_gpio_scm_getPolarity_t scm_getPolarity;
+	cxa_gpio_scm_setValue_t scm_setValue;
+	cxa_gpio_scm_getValue_t scm_getValue;
+};
+
+
 // ******** global function prototypes ********
+/**
+ * @private
+ */
+void cxa_gpio_init(cxa_gpio_t *const gpioIn,
+				   cxa_gpio_scm_setDirection_t scm_setDirectionIn,
+				   cxa_gpio_scm_getDirection_t scm_getDirectionIn,
+				   cxa_gpio_setPolarity_t scm_setPolarityIn,
+				   cxa_gpio_scm_getPolarity_t scm_getPolarityIn,
+				   cxa_gpio_scm_setValue_t scm_setValueIn,
+				   cxa_gpio_scm_getValue_t scm_getValueIn);
+
 /**
  * @public
  * @brief Sets the direction of the GPIO object/pin
@@ -196,17 +254,6 @@ bool cxa_gpio_getValue(cxa_gpio_t *const gpioIn);
  * @param[in] gpioIn pointer to a pre-initialized GPIO object
  */
 void cxa_gpio_toggle(cxa_gpio_t *const gpioIn);
-
-
-/**
- * @public
- * @brief Returns a user-friendly text description of the directional state of the GPIO object/pin
- *
- * @param[in] gpioIn pointer to a pre-initialized GPIO object
- *
- * @return pointer to a user-friendly text description of the directional state of the GPIO object/pin
- */
-const char* cxa_gpio_direction_toString(const cxa_gpio_direction_t dirIn);
 
 
 #endif // CXA_GPIO_H_

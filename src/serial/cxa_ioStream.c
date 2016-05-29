@@ -90,6 +90,20 @@ cxa_ioStream_readStatus_t cxa_ioStream_readByte(cxa_ioStream_t *const ioStreamIn
 }
 
 
+void cxa_ioStream_waitForChar(cxa_ioStream_t *const ioStreamIn, char targetCharIn)
+{
+	cxa_assert(ioStreamIn);
+	if( !cxa_ioStream_isBound(ioStreamIn) ) return;
+
+	uint8_t rxByte;
+	while(1)
+	{
+		if( (cxa_ioStream_readByte(ioStreamIn, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA) &&
+			(rxByte == (uint8_t)targetCharIn) ) break;
+	}
+}
+
+
 bool cxa_ioStream_writeByte(cxa_ioStream_t *const ioStreamIn, uint8_t byteIn)
 {
 	cxa_assert(ioStreamIn);

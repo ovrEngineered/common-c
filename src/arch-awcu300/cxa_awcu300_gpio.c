@@ -35,6 +35,13 @@
 // ******** local function prototypes ********
 static void configurePinMux(const GPIO_NO_Type pinNumIn);
 
+static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn);
+static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn);
+static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn);
+static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn);
+static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn);
+static bool scm_getValue(cxa_gpio_t *const superIn);
+
 
 // ********  local variable declarations *********
 static bool isClockEnabled = false;
@@ -51,6 +58,9 @@ void cxa_awcu300_gpio_init_input(cxa_awcu300_gpio_t *const gpioIn, const GPIO_NO
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
 	
+	// initialize our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+
 	configurePinMux(pinNumIn);
 
 	// set our initial direction
@@ -68,6 +78,9 @@ void cxa_awcu300_gpio_init_output(cxa_awcu300_gpio_t *const gpioIn, const GPIO_N
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
 	
+	// initialze our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+
 	configurePinMux(pinNumIn);
 
 	// set our initial value (before we set direction to avoid glitches)
@@ -88,92 +101,12 @@ void cxa_awcu300_gpio_init_safe(cxa_awcu300_gpio_t *const gpioIn, const GPIO_NO_
 	gpioIn->polarity = CXA_GPIO_POLARITY_NONINVERTED;
 	gpioIn->dir = CXA_GPIO_DIR_UNKNOWN;
 	
+	// initialze our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+
 	configurePinMux(pinNumIn);
 
 	// don't set any value or direction...just leave everything as it is
-}
-
-
-void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
-{
-	cxa_assert(superIn);
-	cxa_assert( (dirIn == CXA_GPIO_DIR_INPUT) ||
-				(dirIn == CXA_GPIO_DIR_OUTPUT) );
-
-	// get a pointer to our class
-	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
-	
-	GPIO_SetPinDir(gpioIn->pinNum, (dirIn == CXA_GPIO_DIR_OUTPUT) ? GPIO_OUTPUT : GPIO_INPUT);
-	gpioIn->dir = dirIn;
-}
-
-
-cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const superIn)
-{
-	cxa_assert(superIn);
-
-	// get a pointer to our class
-	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
-	
-	return gpioIn->dir;
-}
-
-
-void cxa_gpio_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn)
-{
-	cxa_assert(superIn);
-	cxa_assert( (polarityIn == CXA_GPIO_POLARITY_NONINVERTED) ||
-				(polarityIn == CXA_GPIO_POLARITY_INVERTED) );
-
-	// get a pointer to our class
-	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
-				
-	gpioIn->polarity = polarityIn;
-}
-
-
-cxa_gpio_polarity_t cxa_gpio_getPolarity(cxa_gpio_t *const superIn)
-{
-	cxa_assert(superIn);
-	
-	// get a pointer to our class
-	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
-	
-	return gpioIn->polarity;
-}
-
-
-void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
-{
-	cxa_assert(superIn);
-
-	// get a pointer to our class
-	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
-
-	GPIO_WritePinOutput(gpioIn->pinNum, (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? valIn : valIn);
-}
-
-
-bool cxa_gpio_getValue(cxa_gpio_t *const superIn)
-{
-	cxa_assert(superIn);
-
-	// get a pointer to our class
-	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
-
-	bool retVal = (GPIO_ReadPinLevel(gpioIn->pinNum) == GPIO_IO_HIGH);
-	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal : retVal;
-}
-
-
-void cxa_gpio_toggle(cxa_gpio_t *const superIn)
-{
-	cxa_assert(superIn);
-
-	// get a pointer to our class
-	//cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
-	
-	cxa_gpio_setValue(superIn, !cxa_gpio_getValue(superIn));
 }
 
 
@@ -208,5 +141,77 @@ static void configurePinMux(const GPIO_NO_Type pinNumIn)
 	}
 
 	GPIO_PinMuxFun(pinNumIn, pinMuxFunc);
+}
+
+
+static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
+{
+	cxa_assert(superIn);
+	cxa_assert( (dirIn == CXA_GPIO_DIR_INPUT) ||
+				(dirIn == CXA_GPIO_DIR_OUTPUT) );
+
+	// get a pointer to our class
+	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
+	
+	GPIO_SetPinDir(gpioIn->pinNum, (dirIn == CXA_GPIO_DIR_OUTPUT) ? GPIO_OUTPUT : GPIO_INPUT);
+	gpioIn->dir = dirIn;
+}
+
+
+static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn)
+{
+	cxa_assert(superIn);
+
+	// get a pointer to our class
+	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
+	
+	return gpioIn->dir;
+}
+
+
+static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn)
+{
+	cxa_assert(superIn);
+	cxa_assert( (polarityIn == CXA_GPIO_POLARITY_NONINVERTED) ||
+				(polarityIn == CXA_GPIO_POLARITY_INVERTED) );
+
+	// get a pointer to our class
+	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
+				
+	gpioIn->polarity = polarityIn;
+}
+
+
+static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn)
+{
+	cxa_assert(superIn);
+	
+	// get a pointer to our class
+	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
+	
+	return gpioIn->polarity;
+}
+
+
+static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
+{
+	cxa_assert(superIn);
+
+	// get a pointer to our class
+	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
+
+	GPIO_WritePinOutput(gpioIn->pinNum, (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn);
+}
+
+
+static bool scm_getValue(cxa_gpio_t *const superIn)
+{
+	cxa_assert(superIn);
+
+	// get a pointer to our class
+	cxa_awcu300_gpio_t *const gpioIn = (cxa_awcu300_gpio_t *const)superIn;
+
+	bool retVal = (GPIO_ReadPinLevel(gpioIn->pinNum) == GPIO_IO_HIGH);
+	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal : retVal;
 }
 

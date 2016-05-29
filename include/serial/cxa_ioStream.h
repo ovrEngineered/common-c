@@ -100,6 +100,7 @@ void cxa_ioStream_unbind(cxa_ioStream_t *const ioStreamIn);
 bool cxa_ioStream_isBound(cxa_ioStream_t *const ioStreamIn);
 
 cxa_ioStream_readStatus_t cxa_ioStream_readByte(cxa_ioStream_t *const ioStreamIn, uint8_t *const byteOut);
+void cxa_ioStream_waitForChar(cxa_ioStream_t *const ioStreamIn, char targetCharIn);
 bool cxa_ioStream_writeByte(cxa_ioStream_t *const ioStreamIn, uint8_t byteIn);
 bool cxa_ioStream_writeBytes(cxa_ioStream_t *const ioStreamIn, void* buffIn, size_t bufferSize_bytesIn);
 bool cxa_ioStream_writeFixedByteBuffer(cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const fbbIn);

@@ -259,7 +259,7 @@ bool cxa_fixedByteBuffer_replace(cxa_fixedByteBuffer_t *const fbbIn, const size_
 	// make sure we have enough bytes in the buffer for this operation
 	if( (indexIn + numBytesIn) > cxa_fixedByteBuffer_getSize_bytes(fbbIn)) return false;
 
-	for( int i = 0; i < numBytesIn; i++ )
+	for( size_t i = 0; i < numBytesIn; i++ )
 	{
 		if( !cxa_array_overwrite(&fbbIn->bytes, indexIn+i, &(ptrIn[i])) ) return false;
 	}
@@ -286,7 +286,7 @@ bool cxa_fixedByteBuffer_replace_cString(cxa_fixedByteBuffer_t *const fbbIn, con
 	if( (indexIn+replacementStringSize_bytes) > cxa_fixedByteBuffer_getMaxSize_bytes(fbbIn) ) return false;
 
 	// now, make sure that we have enough free space in the buffer if the replacement string is larger
-	if( (discrepantSize_bytes > 0) && (cxa_fixedByteBuffer_getFreeSize_bytes(fbbIn) < discrepantSize_bytes) ) return false;
+	if( (discrepantSize_bytes > 0) && (cxa_fixedByteBuffer_getFreeSize_bytes(fbbIn) < ((size_t)discrepantSize_bytes)) ) return false;
 
 	// if we made it here, we should be good to perform the operation...start by removing the current string
 	if( !cxa_fixedByteBuffer_remove_cString(fbbIn, indexIn) ) return false;
