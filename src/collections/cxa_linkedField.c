@@ -348,7 +348,7 @@ bool cxa_linkedField_replace_cstring(cxa_linkedField_t *const fbbLfIn, const siz
 	if( (indexIn+replacementStringSize_bytes) > cxa_linkedField_getMaxSize_bytes(fbbLfIn) ) return false;
 
 	// now, make sure that we have enough free space in the buffer if the replacement string is larger
-	if( (discrepantSize_bytes > 0) && (cxa_linkedField_getFreeSize_bytes(fbbLfIn) < discrepantSize_bytes) ) return false;
+	if( (discrepantSize_bytes > 0) && (cxa_linkedField_getFreeSize_bytes(fbbLfIn) < ((size_t)discrepantSize_bytes)) ) return false;
 
 	// if we made it here, we should be good to perform the operation...start by removing the current string
 	if( !cxa_linkedField_remove_cString(fbbLfIn, indexIn) ) return false;

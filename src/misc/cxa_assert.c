@@ -77,16 +77,16 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 	{
 		if( ioStream != NULL )
 		{
-			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, ASSERT_TEXT, strlen(ASSERT_TEXT));
-			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
+			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, (void*)ASSERT_TEXT, strlen(ASSERT_TEXT));
+			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, (void*)PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
 			cxa_ioStream_writeBytes(ioStream, (void*)fileIn, strlen(fileIn));
 			cxa_ioStream_writeByte(ioStream, ':');
 			char lineNumBuff[5];
 			int expectedNumBytesWritten = snprintf(lineNumBuff, sizeof(lineNumBuff), "%ld", lineIn);
-			cxa_ioStream_writeBytes(ioStream, lineNumBuff, CXA_MIN(expectedNumBytesWritten, sizeof(lineNumBuff)));
-			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			if( expectedNumBytesWritten > 0 ) cxa_ioStream_writeBytes(ioStream, (void*)lineNumBuff, CXA_MIN(((size_t)expectedNumBytesWritten), sizeof(lineNumBuff)));
+			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 		}
 
 		if( cb != NULL ) cb();
@@ -142,18 +142,18 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 	{
 		if( ioStream != NULL )
 		{
-			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, ASSERT_TEXT, strlen(ASSERT_TEXT));
-			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
+			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, (void*)ASSERT_TEXT, strlen(ASSERT_TEXT));
+			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, (void*)PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
 			cxa_ioStream_writeBytes(ioStream, (void*)fileIn, strlen(fileIn));
 			cxa_ioStream_writeByte(ioStream, ':');
 			char lineNumBuff[5];
 			int expectedNumBytesWritten = snprintf(lineNumBuff, sizeof(lineNumBuff), "%ld", lineIn);
-			cxa_ioStream_writeBytes(ioStream, lineNumBuff, CXA_MIN(expectedNumBytesWritten, sizeof(lineNumBuff)));
-			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			if( expectedNumBytesWritten > 0 ) cxa_ioStream_writeBytes(ioStream, (void*)lineNumBuff, CXA_MIN(((size_t)expectedNumBytesWritten), sizeof(lineNumBuff)));
+			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 			cxa_ioStream_writeBytes(ioStream, (void*)msgIn, strlen(msgIn));
-			cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 		}
 
 		if( cb != NULL ) cb();

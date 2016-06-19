@@ -41,7 +41,7 @@
 
 // ******** local function prototypes ********
 static inline void checkSysLogInit(void);
-static void writeField(char *const stringIn, size_t maxFieldLenIn);
+static void writeField(const char *const stringIn, size_t maxFieldLenIn);
 static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn);
 
 
@@ -60,8 +60,8 @@ void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 
 	ioStream = ioStreamIn;
 
-	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
-	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
+	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
+	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
 	cxa_logger_vlog(&sysLog, CXA_LOG_LEVEL_INFO, "logging ioStream @ %p", ioStreamIn);
 }
 
@@ -127,7 +127,7 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 	if( postFixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)postFixIn);
 
 	// print EOL
-	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 }
 
 
@@ -154,16 +154,16 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 	// now do our VARARGS
 	va_list varArgs;
 	va_start(varArgs, formatIn);
-	int expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
+	size_t expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
 	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
 	if( sizeof(buff) < expectedNumBytesWritten )
 	{
-		cxa_ioStream_writeBytes(ioStream, CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
+		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
 	}
 	va_end(varArgs);
 
 	// print EOL
-	cxa_ioStream_writeBytes(ioStream, CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 }
 
 
@@ -179,18 +179,18 @@ static inline void checkSysLogInit(void)
 }
 
 
-static void writeField(char *const stringIn, size_t maxFieldLenIn)
+static void writeField(const char *const stringIn, size_t maxFieldLenIn)
 {
 	size_t stringLen_bytes = strlen(stringIn);
 
 	if( stringLen_bytes > maxFieldLenIn )
 	{
-		cxa_ioStream_writeBytes(ioStream, stringIn, maxFieldLenIn-strlen(CXA_LOGGER_TRUNCATE_STRING));
-		cxa_ioStream_writeBytes(ioStream, CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
+		cxa_ioStream_writeBytes(ioStream, (void*)stringIn, maxFieldLenIn-strlen(CXA_LOGGER_TRUNCATE_STRING));
+		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
 	}
 	else
 	{
-		cxa_ioStream_writeBytes(ioStream, stringIn, stringLen_bytes);
+		cxa_ioStream_writeBytes(ioStream, (void*)stringIn, stringLen_bytes);
 		for( size_t i = stringLen_bytes; i < maxFieldLenIn; i++ )
 		{
 			cxa_ioStream_writeByte(ioStream, ' ');
@@ -204,7 +204,7 @@ static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
 	cxa_assert(loggerIn);
 
 	// figure out our level text
-	char *levelText = "UNKN";
+	const char *levelText = "UNKN";
 	switch( levelIn )
 	{
 		case CXA_LOG_LEVEL_ERROR:

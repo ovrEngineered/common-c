@@ -357,7 +357,7 @@ cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn)
 
 const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn)
 {
-	for(int i = 0; i < (sizeof(DT_STRING_MAP)/sizeof(*DT_STRING_MAP)); i++ )
+	for(size_t i = 0; i < (sizeof(DT_STRING_MAP)/sizeof(*DT_STRING_MAP)); i++ )
 	{
 		if( DT_STRING_MAP[i].dataType == dataTypeIn ) return DT_STRING_MAP[i].string;
 	}
