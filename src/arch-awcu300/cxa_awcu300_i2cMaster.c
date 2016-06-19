@@ -52,9 +52,6 @@ void cxa_awcu300_i2cMaster_init(cxa_awcu300_i2cMaster_t *const i2cIn, I2C_ID_Typ
 	// save our references
 	i2cIn->i2cId = i2cIdIn;
 
-	// setup our timeDiff
-	cxa_timeDiff_init(&i2cIn->super.td_timeout, false);
-
 	I2C_CFG_Type i2c_cfg =
 			{
 					.masterAddrBitMode = I2C_ADDR_BITS_7,
@@ -113,10 +110,11 @@ bool cxa_i2cMaster_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 	I2C_SetSlaveAddr(i2cIn->i2cId, addressIn);
 
 	// make sure we weren't performing another transaction
-	cxa_timeDiff_setStartTime_now(&i2cIn->super.td_timeout);
+	cxa_timeDiff_t td_timeout;
+	cxa_timeDiff_setStartTime_now(&td_timeout);
 	while( I2C_GetStatus(i2cIn->i2cId, I2C_STATUS_ACTIVITY) == SET )
 	{
-		if( cxa_timeDiff_isElapsed_ms(&i2cIn->super.td_timeout, TIMEOUT_DEFAULT_MS) ) return false;
+		if( cxa_timeDiff_isElapsed_ms(&td_timeout, TIMEOUT_DEFAULT_MS) ) return false;
 	}
 
 	// queue up our "control" bytes (if they exist)
@@ -124,6 +122,13 @@ bool cxa_i2cMaster_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 
 	// queue up our control bytes
 	if( !writebytes(i2cIn, dataBytesIn, numDataBytesIn) ) return false;
+
+	// wait for our transaction to complete
+	cxa_timeDiff_setStartTime_now(&td_timeout);
+	while( I2C_GetStatus(i2cIn->i2cId, I2C_STATUS_ACTIVITY) == SET )
+	{
+		if( cxa_timeDiff_isElapsed_ms(&td_timeout, TIMEOUT_DEFAULT_MS) ) return false;
+	}
 
 	return true;
 }
@@ -141,10 +146,11 @@ bool cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 	I2C_SetSlaveAddr(i2cIn->i2cId, addressIn);
 
 	// make sure we weren't performing another transaction
-	cxa_timeDiff_setStartTime_now(&i2cIn->super.td_timeout);
+	cxa_timeDiff_t td_timeout;
+	cxa_timeDiff_setStartTime_now(&td_timeout);
 	while( I2C_GetStatus(i2cIn->i2cId, I2C_STATUS_ACTIVITY) == SET )
 	{
-		if( cxa_timeDiff_isElapsed_ms(&i2cIn->super.td_timeout, TIMEOUT_DEFAULT_MS) ) return false;
+		if( cxa_timeDiff_isElapsed_ms(&td_timeout, TIMEOUT_DEFAULT_MS) ) return false;
 	}
 
 	// queue up our "control" bytes (if they exist)
@@ -154,9 +160,9 @@ bool cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 	size_t numBytesRead = 0;
 	for( size_t i = 0; i < numDataBytesIn; i++ )
 	{
-		cxa_timeDiff_setStartTime_now(&i2cIn->super.td_timeout);
+		cxa_timeDiff_setStartTime_now(&td_timeout);
 		while( I2C_GetStatus(i2cIn->i2cId, I2C_STATUS_TFNF) != SET )
-		if( cxa_timeDiff_isElapsed_ms(&i2cIn->super.td_timeout, TIMEOUT_DEFAULT_MS) )
+		if( cxa_timeDiff_isElapsed_ms(&td_timeout, TIMEOUT_DEFAULT_MS) )
 		{
 			resetI2c(i2cIn);
 			return false;
@@ -172,7 +178,7 @@ bool cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 	}
 
 	// wait for the rest of our data
-	cxa_timeDiff_setStartTime_now(&i2cIn->super.td_timeout);
+	cxa_timeDiff_setStartTime_now(&td_timeout);
 	while( numBytesRead < numDataBytesIn )
 	{
 		// if we become inactive, we didn't get enough data bytes back
@@ -183,7 +189,7 @@ bool cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 //		}
 
 		// make sure we haven't timed out
-		if( cxa_timeDiff_isElapsed_ms(&i2cIn->super.td_timeout, TIMEOUT_DEFAULT_MS) )
+		if( cxa_timeDiff_isElapsed_ms(&td_timeout, TIMEOUT_DEFAULT_MS) )
 		{
 			resetI2c(i2cIn);
 			return false;
@@ -196,7 +202,7 @@ bool cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 			numBytesRead++;
 
 			// reset our timeout
-			cxa_timeDiff_setStartTime_now(&i2cIn->super.td_timeout);
+			cxa_timeDiff_setStartTime_now(&td_timeout);
 		}
 	}
 
@@ -220,12 +226,13 @@ static bool writebytes(cxa_awcu300_i2cMaster_t *const i2cIn, uint8_t *bytesIn, s
 	if( numBytesIn > 0 ) cxa_assert(bytesIn);
 
 	// queue up our control bytes
+	cxa_timeDiff_t td_timeout;
 	for( size_t i = 0 ; i < numBytesIn; i++ )
 	{
-		cxa_timeDiff_setStartTime_now(&i2cIn->super.td_timeout);
+		cxa_timeDiff_setStartTime_now(&td_timeout);
 		while( I2C_GetStatus(i2cIn->i2cId, I2C_STATUS_TFNF) != SET )
 		{
-			if( cxa_timeDiff_isElapsed_ms(&i2cIn->super.td_timeout, TIMEOUT_DEFAULT_MS) )
+			if( cxa_timeDiff_isElapsed_ms(&td_timeout, TIMEOUT_DEFAULT_MS) )
 			{
 				resetI2c(i2cIn);
 				return false;
