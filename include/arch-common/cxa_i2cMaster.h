@@ -35,8 +35,6 @@
 typedef struct
 {
 	void* _placeHolder;
-
-	cxa_timeDiff_t td_timeout;
 }cxa_i2cMaster_t;
 
 
