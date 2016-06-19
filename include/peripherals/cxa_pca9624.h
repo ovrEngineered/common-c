@@ -49,6 +49,8 @@ typedef struct
  */
 struct cxa_pca9624
 {
+	bool isInit;
+
 	cxa_i2cMaster_t* i2c;
 	uint8_t address;
 

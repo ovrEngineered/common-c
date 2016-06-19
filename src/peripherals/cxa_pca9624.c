@@ -88,6 +88,7 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 	pcaIn->address = addressIn;
 	pcaIn->i2c = i2cIn;
 	pcaIn->gpio_outputEnable = gpio_oeIn;
+	pcaIn->isInit = false;
 
 	// read MODE2 just to make sure the device is actually there
 	uint8_t mode2 = 0x00;
@@ -97,12 +98,7 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 			(((mode2 >> 4) & 0x01) != 0) ||
 			(((mode2 >> 2) & 0x01) != 1) ||
 			(((mode2 >> 1) & 0x01) != 0) ||
-			(((mode2 >> 0) & 0x01) != 1) )
-	{
-		cxa_logger_trace(cxa_logger_getSysLog(), "mode2 fail: 0x%02X", mode2);
-		return false;
-	}
-	cxa_logger_trace(cxa_logger_getSysLog(), "mode2: 0x%02X", mode2);
+			(((mode2 >> 0) & 0x01) != 1) ) return false;
 
 	// if we made it here, it looks like we have a responding, valid device...configure it
 	uint8_t fullDevConfig[] =
@@ -126,17 +122,19 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 				0xE8,		// SUBADR3
 				0xE0,		// ALLLCALLADR
 			};
-	writeFullConfig(pcaIn, fullDevConfig);
+	if( !writeFullConfig(pcaIn, fullDevConfig) ) return false;
 
 	// setup our LEDS
 	for( int i = 0; i < (sizeof(pcaIn->leds)/sizeof(*pcaIn->leds)); i++ )
 	{
 		pcaIn->leds[i].pca = pcaIn;
 		cxa_led_init(&pcaIn->leds[i].super, scm_turnOn, scm_turnOff, NULL, scm_setBrightness);
+		// all LEDs default to off
 	}
 
 	// enable our outputs
 	cxa_gpio_setValue(pcaIn->gpio_outputEnable, 1);
+	pcaIn->isInit = true;
 
 	return true;
 }
@@ -168,12 +166,12 @@ static bool writeToRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, u
 }
 
 
-static bool writeFullConfig(cxa_pca9624_t *const pcaIn, uint8_t* fullDevConfig)
+static bool writeFullConfig(cxa_pca9624_t *const pcaIn, uint8_t* fullDevConfigIn)
 {
 	cxa_assert(pcaIn);
 
 	uint8_t ctrlBytes = 0x80;
-	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, fullDevConfig, 18);
+	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, fullDevConfigIn, 18);
 }
 
 
@@ -227,6 +225,8 @@ static void scm_turnOn(cxa_led_t *const superIn)
 	cxa_led_pca9624_t* ledIn = (cxa_led_pca9624_t*)superIn;
 	cxa_assert(ledIn);
 
+	if( !ledIn->pca->isInit ) return;
+
 	// get our current register value
 	uint8_t chanNum = getLedChanNum(ledIn);
 	register_t reg = (chanNum <= 3) ? REG_LEDOUT0 : REG_LEDOUT1;
@@ -245,6 +245,8 @@ static void scm_turnOff(cxa_led_t *const superIn)
 	cxa_led_pca9624_t* ledIn = (cxa_led_pca9624_t*)superIn;
 	cxa_assert(ledIn);
 
+	if( !ledIn->pca->isInit ) return;
+
 	// get our current register value
 	uint8_t chanNum = getLedChanNum(ledIn);
 	register_t reg = (chanNum <= 3) ? REG_LEDOUT0 : REG_LEDOUT1;
@@ -260,5 +262,8 @@ static void scm_turnOff(cxa_led_t *const superIn)
 
 static void scm_setBrightness(cxa_led_t *const superIn, uint8_t brightnessIn)
 {
+	cxa_led_pca9624_t* ledIn = (cxa_led_pca9624_t*)superIn;
+	cxa_assert(ledIn);
 
+	if( !ledIn->pca->isInit ) return;
 }
