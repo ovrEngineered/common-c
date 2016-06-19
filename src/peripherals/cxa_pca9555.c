@@ -76,12 +76,13 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 	pcaIn->address = addressIn;
 	pcaIn->i2c = i2cIn;
 
-
 	// read our configuration regs
-	uint8_t cfg0, cfg1;
+	uint8_t cfg0, cfg1, out0, out1;
 	if( !readFromRegister(pcaIn, REG_CFG0, &cfg0) ||
-		!readFromRegister(pcaIn, REG_CFG1, &cfg1) ) return false;
-	cxa_logger_trace(cxa_logger_getSysLog(), "cfg0: 0x%02X  cfg1: 0x%02X", cfg0, cfg1);
+		!readFromRegister(pcaIn, REG_CFG1, &cfg1) ||
+		!readFromRegister(pcaIn, REG_OUTPUT0, &out0) ||
+		!readFromRegister(pcaIn, REG_OUTPUT1, &out1) ) return false;
+	cxa_logger_trace(cxa_logger_getSysLog(), "cfg0: 0x%02X  cfg1: 0x%02X  out0: 0x%02X  out1: 0x%02X", cfg0, cfg1, out0, out1);
 
 	// setup our GPIOs
 	for( int i = 0; i < (sizeof(pcaIn->gpios_port0)/sizeof(*pcaIn->gpios_port0)); i++ )
@@ -89,7 +90,7 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 		pcaIn->gpios_port0[i].pca = pcaIn;
 		pcaIn->gpios_port0[i].polarity = CXA_GPIO_POLARITY_NONINVERTED;
 		pcaIn->gpios_port0[i].lastDirection = ((cfg0 >> i) & 0x01) ? CXA_GPIO_DIR_INPUT : CXA_GPIO_DIR_OUTPUT;
-		pcaIn->gpios_port0[i].lastOutputVal = 0;
+		pcaIn->gpios_port0[i].lastOutputVal = ((out0 >> i) & 0x01);
 
 		// initialize our super class
 		cxa_gpio_init(&pcaIn->gpios_port0[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
@@ -99,7 +100,7 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 		pcaIn->gpios_port1[i].pca = pcaIn;
 		pcaIn->gpios_port1[i].polarity = CXA_GPIO_POLARITY_NONINVERTED;
 		pcaIn->gpios_port0[i].lastDirection = ((cfg1 >> i) & 0x01) ? CXA_GPIO_DIR_INPUT : CXA_GPIO_DIR_OUTPUT;
-		pcaIn->gpios_port1[i].lastOutputVal = 0;
+		pcaIn->gpios_port1[i].lastOutputVal = ((out1 >> i) & 0x01);
 
 		// initialize our super class
 		cxa_gpio_init(&pcaIn->gpios_port1[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
@@ -133,6 +134,9 @@ static bool readFromRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, 
 static bool writeToRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, uint8_t valIn)
 {
 	uint8_t ctrlBytes = registerIn;
+
+	cxa_logger_trace(cxa_logger_getSysLog(), "reg %d  val:0x%02X", registerIn, valIn);
+
 	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
 }
 
