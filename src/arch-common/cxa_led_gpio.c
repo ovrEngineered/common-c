@@ -36,13 +36,14 @@ static void scm_blink(cxa_led_t *const superIn, uint32_t onPeriod_msIn, uint32_t
 
 
 // ******** global function implementations ********
-void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn)
+void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, bool driveOffStateIn)
 {
 	cxa_assert(ledIn);
 	cxa_assert(gpioIn);
 
 	// save our references
 	ledIn->gpio = gpioIn;
+	ledIn->driveOffState = driveOffStateIn;
 
 	// setup our internal state
 	cxa_timeDiff_init(&ledIn->td_blink, true);
@@ -59,7 +60,8 @@ void cxa_led_gpio_update(cxa_led_gpio_t *const ledIn)
 	if( (ledIn->super.currState == CXA_LED_STATE_BLINK) &&
 			cxa_timeDiff_isElapsed_recurring_ms(&ledIn->td_blink, (cxa_gpio_getValue(ledIn->gpio) ? ledIn->onPeriod_ms : ledIn->offPeriod_ms)) )
 	{
-		cxa_gpio_toggle(ledIn->gpio);
+		if( cxa_gpio_getValue(ledIn->gpio) ) scm_turnOff(&ledIn->super);
+		else scm_turnOn(&ledIn->super);
 	}
 }
 
@@ -70,6 +72,7 @@ static void scm_turnOn(cxa_led_t *const superIn)
 	cxa_led_gpio_t* ledIn = (cxa_led_gpio_t*)superIn;
 	cxa_assert(ledIn);
 
+	if( !ledIn->driveOffState ) cxa_gpio_setDirection(ledIn->gpio, CXA_GPIO_DIR_OUTPUT);
 	cxa_gpio_setValue(ledIn->gpio, true);
 }
 
@@ -79,7 +82,8 @@ static void scm_turnOff(cxa_led_t *const superIn)
 	cxa_led_gpio_t* ledIn = (cxa_led_gpio_t*)superIn;
 	cxa_assert(ledIn);
 
-	cxa_gpio_setValue(ledIn->gpio, false);
+	if( ledIn->driveOffState ) cxa_gpio_setValue(ledIn->gpio, false);
+	else cxa_gpio_setDirection(ledIn->gpio, CXA_GPIO_DIR_INPUT);
 }
 
 

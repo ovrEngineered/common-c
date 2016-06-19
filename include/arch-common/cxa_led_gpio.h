@@ -42,6 +42,7 @@ typedef struct
 {
 	cxa_led_t super;
 
+	bool driveOffState;
 	cxa_gpio_t* gpio;
 
 	cxa_timeDiff_t td_blink;
@@ -51,7 +52,7 @@ typedef struct
 
 
 // ******** global function prototypes ********
-void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn);
+void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, bool driveOffStateIn);
 
 void cxa_led_gpio_update(cxa_led_gpio_t *const ledIn);
 
