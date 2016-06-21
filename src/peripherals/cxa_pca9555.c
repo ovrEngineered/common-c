@@ -82,7 +82,6 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 		!readFromRegister(pcaIn, REG_CFG1, &cfg1) ||
 		!readFromRegister(pcaIn, REG_OUTPUT0, &out0) ||
 		!readFromRegister(pcaIn, REG_OUTPUT1, &out1) ) return false;
-	cxa_logger_trace(cxa_logger_getSysLog(), "cfg0: 0x%02X  cfg1: 0x%02X  out0: 0x%02X  out1: 0x%02X", cfg0, cfg1, out0, out1);
 
 	// setup our GPIOs
 	for( int i = 0; i < (sizeof(pcaIn->gpios_port0)/sizeof(*pcaIn->gpios_port0)); i++ )
@@ -134,8 +133,6 @@ static bool readFromRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, 
 static bool writeToRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, uint8_t valIn)
 {
 	uint8_t ctrlBytes = registerIn;
-
-	cxa_logger_trace(cxa_logger_getSysLog(), "reg %d  val:0x%02X", registerIn, valIn);
 
 	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
 }

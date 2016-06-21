@@ -23,6 +23,7 @@
 
 // ******** includes ********
 #include <stdio.h>
+#include <string.h>
 #include <cxa_assert.h>
 
 
@@ -65,13 +66,8 @@ typedef enum
 // ******** local function prototypes ********
 static bool readFromRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t* valOut);
 static bool writeToRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t valIn);
-static uint8_t getLedChanNum(cxa_led_pca9624_t *ledIn);
-static uint8_t changeLedOutValue(uint8_t ledChanNum, ledOut_state_t stateIn, uint8_t currValIn);
 static bool writeFullConfig(cxa_pca9624_t *const pcaIn, uint8_t* fullDevConfig);
-
-static void scm_turnOn(cxa_led_t *const superIn);
-static void scm_turnOff(cxa_led_t *const superIn);
-static void scm_setBrightness(cxa_led_t *const superIn, uint8_t brightnessIn);
+static bool writeAllLedBrightnesses(cxa_pca9624_t *const pcaIn, uint8_t* brightnessesIn);
 
 
 // ********  local variable declarations *********
@@ -115,8 +111,8 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 				0x00,		// PWM7
 				0xFF,		// GRPPWM
 				0x00,		// GRPFREQ
-				0x00,		// LEDOUT0
-				0x00,		// LEDOUT1
+				0xAA,		// LEDOUT0 (PWM)
+				0xAA,		// LEDOUT1 (PWM)
 				0xE2,		// SUBADR1
 				0xE4,		// SUBADR2
 				0xE8,		// SUBADR3
@@ -124,13 +120,8 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 			};
 	if( !writeFullConfig(pcaIn, fullDevConfig) ) return false;
 
-	// setup our LEDS
-	for( int i = 0; i < (sizeof(pcaIn->leds)/sizeof(*pcaIn->leds)); i++ )
-	{
-		pcaIn->leds[i].pca = pcaIn;
-		cxa_led_init(&pcaIn->leds[i].super, scm_turnOn, scm_turnOff, NULL, scm_setBrightness);
-		// all LEDs default to off
-	}
+	// setup our initial brightnesses
+	memset(pcaIn->currBrightness, 0, sizeof(pcaIn->currBrightness));
 
 	// enable our outputs
 	cxa_gpio_setValue(pcaIn->gpio_outputEnable, 1);
@@ -140,12 +131,31 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 }
 
 
-cxa_led_t* cxa_pca9624_getLed(cxa_pca9624_t *const pcaIn, uint8_t chanNumIn)
+bool cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
 {
 	cxa_assert(pcaIn);
-	cxa_assert(chanNumIn < (sizeof(pcaIn->leds)/sizeof(*pcaIn->leds)));
+	cxa_assert(chansEntriesIn);
+	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
 
-	return &pcaIn->leds[chanNumIn].super;
+	// create a local copy of our brightnesses (in case we fail)
+	uint8_t newBrightness[CXA_PCA9624_NUM_CHANNELS];
+	memcpy(newBrightness, pcaIn->currBrightness, sizeof(newBrightness));
+
+	// set our new brightnesses
+	for( size_t i = 0; i < numChansIn; i++ )
+	{
+		cxa_pca9624_channelEntry_t* currEntry = &chansEntriesIn[i];
+		cxa_assert(currEntry->channelIndex < CXA_PCA9624_NUM_CHANNELS);
+
+		newBrightness[currEntry->channelIndex] = currEntry->brightness;
+	}
+
+	// now write to the controller
+	if( !writeAllLedBrightnesses(pcaIn, newBrightness) ) return false;
+
+	// if we made it here, the write was successful...store our new values
+	memcpy(pcaIn->currBrightness, newBrightness, sizeof(pcaIn->currBrightness));
+	return true;
 }
 
 
@@ -175,95 +185,10 @@ static bool writeFullConfig(cxa_pca9624_t *const pcaIn, uint8_t* fullDevConfigIn
 }
 
 
-static uint8_t getLedChanNum(cxa_led_pca9624_t *ledIn)
+static bool writeAllLedBrightnesses(cxa_pca9624_t *const pcaIn, uint8_t* brightnessesIn)
 {
-	cxa_assert(ledIn);
-	cxa_assert(ledIn->pca);
+	cxa_assert(pcaIn);
 
-	for( size_t i = 0; i < (sizeof(ledIn->pca->leds)/sizeof(*ledIn->pca->leds)); i++ )
-	{
-		if( ledIn == &ledIn->pca->leds[i] ) return i;
-	}
-
-	// if we made it here, something is seriously messed up
-	cxa_assert(0);
-	return 0;
-}
-
-
-static uint8_t changeLedOutValue(uint8_t ledChanNum, ledOut_state_t stateIn, uint8_t currValIn)
-{
-	switch( ledChanNum )
-	{
-		case 0:
-		case 4:
-			currValIn = (currValIn & ~(0x03 << 0)) | ((stateIn & 0x03) << 0);
-			break;
-
-		case 1:
-		case 5:
-			currValIn = (currValIn & ~(0x03 << 2)) | ((stateIn & 0x03) << 2);
-			break;
-
-		case 2:
-		case 6:
-			currValIn = (currValIn & ~(0x03 << 4)) | ((stateIn & 0x03) << 4);
-			break;
-
-		case 3:
-		case 7:
-			currValIn = (currValIn & ~(0x03 << 6)) | ((stateIn & 0x03) << 6);
-			break;
-	}
-
-	return currValIn;
-}
-
-
-static void scm_turnOn(cxa_led_t *const superIn)
-{
-	cxa_led_pca9624_t* ledIn = (cxa_led_pca9624_t*)superIn;
-	cxa_assert(ledIn);
-
-	if( !ledIn->pca->isInit ) return;
-
-	// get our current register value
-	uint8_t chanNum = getLedChanNum(ledIn);
-	register_t reg = (chanNum <= 3) ? REG_LEDOUT0 : REG_LEDOUT1;
-	uint8_t regVal;
-	if( !readFromRegister(ledIn->pca, reg, &regVal) ) return;
-
-	// modify it as needed
-	regVal = changeLedOutValue(chanNum, LEDOUT_ON, regVal);
-
-	writeToRegister(ledIn->pca, reg, regVal);
-}
-
-
-static void scm_turnOff(cxa_led_t *const superIn)
-{
-	cxa_led_pca9624_t* ledIn = (cxa_led_pca9624_t*)superIn;
-	cxa_assert(ledIn);
-
-	if( !ledIn->pca->isInit ) return;
-
-	// get our current register value
-	uint8_t chanNum = getLedChanNum(ledIn);
-	register_t reg = (chanNum <= 3) ? REG_LEDOUT0 : REG_LEDOUT1;
-	uint8_t regVal;
-	if( !readFromRegister(ledIn->pca, reg, &regVal) ) return;
-
-	// modify it as needed
-	regVal = changeLedOutValue(chanNum, LEDOUT_OFF, regVal);
-
-	writeToRegister(ledIn->pca, reg, regVal);
-}
-
-
-static void scm_setBrightness(cxa_led_t *const superIn, uint8_t brightnessIn)
-{
-	cxa_led_pca9624_t* ledIn = (cxa_led_pca9624_t*)superIn;
-	cxa_assert(ledIn);
-
-	if( !ledIn->pca->isInit ) return;
+	uint8_t ctrlBytes = 0xA0 | REG_PWM0;
+	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, brightnessesIn, CXA_PCA9624_NUM_CHANNELS);
 }
