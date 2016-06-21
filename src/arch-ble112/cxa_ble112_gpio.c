@@ -35,6 +35,13 @@
 // ******** local function prototypes ********
 static void setSelToGpio(cxa_ble112_gpio_t *const gpioIn);
 
+static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn);
+static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn);
+static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn);
+static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn);
+static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn);
+static bool scm_getValue(cxa_gpio_t *const superIn);
+
 
 // ********  local variable declarations *********
 
@@ -55,6 +62,9 @@ void cxa_ble112_gpio_init_input(cxa_ble112_gpio_t *const gpioIn, cxa_ble112_gpio
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
 	gpioIn->hasBeenSeld = false;
+
+	// initialize our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
 
 	// make sure we're set for GPIO
 	setSelToGpio(gpioIn);
@@ -79,6 +89,9 @@ void cxa_ble112_gpio_init_output(cxa_ble112_gpio_t *const gpioIn, cxa_ble112_gpi
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
 	gpioIn->hasBeenSeld = false;
+
+	// initialize our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
 
 	// make sure we're set for GPIO
 	setSelToGpio(gpioIn);
@@ -105,11 +118,36 @@ void cxa_ble112_gpio_init_safe(cxa_ble112_gpio_t *const gpioIn, cxa_ble112_gpio_
 	gpioIn->polarity = CXA_GPIO_POLARITY_NONINVERTED;
 	gpioIn->hasBeenSeld = false;
 
+	// initialize our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+
 	// don't set any value or direction...just leave everything as it is
 }
 
 
-void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
+// ******** local function implementations ********
+static void setSelToGpio(cxa_ble112_gpio_t *const gpioIn)
+{
+	switch( gpioIn->port )
+	{
+		case CXA_BLE112_GPIO_PORT_0:
+			P0SEL &= ~(1 << gpioIn->pinNum);
+			break;
+
+		case CXA_BLE112_GPIO_PORT_1:
+			P1SEL &= ~(1 << gpioIn->pinNum);
+			break;
+
+		case CXA_BLE112_GPIO_PORT_2:
+			P2SEL &= ~(1 << gpioIn->pinNum);
+			break;
+	}
+
+	gpioIn->hasBeenSeld = true;
+}
+
+
+static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
 {
 	cxa_assert(superIn);
 	cxa_assert( (dirIn == CXA_GPIO_DIR_INPUT) ||
@@ -141,7 +179,7 @@ void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t
 }
 
 
-cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const superIn)
+static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn)
 {
 	cxa_assert(superIn);
 
@@ -168,7 +206,7 @@ cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const superIn)
 }
 
 
-void cxa_gpio_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn)
+static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn)
 {
 	cxa_assert(superIn);
 	cxa_assert( (polarityIn == CXA_GPIO_POLARITY_NONINVERTED) ||
@@ -181,7 +219,7 @@ void cxa_gpio_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t p
 }
 
 
-cxa_gpio_polarity_t cxa_gpio_getPolarity(cxa_gpio_t *const superIn)
+static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn)
 {
 	cxa_assert(superIn);
 
@@ -192,7 +230,7 @@ cxa_gpio_polarity_t cxa_gpio_getPolarity(cxa_gpio_t *const superIn)
 }
 
 
-void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
+static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 {
 	cxa_assert(superIn);
 
@@ -219,7 +257,7 @@ void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
 }
 
 
-bool cxa_gpio_getValue(cxa_gpio_t *const superIn)
+static bool scm_getValue(cxa_gpio_t *const superIn)
 {
 	cxa_assert(superIn);
 
@@ -249,34 +287,4 @@ bool cxa_gpio_getValue(cxa_gpio_t *const superIn)
 	}
 
 	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal : retVal;
-}
-
-
-void cxa_gpio_toggle(cxa_gpio_t *const superIn)
-{
-	cxa_assert(superIn);
-
-	cxa_gpio_setValue(superIn, !cxa_gpio_getValue(superIn));
-}
-
-
-// ******** local function implementations ********
-static void setSelToGpio(cxa_ble112_gpio_t *const gpioIn)
-{
-	switch( gpioIn->port )
-	{
-		case CXA_BLE112_GPIO_PORT_0:
-			P0SEL &= ~(1 << gpioIn->pinNum);
-			break;
-
-		case CXA_BLE112_GPIO_PORT_1:
-			P1SEL &= ~(1 << gpioIn->pinNum);
-			break;
-
-		case CXA_BLE112_GPIO_PORT_2:
-			P2SEL &= ~(1 << gpioIn->pinNum);
-			break;
-	}
-
-	gpioIn->hasBeenSeld = true;
 }
