@@ -42,13 +42,6 @@
 
 
 // ******** global type definitions *********
-/**
- * @private
- */
-struct cxa_timeBase
-{
-	void* _placeHolder;
-};
 
 
 // ******** global function prototypes ********
@@ -56,10 +49,8 @@ struct cxa_timeBase
  * @public
  * @brief Initializes a timeBase object to use the system's
  * 24-bit sleep timer
- *
- * @param[in] tbIn pointer to a pre-allocated BLE112 timeBase object
  */
-void cxa_ble112_timeBase_init(cxa_timeBase_t *const tbIn);
+void cxa_ble112_timeBase_init(void);
 
 
 #endif // CXA_BLE112_TIMEBASE_H_

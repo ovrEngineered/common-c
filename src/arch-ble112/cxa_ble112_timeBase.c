@@ -34,25 +34,20 @@
 
 
 // ******** global function implementations ********
-void cxa_ble112_timeBase_init(cxa_timeBase_t *const tbIn)
+void cxa_ble112_timeBase_init(void)
 {
-	cxa_assert(tbIn);
 	// nothing to do here
 }
 
 
-uint32_t cxa_timeBase_getCount_us(cxa_timeBase_t *const superIn)
+uint32_t cxa_timeBase_getCount_us(void)
 {
-	cxa_assert(superIn);
-	
 	return TICKS_TO_US(hw_timer_ticks());
 }
 
 
-uint32_t cxa_timeBase_getMaxCount_us(cxa_timeBase_t *const superIn)
+uint32_t cxa_timeBase_getMaxCount_us(void)
 {
-	cxa_assert(superIn);
-	
 	// 2^24 - 1
 	return TICKS_TO_US(16777215);
 }
