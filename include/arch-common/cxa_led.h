@@ -52,22 +52,22 @@ typedef enum
 
 
 /**
- * @private
+ * @protected
  */
 typedef void (*cxa_led_scm_turnOn_t)(cxa_led_t *const superIn);
 
 /**
- * @private
+ * @protected
  */
 typedef void (*cxa_led_scm_turnOff_t)(cxa_led_t *const superIn);
 
 /**
- * @private
+ * @protected
  */
 typedef void (*cxa_led_scm_blink_t)(cxa_led_t *const superIn, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn);
 
 /**
- * @private
+ * @protected
  */
 typedef void (*cxa_led_scm_setBrightness_t)(cxa_led_t *const superIn, uint8_t brightnessIn);
 

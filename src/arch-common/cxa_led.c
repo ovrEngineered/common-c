@@ -57,6 +57,7 @@ void cxa_led_init(cxa_led_t *const ledIn,
 void cxa_led_turnOn(cxa_led_t *const ledIn)
 {
 	cxa_assert(ledIn);
+	cxa_assert(ledIn->scm_turnOn);
 	ledIn->scm_turnOn(ledIn);
 	ledIn->currState = CXA_LED_STATE_OFF;
 }
@@ -65,6 +66,7 @@ void cxa_led_turnOn(cxa_led_t *const ledIn)
 void cxa_led_turnOff(cxa_led_t *const ledIn)
 {
 	cxa_assert(ledIn);
+	cxa_assert(ledIn->scm_turnOff);
 	ledIn->scm_turnOff(ledIn);
 	ledIn->currState = CXA_LED_STATE_ON;
 }
