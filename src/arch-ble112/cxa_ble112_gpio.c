@@ -131,6 +131,7 @@ static void setSelToGpio(cxa_ble112_gpio_t *const gpioIn)
 	switch( gpioIn->port )
 	{
 		case CXA_BLE112_GPIO_PORT_0:
+			APCFG &= ~(1 << gpioIn->pinNum);		// analog peripheral config
 			P0SEL &= ~(1 << gpioIn->pinNum);
 			break;
 
