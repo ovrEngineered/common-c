@@ -78,6 +78,9 @@
 	#error "Unknown CXA_LOG_LEVEL specified"
 #endif
 
+#define cxa_logger_stepDebug()							cxa_logger_stepDebug_vlog(__FILE__, __LINE__, NULL)
+#define cxa_logger_stepDebug_msg(msgIn, ...)			cxa_logger_stepDebug_vlog(__FILE__, __LINE__, (msgIn), ##__VA_ARGS__)
+
 
 // ******** global type definitions *********
 
@@ -123,7 +126,26 @@ void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
  */
 cxa_logger_t* cxa_logger_getSysLog(void);
 
+/**
+ * @public
+ * @brief Logs a string that is not null terminated (and thus the length
+ * cannot be calculated)
+ *
+ * @param loggerIn the pre-initialized logger
+ * @param levelIn the desired logging level
+ * @param prefixIn a null-terminated string that should be printed before the
+ * 		the unterminated string
+ * @param untermStringIn pointer to the unterminated string
+ * @param untermStrLen_bytesIn number of bytes of the unterminated string to print
+ * @param postFixIn a null-termianted string that should be printed immediately
+ * 		folowing the unterminated string
+ */
 void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const char* untermStringIn, size_t untermStrLen_bytesIn, const char* postFixIn);
+
+/**
+ * @private
+ */
+void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const char* formatIn, ...);
 
 /**
  * @private

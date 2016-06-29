@@ -131,6 +131,47 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 }
 
 
+void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const char* formatIn, ...)
+{
+	cxa_assert(fileIn);
+
+	// if we don't have an ioStream, don't worry about it!
+	if( ioStream == NULL ) return;
+
+	// shorten our file name
+	char *file_sep = strrchr(fileIn, '/');
+	if(file_sep) fileIn = file_sep+1;
+
+	// common header
+	writeHeader(&sysLog, CXA_LOG_LEVEL_DEBUG);
+
+	// our buffer for this go-round
+	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
+
+	// print our location
+	size_t expectedNumBytesWritten = snprintf(buff, sizeof(buff), ((formatIn != NULL) ? "%s::%d - " : "%s::%d"), fileIn, lineNumIn);
+	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
+	if( sizeof(buff) < expectedNumBytesWritten )
+	{
+		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
+	}
+
+	// now do our VARARGS
+	va_list varArgs;
+	va_start(varArgs, formatIn);
+	expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
+	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
+	if( sizeof(buff) < expectedNumBytesWritten )
+	{
+		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
+	}
+	va_end(varArgs);
+
+	// print EOL
+	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+}
+
+
 void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
 {
 	cxa_assert(loggerIn);
