@@ -28,6 +28,7 @@
 // ******** includes ********
 #include <stdbool.h>
 #include <stddef.h>
+#include <sys/types.h>
 #include <cxa_config.h>
 #include <cxa_fixedByteBuffer.h>
 

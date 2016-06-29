@@ -24,6 +24,7 @@
 // ******** includes ********
 #include <cxa_assert.h>
 #include <string.h>
+#include <sys/types.h>
 
 
 // ******** local macro definitions ********

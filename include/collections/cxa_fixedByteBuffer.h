@@ -65,11 +65,6 @@
 
 
 // ******** global macro definitions ********
-#ifndef ssize_t
-#define ssize_t long
-#endif
-
-
 /**
  * @public
  * @brief Shortcut to initialize a fixedByteBuffer with a buffer of an explicit data type

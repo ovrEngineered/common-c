@@ -20,6 +20,7 @@
 
 // ******** includes ********
 #include <string.h>
+#include <sys/types.h>
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 

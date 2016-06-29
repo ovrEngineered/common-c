@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <cxa_assert.h>
 
 #include <termios.h>
@@ -125,4 +126,3 @@ static bool write_cb(void* buffIn, size_t bufferSize_bytesIn, void *const userVa
 
 	return true;
 }
-
