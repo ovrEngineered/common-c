@@ -17,12 +17,17 @@
 
 
 // ******** includes ********
+#include <math.h>
 #include <string.h>
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 
+#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_DEBUG
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
+#define NUM_PWM_STEPS			100
 
 
 // ******** local type definitions ********
@@ -155,7 +160,9 @@ void cxa_ws2812String_pulseColor_rgb(cxa_ws2812String_t *const ws2812In, uint32_
 	cxa_assert(ws2812In);
 
 	// save our references
-	ws2812In->pulseColor.pulsePeriod_ms = pulsePeriod_msIn;
+	ws2812In->pulseColor.fadeInPeriod_ms = pulsePeriod_msIn / 2;
+	ws2812In->pulseColor.fadeOutPeriod_ms = pulsePeriod_msIn / 2;
+	ws2812In->pulseColor.rVal = (NUM_PWM_STEPS * log10(2))/(log10(100));
 	ws2812In->pulseColor.targetColor.r = rIn;
 	ws2812In->pulseColor.targetColor.g = gIn;
 	ws2812In->pulseColor.targetColor.b = bIn;
@@ -206,32 +213,41 @@ static void stateCb_pulseFadeIn_state(cxa_stateMachine_t *const smIn, void *user
 	cxa_ws2812String_t* ws2812In = (cxa_ws2812String_t*)userVarIn;
 	cxa_assert(ws2812In);
 
-	// calculate some timing info
-	uint32_t elapsedTime_ms = cxa_timeDiff_getElapsedTime_ms(&ws2812In->td_fade);
-	uint32_t timeRemaining_ms = (ws2812In->pulseColor.pulsePeriod_ms / 2) - elapsedTime_ms;
-	uint32_t deltaT_ms = elapsedTime_ms - ws2812In->lastUpdateTime_ms;
-	uint32_t numStepsRemaining = CXA_MAX((timeRemaining_ms / deltaT_ms), 1);
-
-	// set our new pixel values
-	for( size_t i_currPixel = 0; i_currPixel < ws2812In->numPixels; i_currPixel++ )
+	// see if it's time to fade out
+	if( cxa_timeDiff_isElapsed_ms(&ws2812In->td_fade, ws2812In->pulseColor.fadeInPeriod_ms) )
 	{
-		cxa_ws2812String_pixelBuffer_t* currPixel = &ws2812In->pixelBuffers[i_currPixel];
+		// this is our last iteration...make sure we reach the full color
+		for( size_t i_currPixel = 0; i_currPixel < ws2812In->numPixels; i_currPixel++ )
+		{
+			cxa_ws2812String_pixelBuffer_t* currPixel = &ws2812In->pixelBuffers[i_currPixel];
+			currPixel->r = ws2812In->pulseColor.targetColor.r;
+			currPixel->g = ws2812In->pulseColor.targetColor.g;
+			currPixel->b = ws2812In->pulseColor.targetColor.b;
+		}
+		// transition once we're done writing our LED values
+		cxa_stateMachine_transition(&ws2812In->stateMachine, STATE_PULSE_FADEOUT);
+	}
+	else
+	{
+		// we've got more iterations...keep stepping
 
-		currPixel->r = CXA_MIN(currPixel->r + ((ws2812In->pulseColor.targetColor.r - currPixel->r) / numStepsRemaining), 255);
-		currPixel->g = CXA_MIN(currPixel->g + ((ws2812In->pulseColor.targetColor.g - currPixel->g) / numStepsRemaining), 255);
-		currPixel->b = CXA_MIN(currPixel->b + ((ws2812In->pulseColor.targetColor.b - currPixel->b) / numStepsRemaining), 255);
+		// calculate some timing info
+		uint8_t currStep = CXA_MIN(cxa_timeDiff_getElapsedTime_ms(&ws2812In->td_fade) * NUM_PWM_STEPS / (ws2812In->pulseColor.fadeInPeriod_ms), NUM_PWM_STEPS);
+
+		// set our new pixel values
+		for( size_t i_currPixel = 0; i_currPixel < ws2812In->numPixels; i_currPixel++ )
+		{
+			cxa_ws2812String_pixelBuffer_t* currPixel = &ws2812In->pixelBuffers[i_currPixel];
+
+			currPixel->r = (uint8_t)(CXA_MIN(pow(2, ((float)currStep / ws2812In->pulseColor.rVal)), 100) / 100.0 * ws2812In->pulseColor.targetColor.r);
+			currPixel->g = (uint8_t)(CXA_MIN(pow(2, ((float)currStep / ws2812In->pulseColor.rVal)), 100) / 100.0 * ws2812In->pulseColor.targetColor.g);
+			currPixel->b = (uint8_t)(CXA_MIN(pow(2, ((float)currStep / ws2812In->pulseColor.rVal)), 100) / 100.0 * ws2812In->pulseColor.targetColor.b);
+		}
 	}
 
-	// write all of our LED values
+	// write all of our LED values (regardless)
 	cxa_assert(ws2812In->scm_writeBytes);
 	ws2812In->scm_writeBytes(ws2812In, ws2812In->pixelBuffers, ws2812In->numPixels);
-
-	// see if it's time to fade out
-	if( cxa_timeDiff_isElapsed_ms(&ws2812In->td_fade, ws2812In->pulseColor.pulsePeriod_ms/2) )
-	{
-		cxa_stateMachine_transition(&ws2812In->stateMachine, STATE_PULSE_FADEOUT);
-		return;
-	}
 }
 
 
@@ -240,30 +256,39 @@ static void stateCb_pulseFadeOut_state(cxa_stateMachine_t *const smIn, void *use
 	cxa_ws2812String_t* ws2812In = (cxa_ws2812String_t*)userVarIn;
 	cxa_assert(ws2812In);
 
-	// calculate some timing info
-	uint32_t elapsedTime_ms = cxa_timeDiff_getElapsedTime_ms(&ws2812In->td_fade);
-	uint32_t timeRemaining_ms = (ws2812In->pulseColor.pulsePeriod_ms / 2) - elapsedTime_ms;
-	uint32_t deltaT_ms = elapsedTime_ms - ws2812In->lastUpdateTime_ms;
-	uint32_t numStepsRemaining = (timeRemaining_ms / deltaT_ms);
-
-	// set our new pixel values
-	for( size_t i_currPixel = 0; i_currPixel < ws2812In->numPixels; i_currPixel++ )
+	// see if it's time to fade in
+	if( cxa_timeDiff_isElapsed_ms(&ws2812In->td_fade, ws2812In->pulseColor.fadeInPeriod_ms) )
 	{
-		cxa_ws2812String_pixelBuffer_t* currPixel = &ws2812In->pixelBuffers[i_currPixel];
+		// this is our last iteration...make sure we reach the full color
+		for( size_t i_currPixel = 0; i_currPixel < ws2812In->numPixels; i_currPixel++ )
+		{
+			cxa_ws2812String_pixelBuffer_t* currPixel = &ws2812In->pixelBuffers[i_currPixel];
+			currPixel->r = 0;
+			currPixel->g = 0;
+			currPixel->b = 0;
+		}
+		// transition once we're done writing our LED values
+		cxa_stateMachine_transition(&ws2812In->stateMachine, STATE_PULSE_FADEIN);
+	}
+	else
+	{
+		// we've got more iterations...keep stepping
 
-		currPixel->r = ((currPixel->r / numStepsRemaining) <= currPixel->r) ? (currPixel->r - (currPixel->r / numStepsRemaining)) : 0;
-		currPixel->g = ((currPixel->g / numStepsRemaining) <= currPixel->g) ? (currPixel->g - (currPixel->g / numStepsRemaining)) : 0;
-		currPixel->b = ((currPixel->b / numStepsRemaining) <= currPixel->b) ? (currPixel->b - (currPixel->b / numStepsRemaining)) : 0;
+		// calculate some timing info
+		uint8_t currStep = NUM_PWM_STEPS - CXA_MIN(cxa_timeDiff_getElapsedTime_ms(&ws2812In->td_fade) * NUM_PWM_STEPS / (ws2812In->pulseColor.fadeInPeriod_ms), NUM_PWM_STEPS);
+
+		// set our new pixel values
+		for( size_t i_currPixel = 0; i_currPixel < ws2812In->numPixels; i_currPixel++ )
+		{
+			cxa_ws2812String_pixelBuffer_t* currPixel = &ws2812In->pixelBuffers[i_currPixel];
+
+			currPixel->r = (uint8_t)(CXA_MIN(pow(2, ((float)currStep / ws2812In->pulseColor.rVal)), 100) / 100.0 * ws2812In->pulseColor.targetColor.r);
+			currPixel->g = (uint8_t)(CXA_MIN(pow(2, ((float)currStep / ws2812In->pulseColor.rVal)), 100) / 100.0 * ws2812In->pulseColor.targetColor.g);
+			currPixel->b = (uint8_t)(CXA_MIN(pow(2, ((float)currStep / ws2812In->pulseColor.rVal)), 100) / 100.0 * ws2812In->pulseColor.targetColor.b);
+		}
 	}
 
-	// write all of our LED values
+	// write all of our LED values (regardless)
 	cxa_assert(ws2812In->scm_writeBytes);
 	ws2812In->scm_writeBytes(ws2812In, ws2812In->pixelBuffers, ws2812In->numPixels);
-
-	// see if it's time to fade out
-	if( cxa_timeDiff_isElapsed_ms(&ws2812In->td_fade, ws2812In->pulseColor.pulsePeriod_ms/2) )
-	{
-		cxa_stateMachine_transition(&ws2812In->stateMachine, STATE_PULSE_FADEIN);
-		return;
-	}
 }

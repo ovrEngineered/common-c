@@ -79,7 +79,10 @@ struct cxa_ws2812String
 	struct
 	{
 		cxa_ws2812String_pixelBuffer_t targetColor;
-		uint32_t pulsePeriod_ms;
+		uint32_t fadeInPeriod_ms;
+		uint32_t fadeOutPeriod_ms;
+
+		float rVal;
 	} pulseColor;
 };
 
