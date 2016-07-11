@@ -23,6 +23,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <cxa_assert.h>
+#include <cxa_criticalSection.h>
 #include <cxa_numberUtils.h>
 #include <cxa_stringUtils.h>
 #include <cxa_timeBase.h>
@@ -119,6 +120,10 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
 
+
+	cxa_criticalSection_enter();
+
+
 	// common header
 	writeHeader(loggerIn, levelIn);
 
@@ -128,6 +133,9 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+
+
+	cxa_criticalSection_exit();
 }
 
 
@@ -141,6 +149,10 @@ void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const ch
 	// shorten our file name
 	char *file_sep = strrchr(fileIn, '/');
 	if(file_sep) fileIn = file_sep+1;
+
+
+	cxa_criticalSection_enter();
+
 
 	// common header
 	writeHeader(&sysLog, CXA_LOG_LEVEL_DEBUG);
@@ -169,6 +181,9 @@ void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const ch
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+
+
+	cxa_criticalSection_exit();
 }
 
 
@@ -185,6 +200,10 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
+
+
+	cxa_criticalSection_enter();
+
 
 	// common header
 	writeHeader(loggerIn, levelIn);
@@ -205,6 +224,9 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+
+
+	cxa_criticalSection_exit();
 }
 
 
