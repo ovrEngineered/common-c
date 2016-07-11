@@ -29,7 +29,7 @@
 
 
 // ******** includes ********
-#include <cxa_gpio.h>
+#include <cxa_led.h>
 #include <cxa_mqtt_client_network.h>
 
 
@@ -42,13 +42,11 @@
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn,
-							   const char* ssidIn, const char* passphraseIn,
+void cxa_mqtt_connManager_init(cxa_led_t *const ledConnIn,
 							   char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
 							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);
 
-void cxa_mqtt_connManager_init_clientCert(cxa_gpio_t *const ledConnIn,
-										  const char* ssidIn, const char* passphraseIn,
+void cxa_mqtt_connManager_init_clientCert(cxa_led_t *const ledConnIn,
 										  char *const hostNameIn, uint16_t portNumIn,
 										  const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 										  const char* clientCertIn, size_t clientCertLen_bytesIn,

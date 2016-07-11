@@ -20,8 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cxa_assert.h>
-#include <cxa_esp8266_network_factory.h>
-#include <cxa_esp8266_wifiManager.h>
+#include <cxa_network_wifiManager.h>
 #include <cxa_led.h>
 #define CXA_LOG_LEVEL					CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
@@ -61,8 +60,7 @@ typedef enum
 
 
 // ******** local function prototypes ********
-static void cxa_mqtt_connManager_commonInit(cxa_gpio_t *const ledConnIn,
-											const char* ssidIn, const char* passphraseIn,
+static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 											char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
 											char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn,
 											const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
@@ -86,16 +84,13 @@ static void stateCb_error_enter(cxa_stateMachine_t *const smIn, int nextStateIdI
 
 // ********  local variable declarations *********
 static cxa_mqtt_client_network_t mqttClient;
-static cxa_led_t led_conn;
+static cxa_led_t* led_conn;
 
 static cxa_timeDiff_t td_connStandoff;
 static uint32_t connStandoff_ms;
 
 static cxa_stateMachine_t stateMachine;
 static cxa_logger_t logger;
-
-static char* wifi_ssid;
-static char* wifi_passphrase;
 
 static char* mqtt_hostName;
 static uint16_t mqtt_portNum;
@@ -114,28 +109,24 @@ static uint16_t mqtt_passwordLen_bytes;
 
 
 // ******** global function implementations ********
-void cxa_mqtt_connManager_init(cxa_gpio_t *const ledConnIn,
-							   const char* ssidIn, const char* passphraseIn,
+void cxa_mqtt_connManager_init(cxa_led_t *const ledConnIn,
 							   char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
 							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn)
 {
 	cxa_mqtt_connManager_commonInit(ledConnIn,
-									ssidIn, passphraseIn,
 									hostNameIn, portNumIn, useTlsIn,
 									usernameIn, passwordIn, passwordLen_bytesIn,
 									NULL, 0, NULL, 0, NULL, 0);
 }
 
 
-void cxa_mqtt_connManager_init_clientCert(cxa_gpio_t *const ledConnIn,
-										  const char* ssidIn, const char* passphraseIn,
+void cxa_mqtt_connManager_init_clientCert(cxa_led_t *const ledConnIn,
 										  char *const hostNameIn, uint16_t portNumIn,
 										  const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 										  const char* clientCertIn, size_t clientCertLen_bytesIn,
 										  const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn)
 {
 	cxa_mqtt_connManager_commonInit(ledConnIn,
-									ssidIn, passphraseIn,
 									hostNameIn, portNumIn, true,
 									NULL, NULL, 0,
 									serverRootCertIn, serverRootCertLen_bytesIn,
@@ -153,17 +144,13 @@ cxa_mqtt_client_t* cxa_mqtt_connManager_getMqttClient(void)
 void cxa_mqtt_connManager_update(void)
 {
 	// update everything
-	cxa_led_update(&led_conn);
-	cxa_esp8266_wifiManager_update();
-	cxa_esp8266_network_factory_update();
 	cxa_mqtt_client_update(&mqttClient.super);
 	cxa_stateMachine_update(&stateMachine);
 }
 
 
 // ******** local function implementations ********
-static void cxa_mqtt_connManager_commonInit(cxa_gpio_t *const ledConnIn,
-											const char* ssidIn, const char* passphraseIn,
+static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 											char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
 											char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn,
 											const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
@@ -173,10 +160,7 @@ static void cxa_mqtt_connManager_commonInit(cxa_gpio_t *const ledConnIn,
 	cxa_assert(ledConnIn);
 
 	// save our references
-	cxa_led_init(&led_conn, ledConnIn);
-
-	wifi_ssid = (char*)ssidIn;
-	wifi_passphrase = (char*)passphraseIn;
+	led_conn = ledConnIn;
 
 	mqtt_hostName = hostNameIn;
 	mqtt_portNum = portNumIn;
@@ -212,12 +196,7 @@ static void cxa_mqtt_connManager_commonInit(cxa_gpio_t *const ledConnIn,
 	cxa_stateMachine_update(&stateMachine);
 
 	// setup our WiFi
-	cxa_esp8266_wifiManager_init(wifi_ssid, wifi_passphrase);
-	cxa_esp8266_wifiManager_addListener(NULL, wifiManCb_associated, wifiManCb_lostAssociation, NULL, NULL);
-	cxa_esp8266_wifiManager_start();
-
-	// now setup our network connection
-	cxa_esp8266_network_factory_init();
+	cxa_network_wifiManager_addListener(NULL, wifiManCb_associated, wifiManCb_lostAssociation, NULL, NULL);
 
 	// and our mqtt client
 	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString());
@@ -272,7 +251,7 @@ static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* u
 static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_logger_info(&logger, "associating");
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_ASSOC,  BLINKPERIODMS_OFF_ASSOC);
+	cxa_led_blink(led_conn, BLINKPERIODMS_ON_ASSOC,  BLINKPERIODMS_OFF_ASSOC);
 }
 
 
@@ -280,7 +259,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextSta
 {
 	cxa_logger_info(&logger, "connecting");
 
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONNECTING, BLINKPERIODMS_OFF_CONNECTING);
+	cxa_led_blink(led_conn, BLINKPERIODMS_ON_CONNECTING, BLINKPERIODMS_OFF_CONNECTING);
 
 	if( clientCert != NULL )
 	{
@@ -310,7 +289,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStat
 {
 	cxa_logger_info(&logger, "connected");
 
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_CONNECTED, BLINKPERIODMS_OFF_CONNECTED);
+	cxa_led_blink(led_conn, BLINKPERIODMS_ON_CONNECTED, BLINKPERIODMS_OFF_CONNECTED);
 }
 
 
@@ -335,5 +314,5 @@ static void stateCb_error_enter(cxa_stateMachine_t *const smIn, int nextStateIdI
 {
 	cxa_logger_info(&logger, "unrecoverable error");
 
-	cxa_led_blink(&led_conn, BLINKPERIODMS_ON_ERROR, BLINKPERIODMS_OFF_ERROR);
+	cxa_led_blink(led_conn, BLINKPERIODMS_ON_ERROR, BLINKPERIODMS_OFF_ERROR);
 }
