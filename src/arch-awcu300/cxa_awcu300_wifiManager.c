@@ -38,6 +38,7 @@ typedef struct
 {
 	cxa_network_wifiManager_ssid_cb_t cb_associatingWithSsid;
 	cxa_network_wifiManager_ssid_cb_t cb_associatedWithSsid;
+	cxa_network_wifiManager_ssid_cb_t cb_lostAssociation;
 	cxa_network_wifiManager_ssid_cb_t cb_associateWithSsidFailed;
 	void *userVarIn;
 }listener_t;
@@ -47,12 +48,15 @@ typedef struct
 static int appEventHandler(int event, void *data);
 static void notify_associating(void);
 static void notify_associated(void);
+static void notify_lostAssociation(void);
 static void notify_associateFailed(void);
 
 
 // ********  local variable declarations *********
 static cxa_array_t listeners;
 static listener_t listeners_raw[CXA_NETWORK_WIFIMGR_MAX_NUM_LISTENERS];
+
+static bool wasAssociated = false;
 
 static cxa_logger_t logger;
 
@@ -85,12 +89,14 @@ void cxa_network_wifiManager_init(const char* ssidIn, const char* passphraseIn)
 
 void cxa_network_wifiManager_addListener(cxa_network_wifiManager_ssid_cb_t cb_associatingWithSsid,
 										 cxa_network_wifiManager_ssid_cb_t cb_associatedWithSsid,
+										 cxa_network_wifiManager_ssid_cb_t cb_lostAssociationWithSsid,
 										 cxa_network_wifiManager_ssid_cb_t cb_associateWithSsidFailed,
 										 void *userVarIn)
 {
 	listener_t newListener;
 	newListener.cb_associatingWithSsid = cb_associatingWithSsid;
 	newListener.cb_associatedWithSsid = cb_associatedWithSsid;
+	newListener.cb_lostAssociation = cb_lostAssociationWithSsid;
 	newListener.cb_associateWithSsidFailed = cb_associateWithSsidFailed;
 	newListener.userVarIn = userVarIn;
 
@@ -130,6 +136,8 @@ static int appEventHandler(int event, void *data)
 		case AF_EVT_NORMAL_CONNECTING:
 		{
 			cxa_logger_info(&logger, "associating with '%s'", netConfig.ssid);
+			if( wasAssociated ) notify_lostAssociation();
+			wasAssociated = false;
 			notify_associating();
 			break;
 		}
@@ -139,14 +147,17 @@ static int appEventHandler(int event, void *data)
 			char ipAddrStr[16];
 			app_network_ip_get(ipAddrStr);
 			cxa_logger_info(&logger, "associated - ip:%s", ipAddrStr);
+			wasAssociated = true;
 			notify_associated();
 			break;
 		}
 
 		case AF_EVT_NORMAL_CONNECT_FAILED:
+		{
 			cxa_logger_warn(&logger, "association failed");
 			notify_associateFailed();
 			break;
+		}
 
 		default:
 			cxa_logger_debug(&logger, "unhandled event: %d", event);
@@ -175,6 +186,17 @@ static void notify_associated(void)
 		if( currListener == NULL ) continue;
 
 		if( currListener->cb_associatedWithSsid != NULL ) currListener->cb_associatedWithSsid(netConfig.ssid, currListener->userVarIn);
+	}
+}
+
+
+static void notify_lostAssociation(void)
+{
+	cxa_array_iterate(&listeners, currListener, listener_t)
+	{
+		if( currListener == NULL ) continue;
+
+		if( currListener->cb_lostAssociation != NULL ) currListener->cb_lostAssociation(netConfig.ssid, currListener->userVarIn);
 	}
 }
 

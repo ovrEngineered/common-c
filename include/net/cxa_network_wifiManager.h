@@ -37,6 +37,7 @@ typedef void (*cxa_network_wifiManager_ssid_cb_t)(const char *const ssidIn, void
 void cxa_network_wifiManager_init(const char* ssidIn, const char* passphraseIn);
 void cxa_network_wifiManager_addListener(cxa_network_wifiManager_ssid_cb_t cb_associatingWithSsid,
 										 cxa_network_wifiManager_ssid_cb_t cb_associatedWithSsid,
+										 cxa_network_wifiManager_ssid_cb_t cb_lostAssociationWithSsid,
 										 cxa_network_wifiManager_ssid_cb_t cb_associateWithSsidFailed,
 										 void *userVarIn);
 
