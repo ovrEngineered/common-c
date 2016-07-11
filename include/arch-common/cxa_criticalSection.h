@@ -94,6 +94,7 @@
 
 
 // ******** global type definitions *********
+#ifdef CXA_CRITICALSECTION_CALLBACK_ENABLE
 /**
  * @public
  * @brief Callback for 'criticalSection_enter' and 'criticalSection_exit' events.
@@ -103,6 +104,7 @@
  * @param[in] userVarIn the user variable passed to ::cxa_criticalSection_addCallback
  */
 typedef void (*cxa_criticalSection_cb_t)(void *userVarIn);
+#endif
 
 
 // ******** global function prototypes ********
@@ -135,6 +137,7 @@ void cxa_criticalSection_enter(void);
 void cxa_criticalSection_exit(void);
 
 
+#ifdef CXA_CRITICALSECTION_CALLBACK_ENABLE
 /**
  * @public
  * @brief Adds 'criticalSection_enter' and 'criticalSection_exit' callbacks.
@@ -163,6 +166,7 @@ void cxa_criticalSection_notifyExternal_enter(void);
  * See @ref externalEntry "External entry into a critical section (interrupts):"
  */
 void cxa_criticalSection_notifyExternal_exit(void);
+#endif
 
 
 #endif // CXA_CRITICAL_SECTION_H_
