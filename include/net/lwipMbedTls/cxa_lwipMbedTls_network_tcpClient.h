@@ -1,6 +1,6 @@
 /**
  * @file
- * @copyright 2015 opencxa.org
+ * @copyright 2016 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_H_
-#define CXA_ESP8266_NETWORK_TCPCLIENT_H_
+#ifndef CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_H_
+#define CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_H_
 
 
 // ******** includes ********
@@ -25,8 +25,6 @@
 
 #include <lwip/api.h>
 
-// config.h should appear before other mbedtls includes
-#include "mbedtls/config.h"
 #include <mbedtls/net.h>
 #include <mbedtls/debug.h>
 #include <mbedtls/ssl.h>
@@ -37,33 +35,33 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES
-	#define CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES			64
+#ifndef CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES
+	#define CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES			64
 #endif
 
-#ifndef CXA_ESP8266_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES
-	#define CXA_ESP8266_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES			5
+#ifndef CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES
+	#define CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES			5
 #endif
 
 
 // ******** global type definitions *********
 /**
  * @public
- * @brief "Forward" declaration of the cxa_esp8266_network_tcpClient_t object
+ * @brief "Forward" declaration of the cxa_lwipMbedTls_network_tcpClient_t object
  */
-typedef struct cxa_esp8266_network_tcpClient cxa_esp8266_network_tcpClient_t;
+typedef struct cxa_lwipMbedTls_network_tcpClient cxa_lwipMbedTls_network_tcpClient_t;
 
 
 /**
  * @private
  */
-struct cxa_esp8266_network_tcpClient
+struct cxa_lwipMbedTls_network_tcpClient
 {
 	cxa_network_tcpClient_t super;
 
-	char targetHostName[CXA_ESP8266_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES+1];
+	char targetHostName[CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES+1];
 	ip_addr_t targetIp;
-	char targetPortNum[CXA_ESP8266_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES+1];
+	char targetPortNum[CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES+1];
 
 	cxa_stateMachine_t stateMachine;
 
@@ -95,13 +93,13 @@ struct cxa_esp8266_network_tcpClient
 /**
  * @private
  */
-void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn);
+void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn);
 
 
 /**
  * @private
  */
-void cxa_esp8266_network_tcpClient_update(cxa_esp8266_network_tcpClient_t *const netClientIn);
+void cxa_lwipMbedTls_network_tcpClient_update(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn);
 
 
-#endif // CXA_ESP8266_NETWORK_TCPCLIENT_H_
+#endif // CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_H_

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015 opencxa.org
+ * Copyright 2016 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  *
  * @author Christopher Armenio
  */
-#include <cxa_esp8266_network_tcpClient.h>
+#include <cxa_lwipMbedTls_network_tcpClient.h>
 
 
 // ******** includes ********
@@ -69,16 +69,11 @@ static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, vo
 static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
 
 
-static void netconn_tls_debug(void *ctx, int level,
-							  const char *file, int line,
-							  const char *str);
-
-
 // ********  local variable declarations *********
 
 
 // ******** global function implementations ********
-void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const netClientIn)
+void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
 
@@ -103,7 +98,7 @@ void cxa_esp8266_network_tcpClient_init(cxa_esp8266_network_tcpClient_t *const n
 }
 
 
-void cxa_esp8266_network_tcpClient_update(cxa_esp8266_network_tcpClient_t *const netClientIn)
+void cxa_lwipMbedTls_network_tcpClient_update(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
 
@@ -123,7 +118,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	cxa_assert(clientCertIn);
 	cxa_assert(clientPrivateKeyIn);
 
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
 	// make sure we are currently idle
@@ -218,28 +213,22 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 		cxa_logger_warn(&netClientIn->super.logger, "tls configuration failed: %d", tmpRet);
 		return false;
 	}
-	cxa_logger_trace(&netClientIn->super.logger, "1");
     mbedtls_ssl_conf_authmode(&netClientIn->tls.conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 	mbedtls_ssl_conf_ca_chain(&netClientIn->tls.conf, &netClientIn->tls.cert_server, NULL);
 	mbedtls_ssl_conf_rng(&netClientIn->tls.conf, mbedtls_ctr_drbg_random, &netClientIn->tls.ctr_drbg);
 	mbedtls_ssl_conf_own_cert(&netClientIn->tls.conf, &netClientIn->tls.cert_client, &netClientIn->tls.client_key_private);
-	cxa_logger_trace(&netClientIn->super.logger, "2");
 
 #ifdef MBEDTLS_DEBUG_C
-	cxa_logger_trace(&netClientIn->super.logger, "3");
     mbedtls_debug_set_threshold(DEBUG_LEVEL);
     mbedtls_ssl_conf_dbg(&netClientIn->tls.conf, netconn_tls_debug, (void*)netClientIn);
 #endif
 
-    cxa_logger_trace(&netClientIn->super.logger, "4");
 	tmpRet = mbedtls_ssl_setup(&netClientIn->tls.sslContext, &netClientIn->tls.conf);
 	if( tmpRet < 0 )
 	{
 		cxa_logger_warn(&netClientIn->super.logger, "tls context configuration failed: %d", tmpRet);
 		return false;
 	}
-
-	cxa_logger_trace(&netClientIn->super.logger, "5");
 
 	// make sure we record other useful information
 	netClientIn->useClientCert = true;
@@ -260,7 +249,7 @@ static void scm_disconnectFromHost(cxa_network_tcpClient_t *const superIn)
 
 static bool scm_isConnected(cxa_network_tcpClient_t *const superIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)superIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)superIn;
 	cxa_assert(netClientIn);
 
 	return (cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) == STATE_CONNECTED);
@@ -269,7 +258,7 @@ static bool scm_isConnected(cxa_network_tcpClient_t *const superIn)
 
 static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	if( netClientIn->useClientCert )
@@ -300,18 +289,18 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 			}
 		}
 
-		cxa_logger_trace(&netClientIn->super.logger, "verifying server certificate");
-		if( (tmpRet = mbedtls_ssl_get_verify_result(&netClientIn->tls.sslContext)) != 0)
-		{
-			// for debugging
-			//char vrfy_buf[512];
-			//mbedtls_x509_crt_verify_info(vrfy_buf, sizeof(vrfy_buf), "  ! ", tmpRet);
-			//printf("%s\n", vrfy_buf);
-
-			cxa_logger_warn(&netClientIn->super.logger, "server certificate verification failed: %d", tmpRet);
-			cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
-			return;
-		}
+//		cxa_logger_trace(&netClientIn->super.logger, "verifying server certificate");
+//		if( (tmpRet = mbedtls_ssl_get_verify_result(&netClientIn->tls.sslContext)) != 0)
+//		{
+//			// for debugging
+//			//char vrfy_buf[512];
+//			//mbedtls_x509_crt_verify_info(vrfy_buf, sizeof(vrfy_buf), "  ! ", tmpRet);
+//			//printf("%s\n", vrfy_buf);
+//
+//			cxa_logger_warn(&netClientIn->super.logger, "server certificate verification failed: %d", tmpRet);
+//			cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
+//			return;
+//		}
 	}
 	else cxa_assert(false);
 
@@ -321,7 +310,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	// bind our ioStream
@@ -338,7 +327,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 
 static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	// reset our ssl context
@@ -355,7 +344,7 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStat
 
 static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	// notify our listeners
@@ -371,7 +360,7 @@ static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, int prevSt
 
 static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, void *const userVarIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	int tmpRet = mbedtls_ssl_read(&netClientIn->tls.sslContext, byteOut, 1);
@@ -388,7 +377,7 @@ static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, vo
 
 static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn)
 {
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)userVarIn;
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
 	// handle a zero-size buffer appropriately
@@ -417,26 +406,4 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 	} while( bufferSize_bytesIn > 0 );
 
 	return true;
-}
-
-
-static void netconn_tls_debug(void *ctx, int level,
-							  const char *file, int line,
-							  const char *str)
-{
-	((void) level);
-
-	cxa_esp8266_network_tcpClient_t* netClientIn = (cxa_esp8266_network_tcpClient_t*)ctx;
-	cxa_assert(netClientIn);
-
-    /* Shorten 'file' from the whole file path to just the filename
-
-       This is a bit wasteful because the macros are compiled in with
-       the full _FILE_ path in each case, so the firmware is bloated out
-       by a few kb. But there's not a lot we can do about it...
-    */
-    char *file_sep = rindex(file, '/');
-    if(file_sep) file = file_sep+1;
-
-    cxa_logger_trace(&netClientIn->super.logger, "%s:%04d: %s", file, line, str);
 }
