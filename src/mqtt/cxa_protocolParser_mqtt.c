@@ -88,16 +88,7 @@ void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_io
 	cxa_stateMachine_addState(&mppIn->stateMachine, RX_STATE_WAIT_DATABYTES, "wait_dataBytes", NULL, rxStateCb_waitDataBytes_state, NULL, (void*)mppIn);
 	cxa_stateMachine_addState(&mppIn->stateMachine, RX_STATE_PROCESS_PACKET, "processPacket", rxStateCb_processPacket_enter, NULL, NULL, (void*)mppIn);
 	cxa_stateMachine_addState(&mppIn->stateMachine, RX_STATE_ERROR, "error", rxState_cb_error_enter, NULL, NULL, (void*)mppIn);
-	cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_IDLE);
-	cxa_stateMachine_update(&mppIn->stateMachine);
-}
-
-
-void cxa_protocolParser_mqtt_update(cxa_protocolParser_mqtt_t *const mppIn)
-{
-	cxa_assert(mppIn);
-
-	cxa_stateMachine_update(&mppIn->stateMachine);
+	cxa_stateMachine_setInitialState(&mppIn->stateMachine, RX_STATE_IDLE);
 }
 
 
@@ -126,9 +117,7 @@ static void scm_gotoIdle(cxa_protocolParser_t *const superIn)
 	cxa_protocolParser_mqtt_t* mppIn = (cxa_protocolParser_mqtt_t*)superIn;
 	cxa_assert(mppIn);
 
-	cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_IDLE);
-	cxa_protocolParser_mqtt_update(mppIn);
-	cxa_assert( cxa_stateMachine_getCurrentState(&mppIn->stateMachine) == RX_STATE_IDLE );
+	cxa_stateMachine_transitionNow(&mppIn->stateMachine, RX_STATE_IDLE);
 }
 
 
@@ -186,7 +175,8 @@ static void rxStateCb_waitFixedHeader1_state(cxa_stateMachine_t *const smIn, voi
 	cxa_assert(mppIn);
 
 	uint8_t rxByte;
-	if( cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
+	cxa_ioStream_readStatus_t readStat = cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte);
+	if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
 		bool doFlagsMatch = false;
 		switch( cxa_mqtt_message_rxBytes_getType(rxByte) )
@@ -232,6 +222,11 @@ static void rxStateCb_waitFixedHeader1_state(cxa_stateMachine_t *const smIn, voi
 			else cxa_logger_warn(&mppIn->super.logger, ERR_FBB_OVERFLOW);
 		} else cxa_logger_warn(&mppIn->super.logger, ERR_MALFORMED_HEADER);
 	}
+	else if( readStat == CXA_IOSTREAM_READSTAT_ERROR )
+	{
+		cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_ERROR);
+		return;
+	}
 }
 
 
@@ -241,7 +236,8 @@ static void rxStateCb_waitRemainingLen_state(cxa_stateMachine_t *const smIn, voi
 	cxa_assert(mppIn);
 
 	uint8_t rxByte;
-	if( cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
+	cxa_ioStream_readStatus_t readStat = cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte);
+	if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
 		// reset our reception timeout timeDiff
 		cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
@@ -272,6 +268,11 @@ static void rxStateCb_waitRemainingLen_state(cxa_stateMachine_t *const smIn, voi
 			return;
 		}
 	}
+	else if( readStat == CXA_IOSTREAM_READSTAT_ERROR )
+	{
+		cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_ERROR);
+		return;
+	}
 
 	// check to see if we've had a reception timeout
 	if( cxa_timeDiff_isElapsed_ms(&mppIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
@@ -297,7 +298,8 @@ static void rxStateCb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *
 
 	// keep receiving bytes
 	uint8_t rxByte;
-	if( cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
+	cxa_ioStream_readStatus_t readStat = cxa_ioStream_readByte(mppIn->super.ioStream, &rxByte);
+	if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
 		// reset our reception timeout timeDiff
 		cxa_timeDiff_setStartTime_now(&mppIn->super.td_timeout);
@@ -310,6 +312,11 @@ static void rxStateCb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void *
 			return;
 		}
 		mppIn->remainingBytesToReceive--;
+	}
+	else if( readStat == CXA_IOSTREAM_READSTAT_ERROR )
+	{
+		cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_ERROR);
+		return;
 	}
 
 	// check to see if we've had a reception timeout

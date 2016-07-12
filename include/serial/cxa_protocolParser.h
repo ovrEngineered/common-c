@@ -248,7 +248,7 @@ bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedB
 
 /**
  * @public
- * @brief Writes a pack to the ioStream
+ * @brief Writes a packet to the ioStream
  *
  * @param[in] ppIn pointer to the pre-initialized protocolParser
  * @param bytesIn bytesIn pointer to the bytes to send. Should not
@@ -259,6 +259,17 @@ bool cxa_protocolParser_writePacket(cxa_protocolParser_t *const ppIn, cxa_fixedB
  * 		was an error with the underlying ioStream
  */
 bool cxa_protocolParser_writePacket_bytes(cxa_protocolParser_t *const ppIn, void* bytesIn, size_t numBytesIn);
+
+/**
+ * @public
+ * @brief Resets the protocol parser if an ioException has occurred.
+ *
+ * @Note: care should be taken to resolve the original cause of the
+ * 		ioException before resetting the protocol parser
+ *
+ * @param[in] ppIn pointer to the pre-initialized protocolParser
+ */
+void cxa_protocolParser_resetError(cxa_protocolParser_t *const ppIn);
 
 
 /**

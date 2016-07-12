@@ -56,6 +56,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 
+static void protoParseCb_onIoException(void *const userVarIn);
 static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
 
 static void handleMessage_connAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn);
@@ -92,6 +93,7 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 
 	// setup our protocol parser
 	cxa_protocolParser_mqtt_init(&clientIn->mpp, iosIn, msg->buffer);
+	cxa_protocolParser_addProtocolListener(&clientIn->mpp.super, protoParseCb_onIoException, NULL, (void*)clientIn);
 	cxa_protocolParser_addPacketListener(&clientIn->mpp.super, protoParseCb_onPacketReceived, (void*)clientIn);
 
 	// setup our logger
@@ -169,7 +171,7 @@ bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const user
 	if( (currState == MQTT_STATE_CONNECTING) ||
 		(currState == MQTT_STATE_CONNECTED) ) return false;
 
-	cxa_logger_info(&clientIn->logger, "sending CONNECT packet");
+	cxa_logger_trace(&clientIn->logger, "sending CONNECT packet");
 
 	// reserve/initialize/send message
 	cxa_mqtt_message_t* msg = NULL;
@@ -301,21 +303,11 @@ void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFil
 }
 
 
-void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn)
-{
-	cxa_assert(clientIn);
-
-	cxa_stateMachine_update(&clientIn->stateMachine);
-	cxa_protocolParser_mqtt_update(&clientIn->mpp);
-}
-
-
 void cxa_mqtt_client_super_connectingTransport(cxa_mqtt_client_t *const clientIn)
 {
 	cxa_assert(clientIn);
 
-	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_CONNECTING_TRANSPORT);
-	cxa_stateMachine_update(&clientIn->stateMachine);
+	cxa_stateMachine_transitionNow(&clientIn->stateMachine, MQTT_STATE_CONNECTING_TRANSPORT);
 }
 
 
@@ -373,6 +365,9 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevSta
 {
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
+
+	// make sure our protocolParser isn't in an error state (from a possible previous connection)
+	cxa_protocolParser_resetError(&clientIn->mpp.super);
 
 	// reset our connack timeout
 	cxa_timeDiff_setStartTime_now(&clientIn->td_timeout);
@@ -473,6 +468,27 @@ static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVa
 }
 
 
+static void protoParseCb_onIoException(void *const userVarIn)
+{
+	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
+	cxa_assert(clientIn);
+
+	cxa_logger_warn(&clientIn->logger, "ioException...disconnecting");
+
+	// if this was during connection, make sure we record the failure reason
+	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) == MQTT_STATE_CONNECTING )
+	{
+		clientIn->connFailReason = CXA_MQTT_CLIENT_CONNECTFAIL_REASON_NETWORK;
+	}
+
+	// let our lower-level connection know that we're disconnecting
+	if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
+
+	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+	return;
+}
+
+
 static void protoParseCb_onPacketReceived(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn)
 {
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
@@ -521,6 +537,8 @@ static void handleMessage_connAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	cxa_mqtt_connAck_returnCode_t retCode = CXA_MQTT_CONNACK_RETCODE_UNKNOWN;
 	if( cxa_mqtt_message_connack_getReturnCode(msgIn, &retCode ) && (retCode == CXA_MQTT_CONNACK_RETCODE_ACCEPTED) )
 	{
+		cxa_logger_trace(&clientIn->logger, "got CONNACK");
+
 		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_CONNECTED);
 		return;
 	}

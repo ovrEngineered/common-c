@@ -41,14 +41,4 @@ typedef struct
 void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn);
 
 
-/**
- * @public
- * @brief Updates the protocol parser (and internal state machine).
- * MUST be called on a regular basis for proper operation
- *
- * @param[in] mppIn pointer to the pre-initialized protocolParser
- */
-void cxa_protocolParser_mqtt_update(cxa_protocolParser_mqtt_t *const mppIn);
-
-
 #endif // CXA_PROTOCOLPARSER_MQTT_H_

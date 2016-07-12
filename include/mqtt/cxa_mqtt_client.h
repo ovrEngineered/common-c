@@ -178,8 +178,6 @@ bool cxa_mqtt_client_publish_message(cxa_mqtt_client_t *const clientIn, cxa_mqtt
 
 void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFilterIn, cxa_mqtt_qosLevel_t qosIn, cxa_mqtt_client_cb_onPublish_t cb_onPublishIn, void* userVarIn);
 
-void cxa_mqtt_client_update(cxa_mqtt_client_t *const clientIn);
-
 
 /**
  * @protected

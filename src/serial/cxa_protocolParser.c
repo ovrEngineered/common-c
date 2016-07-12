@@ -151,6 +151,16 @@ bool cxa_protocolParser_writePacket_bytes(cxa_protocolParser_t *const ppIn, void
 }
 
 
+void cxa_protocolParser_resetError(cxa_protocolParser_t *const ppIn)
+{
+	cxa_assert(ppIn);
+
+	// get to the idle state...the state machine
+	// should take care of the rest
+	ppIn->scm_gotoIdle(ppIn);
+}
+
+
 void cxa_protocolParser_notify_ioException(cxa_protocolParser_t *const ppIn)
 {
 	cxa_assert(ppIn);
