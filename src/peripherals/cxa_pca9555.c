@@ -289,7 +289,7 @@ static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	uint8_t polVal = (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn;
 	outputVal = (outputVal & ~(1 << chanNum)) | (polVal << chanNum);
 
-	if( writeToRegister(gpioIn->pca, reg, outputVal) ) gpioIn->lastOutputVal = polVal;
+	if( writeToRegister(gpioIn->pca, reg, outputVal) ) gpioIn->lastOutputVal = valIn;
 }
 
 
@@ -298,6 +298,10 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 	cxa_gpio_pca9555_t* gpioIn = (cxa_gpio_pca9555_t*)superIn;
 	cxa_assert(gpioIn);
 
+	// shortcut reading from the device if we can
+	if( (gpioIn->lastDirection == CXA_GPIO_DIR_OUTPUT) ) return gpioIn->lastOutputVal;
+
+	// couldn't shortcut...read from the device
 	uint8_t portNum, chanNum;
 	getGpioPortAndChannelNum(gpioIn, &portNum, &chanNum);
 	register_t reg = (portNum == 0) ? REG_OUTPUT0 : REG_OUTPUT1;
