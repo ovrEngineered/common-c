@@ -28,7 +28,6 @@
 
 // ******** local function prototypes ********
 static bool scm_requestNewValue(cxa_tempSensor_t *const tempSnsIn);
-static void scm_update(cxa_tempSensor_t *const tempSnsIn);
 
 static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, void* userVarIn);
 
@@ -52,7 +51,7 @@ void cxa_tempSensor_adc_init_onePoint(cxa_tempSensor_adc_t *const tempSnsIn, cxa
 	cxa_adcChannel_addListener(tempSnsIn->adc, cb_adcConvComplete, NULL, (void*)tempSnsIn);
 
 	// initialize our super class
-	cxa_tempSensor_init(&tempSnsIn->super, scm_requestNewValue, scm_update);
+	cxa_tempSensor_init(&tempSnsIn->super, scm_requestNewValue);
 }
 
 
@@ -63,15 +62,6 @@ static bool scm_requestNewValue(cxa_tempSensor_t *const superIn)
 	cxa_assert(tempSnsIn);
 
 	return cxa_adcChannel_startConversion_singleShot(tempSnsIn->adc);
-}
-
-
-static void scm_update(cxa_tempSensor_t *const superIn)
-{
-	cxa_tempSensor_adc_t* tempSnsIn = (cxa_tempSensor_adc_t*)superIn;
-	cxa_assert(tempSnsIn);
-
-	cxa_adcChannel_update(tempSnsIn->adc);
 }
 
 

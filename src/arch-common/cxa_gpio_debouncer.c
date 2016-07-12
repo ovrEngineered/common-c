@@ -23,6 +23,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <cxa_runLoop.h>
 
 
 // ******** local macro definitions ********
@@ -33,6 +34,7 @@
 
 
 // ******** local function prototypes ********
+static void cb_onRunLoopUpdate(void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -57,6 +59,9 @@ void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t 
 
 	// setup our listener array
 	cxa_array_initStd(&debounceIn->listeners, debounceIn->listeners_raw);
+
+	// register for run loop execution
+	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)debounceIn);
 }
 
 
@@ -80,8 +85,10 @@ bool cxa_gpio_debouncer_getCurrentValue(cxa_gpio_debouncer_t *const debouncerIn)
 }
 
 
-void cxa_gpio_debouncer_update(cxa_gpio_debouncer_t *const debouncerIn)
+// ******** local function implementations ********
+static void cb_onRunLoopUpdate(void* userVarIn)
 {
+	cxa_gpio_debouncer_t* debouncerIn = (cxa_gpio_debouncer_t*)userVarIn;
 	cxa_assert(debouncerIn);
 
 	if( debouncerIn->isInTimeoutPeriod )
@@ -112,6 +119,3 @@ void cxa_gpio_debouncer_update(cxa_gpio_debouncer_t *const debouncerIn)
 		if( currVal != debouncerIn->prevVal ) debouncerIn->isInTimeoutPeriod = true;
 	}
 }
-
-
-// ******** local function implementations ********

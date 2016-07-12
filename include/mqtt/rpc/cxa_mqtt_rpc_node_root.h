@@ -50,10 +50,4 @@ typedef struct cxa_mqtt_rpc_node_root
 void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, bool reportStateIn,
 								 const char *nameFmtIn, ...);
 
-
-/**
- * @public
- */
-void cxa_mqtt_rpc_node_root_update(cxa_mqtt_rpc_node_root_t *const nodeIn);
-
 #endif // CXA_MQTT_RPC_NODE_ROOT_H_

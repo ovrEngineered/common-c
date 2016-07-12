@@ -77,14 +77,6 @@ bool cxa_batteryCapacityEstimator_getValue_withCallback(cxa_batteryCapacityEstim
 }
 
 
-void cxa_batteryCapacityEstimator_update(cxa_batteryCapacityEstimator_t *const bceIn)
-{
-	cxa_assert(bceIn);
-
-	cxa_adcChannel_update(bceIn->adc_battVoltage);
-}
-
-
 // ******** local function implementations ********
 static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, void* userVarIn)
 {

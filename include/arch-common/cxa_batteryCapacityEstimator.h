@@ -69,7 +69,5 @@ void cxa_batteryCapacityEstimator_init(cxa_batteryCapacityEstimator_t *const bce
 
 bool cxa_batteryCapacityEstimator_getValue_withCallback(cxa_batteryCapacityEstimator_t *const bceIn, cxa_batteryCapacityEstimator_cb_updatedValue_t cbIn, void* userVarIn);
 
-void cxa_batteryCapacityEstimator_update(cxa_batteryCapacityEstimator_t *const bceIn);
-
 
 #endif /* CXA_BATTERYCAPACITYESTIMATOR_H_ */

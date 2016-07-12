@@ -54,7 +54,5 @@ void cxa_mqtt_connManager_init_clientCert(cxa_led_t *const ledConnIn,
 
 cxa_mqtt_client_t* cxa_mqtt_connManager_getMqttClient(void);
 
-void cxa_mqtt_connManager_update(void);
-
 
 #endif // CXA_MQTT_MAN_H_

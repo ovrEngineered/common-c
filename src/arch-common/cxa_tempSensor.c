@@ -33,14 +33,13 @@
 
 
 // ******** global function implementations ********
-void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_requestNewValue_t scm_requestNewValIn, cxa_tempSensor_scm_update_t scm_updateIn)
+void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_requestNewValue_t scm_requestNewValIn)
 {
 	cxa_assert(tmpSnsIn);
 	cxa_assert(scm_requestNewValIn);
 
 	// save our references
 	tmpSnsIn->scm_requestNewValue = scm_requestNewValIn;
-	tmpSnsIn->scm_update = scm_updateIn;
 	tmpSnsIn->cb_onTempUpdate = NULL;
 	tmpSnsIn->userVar = NULL;
 }
@@ -69,14 +68,6 @@ bool cxa_tempSensor_getValue_withCallback(cxa_tempSensor_t *const tmpSnsIn, cxa_
 	}
 
 	return retVal;
-}
-
-
-void cxa_tempSensor_update(cxa_tempSensor_t *const tempSensIn)
-{
-	cxa_assert(tempSensIn);
-
-	if( tempSensIn->scm_update != NULL ) tempSensIn->scm_update(tempSensIn);
 }
 
 

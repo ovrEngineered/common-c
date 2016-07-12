@@ -18,6 +18,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <cxa_runLoop.h>
 
 
 // ******** local macro definitions ********
@@ -30,6 +31,8 @@
 static void scm_turnOn(cxa_led_t *const superIn);
 static void scm_turnOff(cxa_led_t *const superIn);
 static void scm_blink(cxa_led_t *const superIn, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn);
+
+static void cb_onRunLoopUpdate(void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -48,21 +51,11 @@ void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, bo
 	// setup our internal state
 	cxa_timeDiff_init(&ledIn->td_blink, true);
 
-	// finally initialize our super class (since it sets our initial value)
+	// initialize our super class (since it sets our initial value)
 	cxa_led_init(&ledIn->super, scm_turnOn, scm_turnOff, scm_blink, NULL);
-}
 
-
-void cxa_led_gpio_update(cxa_led_gpio_t *const ledIn)
-{
-	cxa_assert(ledIn);
-
-	if( (ledIn->super.currState == CXA_LED_STATE_BLINK) &&
-			cxa_timeDiff_isElapsed_recurring_ms(&ledIn->td_blink, (cxa_gpio_getValue(ledIn->gpio) ? ledIn->onPeriod_ms : ledIn->offPeriod_ms)) )
-	{
-		if( cxa_gpio_getValue(ledIn->gpio) ) scm_turnOff(&ledIn->super);
-		else scm_turnOn(&ledIn->super);
-	}
+	// register for run loop execution
+	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)ledIn);
 }
 
 
@@ -94,4 +87,18 @@ static void scm_blink(cxa_led_t *const superIn, uint32_t onPeriod_msIn, uint32_t
 
 	ledIn->onPeriod_ms = onPeriod_msIn;
 	ledIn->offPeriod_ms = offPeriod_msIn;
+}
+
+
+static void cb_onRunLoopUpdate(void* userVarIn)
+{
+	cxa_led_gpio_t*ledIn = (cxa_led_gpio_t*)userVarIn;
+	cxa_assert(ledIn);
+
+	if( (ledIn->super.currState == CXA_LED_STATE_BLINK) &&
+			cxa_timeDiff_isElapsed_recurring_ms(&ledIn->td_blink, (cxa_gpio_getValue(ledIn->gpio) ? ledIn->onPeriod_ms : ledIn->offPeriod_ms)) )
+	{
+		if( cxa_gpio_getValue(ledIn->gpio) ) scm_turnOff(&ledIn->super);
+		else scm_turnOn(&ledIn->super);
+	}
 }

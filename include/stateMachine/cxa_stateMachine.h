@@ -124,10 +124,6 @@ struct cxa_stateMachine
 // ******** global function prototypes ********
 void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn);
 
-#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const char* nameIn);
-#endif
-
 void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,
 	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn,
 	void *userVarIn);
@@ -140,9 +136,9 @@ void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, c
 void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateIdIn);
 	
 void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn);
-int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn);
+void cxa_stateMachine_transitionNow(cxa_stateMachine_t *const smIn, int stateIdIn);
 
-void cxa_stateMachine_update(cxa_stateMachine_t *const smIn);
+int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn);
 
 
 #endif // CXA_STATE_MACHINE_H_

@@ -96,10 +96,4 @@ struct cxa_lwipMbedTls_network_tcpClient
 void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn);
 
 
-/**
- * @private
- */
-void cxa_lwipMbedTls_network_tcpClient_update(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn);
-
-
 #endif // CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_H_

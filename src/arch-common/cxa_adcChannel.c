@@ -33,14 +33,13 @@
 
 
 // ******** global function implementations ********
-void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn, cxa_adcChannel_scm_update_t scm_updateIn)
+void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn)
 {
 	cxa_assert(adcChanIn);
 	cxa_assert(scm_startConv_ssIn);
 
 	// save our references
 	adcChanIn->scm_startConv_ss = scm_startConv_ssIn;
-	adcChanIn->scm_update = scm_updateIn;
 
 	// setup our listeners
 	cxa_array_initStd(&adcChanIn->listeners, adcChanIn->listeners_raw);
@@ -71,14 +70,6 @@ bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn
 	cxa_assert(adcChanIn);
 	cxa_assert(adcChanIn->scm_startConv_ss);
 	return adcChanIn->scm_startConv_ss(adcChanIn);
-}
-
-
-void cxa_adcChannel_update(cxa_adcChannel_t *const adcChanIn)
-{
-	cxa_assert(adcChanIn);
-	// this one isn't required
-	if( adcChanIn->scm_update != NULL ) adcChanIn->scm_update(adcChanIn);
 }
 
 

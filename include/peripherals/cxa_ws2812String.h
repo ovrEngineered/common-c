@@ -119,10 +119,4 @@ void cxa_ws2812String_setPixel_hsv(cxa_ws2812String_t *const ws2812In, size_t pi
 void cxa_ws2812String_pulseColor_rgb(cxa_ws2812String_t *const ws2812In, uint32_t pulsePeriod_msIn, uint8_t rIn, uint8_t gIn, uint8_t bIn);
 
 
-/**
- * @public
- */
-void cxa_ws2812String_update(cxa_ws2812String_t *const ws2812In);
-
-
 #endif /* CXA_WS2812STRING_H_ */

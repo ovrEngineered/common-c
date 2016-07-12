@@ -80,18 +80,7 @@ void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePp
 	cxa_stateMachine_addState(&clePpIn->stateMachine, RX_STATE_WAIT_DATA_BYTES, "wait_dataBytes", NULL, rxState_cb_waitDataBytes_state, NULL, (void*)clePpIn);
 	cxa_stateMachine_addState(&clePpIn->stateMachine, RX_STATE_PROCESS_PACKET, "processPacket", NULL, rxState_cb_processPacket_state, NULL, (void*)clePpIn);
 	cxa_stateMachine_addState(&clePpIn->stateMachine, RX_STATE_ERROR, "error", rxState_cb_error_enter, NULL, NULL, (void*)clePpIn);
-
-	// set our initial state
-	cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_IDLE);
-	cxa_stateMachine_update(&clePpIn->stateMachine);
-}
-
-
-void cxa_protocolParser_cleProto_update(cxa_protocolParser_cleProto_t *const clePpIn)
-{
-	cxa_assert(clePpIn);
-
-	cxa_stateMachine_update(&clePpIn->stateMachine);
+	cxa_stateMachine_setInitialState(&clePpIn->stateMachine, RX_STATE_IDLE);
 }
 
 
@@ -120,8 +109,7 @@ static void scm_gotoIdle(cxa_protocolParser_t *const superIn)
 	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)superIn;
 	cxa_assert(clePpIn);
 
-	cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_IDLE);
-	cxa_protocolParser_cleProto_update(clePpIn);
+	cxa_stateMachine_transitionNow(&clePpIn->stateMachine, RX_STATE_IDLE);
 	cxa_assert( cxa_stateMachine_getCurrentState(&clePpIn->stateMachine) == RX_STATE_IDLE );
 }
 

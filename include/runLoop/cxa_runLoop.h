@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 opencxa.org
+ * Copyright 2016 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CXA_BACKGROUND_UPDATER_H_
-#define CXA_BACKGROUND_UPDATER_H_
+#ifndef CXA_RUN_LOOP_H_
+#define CXA_RUN_LOOP_H_
 
 
 /**
@@ -30,8 +30,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_BACKGROUND_UPDATER_MAX_NUM_ENTRIES
-	#define CXA_BACKGROUND_UPDATER_MAX_NUM_ENTRIES				10
+#ifndef CXA_RUN_LOOP_MAX_NUM_ENTRIES
+	#define CXA_RUN_LOOP_MAX_NUM_ENTRIES				10
 #endif
 
 
@@ -39,17 +39,15 @@
 /**
  * @public
  */
-typedef void (*cxa_backgroundUpdater_cb_update_t)(void* userVarIn);
+typedef void (*cxa_runLoop_cb_update_t)(void* userVarIn);
 
 
 // ******** global function prototypes ********
-void cxa_backgroundUpdater_init(void);
+bool cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn);
+bool cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn);
+void cxa_runLoop_clearAllEntries(void);
 
-bool cxa_backgroundUpdater_addEntry(cxa_backgroundUpdater_cb_update_t cbIn, void *const userVarIn);
-bool cxa_backgroundUpdater_removeEntry(cxa_backgroundUpdater_cb_update_t cbIn);
-void cxa_backgroundUpdater_clearAllEntries(void);
-
-void cxa_backgroundUpdater_update(void);
+void cxa_runLoop_execute(void);
 
 
-#endif // CXA_BACKGROUND_UPDATER_H_
+#endif // CXA_RUN_LOOP_H_

@@ -87,8 +87,7 @@ void cxa_ws2812String_blank_now(cxa_ws2812String_t *const ws2812In)
 	memset(ws2812In->pixelBuffers, 0, (ws2812In->numPixels*sizeof(*ws2812In->pixelBuffers)));
 	ws2812In->scm_writeBytes(ws2812In, ws2812In->pixelBuffers, ws2812In->numPixels);
 
-	cxa_stateMachine_transition(&ws2812In->stateMachine, STATE_IDLE);
-	cxa_stateMachine_update(&ws2812In->stateMachine);
+	cxa_stateMachine_transitionNow(&ws2812In->stateMachine, STATE_IDLE);
 }
 
 
@@ -168,14 +167,6 @@ void cxa_ws2812String_pulseColor_rgb(cxa_ws2812String_t *const ws2812In, uint32_
 	ws2812In->pulseColor.targetColor.b = bIn;
 
 	cxa_stateMachine_transition(&ws2812In->stateMachine, STATE_PULSE_FADEIN);
-}
-
-
-void cxa_ws2812String_update(cxa_ws2812String_t *const ws2812In)
-{
-	cxa_assert(ws2812In);
-
-	cxa_stateMachine_update(&ws2812In->stateMachine);
 }
 
 

@@ -141,14 +141,6 @@ cxa_mqtt_client_t* cxa_mqtt_connManager_getMqttClient(void)
 }
 
 
-void cxa_mqtt_connManager_update(void)
-{
-	// update everything
-	cxa_mqtt_client_update(&mqttClient.super);
-	cxa_stateMachine_update(&stateMachine);
-}
-
-
 // ******** local function implementations ********
 static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 											char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
@@ -191,9 +183,7 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECT_STANDOFF, "standOff", stateCb_connectStandOff_enter, stateCb_connectStandOff_state, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_ERROR, "error" , stateCb_error_enter, NULL, NULL, NULL);
-
-	cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
-	cxa_stateMachine_update(&stateMachine);
+	cxa_stateMachine_setInitialState(&stateMachine, STATE_ASSOCIATING);
 
 	// setup our WiFi
 	cxa_network_wifiManager_addListener(NULL, wifiManCb_associated, wifiManCb_lostAssociation, NULL, NULL);

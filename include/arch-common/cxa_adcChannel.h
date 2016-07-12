@@ -67,12 +67,6 @@ typedef bool (*cxa_adcChannel_scm_startConversion_singleShot_t)(cxa_adcChannel_t
 
 
 /**
- * @protected
- */
-typedef void (*cxa_adcChannel_scm_update_t)(cxa_adcChannel_t *superIn);
-
-
-/**
  * @private
  */
 typedef struct
@@ -90,7 +84,6 @@ typedef struct
 struct cxa_adcChannel
 {
 	cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ss;
-	cxa_adcChannel_scm_update_t scm_update;
 
 	cxa_array_t listeners;
 	cxa_adcChannel_listener_t listeners_raw[CXA_ADCCHAN_MAX_NUM_LISTENERS];
@@ -101,7 +94,7 @@ struct cxa_adcChannel
 /**
  * @protected
  */
-void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn, cxa_adcChannel_scm_update_t scm_updateIn);
+void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn);
 
 
 /**
@@ -118,10 +111,5 @@ void cxa_adcChannel_addListener(cxa_adcChannel_t *const adcChanIn,
  */
 bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn);
 
-
-/**
- * @public
- */
-void cxa_adcChannel_update(cxa_adcChannel_t *const adcChanIn);
 
 #endif /* CXA_ADCCHAN_H_ */

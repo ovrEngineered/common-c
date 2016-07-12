@@ -24,6 +24,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <cxa_runLoop.h>
 #include <cxa_timeBase.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_INFO
@@ -37,6 +38,8 @@
 
 
 // ******** local function prototypes ********
+static void cb_onRunLoopUpdate(void* userVarIn);
+
 static cxa_stateMachine_state_t* getState_byId(cxa_stateMachine_t *const smIn, int idIn);
 
 
@@ -64,33 +67,13 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn)
 	// a timediff was _not_ supplied so we cannot do timed states
 	// even if they are enabled
 	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-	smIn->timedStatesEnabled = false;
-	#endif
-}
-
-
-#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-void cxa_stateMachine_init_timedStates(cxa_stateMachine_t *const smIn, const char* nameIn)
-{
-	cxa_assert(smIn);
-	
-	// set some sensible default
-	smIn->currState = NULL;
-	smIn->nextState = NULL;
-	
-	// setup our internal state
-	cxa_array_init(&smIn->states, sizeof(*smIn->states_raw), (void*)smIn->states_raw, sizeof(smIn->states_raw));
-	
-	// setup our logger if it's enabled
-	#ifdef CXA_STATE_MACHINE_ENABLE_LOGGING
-	cxa_logger_vinit(&smIn->logger, "fsm::%s", nameIn);
-	#endif
-	
-	// setup our timediff for timed states
 	cxa_timeDiff_init(&smIn->td_timedTransition, true);
 	smIn->timedStatesEnabled = true;
+	#endif
+
+	// register for run loop execution
+	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)smIn);
 }
-#endif
 
 
 void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,
@@ -148,7 +131,7 @@ void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateI
 	cxa_assert( cxa_stateMachine_getCurrentState(smIn) == CXA_STATE_MACHINE_STATE_UNKNOWN );
 
 	cxa_stateMachine_transition(smIn, stateIdIn);
-	cxa_stateMachine_update(smIn);
+	cb_onRunLoopUpdate((void*)smIn);
 }
 
 
@@ -165,6 +148,15 @@ void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn)
 }
 
 
+void cxa_stateMachine_transitionNow(cxa_stateMachine_t *const smIn, int stateIdIn)
+{
+	cxa_assert(smIn);
+
+	cxa_stateMachine_transition(smIn, stateIdIn);
+	cb_onRunLoopUpdate((void*)smIn);
+}
+
+
 int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn)
 {
 	cxa_assert(smIn);
@@ -173,8 +165,10 @@ int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn)
 }
 
 
-void cxa_stateMachine_update(cxa_stateMachine_t *const smIn)
+// ******** local function implementations ********
+static void cb_onRunLoopUpdate(void* userVarIn)
 {
+	cxa_stateMachine_t* smIn = (cxa_stateMachine_t*)userVarIn;
 	cxa_assert(smIn);
 	
 	// see if we should transition
@@ -218,7 +212,6 @@ void cxa_stateMachine_update(cxa_stateMachine_t *const smIn)
 }
 
 
-// ******** local function implementations ********
 static cxa_stateMachine_state_t* getState_byId(cxa_stateMachine_t *const smIn, int idIn)
 {
 	cxa_assert(smIn);

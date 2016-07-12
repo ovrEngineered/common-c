@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 opencxa.org
+ * Copyright 2016 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "cxa_backgroundUpdater.h"
+#include "cxa_runLoop.h"
 
 
 /**
@@ -34,9 +34,9 @@
  */
 typedef struct
 {
-	cxa_backgroundUpdater_cb_update_t cb;
+	cxa_runLoop_cb_update_t cb;
 	void *userVar;
-}cxa_backgroundUpdater_entry_t;
+}cxa_runLoop_entry_t;
 
 
 /**
@@ -45,46 +45,38 @@ typedef struct
 typedef struct
 {
 	cxa_array_t cbs;
-	cxa_backgroundUpdater_entry_t cbs_raw[CXA_BACKGROUND_UPDATER_MAX_NUM_ENTRIES];
-}cxa_backgroundUpdater_t;
+	cxa_runLoop_entry_t cbs_raw[CXA_RUN_LOOP_MAX_NUM_ENTRIES];
+}cxa_runLoop_t;
 
 
 // ******** local function prototypes ********
+static void cxa_runLoop_init(void);
 
 
 // ********  local variable declarations *********
-static cxa_backgroundUpdater_t SINGLETON;
+static cxa_runLoop_t SINGLETON;
 static bool isInit = false;
 
 
 // ******** global function implementations ********
-void cxa_backgroundUpdater_init(void)
+bool cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
 {
-	if( isInit ) return;
-
-	cxa_array_initStd(&SINGLETON.cbs, SINGLETON.cbs_raw);
-	isInit = true;
-}
-
-
-bool cxa_backgroundUpdater_addEntry(cxa_backgroundUpdater_cb_update_t cbIn, void *const userVarIn)
-{
-	if( !isInit ) cxa_backgroundUpdater_init();
+	if( !isInit ) cxa_runLoop_init();
 
 	// create our new entry
-	cxa_backgroundUpdater_entry_t newEntry = {.cb=cbIn, .userVar=userVarIn};
+	cxa_runLoop_entry_t newEntry = {.cb=cbIn, .userVar=userVarIn};
 	return cxa_array_append(&SINGLETON.cbs, &newEntry);
 }
 
 
-bool cxa_backgroundUpdater_removeEntry(cxa_backgroundUpdater_cb_update_t cbIn)
+bool cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn)
 {
-	if( !isInit ) cxa_backgroundUpdater_init();
+	if( !isInit ) cxa_runLoop_init();
 
 	// can't use cxa_array_iterate because we need an index
 	for( size_t i = 0; i < cxa_array_getSize_elems(&SINGLETON.cbs); i++ )
 	{
-		cxa_backgroundUpdater_entry_t* currEntry = (cxa_backgroundUpdater_entry_t*)cxa_array_get(&SINGLETON.cbs, i);
+		cxa_runLoop_entry_t* currEntry = (cxa_runLoop_entry_t*)cxa_array_get(&SINGLETON.cbs, i);
 		if( currEntry == NULL ) continue;
 
 		if( currEntry->cb == cbIn )
@@ -98,23 +90,33 @@ bool cxa_backgroundUpdater_removeEntry(cxa_backgroundUpdater_cb_update_t cbIn)
 }
 
 
-void cxa_backgroundUpdater_clearAllEntries(void)
+void cxa_runLoop_clearAllEntries(void)
 {
 	isInit = false;
-	cxa_backgroundUpdater_init();
+	cxa_runLoop_init();
 }
 
 
-void cxa_backgroundUpdater_update(void)
+void cxa_runLoop_execute(void)
 {
-	if( !isInit ) cxa_backgroundUpdater_init();
+	if( !isInit ) cxa_runLoop_init();
 
-	cxa_array_iterate(&SINGLETON.cbs, currEntry, cxa_backgroundUpdater_entry_t)
+	while(1)
 	{
-		if( currEntry->cb != NULL) currEntry->cb(currEntry->userVar);
+		cxa_array_iterate(&SINGLETON.cbs, currEntry, cxa_runLoop_entry_t)
+		{
+			if( currEntry->cb != NULL) currEntry->cb(currEntry->userVar);
+		}
 	}
 }
 
 
 // ******** local function implementations ********
+static void cxa_runLoop_init(void)
+{
+	if( isInit ) return;
+
+	cxa_array_initStd(&SINGLETON.cbs, SINGLETON.cbs_raw);
+	isInit = true;
+}
 

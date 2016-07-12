@@ -26,7 +26,7 @@
 #include <cxa_stringUtils.h>
 #include <cxa_uniqueId.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 #include <lwip/err.h>
@@ -95,14 +95,6 @@ void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t 
 
 	// initialize our super class
 	cxa_network_tcpClient_init(&netClientIn->super, NULL, scm_connectToHost_clientCert, scm_disconnectFromHost, scm_isConnected);
-}
-
-
-void cxa_lwipMbedTls_network_tcpClient_update(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn)
-{
-	cxa_assert(netClientIn);
-
-	cxa_stateMachine_update(&netClientIn->stateMachine);
 }
 
 
@@ -266,7 +258,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 		int tmpRet;
 		mbedtls_net_init(&netClientIn->tls.server_fd);
 
-		cxa_logger_trace(&netClientIn->super.logger, "connecting to '%s:%d", netClientIn->targetHostName, netClientIn->targetPortNum);
+		cxa_logger_info(&netClientIn->super.logger, "connecting to '%s:%d", netClientIn->targetHostName, netClientIn->targetPortNum);
 		tmpRet = mbedtls_net_connect(&netClientIn->tls.server_fd, netClientIn->targetHostName, netClientIn->targetPortNum, MBEDTLS_NET_PROTO_TCP);
 		if( tmpRet < 0 )
 		{
@@ -312,6 +304,14 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 {
 	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
+
+	// make sure our socket is non-blocking now
+	if( mbedtls_net_set_nonblock(&netClientIn->tls.server_fd) != 0 )
+	{
+		cxa_logger_warn(&netClientIn->super.logger, "error setting socket to nonblock");
+		cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
+		return;
+	}
 
 	// bind our ioStream
 	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
@@ -364,7 +364,7 @@ static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, vo
 	cxa_assert(netClientIn);
 
 	int tmpRet = mbedtls_ssl_read(&netClientIn->tls.sslContext, byteOut, 1);
-	if( tmpRet < 0 )
+	if( (tmpRet < 0) && (tmpRet != MBEDTLS_ERR_SSL_WANT_READ) )
 	{
 		cxa_logger_warn(&netClientIn->super.logger, "error during read: %d", tmpRet);
 		cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_IDLE);

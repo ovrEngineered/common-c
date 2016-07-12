@@ -35,7 +35,8 @@
 
 // ******** local function prototypes ********
 static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn);
-static void scm_update(cxa_adcChannel_t *superIn);
+
+static void cb_onRunLoopUpdate(void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -56,6 +57,9 @@ void cxa_ble112_adcChannel_init_internalRef(cxa_ble112_adcChannel_t *const adcCh
 
 	// set our pin to ADC mode
 	APCFG |= (1 << chanIn);
+
+	// register for run loop execution
+	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)adcChanIn);
 }
 
 
@@ -84,9 +88,9 @@ static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 }
 
 
-static void scm_update(cxa_adcChannel_t *superIn)
+static void cb_onRunLoopUpdate(void* userVarIn)
 {
-	cxa_ble112_adcChannel_t *adcChanIn = (cxa_ble112_adcChannel_t*)superIn;
+	cxa_ble112_adcChannel_t *adcChanIn = (cxa_ble112_adcChannel_t*)userVarIn;
 	cxa_assert(adcChanIn);
 
 	// see if we have anything to do

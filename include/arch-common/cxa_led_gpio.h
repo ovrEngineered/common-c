@@ -54,7 +54,5 @@ typedef struct
 // ******** global function prototypes ********
 void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, bool driveOffStateIn);
 
-void cxa_led_gpio_update(cxa_led_gpio_t *const ledIn);
-
 
 #endif /* CXA_LED_GPIO_H_ */

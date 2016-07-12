@@ -52,14 +52,4 @@ struct cxa_protocolParser_cleProto
 void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePpIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn);
 
 
-/**
- * @public
- * @brief Updates the protocol parser (and internal state machine).
- * MUST be called on a regular basis for proper operation
- *
- * @param[in] clePpIn pointer to the pre-initialized protocolParser
- */
-void cxa_protocolParser_cleProto_update(cxa_protocolParser_cleProto_t *const clePpIn);
-
-
 #endif /* CXA_PROTOCOLPARSER_CLE_H_ */
