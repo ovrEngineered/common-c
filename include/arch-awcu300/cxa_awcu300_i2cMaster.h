@@ -42,6 +42,7 @@ struct cxa_awcu300_i2cMaster
 	cxa_i2cMaster_t super;
 	
 	I2C_ID_Type i2cId;
+	cxa_timeDiff_t td_interWriteDelay;
 };
 
 

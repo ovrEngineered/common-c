@@ -29,6 +29,7 @@
 // ******** local macro definitions ********
 #define I2C_MOD_CLK_DIV 3
 #define TIMEOUT_DEFAULT_MS			3000
+#define INTERWRITE_DELAY_MS			25
 
 
 // ******** local type definitions ********
@@ -51,6 +52,7 @@ void cxa_awcu300_i2cMaster_init(cxa_awcu300_i2cMaster_t *const i2cIn, I2C_ID_Typ
 	
 	// save our references
 	i2cIn->i2cId = i2cIdIn;
+	cxa_timeDiff_init(&i2cIn->td_interWriteDelay, true);
 
 	I2C_CFG_Type i2c_cfg =
 			{
@@ -106,6 +108,8 @@ bool cxa_i2cMaster_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 	if( numCtrlBytesIn > 0 ) cxa_assert(ctrlBytesIn);
 	if( numDataBytesIn > 0 ) cxa_assert(dataBytesIn);
 	
+	while( !cxa_timeDiff_isElapsed_ms(&i2cIn->td_interWriteDelay, INTERWRITE_DELAY_MS) );
+
 	// set our target slave address
 	I2C_SetSlaveAddr(i2cIn->i2cId, addressIn);
 
@@ -129,6 +133,9 @@ bool cxa_i2cMaster_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn,
 	{
 		if( cxa_timeDiff_isElapsed_ms(&td_timeout, TIMEOUT_DEFAULT_MS) ) return false;
 	}
+
+	// make sure we don't write too fast...
+	cxa_timeDiff_setStartTime_now(&i2cIn->td_interWriteDelay);
 
 	return true;
 }
