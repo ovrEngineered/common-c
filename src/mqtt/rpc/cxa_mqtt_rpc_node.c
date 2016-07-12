@@ -25,6 +25,7 @@
 #include <cxa_mqtt_message_publish.h>
 #include <cxa_mqtt_rpc_message.h>
 #include <cxa_mqtt_rpc_node_root.h>
+#include <cxa_runLoop.h>
 #include <cxa_stringUtils.h>
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
@@ -43,6 +44,8 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 										 char *const remainingTopicIn, uint16_t remainingTopicLen_bytesIn,
 										 cxa_mqtt_message_t *const msgIn);
+
+static void cb_onRunLoopUpdate(void* userVarIn);
 
 static cxa_mqtt_message_t* prepForResponse(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_message_t* reqMsgIn, cxa_linkedField_t **lf_payloadIn, cxa_linkedField_t **lf_retPayloadIn);
 static void sendResponse(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_mqtt_message_t *responseMessageIn);
@@ -76,6 +79,9 @@ void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_nod
 
 	// add as a subnode (if we have a parent)
 	if( nodeIn->parentNode != NULL ) cxa_assert( cxa_array_append(&nodeIn->parentNode->subNodes, (void*)&nodeIn) );
+
+	// register for run loop execution
+	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)nodeIn);
 }
 
 
@@ -205,32 +211,6 @@ bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, ch
 	cxa_assert(notiNameIn);
 
 	return false;
-}
-
-
-void cxa_mqtt_rpc_node_update(cxa_mqtt_rpc_node_t *const nodeIn)
-{
-	cxa_assert(nodeIn);
-
-	// check our outstanding requests for timeouts
-	cxa_array_iterate(&nodeIn->outstandingRequests, currRequest, cxa_mqtt_rpc_node_outstandingRequest_t)
-	{
-		if( currRequest == NULL ) continue;
-
-		if( cxa_timeDiff_isElapsed_ms(&currRequest->td_timeout, REQUEST_TIMEOUT_MS) )
-		{
-			currRequest->cb(nodeIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_TIMEOUT, NULL, currRequest->userVar);
-			cxa_array_remove(&nodeIn->outstandingRequests, currRequest);
-			break;
-		}
-	}
-
-	// iterate through our subnodes and update them as well
-	cxa_array_iterate(&nodeIn->subNodes, currSubNode, cxa_mqtt_rpc_node_t*)
-	{
-		if( currSubNode == NULL ) continue;
-		cxa_mqtt_rpc_node_update(*currSubNode);
-	}
 }
 
 
@@ -397,6 +377,33 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	}
 
 	return false;
+}
+
+
+static void cb_onRunLoopUpdate(void* userVarIn)
+{
+	cxa_mqtt_rpc_node_t* nodeIn = (cxa_mqtt_rpc_node_t*)userVarIn;
+	cxa_assert(nodeIn);
+
+	// check our outstanding requests for timeouts
+	cxa_array_iterate(&nodeIn->outstandingRequests, currRequest, cxa_mqtt_rpc_node_outstandingRequest_t)
+	{
+		if( currRequest == NULL ) continue;
+
+		if( cxa_timeDiff_isElapsed_ms(&currRequest->td_timeout, REQUEST_TIMEOUT_MS) )
+		{
+			currRequest->cb(nodeIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_TIMEOUT, NULL, currRequest->userVar);
+			cxa_array_remove(&nodeIn->outstandingRequests, currRequest);
+			break;
+		}
+	}
+
+	// iterate through our subnodes and update them as well
+	cxa_array_iterate(&nodeIn->subNodes, currSubNode, cxa_mqtt_rpc_node_t*)
+	{
+		if( currSubNode == NULL ) continue;
+		cb_onRunLoopUpdate((void*)*currSubNode);
+	}
 }
 
 
