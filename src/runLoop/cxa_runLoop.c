@@ -97,6 +97,17 @@ void cxa_runLoop_clearAllEntries(void)
 }
 
 
+void cxa_runLoop_iterate(void)
+{
+	if( !isInit ) cxa_runLoop_init();
+
+	cxa_array_iterate(&SINGLETON.cbs, currEntry, cxa_runLoop_entry_t)
+	{
+		if( currEntry->cb != NULL) currEntry->cb(currEntry->userVar);
+	}
+}
+
+
 void cxa_runLoop_execute(void)
 {
 	if( !isInit ) cxa_runLoop_init();

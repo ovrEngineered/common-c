@@ -47,6 +47,7 @@ bool cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn);
 bool cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn);
 void cxa_runLoop_clearAllEntries(void);
 
+void cxa_runLoop_iterate(void);
 void cxa_runLoop_execute(void);
 
 
