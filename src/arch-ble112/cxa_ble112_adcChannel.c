@@ -19,6 +19,7 @@
 // ******** includes ********
 #include <blestack/hw_regs.h>
 #include <cxa_assert.h>
+#include <cxa_runLoop.h>
 
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
@@ -53,7 +54,7 @@ void cxa_ble112_adcChannel_init_internalRef(cxa_ble112_adcChannel_t *const adcCh
 	adcChanIn->vRef = CXA_BLE112_ADC_VREF_INTERNAL;
 
 	// initialize our superclass
-	cxa_adcChannel_init(&adcChanIn->super, scm_startConversion_singleShot, scm_update);
+	cxa_adcChannel_init(&adcChanIn->super, scm_startConversion_singleShot);
 
 	// set our pin to ADC mode
 	APCFG |= (1 << chanIn);
@@ -115,7 +116,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 	{
 		if( currListener == NULL ) continue;
 
-		if( currListener->cb_convComp != NULL ) currListener->cb_convComp(superIn, (float)adcResult/((float)(4096-1)) * INTERAL_VREF, currListener->userVar);
-		if( currListener->cb_convComp_raw != NULL ) currListener->cb_convComp_raw(superIn, (uint8_t*)&adcResult, sizeof(adcResult), currListener->userVar);
+		if( currListener->cb_convComp != NULL ) currListener->cb_convComp(&adcChanIn->super, (float)adcResult/((float)(4096-1)) * INTERAL_VREF, currListener->userVar);
+		if( currListener->cb_convComp_raw != NULL ) currListener->cb_convComp_raw(&adcChanIn->super, (uint8_t*)&adcResult, sizeof(adcResult), currListener->userVar);
 	}
 }
