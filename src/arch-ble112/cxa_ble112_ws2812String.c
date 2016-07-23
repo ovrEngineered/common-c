@@ -109,6 +109,7 @@ void cxa_ble112_ws2812String_init(cxa_ble112_ws2812String_t *const ws2812In, cxa
 
 
 // ******** local function implementations ********
+#pragma optimize=speed high
 static void scm_writeBytes(cxa_ws2812String_t *const superIn, cxa_ws2812String_pixelBuffer_t* pixelBuffersIn, size_t numPixelBuffersIn)
 {
 	cxa_ble112_ws2812String_t* ws2812In = (cxa_ble112_ws2812String_t*)superIn;
