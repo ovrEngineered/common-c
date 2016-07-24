@@ -102,39 +102,62 @@ typedef enum
 
 
 /**
- * @private
+ * @public
  */
-typedef void (*cxa_gpio_scm_setDirection_t)(cxa_gpio_t *const gpioIn, const cxa_gpio_direction_t dirIn);
+typedef enum
+{
+	CXA_GPIO_INTERRUPTTYPE_RISING_EDGE,
+	CXA_GPIO_INTERRUPTTYPE_FALLING_EDGE,
+	CXA_GPIO_INTERRUPTTYPE_ONCHANGE
+}cxa_gpio_interruptType_t;
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_gpio_cb_onInterrupt_t)(cxa_gpio_t *const gpioIn, cxa_gpio_interruptType_t intTypeIn, bool newValIn, void* userVarIn);
 
 
 /**
  * @private
  */
-typedef cxa_gpio_direction_t (*cxa_gpio_scm_getDirection_t)(cxa_gpio_t *const gpioIn);
+typedef void (*cxa_gpio_scm_setDirection_t)(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn);
 
 
 /**
  * @private
  */
-typedef void (*cxa_gpio_setPolarity_t)(cxa_gpio_t *const gpioIn, const cxa_gpio_polarity_t polarityIn);
+typedef cxa_gpio_direction_t (*cxa_gpio_scm_getDirection_t)(cxa_gpio_t *const superIn);
 
 
 /**
  * @private
  */
-typedef cxa_gpio_polarity_t (*cxa_gpio_scm_getPolarity_t)(cxa_gpio_t *const gpioIn);
+typedef void (*cxa_gpio_scm_setPolarity_t)(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn);
 
 
 /**
  * @private
  */
-typedef void (*cxa_gpio_scm_setValue_t)(cxa_gpio_t *const gpioIn, const bool valIn);
+typedef cxa_gpio_polarity_t (*cxa_gpio_scm_getPolarity_t)(cxa_gpio_t *const superIn);
 
 
 /**
  * @private
  */
-typedef bool (*cxa_gpio_scm_getValue_t)(cxa_gpio_t *const gpioIn);
+typedef void (*cxa_gpio_scm_setValue_t)(cxa_gpio_t *const superIn, const bool valIn);
+
+
+/**
+ * @private
+ */
+typedef bool (*cxa_gpio_scm_getValue_t)(cxa_gpio_t *const superIn);
+
+
+/**
+ * @private
+ */
+typedef bool (*cxa_gpio_scm_enableInterrupt_t)(cxa_gpio_t *const superIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn);
 
 
 /**
@@ -144,10 +167,11 @@ struct cxa_gpio
 {
 	cxa_gpio_scm_setDirection_t scm_setDirection;
 	cxa_gpio_scm_getDirection_t scm_getDirection;
-	cxa_gpio_setPolarity_t scm_setPolarity;
+	cxa_gpio_scm_setPolarity_t scm_setPolarity;
 	cxa_gpio_scm_getPolarity_t scm_getPolarity;
 	cxa_gpio_scm_setValue_t scm_setValue;
 	cxa_gpio_scm_getValue_t scm_getValue;
+	cxa_gpio_scm_enableInterrupt_t scm_enableInterrupt;
 };
 
 
@@ -158,10 +182,11 @@ struct cxa_gpio
 void cxa_gpio_init(cxa_gpio_t *const gpioIn,
 				   cxa_gpio_scm_setDirection_t scm_setDirectionIn,
 				   cxa_gpio_scm_getDirection_t scm_getDirectionIn,
-				   cxa_gpio_setPolarity_t scm_setPolarityIn,
+				   cxa_gpio_scm_setPolarity_t scm_setPolarityIn,
 				   cxa_gpio_scm_getPolarity_t scm_getPolarityIn,
 				   cxa_gpio_scm_setValue_t scm_setValueIn,
-				   cxa_gpio_scm_getValue_t scm_getValueIn);
+				   cxa_gpio_scm_getValue_t scm_getValueIn,
+				   cxa_gpio_scm_enableInterrupt_t scm_enableInterruptIn);
 
 /**
  * @public
@@ -243,6 +268,7 @@ void cxa_gpio_setValue(cxa_gpio_t *const gpioIn, const bool valIn);
  */
 bool cxa_gpio_getValue(cxa_gpio_t *const gpioIn);
 
+
 /**
  * @public
  * @brief Toggles the output value of the GPIO object/pin
@@ -254,6 +280,9 @@ bool cxa_gpio_getValue(cxa_gpio_t *const gpioIn);
  * @param[in] gpioIn pointer to a pre-initialized GPIO object
  */
 void cxa_gpio_toggle(cxa_gpio_t *const gpioIn);
+
+
+bool cxa_gpio_enableInterrupt(cxa_gpio_t *const gpioIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn);
 
 
 #endif // CXA_GPIO_H_

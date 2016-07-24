@@ -64,6 +64,9 @@ struct cxa_ble112_gpio
 	uint8_t pinNum;
 
 	bool hasBeenSeld;
+
+	cxa_gpio_cb_onInterrupt_t cb_int;
+	void* userVar;
 };
 
 

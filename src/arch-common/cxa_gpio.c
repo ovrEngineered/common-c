@@ -41,10 +41,11 @@
 void cxa_gpio_init(cxa_gpio_t *const gpioIn,
 				   cxa_gpio_scm_setDirection_t scm_setDirectionIn,
 				   cxa_gpio_scm_getDirection_t scm_getDirectionIn,
-				   cxa_gpio_setPolarity_t scm_setPolarityIn,
+				   cxa_gpio_scm_setPolarity_t scm_setPolarityIn,
 				   cxa_gpio_scm_getPolarity_t scm_getPolarityIn,
 				   cxa_gpio_scm_setValue_t scm_setValueIn,
-				   cxa_gpio_scm_getValue_t scm_getValueIn)
+				   cxa_gpio_scm_getValue_t scm_getValueIn,
+				   cxa_gpio_scm_enableInterrupt_t scm_enableInterruptIn)
 {
 	cxa_assert(gpioIn);
 	cxa_assert(scm_setDirectionIn);
@@ -53,6 +54,7 @@ void cxa_gpio_init(cxa_gpio_t *const gpioIn,
 	cxa_assert(scm_getPolarityIn);
 	cxa_assert(scm_setValueIn);
 	cxa_assert(scm_getValueIn);
+	cxa_assert(scm_enableInterruptIn);
 
 	// save our references
 	gpioIn->scm_setDirection = scm_setDirectionIn;
@@ -61,7 +63,9 @@ void cxa_gpio_init(cxa_gpio_t *const gpioIn,
 	gpioIn->scm_getPolarity = scm_getPolarityIn;
 	gpioIn->scm_setValue = scm_setValueIn;
 	gpioIn->scm_getValue = scm_getValueIn;
+	gpioIn->scm_enableInterrupt = scm_enableInterruptIn;
 }
+
 
 void cxa_gpio_setDirection(cxa_gpio_t *const gpioIn, const cxa_gpio_direction_t dirIn)
 {
@@ -116,6 +120,15 @@ void cxa_gpio_toggle(cxa_gpio_t *const gpioIn)
 	cxa_assert(gpioIn);
 
 	cxa_gpio_setValue(gpioIn, !cxa_gpio_getValue(gpioIn));
+}
+
+
+bool cxa_gpio_enableInterrupt(cxa_gpio_t *const gpioIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn)
+{
+	cxa_assert(gpioIn);
+	cxa_assert(gpioIn->scm_enableInterrupt);
+
+	return gpioIn->scm_enableInterrupt(gpioIn, intTypeIn, cbIn, userVarIn);
 }
 
 
