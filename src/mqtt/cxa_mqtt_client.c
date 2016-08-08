@@ -120,11 +120,12 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 }
 
 
-void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
+bool cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
 									char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn)
 {
 	cxa_assert(clientIn);
-	if( payloadLen_bytesIn > 0 ) cxa_assert(payloadIn);
+	if( (payloadLen_bytesIn > 0) && (payloadIn == NULL) ) return false;
+	if( payloadLen_bytesIn > sizeof(clientIn->will.payload) ) return false;
 
 	// this is how we clear a will (for future connects)
 	if( topicNameIn == NULL )
@@ -132,7 +133,7 @@ void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_
 		clientIn->will.topic[0] = 0;
 		clientIn->will.payload[0] = 0;
 		clientIn->will.payloadLen_bytes = 0;
-		return;
+		return true;
 	}
 
 	// if we made it here, we are setting a new will
@@ -141,6 +142,8 @@ void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_
 	cxa_assert( strlcpy(clientIn->will.topic, topicNameIn, sizeof(clientIn->will.topic)) < sizeof(clientIn->will.topic) );
 	if( payloadIn != NULL ) memcpy(clientIn->will.payload, payloadIn, payloadLen_bytesIn);
 	clientIn->will.payloadLen_bytes = payloadLen_bytesIn;
+
+	return true;
 }
 
 

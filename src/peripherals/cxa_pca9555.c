@@ -92,7 +92,7 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 		pcaIn->gpios_port0[i].lastOutputVal = ((out0 >> i) & 0x01);
 
 		// initialize our super class
-		cxa_gpio_init(&pcaIn->gpios_port0[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+		cxa_gpio_init(&pcaIn->gpios_port0[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 	}
 	for( int i = 0; i < (sizeof(pcaIn->gpios_port1)/sizeof(*pcaIn->gpios_port1)); i++ )
 	{
@@ -102,7 +102,7 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 		pcaIn->gpios_port1[i].lastOutputVal = ((out1 >> i) & 0x01);
 
 		// initialize our super class
-		cxa_gpio_init(&pcaIn->gpios_port1[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+		cxa_gpio_init(&pcaIn->gpios_port1[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 	}
 
 	return true;

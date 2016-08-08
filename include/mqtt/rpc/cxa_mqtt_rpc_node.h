@@ -186,9 +186,4 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
 bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn, void* dataIn, size_t dataSize_bytesIn);
 
 
-/**
- * @protected
- */
-void cxa_mqtt_rpc_node_update(cxa_mqtt_rpc_node_t *const nodeIn);
-
 #endif // CXA_MQTT_RPC_NODE_H_

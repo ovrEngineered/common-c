@@ -48,8 +48,8 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 
 
 // ******** global function implementations ********
-void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn, bool reportStateIn,
-								 const char *nameFmtIn, ...)
+void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn,
+								 bool reportStateIn, const char *nameFmtIn, ...)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(nameFmtIn);
@@ -74,7 +74,19 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	stateTopic[0] = 0;
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
 	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_NOTI_PREFIX CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
-	cxa_mqtt_client_setWillMessage(nodeIn->mqttClient, CXA_MQTT_QOS_ATMOST_ONCE, true, stateTopic, ((uint8_t[]){0x00}), 1);
+	#ifdef CXA_MQTTSERVER_ISAWS
+		cxa_assert(cxa_mqtt_client_setWillMessage(nodeIn->mqttClient,
+												  CXA_MQTT_QOS_ATMOST_ONCE,
+												  false,
+												  stateTopic,
+												  "{\"state\":{\"reported\":{\"connState\":0}}}", 38));
+	#else
+		cxa_assert(cxa_mqtt_client_setWillMessage(nodeIn->mqttClient,
+												  CXA_MQTT_QOS_ATMOST_ONCE,
+												  true,
+												  stateTopic,
+												  ((uint8_t[]){0x00}), 1));
+	#endif
 
 	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
 	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
@@ -85,13 +97,6 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	// register for mqtt events
 	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, (void*)nodeIn);
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
-}
-
-
-void cxa_mqtt_rpc_node_root_update(cxa_mqtt_rpc_node_root_t *const nodeIn)
-{
-	cxa_assert(nodeIn);
-	cxa_mqtt_rpc_node_update(&nodeIn->super);
 }
 
 
@@ -108,7 +113,21 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 	stateTopic[0] = 0;
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
 	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_NOTI_PREFIX CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
-	cxa_mqtt_client_publish(clientIn, CXA_MQTT_QOS_ATMOST_ONCE, true, stateTopic, ((uint8_t[]){0x01}), 1);
+	#ifdef CXA_MQTTSERVER_ISAWS
+		cxa_logger_stepDebug();
+		cxa_mqtt_client_publish(clientIn,
+								CXA_MQTT_QOS_ATMOST_ONCE,
+								false,
+								stateTopic,
+								"{\"state\":{\"reported\":{\"connState\":1}}}", 38);
+	#else
+		cxa_logger_stepDebug();
+		cxa_mqtt_client_publish(clientIn,
+								CXA_MQTT_QOS_ATMOST_ONCE,
+								true,
+								stateTopic,
+								((uint8_t[]){0x01}), 1);
+	#endif
 }
 
 

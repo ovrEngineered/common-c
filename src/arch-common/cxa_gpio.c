@@ -54,7 +54,6 @@ void cxa_gpio_init(cxa_gpio_t *const gpioIn,
 	cxa_assert(scm_getPolarityIn);
 	cxa_assert(scm_setValueIn);
 	cxa_assert(scm_getValueIn);
-	cxa_assert(scm_enableInterruptIn);
 
 	// save our references
 	gpioIn->scm_setDirection = scm_setDirectionIn;

@@ -1,5 +1,15 @@
 /**
  * @file
+ *
+ * @note This object should work across all architecture-specific implementations
+ *
+ *
+ * #### Example Usage: ####
+ *
+ * @code
+ * @endcode
+ *
+ *
  * @copyright 2015 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,39 +24,21 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_MQTT_RPC_NODE_ROOT_H_
-#define CXA_MQTT_RPC_NODE_ROOT_H_
+#ifndef CXA_BLE112_PMUX_H_
+#define CXA_BLE112_PMUX_H_
 
 
 // ******** includes ********
-#include <cxa_mqtt_client.h>
-#include <cxa_mqtt_rpc_node.h>
-#include <cxa_timeDiff.h>
 
 
 // ******** global macro definitions ********
 
 
 // ******** global type definitions *********
-/**
- * @private
- */
-typedef struct cxa_mqtt_rpc_node_root
-{
-	cxa_mqtt_rpc_node_t super;
-
-	cxa_mqtt_client_t* mqttClient;
-	bool shouldReportState;
-
-	uint16_t currRequestId;
-}cxa_mqtt_rpc_node_root_t;
 
 
 // ******** global function prototypes ********
-/**
- * @public
- */
-void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqtt_client_t* const clientIn,
-								 bool reportStateIn, const char *nameFmtIn, ...);
+void cxa_ble112_pmux_init(void);
 
-#endif // CXA_MQTT_RPC_NODE_ROOT_H_
+
+#endif /* CXA_BLE112_PMUX_H_ */

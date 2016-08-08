@@ -31,24 +31,28 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_MQTT_CLIENT_MAXNUM_LISTENERS
-	#define CXA_MQTT_CLIENT_MAXNUM_LISTENERS			2
+	#define CXA_MQTT_CLIENT_MAXNUM_LISTENERS				2
 #endif
 
 #ifndef CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS
-	#define CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS		2
+	#define CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS			2
 #endif
 
 
 #ifndef CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES
-	#define CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES	64
+	#define CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES		64
 #endif
 
 #ifndef CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES
-	#define CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES		38
+	#define CXA_MQTT_CLIENT_MAXLEN_WILLTOPIC_BYTES			38
 #endif
 
 #ifndef CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES
-	#define CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES	1
+	#ifdef CXA_MQTTSERVER_ISAWS
+		#define CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES	38
+	#else
+		#define CXA_MQTT_CLIENT_MAXLEN_WILLPAYLOAD_BYTES	1
+	#endif
 #endif
 
 
@@ -159,7 +163,7 @@ struct cxa_mqtt_client
 // ******** global function prototypes ********
 void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, char *const clientIdIn);
 
-void cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
+bool cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
 									char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn);
 
 void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,

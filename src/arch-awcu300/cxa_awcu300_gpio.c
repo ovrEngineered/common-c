@@ -59,7 +59,7 @@ void cxa_awcu300_gpio_init_input(cxa_awcu300_gpio_t *const gpioIn, const GPIO_NO
 	gpioIn->polarity = polarityIn;
 	
 	// initialize our super class
-	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 
 	configurePinMux(pinNumIn);
 
@@ -79,7 +79,7 @@ void cxa_awcu300_gpio_init_output(cxa_awcu300_gpio_t *const gpioIn, const GPIO_N
 	gpioIn->polarity = polarityIn;
 	
 	// initialze our super class
-	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 
 	configurePinMux(pinNumIn);
 
@@ -102,7 +102,7 @@ void cxa_awcu300_gpio_init_safe(cxa_awcu300_gpio_t *const gpioIn, const GPIO_NO_
 	gpioIn->dir = CXA_GPIO_DIR_UNKNOWN;
 	
 	// initialze our super class
-	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue);
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 
 	configurePinMux(pinNumIn);
 
