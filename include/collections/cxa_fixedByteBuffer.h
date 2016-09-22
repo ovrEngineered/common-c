@@ -91,6 +91,7 @@
 #define cxa_fixedByteBuffer_append_uint32BE(fbbIn, uint32In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)) }, 4)
 #define cxa_fixedByteBuffer_append_float(fbbIn, floatIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)&(floatIn), 4)
 #define cxa_fixedByteBuffer_append_cString(fbbIn, strIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)(strIn), (strlen(strIn)+1))
+#define cxa_fixedByteBuffer_append_fbb(fbbIn, otherFbbIn)					cxa_fixedByteBuffer_append((fbbIn), cxa_fixedByteBuffer_get_pointerToIndex((otherFbbIn), 0), cxa_fixedByteBuffer_getSize_bytes((otherFbbIn)));
 
 #define cxa_fixedByteBuffer_append_lengthPrefixedCString_uint16BE(fbbIn, strIn, includeNullTermIn)	\
 	cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE((fbbIn), (strIn), strlen(strIn) + ((includeNullTermIn) ? 1 : 0))
@@ -204,6 +205,24 @@ void cxa_fixedByteBuffer_init_subBufferRemainingElems(cxa_fixedByteBuffer_t *con
 
 /**
  * @public
+ * @brief Initializes a new subBuffer whose bytes are stored within another fixedByteBuffer. This
+ * 		function is similar to 'cxa_fixedByteBuffer_init_subBufferRemainingElems' except that
+ * 		the subBuffer can be located anywhere within the parent buffer, even in "empty" space.
+ * 		Note: both the parentFbb and subFbb will be backed by the same data, modification
+ * 			of byte values in one will be reflected in the other. Structure-modifying actions
+ * 			(append, insert, remove) in one will NOT update the meta information of the other
+ * 			(eg. size, freeSize, etc). The two buffers will essentially be independent but
+ * 			backed in the same memory.
+ *
+ * @param[in] subFbbIn pointer to the pre-allocated fixedByteBuffer object (the new fbb)
+ * @param[in] parentFbbIn pointer to the pre-initialized parent fixedByteBuffer (currently holding the target bytes)
+ * @param[in] startIndexIn the desired offset of the subFbb within the parent (eg. 2 -> index 0 of subFbb == index 2 of parentFbb)
+ */
+void cxa_fixedByteBuffer_init_subBufferParentMaxSize(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexIn);
+
+
+/**
+ * @public
  * @brief Appends (copies) the number of bytes at the specified pointer to the end of the fixed byte buffer
  *
  * @param[in] fbbIn pointer to the pre-initialized cxa_fixedByteBuffer_t object
@@ -230,6 +249,27 @@ bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *con
  * @return true if the append was successful, false if not (eg. full)
  */
 bool cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const uint16_t numBytesIn);
+
+
+/**
+ * @public
+ * @brief Similar to the 'cxa_array_append_empty'...appends the
+ * 		given number of bytes to the buffer (increasing the
+ * 		size of the buffer), but doesn't actually copy data
+ * 		into the buffer.
+ *
+ * Instead, this function returns a pointer to the start of
+ * the newly created "block" in the buffer.This allows you
+ * to minimize copy operations by initializing the element
+ * "in-place" within the buffer.
+ *
+ * @param[in] fbbIn pointer to the pre-initialized cxa_fixedByteBuffer_t object
+ * @param[in] numBytesIn the number of empty bytes to append to the buffer
+ *
+ * @return a pointer to the new "block" location within the
+ * 		buffer object OR NULL on error (buffer is likely full)
+ */
+void* cxa_fixedByteBuffer_append_emptyBytes(cxa_fixedByteBuffer_t *const fbbIn, const size_t numBytesIn);
 
 
 /**

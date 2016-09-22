@@ -85,6 +85,18 @@ void cxa_fixedByteBuffer_init_subBufferRemainingElems(cxa_fixedByteBuffer_t *con
 }
 
 
+void cxa_fixedByteBuffer_init_subBufferParentMaxSize(cxa_fixedByteBuffer_t *const subFbbIn, cxa_fixedByteBuffer_t *const parentFbbIn, const size_t startIndexIn)
+{
+	cxa_assert(subFbbIn);
+	cxa_assert(parentFbbIn);
+	cxa_assert(startIndexIn <= cxa_fixedByteBuffer_getMaxSize_bytes(parentFbbIn));
+
+	// setup our internal state
+	size_t maxSize_bytes = cxa_fixedByteBuffer_getMaxSize_bytes(parentFbbIn) - startIndexIn;
+	cxa_array_init_inPlace(&subFbbIn->bytes, 1, 0, cxa_array_get_noBoundsCheck(&parentFbbIn->bytes, startIndexIn), maxSize_bytes);
+}
+
+
 bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const size_t numBytesIn)
 {
 	cxa_assert(fbbIn);
@@ -114,6 +126,23 @@ bool cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE(cxa_fixedByteBuffer
 	if( !cxa_fixedByteBuffer_append_uint16LE(fbbIn, numBytesIn) ) return false;
 	// now the actual data
 	return cxa_fixedByteBuffer_append(fbbIn, ptrIn, numBytesIn);
+}
+
+
+void* cxa_fixedByteBuffer_append_emptyBytes(cxa_fixedByteBuffer_t *const fbbIn, const size_t numBytesIn)
+{
+	cxa_assert(fbbIn);
+
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getFreeSize_bytes(fbbIn) < numBytesIn ) return NULL;
+
+	void* retVal = cxa_fixedByteBuffer_get_pointerToIndex(fbbIn, cxa_fixedByteBuffer_getSize_bytes(fbbIn));
+	for( size_t i = 0; i < numBytesIn; i++ )
+	{
+		// shouldn't happen, but we should test
+		if( !cxa_array_append_empty(&fbbIn->bytes) ) return NULL;
+	}
+	return retVal;
 }
 
 
