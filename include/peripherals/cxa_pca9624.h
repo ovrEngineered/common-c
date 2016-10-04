@@ -33,6 +33,9 @@
 typedef struct cxa_pca9624 cxa_pca9624_t;
 
 
+/**
+ * @public
+ */
 typedef struct
 {
 	uint8_t channelIndex;
@@ -52,13 +55,16 @@ struct cxa_pca9624
 
 	cxa_gpio_t* gpio_outputEnable;
 
-	uint8_t currBrightness[CXA_PCA9624_NUM_CHANNELS];
+	uint8_t currRegs[18];
 };
 
 
 // ******** global function prototypes ********
 bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, uint8_t addressIn, cxa_gpio_t *const gpio_oeIn);
 
+bool cxa_pca9624_setGlobalBlinkRate(cxa_pca9624_t *const pcaIn, uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
+
 bool cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn);
+bool cxa_pca9624_blinkChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn);
 
 #endif // CXA_PCA9624_H_

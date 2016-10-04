@@ -33,12 +33,15 @@
 
 
 // ******** global function implementations ********
-void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn, cxa_rgbLed_scm_setRgb_t scm_setRgbIn)
+void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
+					 cxa_rgbLed_scm_setRgb_t scm_setRgbIn,
+					 cxa_rgbLed_scm_blink_t scm_blinkIn)
 {
 	cxa_assert(ledIn);
 
 	// save our references
 	ledIn->scm_setRgb = scm_setRgbIn;
+	ledIn->scm_blink = scm_blinkIn;
 }
 
 
@@ -49,5 +52,13 @@ void cxa_rgbLed_setRgb(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint
 	ledIn->scm_setRgb(ledIn, rIn, gIn, bIn);
 }
 
+
+void cxa_rgbLed_blink(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
+					  uint16_t onPeriod_msIn, uint16_t offPeriod_msIn)
+{
+	cxa_assert(ledIn);
+	cxa_assert(ledIn->scm_blink);
+	ledIn->scm_blink(ledIn, rIn, gIn, bIn, onPeriod_msIn, offPeriod_msIn);
+}
 
 // ******** local function implementations ********

@@ -48,9 +48,16 @@ typedef struct cxa_rgbLed cxa_rgbLed_t;
 typedef void (*cxa_rgbLed_scm_setRgb_t)(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn);
 
 
+/**
+ * @protected
+ */
+typedef void (*cxa_rgbLed_scm_blink_t)(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
+									   uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
+
 struct cxa_rgbLed
 {
 	cxa_rgbLed_scm_setRgb_t scm_setRgb;
+	cxa_rgbLed_scm_blink_t scm_blink;
 };
 
 
@@ -58,9 +65,22 @@ struct cxa_rgbLed
 /**
  * @protected
  */
-void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn, cxa_rgbLed_scm_setRgb_t scm_setRgbIn);
+void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
+					 cxa_rgbLed_scm_setRgb_t scm_setRgbIn,
+					 cxa_rgbLed_scm_blink_t scm_blinkIn);
 
+
+/**
+ * @public
+ */
 void cxa_rgbLed_setRgb(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8_t bIn);
+
+
+/**
+ * @public
+ */
+void cxa_rgbLed_blink(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
+					  uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
 
 
 #endif /* CXA_RGBLED_H_ */

@@ -51,22 +51,27 @@ typedef enum
 	REG_GRPFREQ = 0x0B,
 	REG_LEDOUT0 = 0x0C,
 	REG_LEDOUT1 = 0x0D,
+	REG_SUBADR1 = 0x0E,
+	REG_SUBADR2 = 0x0F,
+	REG_SUBADR3 = 0x10,
+	REG_ALLCALLADR = 0x11
 }register_t;
 
 
 typedef enum
 {
-	LEDOUT_OFF,
-	LEDOUT_ON,
-	LEDOUT_PWM_INDIV,
-	LEDOUT_PWM_ALL
+	LEDOUT_OFF = 0x00,
+	LEDOUT_ON = 0x01,
+	LEDOUT_PWM_INDIV = 0x02,
+	LEDOUT_PWM_ALL = 0x03
 }ledOut_state_t;
 
 
 // ******** local function prototypes ********
 static bool readFromRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t* valOut);
-static bool writeToRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t valIn);
-static bool writeFullConfig(cxa_pca9624_t *const pcaIn, uint8_t* fullDevConfig);
+static bool syncRegisterIfChanged(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t valIn);
+static bool writeAllRegs(cxa_pca9624_t *const pcaIn);
+static bool setAllChannelsToState(cxa_pca9624_t *const pcaIn, ledOut_state_t stateIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn);
 static bool writeAllLedBrightnesses(cxa_pca9624_t *const pcaIn, uint8_t* brightnessesIn);
 
 
@@ -97,35 +102,50 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 			(((mode2 >> 0) & 0x01) != 1) ) return false;
 
 	// if we made it here, it looks like we have a responding, valid device...configure it
-	uint8_t fullDevConfig[] =
-			{
-				0x01,		// MODE1
-				0x05,		// MODE2
-				0x00,		// PWM0
-				0x00,		// PWM1
-				0x00,		// PWM2
-				0x00,		// PWM3
-				0x00,		// PWM4
-				0x00,		// PWM5
-				0x00,		// PWM6
-				0x00,		// PWM7
-				0xFF,		// GRPPWM
-				0x00,		// GRPFREQ
-				0xAA,		// LEDOUT0 (PWM)
-				0xAA,		// LEDOUT1 (PWM)
-				0xE2,		// SUBADR1
-				0xE4,		// SUBADR2
-				0xE8,		// SUBADR3
-				0xE0,		// ALLLCALLADR
-			};
-	if( !writeFullConfig(pcaIn, fullDevConfig) ) return false;
-
-	// setup our initial brightnesses
-	memset(pcaIn->currBrightness, 0, sizeof(pcaIn->currBrightness));
+	pcaIn->currRegs[REG_MODE1] = 0x01;
+	pcaIn->currRegs[REG_MODE2] = 0x05;
+	pcaIn->currRegs[REG_PWM0] = 0x00;
+	pcaIn->currRegs[REG_PWM1] = 0x00;
+	pcaIn->currRegs[REG_PWM2] = 0x00;
+	pcaIn->currRegs[REG_PWM3] = 0x00;
+	pcaIn->currRegs[REG_PWM4] = 0x00;
+	pcaIn->currRegs[REG_PWM5] = 0x00;
+	pcaIn->currRegs[REG_PWM6] = 0x00;
+	pcaIn->currRegs[REG_PWM7] = 0x00;
+	pcaIn->currRegs[REG_GRPPWM] = 0xFF;
+	pcaIn->currRegs[REG_GRPFREQ] = 0x00;
+	pcaIn->currRegs[REG_LEDOUT0] = 0xAA;
+	pcaIn->currRegs[REG_LEDOUT1] = 0xAA;
+	pcaIn->currRegs[REG_SUBADR1] = 0xE2;
+	pcaIn->currRegs[REG_SUBADR2] = 0xE4;
+	pcaIn->currRegs[REG_SUBADR3] = 0xE8;
+	pcaIn->currRegs[REG_ALLCALLADR] = 0xE0;
+	if( !writeAllRegs(pcaIn) ) return false;
 
 	// enable our outputs
 	cxa_gpio_setValue(pcaIn->gpio_outputEnable, 1);
 	pcaIn->isInit = true;
+
+	return true;
+}
+
+
+bool cxa_pca9624_setGlobalBlinkRate(cxa_pca9624_t *const pcaIn, uint16_t onPeriod_msIn, uint16_t offPeriod_msIn)
+{
+	cxa_assert(pcaIn);
+
+	// make sure we're blinking (not dimming)
+	uint8_t newMode2 = pcaIn->currRegs[REG_MODE2] | (1 << 5);
+	if( !syncRegisterIfChanged(pcaIn, REG_MODE2, newMode2) ) return false;
+
+	// set our duty cycle
+	float dutyCycle_pcnt = ((float)onPeriod_msIn) / (((float)onPeriod_msIn) + ((float)offPeriod_msIn));
+	uint16_t newGrpPwm = dutyCycle_pcnt * 255.0;
+	if( !syncRegisterIfChanged(pcaIn, REG_GRPPWM, newGrpPwm) ) return false;
+
+	// and our frequency
+	uint16_t newGrpFreq = (((((float)onPeriod_msIn) / 1000.0) + (((float)offPeriod_msIn) / 1000.0)) * 24.0) - 1;
+	if( !syncRegisterIfChanged(pcaIn, REG_GRPFREQ, newGrpFreq) ) return false;
 
 	return true;
 }
@@ -136,10 +156,14 @@ bool cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca962
 	cxa_assert(pcaIn);
 	cxa_assert(chansEntriesIn);
 	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
+	if( numChansIn ==  0 ) return true;
 
-	// create a local copy of our brightnesses (in case we fail)
+	// make sure the channels are no longer blinking
+	if( !setAllChannelsToState(pcaIn, LEDOUT_PWM_INDIV, chansEntriesIn, numChansIn) ) return false;
+
+	// create a local copy of our registers (in case we fail)
 	uint8_t newBrightness[CXA_PCA9624_NUM_CHANNELS];
-	memcpy(newBrightness, pcaIn->currBrightness, sizeof(newBrightness));
+	memcpy(newBrightness, &pcaIn->currRegs[REG_PWM0], sizeof(newBrightness));
 
 	// set our new brightnesses
 	for( size_t i = 0; i < numChansIn; i++ )
@@ -154,8 +178,23 @@ bool cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca962
 	if( !writeAllLedBrightnesses(pcaIn, newBrightness) ) return false;
 
 	// if we made it here, the write was successful...store our new values
-	memcpy(pcaIn->currBrightness, newBrightness, sizeof(pcaIn->currBrightness));
+	memcpy(&pcaIn->currRegs[REG_PWM0], newBrightness, sizeof(newBrightness));
 	return true;
+}
+
+
+bool cxa_pca9624_blinkChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
+{
+	cxa_assert(pcaIn);
+	cxa_assert(chansEntriesIn);
+	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
+	if( numChansIn == 0 ) return true;
+
+	// have to set our brightnesses first
+	if( !cxa_pca9624_setBrightnessForChannels(pcaIn, chansEntriesIn, numChansIn) ) return false;
+
+	// now we need to tell the channels to blink
+	return setAllChannelsToState(pcaIn, LEDOUT_PWM_ALL, chansEntriesIn, numChansIn);
 }
 
 
@@ -169,19 +208,54 @@ static bool readFromRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, 
 }
 
 
-static bool writeToRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t valIn)
+static bool syncRegisterIfChanged(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t valIn)
 {
+	cxa_assert(pcaIn);
+
+	// see if we're already at the target value
+	if( pcaIn->currRegs[registerIn] == valIn ) return true;
+
+	// if we made it here, we need to do a write
 	uint8_t ctrlBytes = registerIn;
-	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
+	bool retVal = cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
+
+	// if the write was successful, update our local copy
+	if( retVal ) pcaIn->currRegs[registerIn] = valIn;
+
+	return retVal;
 }
 
 
-static bool writeFullConfig(cxa_pca9624_t *const pcaIn, uint8_t* fullDevConfigIn)
+static bool writeAllRegs(cxa_pca9624_t *const pcaIn)
 {
 	cxa_assert(pcaIn);
 
 	uint8_t ctrlBytes = 0x80;
-	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, fullDevConfigIn, 18);
+	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, pcaIn->currRegs, 18);
+}
+
+
+static bool setAllChannelsToState(cxa_pca9624_t *const pcaIn, ledOut_state_t stateIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
+{
+	cxa_assert(pcaIn);
+	cxa_assert(chansEntriesIn);
+	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
+	if( numChansIn == 0 ) return true;
+
+	// now we need to tell the channels to blink
+	uint8_t newLedOut0 = pcaIn->currRegs[REG_LEDOUT0];
+	uint8_t newLedOut1 = pcaIn->currRegs[REG_LEDOUT1];
+	for( size_t i = 0; i < numChansIn; i++ )
+	{
+		cxa_pca9624_channelEntry_t* currEntry = &chansEntriesIn[i];
+
+		uint8_t* targetLedOut = (currEntry->channelIndex < 4) ? &newLedOut0 : &newLedOut1;
+		uint8_t shiftAmount = (currEntry->channelIndex % 4) * 2;
+
+		*targetLedOut = (*targetLedOut & ~(0x03 << shiftAmount)) | (stateIn << shiftAmount);
+	}
+
+	return syncRegisterIfChanged(pcaIn, REG_LEDOUT0, newLedOut0) && syncRegisterIfChanged(pcaIn, REG_LEDOUT1, newLedOut1);
 }
 
 

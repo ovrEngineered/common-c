@@ -48,7 +48,7 @@ void cxa_rgbLed_triLed_init(cxa_rgbLed_triLed_t *const ledIn,
 	ledIn->led_b = led_bIn;
 
 	// initialize our super class
-	cxa_rgbLed_init(&ledIn->super, scm_setRgb);
+	cxa_rgbLed_init(&ledIn->super, scm_setRgb, NULL);
 }
 
 

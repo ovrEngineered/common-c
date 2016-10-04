@@ -28,6 +28,8 @@
 
 // ******** local function prototypes ********
 static void scm_setRgb(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn);
+static void scm_blink(cxa_rgbLed_t *constLedIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
+					  uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
 
 
 // ********  local variable declarations *********
@@ -49,7 +51,7 @@ void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *c
 	ledIn->chanIndex_b = chanIndex_bIn;
 
 	// initialize our super class
-	cxa_rgbLed_init(&ledIn->super, scm_setRgb);
+	cxa_rgbLed_init(&ledIn->super, scm_setRgb, scm_blink);
 }
 
 
@@ -66,4 +68,23 @@ static void scm_setRgb(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, ui
 						{.channelIndex=ledIn->chanIndex_b, .brightness=bIn}
 				};
 	cxa_pca9624_setBrightnessForChannels(ledIn->pca, chanEntries, (sizeof(chanEntries)/sizeof(*chanEntries)));
+}
+
+
+static void scm_blink(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
+					  uint16_t onPeriod_msIn, uint16_t offPeriod_msIn)
+{
+	cxa_rgbLed_pca9624_t* ledIn = (cxa_rgbLed_pca9624_t*)superIn;
+	cxa_assert(ledIn);
+
+	// set our global blink rate
+	if( !cxa_pca9624_setGlobalBlinkRate(ledIn->pca, onPeriod_msIn, offPeriod_msIn) ) return;
+
+	// tell the leds to blink
+	cxa_pca9624_channelEntry_t chanEntries[] = {
+						{.channelIndex=ledIn->chanIndex_r, .brightness=rIn},
+						{.channelIndex=ledIn->chanIndex_g, .brightness=gIn},
+						{.channelIndex=ledIn->chanIndex_b, .brightness=bIn}
+				};
+	cxa_pca9624_blinkChannels(ledIn->pca, chanEntries, (sizeof(chanEntries)/sizeof(*chanEntries)));
 }
