@@ -23,15 +23,21 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <cxa_timeDiff.h>
 
+#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+#include <cxa_config.h>
 
 // ******** local macro definitions ********
+#ifndef CXA_RUNLOOP_INFOPRINT_PERIOD_MS
+	#define CXA_RUNLOOP_INFOPRINT_PERIOD_MS				10000
+#endif
+
+#define CXA_RUNLOOP_INFOPRINT_AVGNUMITERS				100
 
 
 // ******** local type definitions ********
-/**
- * @private
- */
 typedef struct
 {
 	cxa_runLoop_cb_update_t cb;
@@ -39,14 +45,12 @@ typedef struct
 }cxa_runLoop_entry_t;
 
 
-/**
- * @private
- */
-typedef struct
-{
-	cxa_array_t cbs;
-	cxa_runLoop_entry_t cbs_raw[CXA_RUN_LOOP_MAX_NUM_ENTRIES];
-}cxa_runLoop_t;
+static cxa_array_t cbs;
+static cxa_runLoop_entry_t cbs_raw[CXA_RUN_LOOP_MAX_NUM_ENTRIES];
+
+static cxa_logger_t logger;
+static cxa_timeDiff_t td_printInfo;
+static uint32_t averageIterPeriod_us = 0;
 
 
 // ******** local function prototypes ********
@@ -54,39 +58,36 @@ static void cxa_runLoop_init(void);
 
 
 // ********  local variable declarations *********
-static cxa_runLoop_t SINGLETON;
 static bool isInit = false;
 
 
 // ******** global function implementations ********
-bool cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
+void cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
 	// create our new entry
 	cxa_runLoop_entry_t newEntry = {.cb=cbIn, .userVar=userVarIn};
-	return cxa_array_append(&SINGLETON.cbs, &newEntry);
+	cxa_assert(cxa_array_append(&cbs, &newEntry));
 }
 
 
-bool cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn)
+void cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
 	// can't use cxa_array_iterate because we need an index
-	for( size_t i = 0; i < cxa_array_getSize_elems(&SINGLETON.cbs); i++ )
+	for( size_t i = 0; i < cxa_array_getSize_elems(&cbs); i++ )
 	{
-		cxa_runLoop_entry_t* currEntry = (cxa_runLoop_entry_t*)cxa_array_get(&SINGLETON.cbs, i);
+		cxa_runLoop_entry_t* currEntry = (cxa_runLoop_entry_t*)cxa_array_get(&cbs, i);
 		if( currEntry == NULL ) continue;
 
 		if( currEntry->cb == cbIn )
 		{
-			cxa_array_remove_atIndex(&SINGLETON.cbs, i);
-			return true;
+			cxa_array_remove_atIndex(&cbs, i);
+			return;
 		}
 	}
-
-	return false;
 }
 
 
@@ -101,9 +102,21 @@ void cxa_runLoop_iterate(void)
 {
 	if( !isInit ) cxa_runLoop_init();
 
-	cxa_array_iterate(&SINGLETON.cbs, currEntry, cxa_runLoop_entry_t)
+
+	uint32_t iter_startTime_us = cxa_timeBase_getCount_us();
+
+	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
 	{
 		if( currEntry->cb != NULL) currEntry->cb(currEntry->userVar);
+	}
+
+	uint32_t iter_time_us = cxa_timeBase_getCount_us() - iter_startTime_us;
+	averageIterPeriod_us -= averageIterPeriod_us / CXA_RUNLOOP_INFOPRINT_AVGNUMITERS;
+	averageIterPeriod_us += iter_time_us;
+
+	if( cxa_timeDiff_isElapsed_recurring_ms(&td_printInfo, CXA_RUNLOOP_INFOPRINT_PERIOD_MS) )
+	{
+		cxa_logger_debug(&logger, "runLoop iteration  curr: %d ms  avg: %d ms", iter_time_us / 1000, averageIterPeriod_us / 1000);
 	}
 }
 
@@ -114,10 +127,7 @@ void cxa_runLoop_execute(void)
 
 	while(1)
 	{
-		cxa_array_iterate(&SINGLETON.cbs, currEntry, cxa_runLoop_entry_t)
-		{
-			if( currEntry->cb != NULL) currEntry->cb(currEntry->userVar);
-		}
+		cxa_runLoop_iterate();
 	}
 }
 
@@ -127,7 +137,10 @@ static void cxa_runLoop_init(void)
 {
 	if( isInit ) return;
 
-	cxa_array_initStd(&SINGLETON.cbs, SINGLETON.cbs_raw);
+	cxa_array_initStd(&cbs, cbs_raw);
+	cxa_logger_init(&logger, "runLoop");
+	cxa_timeDiff_init(&td_printInfo, true);
+
 	isInit = true;
 }
 
