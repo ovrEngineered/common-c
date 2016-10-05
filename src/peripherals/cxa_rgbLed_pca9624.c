@@ -36,7 +36,7 @@ static void scm_blink(cxa_rgbLed_t *constLedIn, uint8_t rIn, uint8_t gIn, uint8_
 
 
 // ******** global function implementations ********
-void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *const pcaIn,
+void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *const pcaIn, uint8_t maxBrightnessIn,
 							uint8_t chanIndex_rIn, uint8_t chanIndex_gIn, uint8_t chanIndex_bIn)
 {
 	cxa_assert(ledIn);
@@ -46,6 +46,7 @@ void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *c
 
 	// save our references
 	ledIn->pca = pcaIn;
+	ledIn->maxBrightness = maxBrightnessIn;
 	ledIn->chanIndex_r = chanIndex_rIn;
 	ledIn->chanIndex_g = chanIndex_gIn;
 	ledIn->chanIndex_b = chanIndex_bIn;
@@ -60,6 +61,11 @@ static void scm_setRgb(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, ui
 {
 	cxa_rgbLed_pca9624_t* ledIn = (cxa_rgbLed_pca9624_t*)superIn;
 	cxa_assert(ledIn);
+
+	// adjust for our max brightness
+	rIn = (((float)rIn) / 255.0) * ledIn->maxBrightness;
+	gIn = (((float)gIn) / 255.0) * ledIn->maxBrightness;
+	bIn = (((float)bIn) / 255.0) * ledIn->maxBrightness;
 
 	// set our brightnesses
 	cxa_pca9624_channelEntry_t chanEntries[] = {
@@ -79,6 +85,11 @@ static void scm_blink(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uin
 
 	// set our global blink rate
 	if( !cxa_pca9624_setGlobalBlinkRate(ledIn->pca, onPeriod_msIn, offPeriod_msIn) ) return;
+
+	// adjust for our max brightness
+	rIn = (((float)rIn) / 255.0) * ledIn->maxBrightness;
+	gIn = (((float)gIn) / 255.0) * ledIn->maxBrightness;
+	bIn = (((float)bIn) / 255.0) * ledIn->maxBrightness;
 
 	// tell the leds to blink
 	cxa_pca9624_channelEntry_t chanEntries[] = {

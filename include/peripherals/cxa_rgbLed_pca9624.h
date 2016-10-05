@@ -43,6 +43,8 @@ typedef struct
 
 	cxa_pca9624_t* pca;
 
+	uint8_t maxBrightness;
+
 	uint8_t chanIndex_r;
 	uint8_t chanIndex_g;
 	uint8_t chanIndex_b;
@@ -50,7 +52,7 @@ typedef struct
 
 
 // ******** global function prototypes ********
-void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *const pcaIn,
+void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *const pcaIn, uint8_t maxBrightnessIn,
 							uint8_t chanIndex_rIn, uint8_t chanIndex_gIn, uint8_t chanIndex_bIn);
 
 
