@@ -250,6 +250,17 @@ ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t t
 }
 
 
+char* cxa_stringUtils_getLastCharacters(const char* targetStringIn, size_t numCharsIn)
+{
+	cxa_assert(targetStringIn);
+
+	size_t strLength_bytes = strlen(targetStringIn);
+	if( numCharsIn > strLength_bytes ) return NULL;
+
+	return &targetStringIn[strLength_bytes - numCharsIn];
+}
+
+
 bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn)
 {
 	cxa_assert(targetStringIn);

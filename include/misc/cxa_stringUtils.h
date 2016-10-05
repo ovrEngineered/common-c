@@ -91,6 +91,8 @@ bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
 
 ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
 
+char* cxa_stringUtils_getLastCharacters(const char* targetStringIn, size_t numCharsIn);
+
 bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn);
 bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
 													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
