@@ -186,7 +186,7 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 	cxa_stateMachine_setInitialState(&stateMachine, STATE_ASSOCIATING);
 
 	// setup our WiFi
-	cxa_network_wifiManager_addListener(NULL, wifiManCb_associated, wifiManCb_lostAssociation, NULL, NULL);
+	cxa_network_wifiManager_addListener(NULL, NULL, wifiManCb_associated, wifiManCb_lostAssociation, NULL, NULL, NULL);
 
 	// and our mqtt client
 	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString());
