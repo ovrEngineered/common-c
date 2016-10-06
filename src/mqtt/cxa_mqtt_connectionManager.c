@@ -149,8 +149,6 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 											const char* clientCertIn, size_t clientCertLen_bytesIn,
 											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn)
 {
-	cxa_assert(ledConnIn);
-
 	// save our references
 	led_conn = ledConnIn;
 
@@ -241,7 +239,7 @@ static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* u
 static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_logger_info(&logger, "associating");
-	cxa_led_blink(led_conn, BLINKPERIODMS_ON_ASSOC,  BLINKPERIODMS_OFF_ASSOC);
+	if( led_conn != NULL ) cxa_led_blink(led_conn, BLINKPERIODMS_ON_ASSOC,  BLINKPERIODMS_OFF_ASSOC);
 }
 
 
@@ -249,7 +247,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextSta
 {
 	cxa_logger_info(&logger, "connecting");
 
-	cxa_led_blink(led_conn, BLINKPERIODMS_ON_CONNECTING, BLINKPERIODMS_OFF_CONNECTING);
+	if( led_conn != NULL ) cxa_led_blink(led_conn, BLINKPERIODMS_ON_CONNECTING, BLINKPERIODMS_OFF_CONNECTING);
 
 	if( clientCert != NULL )
 	{
@@ -279,7 +277,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStat
 {
 	cxa_logger_info(&logger, "connected");
 
-	cxa_led_blink(led_conn, BLINKPERIODMS_ON_CONNECTED, BLINKPERIODMS_OFF_CONNECTED);
+	if( led_conn != NULL ) cxa_led_blink(led_conn, BLINKPERIODMS_ON_CONNECTED, BLINKPERIODMS_OFF_CONNECTED);
 }
 
 
@@ -304,5 +302,5 @@ static void stateCb_error_enter(cxa_stateMachine_t *const smIn, int nextStateIdI
 {
 	cxa_logger_info(&logger, "unrecoverable error");
 
-	cxa_led_blink(led_conn, BLINKPERIODMS_ON_ERROR, BLINKPERIODMS_OFF_ERROR);
+	if( led_conn != NULL ) cxa_led_blink(led_conn, BLINKPERIODMS_ON_ERROR, BLINKPERIODMS_OFF_ERROR);
 }
