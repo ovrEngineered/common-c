@@ -149,6 +149,10 @@ void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const ch
 	// shorten our file name
 	char *file_sep = strrchr(fileIn, '/');
 	if(file_sep) fileIn = file_sep+1;
+	else{
+		file_sep = strrchr(fileIn, '\\');
+		if (file_sep) fileIn = file_sep+1;
+	}
 
 
 	cxa_criticalSection_enter();
