@@ -22,13 +22,21 @@
 
 
 // ******** includes ********
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+
+
 #include <cxa_assert.h>
+#include <cxa_config.h>
+#include <cxa_numberUtils.h>
 
 
 // ******** local macro definitions ********
+#ifndef CXA_IOSTREAM_FORMATTED_BUFFERLEN_BYTES
+	#define CXA_IOSTREAM_FORMATTED_BUFFERLEN_BYTES				24
+#endif
 
 
 // ******** local type definitions ********
@@ -141,6 +149,30 @@ bool cxa_ioStream_writeString(cxa_ioStream_t *const ioStreamIn, char* stringIn)
 	cxa_assert(stringIn);
 
 	return cxa_ioStream_writeBytes(ioStreamIn, (void*)stringIn, strlen(stringIn));
+}
+
+
+bool cxa_ioStream_writeFormattedString(cxa_ioStream_t *const ioStreamIn, const char* formatIn, ...)
+{
+	cxa_assert(ioStreamIn);
+	cxa_assert(formatIn);
+
+	bool retVal = false;
+
+	// our buffer for this go-round
+	char buff[CXA_IOSTREAM_FORMATTED_BUFFERLEN_BYTES];
+
+	// now do our VARARGS
+	va_list varArgs;
+	va_start(varArgs, formatIn);
+	size_t expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
+	if( sizeof(buff) >= expectedNumBytesWritten )
+	{
+		retVal = cxa_ioStream_writeBytes(ioStreamIn, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
+	}
+	va_end(varArgs);
+
+	return retVal;
 }
 
 

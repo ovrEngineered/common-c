@@ -105,5 +105,6 @@ bool cxa_ioStream_writeByte(cxa_ioStream_t *const ioStreamIn, uint8_t byteIn);
 bool cxa_ioStream_writeBytes(cxa_ioStream_t *const ioStreamIn, void* buffIn, size_t bufferSize_bytesIn);
 bool cxa_ioStream_writeFixedByteBuffer(cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const fbbIn);
 bool cxa_ioStream_writeString(cxa_ioStream_t *const ioStreamIn, char* stringIn);
+bool cxa_ioStream_writeFormattedString(cxa_ioStream_t *const ioStreamIn, const char* formatIn, ...);
 
 #endif // CXA_IOSTREAM_H_
