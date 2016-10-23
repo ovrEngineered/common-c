@@ -23,6 +23,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <cxa_assert.h>
+#include <cxa_console.h>
 #include <cxa_criticalSection.h>
 #include <cxa_numberUtils.h>
 #include <cxa_stringUtils.h>
@@ -123,6 +124,7 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 
 	cxa_criticalSection_enter();
 
+	cxa_console_prelog();
 
 	// common header
 	writeHeader(loggerIn, levelIn);
@@ -134,6 +136,7 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 
+	cxa_console_postlog();
 
 	cxa_criticalSection_exit();
 }
@@ -157,6 +160,7 @@ void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const ch
 
 	cxa_criticalSection_enter();
 
+	cxa_console_prelog();
 
 	// common header
 	writeHeader(&sysLog, CXA_LOG_LEVEL_DEBUG);
@@ -186,6 +190,7 @@ void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const ch
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 
+	cxa_console_postlog();
 
 	cxa_criticalSection_exit();
 }
@@ -208,6 +213,7 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 
 	cxa_criticalSection_enter();
 
+	cxa_console_prelog();
 
 	// common header
 	writeHeader(loggerIn, levelIn);
@@ -229,6 +235,7 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 
+	cxa_console_postlog();
 
 	cxa_criticalSection_exit();
 }
