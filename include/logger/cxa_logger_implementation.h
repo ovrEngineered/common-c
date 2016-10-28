@@ -45,41 +45,41 @@
 	#define cxa_logger_debug(loggerIn, msgIn, ...)
 	#define cxa_logger_trace(loggerIn, msgIn, ...)
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_ERROR) )
-	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
 	#define cxa_logger_warn(loggerIn, msgIn, ...)
 	#define cxa_logger_info(loggerIn, msgIn, ...)
 	#define cxa_logger_debug(loggerIn, msgIn, ...)
 	#define cxa_logger_trace(loggerIn, msgIn, ...)
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_WARN) )
-	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
 	#define cxa_logger_info(loggerIn, msgIn, ...)
 	#define cxa_logger_debug(loggerIn, msgIn, ...)
 	#define cxa_logger_trace(loggerIn, msgIn, ...)
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_INFO) )
-	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_info(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_INFO, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_info(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_INFO, (msgIn), ##__VA_ARGS__)
 	#define cxa_logger_debug(loggerIn, msgIn, ...)
 	#define cxa_logger_trace(loggerIn, msgIn, ...)
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_DEBUG) )
-	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_info(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_INFO, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_debug(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_DEBUG, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_info(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_INFO, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_debug(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_DEBUG, (msgIn), ##__VA_ARGS__)
 	#define cxa_logger_trace(loggerIn, msgIn, ...)
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_TRACE) )
-	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_info(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_INFO, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_debug(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_DEBUG, (msgIn), ##__VA_ARGS__)
-	#define cxa_logger_trace(loggerIn, msgIn, ...)		cxa_logger_vlog((loggerIn), CXA_LOG_LEVEL_TRACE, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_info(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_INFO, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_debug(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_DEBUG, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_trace(loggerIn, msgIn, ...)		cxa_logger_log_formattedString((loggerIn), CXA_LOG_LEVEL_TRACE, (msgIn), ##__VA_ARGS__)
 #else
 	#error "Unknown CXA_LOG_LEVEL specified"
 #endif
 
-#define cxa_logger_stepDebug()							cxa_logger_stepDebug_vlog(__FILE__, __LINE__, NULL)
-#define cxa_logger_stepDebug_msg(msgIn, ...)			cxa_logger_stepDebug_vlog(__FILE__, __LINE__, (msgIn), ##__VA_ARGS__)
+#define cxa_logger_stepDebug()							cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, NULL)
+#define cxa_logger_stepDebug_msg(msgIn, ...)			cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, (msgIn), ##__VA_ARGS__)
 
 
 // ******** global type definitions *********
@@ -108,14 +108,13 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn);
 
 /**
  * @public
- * @brief Convenience method to initialize a logger with a format
- * 		string
+ * @brief Convenience method to initialize a logger with a format string
  * @param loggerIn pointer to the pre-allocated logger to
  * 		initialize
  * @param nameIn the logger's name format string (will be copied into the
  * 		logger object)
  */
-void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
+void cxa_logger_init_formattedString(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...);
 
 /**
  * @public
@@ -137,7 +136,7 @@ cxa_logger_t* cxa_logger_getSysLog(void);
  * 		the unterminated string
  * @param untermStringIn pointer to the unterminated string
  * @param untermStrLen_bytesIn number of bytes of the unterminated string to print
- * @param postFixIn a null-termianted string that should be printed immediately
+ * @param postFixIn a null-terminated string that should be printed immediately
  * 		folowing the unterminated string
  */
 void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const char* untermStringIn, size_t untermStrLen_bytesIn, const char* postFixIn);
@@ -145,12 +144,12 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 /**
  * @private
  */
-void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const char* formatIn, ...);
+void cxa_logger_stepDebug_formattedString(const char* fileIn, const int lineNumIn, const char* formatIn, ...);
 
 /**
  * @private
  */
-void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...);
+void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...);
 
 
 #endif // CXA_LOGGER_H_

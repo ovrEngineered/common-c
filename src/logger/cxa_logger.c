@@ -23,18 +23,18 @@
 #include <string.h>
 #include <inttypes.h>
 #include <cxa_assert.h>
-#include <cxa_console.h>
+#include <cxa_config.h>
 #include <cxa_criticalSection.h>
 #include <cxa_numberUtils.h>
 #include <cxa_stringUtils.h>
 #include <cxa_timeBase.h>
 
-
-// ******** local macro definitions ********
-#ifndef CXA_LOGGER_BUFFERLEN_BYTES
-	#define CXA_LOGGER_BUFFERLEN_BYTES			24
+#ifdef CXA_CONSOLE_ENABLE
+#include <cxa_console.h>
 #endif
 
+
+// ******** local macro definitions ********
 #define CXA_LOGGER_TRUNCATE_STRING			"..."
 
 
@@ -64,7 +64,7 @@ void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, sizeof(CXA_LINE_ENDING));
-	cxa_logger_vlog(&sysLog, CXA_LOG_LEVEL_INFO, "logging ioStream @ %p", ioStreamIn);
+	cxa_logger_log_formattedString(&sysLog, CXA_LOG_LEVEL_INFO, "logging ioStream @ %p", ioStreamIn);
 }
 
 
@@ -75,7 +75,7 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
 	checkSysLogInit();
 
 	// copy our name (and make sure it will be null terminated)
-	strncpy(loggerIn->name, nameIn, CXA_LOGGER_MAX_NAME_LEN_CHARS);
+	cxa_stringUtils_copy(loggerIn->name, nameIn, CXA_LOGGER_MAX_NAME_LEN_CHARS);
 	loggerIn->name[CXA_LOGGER_MAX_NAME_LEN_CHARS-1] = 0;
 
 	size_t nameLen_bytes = strlen(loggerIn->name);
@@ -83,7 +83,7 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
 }
 
 
-void cxa_logger_vinit(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...)
+void cxa_logger_init_formattedString(cxa_logger_t *const loggerIn, const char *nameFmtIn, ...)
 {
 	cxa_assert(loggerIn);
 	cxa_assert(nameFmtIn);
@@ -124,7 +124,9 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 
 	cxa_criticalSection_enter();
 
+#ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
+#endif
 
 	// common header
 	writeHeader(loggerIn, levelIn);
@@ -134,15 +136,17 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 	if( postFixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)postFixIn);
 
 	// print EOL
-	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
 
+#ifdef CXA_CONSOLE_ENABLE
 	cxa_console_postlog();
+#endif
 
 	cxa_criticalSection_exit();
 }
 
 
-void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const char* formatIn, ...)
+void cxa_logger_stepDebug_formattedString(const char* fileIn, const int lineNumIn, const char* formatIn, ...)
 {
 	cxa_assert(fileIn);
 
@@ -160,43 +164,34 @@ void cxa_logger_stepDebug_vlog(const char* fileIn, const int lineNumIn, const ch
 
 	cxa_criticalSection_enter();
 
+#ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
+#endif
 
 	// common header
 	writeHeader(&sysLog, CXA_LOG_LEVEL_DEBUG);
 
-	// our buffer for this go-round
-	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
-
 	// print our location
-	size_t expectedNumBytesWritten = snprintf(buff, sizeof(buff), ((formatIn != NULL) ? "%s::%d - " : "%s::%d"), fileIn, lineNumIn);
-	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
-	if( sizeof(buff) < expectedNumBytesWritten )
-	{
-		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
-	}
+	cxa_ioStream_writeFormattedString(ioStream, ((formatIn != NULL) ? "%s::%d - " : "%s::%d"), fileIn, lineNumIn);
 
 	// now do our VARARGS
 	va_list varArgs;
 	va_start(varArgs, formatIn);
-	expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
-	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
-	if( sizeof(buff) < expectedNumBytesWritten )
-	{
-		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
-	}
+	cxa_ioStream_vWriteString(ioStream, formatIn, varArgs, true, CXA_LOGGER_TRUNCATE_STRING);
 	va_end(varArgs);
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 
+#ifdef CXA_CONSOLE_ENABLE
 	cxa_console_postlog();
+#endif
 
 	cxa_criticalSection_exit();
 }
 
 
-void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
+void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
 {
 	cxa_assert(loggerIn);
 	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
@@ -213,29 +208,25 @@ void cxa_logger_vlog(cxa_logger_t *const loggerIn, const uint8_t levelIn, const 
 
 	cxa_criticalSection_enter();
 
+#ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
+#endif
 
 	// common header
 	writeHeader(loggerIn, levelIn);
 
-	// our buffer for this go-round
-	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
-
 	// now do our VARARGS
 	va_list varArgs;
 	va_start(varArgs, formatIn);
-	size_t expectedNumBytesWritten = vsnprintf(buff, sizeof(buff), formatIn, varArgs);
-	cxa_ioStream_writeBytes(ioStream, buff, CXA_MIN(expectedNumBytesWritten, sizeof(buff)));
-	if( sizeof(buff) < expectedNumBytesWritten )
-	{
-		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
-	}
+	cxa_ioStream_vWriteString(ioStream, formatIn, varArgs, true, CXA_LOGGER_TRUNCATE_STRING);
 	va_end(varArgs);
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
 
+#ifdef CXA_CONSOLE_ENABLE
 	cxa_console_postlog();
+#endif
 
 	cxa_criticalSection_exit();
 }
@@ -260,11 +251,11 @@ static void writeField(const char *const stringIn, size_t maxFieldLenIn)
 	if( stringLen_bytes > maxFieldLenIn )
 	{
 		cxa_ioStream_writeBytes(ioStream, (void*)stringIn, maxFieldLenIn-strlen(CXA_LOGGER_TRUNCATE_STRING));
-		cxa_ioStream_writeBytes(ioStream, (void*)CXA_LOGGER_TRUNCATE_STRING, strlen(CXA_LOGGER_TRUNCATE_STRING));
+		cxa_ioStream_writeString(ioStream, CXA_LOGGER_TRUNCATE_STRING);
 	}
 	else
 	{
-		cxa_ioStream_writeBytes(ioStream, (void*)stringIn, stringLen_bytes);
+		cxa_ioStream_writeString(ioStream, (char*)stringIn);
 		for( size_t i = stringLen_bytes; i < maxFieldLenIn; i++ )
 		{
 			cxa_ioStream_writeByte(ioStream, ' ');
@@ -302,8 +293,8 @@ static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
 			break;
 	}
 
-	// our buffer for this go-round
-	char buff[CXA_LOGGER_BUFFERLEN_BYTES];
+	// our buffer for this go-round max 8 bytes plus null-term
+	char buff[9];
 
 	// print the time (if enabled)
 	#ifdef CXA_LOGGER_TIME_ENABLE
