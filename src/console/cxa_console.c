@@ -19,6 +19,7 @@
 // ******** includes ********
 #include <cxa_array.h>
 #include <cxa_assert.h>
+#include <cxa_delay.h>
 #include <cxa_numberUtils.h>
 #include <cxa_runLoop.h>
 #include <cxa_stringUtils.h>
@@ -32,6 +33,8 @@
 #define HEADER_NUM_COLS					40
 #define COMMAND_BUFFER_LEN_BYTES		20
 #define COMMAND_PROMPT					" > "
+#define ESCAPE							"\x1b"
+#define CONSOLE_RESPONSE_TIMEOUT_MS		2000
 
 
 // ******** local type definitions ********
@@ -43,22 +46,16 @@ typedef struct
 }commandEntry_t;
 
 
-typedef enum
-{
-	STATE_CLEAN,
-	STATE_EXECUTING_COMMAND,
-	STATE_PARTIAL_COMMAND
-}state_t;
-
-
 // ******** local function prototypes ********
 static void cb_onRunLoopUpdate(void* userVarIn);
 static void printBootHeader(const char* deviceNameIn);
 static void printCommandLine(void);
 static void printError(char* errorIn);
 static void printBlockLine(const char* textIn, size_t maxNumCols);
+static void clearScreenReturnHome(void);
 
-static cxa_console_commandRetVal_t command_help(void* userVarIn);
+static void command_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void command_help(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -69,9 +66,9 @@ static char commandBuffer_raw[COMMAND_BUFFER_LEN_BYTES];
 
 static cxa_array_t commandEntries;
 static commandEntry_t commandEntries_raw[CXA_CONSOLE_MAXNUM_COMMANDS+1];
-// add one for the default 'help' command
+// add one for 'clear' and 'help' command
 
-static state_t currState = STATE_EXECUTING_COMMAND;
+static bool isExecutingCommand = false;
 
 
 // ******** global function implementations ********
@@ -85,6 +82,7 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 	// setup our arrays
 	cxa_array_initStd(&commandBuffer, commandBuffer_raw);
 	cxa_array_initStd(&commandEntries, commandEntries_raw);
+	cxa_console_addCommand("clear", command_clear, NULL);
 	cxa_console_addCommand("help", command_help, NULL);
 
 	// register for our runLoop
@@ -105,7 +103,7 @@ void cxa_console_addCommand(const char* commandIn, cxa_console_command_cb_t cbIn
 			.cb = cbIn,
 			.userVar = userVarIn
 	};
-	strlcpy(newEntry.command, commandIn, sizeof(newEntry.command));
+	cxa_stringUtils_copy(newEntry.command, commandIn, sizeof(newEntry.command));
 	cxa_assert(cxa_array_append(&commandEntries, &newEntry));
 }
 
@@ -114,11 +112,12 @@ void cxa_console_prelog(void)
 {
 	if( ioStream == NULL ) return;
 
-	size_t numBackspaces = cxa_array_getSize_elems(&commandBuffer);
-	if( currState != STATE_EXECUTING_COMMAND ) numBackspaces += strlen(COMMAND_PROMPT);
-	numBackspaces += strlen(CXA_LINE_ENDING);
-
-	for( size_t i = 0; i <  numBackspaces; i++ ) cxa_ioStream_writeByte(ioStream, 0x08);
+	if( !isExecutingCommand )
+	{
+		cxa_ioStream_writeString(ioStream, ESCAPE "[2K");
+		cxa_ioStream_writeByte(ioStream, '\r');
+		cxa_ioStream_writeString(ioStream, ESCAPE "[1A");
+	}
 }
 
 
@@ -126,7 +125,7 @@ void cxa_console_postlog(void)
 {
 	if( ioStream == NULL ) return;
 
-	if( currState != STATE_EXECUTING_COMMAND ) printCommandLine();
+	if( !isExecutingCommand ) printCommandLine();
 }
 
 
@@ -152,10 +151,12 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 				{
 					// we have a matching command...give it two new lines, then call the callback
 					cxa_array_clear(&commandBuffer);
-					for( int i = 0; i < 2; i++ ) cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
 
-					currState = STATE_EXECUTING_COMMAND;
-					if( currEntry->cb != NULL ) currEntry->cb(currEntry->userVar);
+					isExecutingCommand = true;
+					cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+
+					if( currEntry->cb != NULL ) currEntry->cb(ioStream, currEntry->userVar);
+					cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
 
 					foundCommand = true;
 					break;
@@ -202,8 +203,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 
 static void printBootHeader(const char* deviceNameIn)
 {
-	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
-	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+	clearScreenReturnHome();
 
 	for( int i = 0; i < HEADER_NUM_COLS; i++ ) cxa_ioStream_writeByte(ioStream, '*');
 	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
@@ -226,7 +226,7 @@ static void printCommandLine(void)
 
 		cxa_ioStream_writeByte(ioStream, *currCharPtr);
 	}
-	currState = cxa_array_isEmpty(&commandBuffer) ? STATE_CLEAN : STATE_PARTIAL_COMMAND;
+	isExecutingCommand = false;
 }
 
 
@@ -236,8 +236,7 @@ static void printError(char* errorIn)
 
 	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
 	cxa_ioStream_writeString(ioStream, "!! ");
-	cxa_ioStream_writeString(ioStream, errorIn);
-	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+	cxa_ioStream_writeLine(ioStream, errorIn);
 }
 
 
@@ -267,18 +266,28 @@ static void printBlockLine(const char* textIn, size_t maxNumCols)
 }
 
 
-static cxa_console_commandRetVal_t command_help(void* userVarIn)
+static void clearScreenReturnHome(void)
 {
-	cxa_ioStream_writeString(ioStream, "Available commands:");
-	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+	// clear screen, then set cursor to home
+	cxa_ioStream_writeString(ioStream, ESCAPE "[2J");
+	cxa_ioStream_writeString(ioStream, ESCAPE "[H");
+}
+
+
+static void command_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+{
+	clearScreenReturnHome();
+}
+
+
+static void command_help(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+{
+	cxa_ioStream_writeLine(ioStream, "Available commands:");
 	cxa_array_iterate(&commandEntries, currEntry, commandEntry_t)
 	{
 		if( currEntry == NULL ) continue;
 
 		for( int i = 0; i < 3; i++ ) cxa_ioStream_writeString(ioStream, " ");
-		cxa_ioStream_writeString(ioStream, (char*)currEntry->command);
-		cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+		cxa_ioStream_writeLine(ioStream, (char*)currEntry->command);
 	}
-
-	return (cxa_console_commandRetVal_t){ .status = CXA_CONSOLE_CMDSTAT_SUCCESS };
 }

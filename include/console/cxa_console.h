@@ -24,8 +24,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_CONSOLE_ERRMSGLEN_BYTES
-	#define CXA_CONSOLE_ERRMSGLEN_BYTES			20
+#ifndef CXA_CONSOLE_ENABLE
+#error "Must define CXA_CONSOLE_ENABLE in 'cxa_config.h' to use console"
 #endif
 
 #ifndef CXA_CONSOLE_MAXNUM_COMMANDS
@@ -33,26 +33,12 @@
 #endif
 
 #ifndef CXA_CONSOLE_MAX_COMMAND_LEN_BYTES
-	#define CXA_CONSOLE_MAX_COMMAND_LEN_BYTES	8
+	#define CXA_CONSOLE_MAX_COMMAND_LEN_BYTES	16
 #endif
 
 
 // ******** global type definitions *********
-typedef enum
-{
-	CXA_CONSOLE_CMDSTAT_SUCCESS,
-	CXA_CONSOLE_CMDSTAT_FAIL
-}cxa_console_commandStatus_t;
-
-
-typedef struct
-{
-	cxa_console_commandStatus_t status;
-	char errMsg[CXA_CONSOLE_ERRMSGLEN_BYTES];
-}cxa_console_commandRetVal_t;
-
-
-typedef cxa_console_commandRetVal_t (*cxa_console_command_cb_t)(void* userVarIn);
+typedef void (*cxa_console_command_cb_t)(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
 
 // ******** global function prototypes ********
