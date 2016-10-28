@@ -74,7 +74,7 @@ extern "C" {
 	 *
 	 * @param[in] condIn the assertion condition (should be true)
 	 */
-	#define cxa_assert(condIn)					if( !(condIn) ) cxa_assert_impl(__FILE__, __LINE__);
+	#define cxa_assert(condIn)					if( !(condIn) ) cxa_assert_impl(NULL, __FILE__, __LINE__);
 
 	/**
 	 * @public
@@ -90,11 +90,7 @@ extern "C" {
 	 * @param[in] condIn the assertion condition (should be true)
 	 * @param[in] msgIn the message that should be displayed
 	 */
-	#ifdef CXA_ASSERT_MSG_ENABLE
-		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl_msg((msgIn), __FILE__, __LINE__);
-	#else
-		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl(__FILE__, __LINE__);
-	#endif
+	#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl_msg((msgIn), __FILE__, __LINE__);
 #else
 	/**
 	 * @public
@@ -105,7 +101,7 @@ extern "C" {
 	 *
 	 * @param[in] condIn the assertion condition (should be true)
 	 */
-	#define cxa_assert(condIn)					if( !(condIn) ) cxa_assert_impl();
+	#define cxa_assert(condIn)					if( !(condIn) ) cxa_assert_impl(NULL, NULL, 0);
 
 	/**
 	 * @public
@@ -119,11 +115,7 @@ extern "C" {
 	 * @param[in] condIn the assertion condition (should be true)
 	 * @param[in] msgIn the message that should be displayed
 	 */
-	#ifdef CXA_ASSERT_MSG_ENABLE
-		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl_msg(msgIn);
-	#else
-		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl();
-	#endif
+	#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl_msg(msgIn, NULL, 0);
 #endif
 
 
@@ -182,34 +174,11 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn);
 #endif
 
 
-#ifdef CXA_ASSERT_LINE_NUM_ENABLE
-	/**
-	 * @private
-	 * Used by cxa_assert* macros
-	 */
-	void cxa_assert_impl(const char *fileIn, const long int lineIn);
-#else
-	/**
-	 * @private
-	 * Used by cxa_assert* macros
-	 */
-	void cxa_assert_impl(void);
-#endif
-
-
-#if defined (CXA_ASSERT_MSG_ENABLE) && defined (CXA_ASSERT_LINE_NUM_ENABLE)
-	/**
-	 * @private
-	 * Used by cxa_assert* macros
-	 */
-	void cxa_assert_impl_msg(const char *msgIn, const char *fileIn, const long int lineIn);
-#elif defined (CXA_ASSERT_MSG_ENABLE) && !(defined (CXA_ASSERT_LINE_NUM_ENABLE))
-	/**
-	 * @private
-	 * Used by cxa_assert* macros
-	 */
-	void cxa_assert_impl_msg(const char *msgIn);
-#endif
+/**
+ * @private
+ * Used by cxa_assert* macros
+ */
+void cxa_assert_impl(const char *msgIn, const char *fileIn, const long int lineIn);
 
 
 #ifdef __cplusplus

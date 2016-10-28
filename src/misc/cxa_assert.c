@@ -72,141 +72,48 @@ void cxa_assert_setAssertCb(cxa_assert_cb_t cbIn)
 #endif
 
 
-#ifdef CXA_ASSERT_LINE_NUM_ENABLE
-	void cxa_assert_impl(const char *fileIn, const long int lineIn)
+void cxa_assert_impl(const char *msgIn, const char *fileIn, const long int lineIn)
+{
+	if( ioStream != NULL )
 	{
-		if( ioStream != NULL )
+		cxa_ioStream_writeLine(ioStream, "");
+		cxa_ioStream_writeLine(ioStream, ASSERT_TEXT);
+
+		if( fileIn != NULL )
 		{
-			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, (void*)ASSERT_TEXT, strlen(ASSERT_TEXT));
-			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, (void*)PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
-			cxa_ioStream_writeBytes(ioStream, (void*)fileIn, strlen(fileIn));
+			// shorten our file name
+			char *file_sep = strrchr(fileIn, '/');
+			if(file_sep) fileIn = file_sep+1;
+			else{
+				file_sep = strrchr(fileIn, '\\');
+				if (file_sep) fileIn = file_sep+1;
+			}
+
+			cxa_ioStream_writeString(ioStream, PREAMBLE_LOCATION);
+			cxa_ioStream_writeString(ioStream, fileIn);
 			cxa_ioStream_writeByte(ioStream, ':');
-			char lineNumBuff[5];
-			int expectedNumBytesWritten = snprintf(lineNumBuff, sizeof(lineNumBuff), "%ld", lineIn);
-			if( expectedNumBytesWritten > 0 ) cxa_ioStream_writeBytes(ioStream, (void*)lineNumBuff, CXA_MIN(((size_t)expectedNumBytesWritten), sizeof(lineNumBuff)));
-			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+			cxa_ioStream_writeFormattedLine(ioStream, "%d", lineIn);
+
+			if( msgIn != NULL ) cxa_ioStream_writeLine(ioStream, msgIn);
 		}
-
-		if( cb != NULL ) cb();
-
-		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
-			if( gpio != NULL )
-			{
-				cxa_gpio_setDirection(gpio, CXA_GPIO_DIR_OUTPUT);
-				while(1)
-				{
-					cxa_gpio_toggle(gpio);
-					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
-				}
-			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#else
-			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#endif
 	}
-#else
-	void cxa_assert_impl(void)
-	{
-        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
-            if( fd_msg != NULL )
-            {
-                fputs(CXA_LINE_ENDING, fd_msg);
-                fputs(ASSERT_TEXT, fd_msg);
-                fputs(CXA_LINE_ENDING, fd_msg);
-                fflush(fd_msg);
-            }
-        #endif
 
-		if( cb != NULL ) cb();
+	if( cb != NULL ) cb();
 
-		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
-			if( gpio != NULL )
-			{
-				cxa_gpio_setDirection(gpio, CXA_GPIO_DIR_OUTPUT);
-				while(1)
-				{
-					cxa_gpio_toggle(gpio);
-					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
-				}
-			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#else
-			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#endif
-	}
-#endif
-
-
-#if defined (CXA_ASSERT_MSG_ENABLE) && defined (CXA_ASSERT_LINE_NUM_ENABLE)
-	void cxa_assert_impl_msg(const char *msgIn, const char *fileIn, const long int lineIn)
-	{
-		if( ioStream != NULL )
+	#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
+		if( gpio != NULL )
 		{
-			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, (void*)ASSERT_TEXT, strlen(ASSERT_TEXT));
-			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, (void*)PREAMBLE_LOCATION, strlen(PREAMBLE_LOCATION));
-			cxa_ioStream_writeBytes(ioStream, (void*)fileIn, strlen(fileIn));
-			cxa_ioStream_writeByte(ioStream, ':');
-			char lineNumBuff[5];
-			int expectedNumBytesWritten = snprintf(lineNumBuff, sizeof(lineNumBuff), "%ld", lineIn);
-			if( expectedNumBytesWritten > 0 ) cxa_ioStream_writeBytes(ioStream, (void*)lineNumBuff, CXA_MIN(((size_t)expectedNumBytesWritten), sizeof(lineNumBuff)));
-			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-			cxa_ioStream_writeBytes(ioStream, (void*)msgIn, strlen(msgIn));
-			cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-		}
-
-		if( cb != NULL ) cb();
-
-		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
-			if( gpio != NULL )
+			cxa_gpio_setDirection(gpio, CXA_GPIO_DIR_OUTPUT);
+			while(1)
 			{
-				cxa_gpio_setDirection(gpio, CXA_GPIO_DIR_OUTPUT);
-				while(1)
-				{
-					cxa_gpio_toggle(gpio);
-					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
-				}
-			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#else
-			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#endif
-	}
-#elif defined (CXA_ASSERT_MSG_ENABLE) && !(defined (CXA_ASSERT_LINE_NUM_ENABLE))
-	void cxa_assert_impl_msg(const char *msgIn)
-	{
-        #if !(defined (CXA_FILE_DISABLE)) && defined (CXA_ASSERT_FILE_ENABLE)
-            if( fd_msg != NULL )
-            {
-                fputs(CXA_LINE_ENDING " ", fd_msg);
-                fputs(ASSERT_TEXT, fd_msg);
-                fputs(CXA_LINE_ENDING, fd_msg);
-                fputs(PREAMBLE_MESSAGE, fd_msg);
-                fputs(msgIn, fd_msg);
-                fputs(CXA_LINE_ENDING, fd_msg);
-                fflush(fd_msg);
-            }
-        #endif
-
-		if( cb != NULL ) cb();
-
-		#ifdef CXA_ASSERT_GPIO_FLASH_ENABLE
-			if( gpio != NULL )
-			{
-				cxa_gpio_setDirection(gpio, CXA_GPIO_DIR_OUTPUT);
-				while(1)
-				{
-					cxa_gpio_toggle(gpio);
-					cxa_delay_ms(GPIO_FLASH_DELAY_MS);
-				}
-			} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#else
-			CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
-		#endif
-	}
-#endif
-
-
+				cxa_gpio_toggle(gpio);
+				cxa_delay_ms(GPIO_FLASH_DELAY_MS);
+			}
+		} else CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
+	#else
+		CXA_ASSERT_EXIT_FUNC(EXIT_STATUS);
+	#endif
+}
 
 
 // ******** local function implementations ********
