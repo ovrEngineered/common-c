@@ -114,10 +114,12 @@ void cxa_runLoop_iterate(void)
 	averageIterPeriod_us -= averageIterPeriod_us / CXA_RUNLOOP_INFOPRINT_AVGNUMITERS;
 	averageIterPeriod_us += iter_time_us;
 
+#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
 	if( cxa_timeDiff_isElapsed_recurring_ms(&td_printInfo, CXA_RUNLOOP_INFOPRINT_PERIOD_MS) )
 	{
 		cxa_logger_debug(&logger, "iteration  curr: %d ms  avg: %d ms", iter_time_us / 1000, averageIterPeriod_us / 1000);
 	}
+#endif
 }
 
 
