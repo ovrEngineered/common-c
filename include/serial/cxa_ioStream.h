@@ -25,8 +25,10 @@
 
 
 // ******** includes ********
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+
 #include <cxa_fixedByteBuffer.h>
 
 
@@ -100,11 +102,20 @@ void cxa_ioStream_unbind(cxa_ioStream_t *const ioStreamIn);
 bool cxa_ioStream_isBound(cxa_ioStream_t *const ioStreamIn);
 
 cxa_ioStream_readStatus_t cxa_ioStream_readByte(cxa_ioStream_t *const ioStreamIn, uint8_t *const byteOut);
-void cxa_ioStream_waitForChar(cxa_ioStream_t *const ioStreamIn, char targetCharIn);
+bool cxa_ioStream_waitForCharSequence_withTimeout(cxa_ioStream_t *const ioStreamIn, const char* targetSeqIn, uint32_t timeout_msIn);
+
+void cxa_ioStream_clearReadBuffer(cxa_ioStream_t *const ioStreamIn);
+
 bool cxa_ioStream_writeByte(cxa_ioStream_t *const ioStreamIn, uint8_t byteIn);
 bool cxa_ioStream_writeBytes(cxa_ioStream_t *const ioStreamIn, void* buffIn, size_t bufferSize_bytesIn);
 bool cxa_ioStream_writeFixedByteBuffer(cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const fbbIn);
-bool cxa_ioStream_writeString(cxa_ioStream_t *const ioStreamIn, char* stringIn);
+bool cxa_ioStream_writeString(cxa_ioStream_t *const ioStreamIn, const char* stringIn);
+bool cxa_ioStream_writeLine(cxa_ioStream_t *const ioStreamIn, const char* stringIn);
 bool cxa_ioStream_writeFormattedString(cxa_ioStream_t *const ioStreamIn, const char* formatIn, ...);
+bool cxa_ioStream_writeFormattedLine(cxa_ioStream_t *const ioStreamIn, const char* formatIn, ...);
+
+bool cxa_ioStream_vWriteString(cxa_ioStream_t *const ioStreamIn,
+								const char* formatIn, va_list argsIn,
+								bool truncateIfTooLargeIn, const char* truncateStringIn);
 
 #endif // CXA_IOSTREAM_H_
