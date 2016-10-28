@@ -175,6 +175,27 @@ bool cxa_stringUtils_concat_withLengths(char *targetStringIn, size_t maxSizeTarg
 }
 
 
+bool cxa_stringUtils_copy(char *targetStringIn, const char* sourceStringIn, size_t sizeofTargetStringIn)
+{
+	cxa_assert(targetStringIn);
+
+	bool wasNullTermd = false;
+	for( size_t i = 0; i < sizeofTargetStringIn; i++ )
+	{
+		targetStringIn[i] = sourceStringIn[i];
+		if( sourceStringIn[i] == 0 )
+		{
+			wasNullTermd = true;
+			break;
+		}
+	}
+
+	if( !wasNullTermd ) targetStringIn[sizeofTargetStringIn-1] = 0;
+
+	return wasNullTermd;
+}
+
+
 bool cxa_stringUtils_strlen(const char *targetStringIn, size_t maxSize_bytesIn, size_t* stringLen_bytesOut)
 {
 	cxa_assert(targetStringIn);
@@ -257,7 +278,7 @@ char* cxa_stringUtils_getLastCharacters(const char* targetStringIn, size_t numCh
 	size_t strLength_bytes = strlen(targetStringIn);
 	if( numCharsIn > strLength_bytes ) return NULL;
 
-	return &targetStringIn[strLength_bytes - numCharsIn];
+	return (char*)&targetStringIn[strLength_bytes - numCharsIn];
 }
 
 
@@ -313,57 +334,76 @@ bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringI
 }
 
 
-cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn)
+bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, char* hexStringOut, size_t maxLenHexString_bytesIn)
 {
-	cxa_stringUtils_parseResult_t retVal = {.dataType=CXA_STRINGUTILS_DATATYPE_UNKNOWN};
-	if( strIn == NULL ) return retVal;
+	cxa_assert(bytesIn);
+	cxa_assert(hexStringOut);
 
-	#ifndef errno_defined
-	int errno = 0;
-	#endif
+	hexStringOut[0] = 0;
 
-	// first things first...see if the string contains a period
-	if( cxa_stringUtils_contains(strIn, ".") )
+	for( size_t i = 0; i < numBytesIn; i++ )
 	{
-		// this may be a double or a string
-		char* p = strIn;
-		errno = 0;
-		double val = strtod(strIn, &p);
-		if( (errno != 0) || (strIn == p) || (*p != 0) )
-		{
-			// couldn't parse a double...must be a string
-			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
-			retVal.val_string = strIn;
-		}
-		else
-		{
-			// we parsed a double!
-			retVal.dataType = CXA_STRINGUTILS_DATATYPE_DOUBLE;
-			retVal.val_double = val;
-		}
-	}
-	else
-	{
-		// this may be a signed integer or a string
-		char* p = strIn;
-		errno = 0;
-		long val = strtol(strIn, &p, 10);
-		if( (errno != 0) || (strIn == p) || (*p != 0) )
-		{
-			// couldn't parse an integer...must be a string
-			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
-			retVal.val_string = strIn;
-		}
-		else
-		{
-			// we got an integer!
-			retVal.dataType = CXA_STRINGUTILS_DATATYPE_INTEGER;
-			retVal.val_int = val;
-		}
+		char currHexByteStr[3];
+		snprintf(currHexByteStr, sizeof(currHexByteStr), "%02X", bytesIn[i]);
+
+		if( !cxa_stringUtils_concat(hexStringOut, currHexByteStr, maxLenHexString_bytesIn) ) return false;
 	}
 
-	return retVal;
+	return true;
 }
+
+
+//cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn)
+//{
+//	cxa_stringUtils_parseResult_t retVal = {.dataType=CXA_STRINGUTILS_DATATYPE_UNKNOWN};
+//	if( strIn == NULL ) return retVal;
+//
+//	#ifndef errno_defined
+//	int errno = 0;
+//	#endif
+//
+//	// first things first...see if the string contains a period
+//	if( cxa_stringUtils_contains(strIn, ".") )
+//	{
+//		// this may be a double or a string
+//		char* p = strIn;
+//		errno = 0;
+//		double val = strtod(strIn, &p);
+//		if( (errno != 0) || (strIn == p) || (*p != 0) )
+//		{
+//			// couldn't parse a double...must be a string
+//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
+//			retVal.val_string = strIn;
+//		}
+//		else
+//		{
+//			// we parsed a double!
+//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_DOUBLE;
+//			retVal.val_double = val;
+//		}
+//	}
+//	else
+//	{
+//		// this may be a signed integer or a string
+//		char* p = strIn;
+//		errno = 0;
+//		long val = strtol(strIn, &p, 10);
+//		if( (errno != 0) || (strIn == p) || (*p != 0) )
+//		{
+//			// couldn't parse an integer...must be a string
+//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
+//			retVal.val_string = strIn;
+//		}
+//		else
+//		{
+//			// we got an integer!
+//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_INTEGER;
+//			retVal.val_int = val;
+//		}
+//	}
+//
+//	return retVal;
+//}
 
 
 const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn)

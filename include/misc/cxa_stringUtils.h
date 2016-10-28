@@ -76,6 +76,8 @@ bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t tar
 bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, size_t maxSizeTarget_bytesIn);
 bool cxa_stringUtils_concat_withLengths(char *targetStringIn, size_t maxSizeTarget_bytesIn, const char *sourceStringIn, size_t sourceStringLen_bytesIn);
 
+bool cxa_stringUtils_copy(char *targetStringIn, const char* sourceStringIn, size_t sizeofTargetStringIn);
+
 /**
  *
  * @param targetStringIn
@@ -98,8 +100,12 @@ bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringI
 													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
 													   const char *replacementStringIn, size_t replacementStringLen_bytesIn);
 
-cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn);
+bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, char* hexStringOut, size_t maxLenHexString_bytesIn);
+
+//cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn);
 
 const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn);
+
+
 
 #endif // CXA_STRINGUTILS_H_
