@@ -197,16 +197,20 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			if( smIn->timedStatesEnabled && (smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) ) cxa_timeDiff_setStartTime_now(&smIn->td_timedTransition);
 		#endif
 	}
-	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-	else if( smIn->timedStatesEnabled && (smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) )
-	{
-		// see if our state's time has expired...if so, transition into our next state
-		if( cxa_timeDiff_isElapsed_ms(&smIn->td_timedTransition, smIn->currState->stateTime_ms) ) cxa_stateMachine_transition(smIn, smIn->currState->nextStateId);
-	}
-	#endif
 	else
 	{
-		// we have some sort of state, and we're gonna stay there
+		#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
+			// see if our state's time has expired...if so, transition into our next state
+			if(  smIn->timedStatesEnabled &&
+				(smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) &&
+				 cxa_timeDiff_isElapsed_ms(&smIn->td_timedTransition, smIn->currState->stateTime_ms) )
+			{
+				cxa_stateMachine_transition(smIn, smIn->currState->nextStateId);
+				return;
+			}
+		#endif
+
+		// keep updating our state
 		if( (smIn->currState != NULL) && (smIn->currState->cb_state != NULL) ) smIn->currState->cb_state(smIn, smIn->currState->userVar);
 	}
 }
