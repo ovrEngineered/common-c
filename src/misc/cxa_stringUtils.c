@@ -334,7 +334,7 @@ bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringI
 }
 
 
-bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, char* hexStringOut, size_t maxLenHexString_bytesIn)
+bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, bool transposeIn, char* hexStringOut, size_t maxLenHexString_bytesIn)
 {
 	cxa_assert(bytesIn);
 	cxa_assert(hexStringOut);
@@ -344,7 +344,7 @@ bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, char*
 	for( size_t i = 0; i < numBytesIn; i++ )
 	{
 		char currHexByteStr[3];
-		snprintf(currHexByteStr, sizeof(currHexByteStr), "%02X", bytesIn[i]);
+		snprintf(currHexByteStr, sizeof(currHexByteStr), "%02X", bytesIn[(transposeIn ? (numBytesIn - i - 1) : i)]);
 
 		if( !cxa_stringUtils_concat(hexStringOut, currHexByteStr, maxLenHexString_bytesIn) ) return false;
 	}

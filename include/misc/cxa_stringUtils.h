@@ -100,7 +100,7 @@ bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringI
 													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
 													   const char *replacementStringIn, size_t replacementStringLen_bytesIn);
 
-bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, char* hexStringOut, size_t maxLenHexString_bytesIn);
+bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, bool transposeIn, char* hexStringOut, size_t maxLenHexString_bytesIn);
 
 //cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn);
 
