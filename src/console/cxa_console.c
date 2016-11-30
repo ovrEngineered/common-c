@@ -65,7 +65,7 @@ static cxa_array_t commandBuffer;
 static char commandBuffer_raw[COMMAND_BUFFER_LEN_BYTES];
 
 static cxa_array_t commandEntries;
-static commandEntry_t commandEntries_raw[CXA_CONSOLE_MAXNUM_COMMANDS+1];
+static commandEntry_t commandEntries_raw[CXA_CONSOLE_MAXNUM_COMMANDS+2];
 // add one for 'clear' and 'help' command
 
 static bool isExecutingCommand = false;
