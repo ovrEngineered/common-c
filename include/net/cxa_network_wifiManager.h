@@ -32,11 +32,13 @@
 // ******** global type definitions *********
 typedef enum
 {
+	CXA_NETWORK_WIFISTATE_IDLE,
 	CXA_NETWORK_WIFISTATE_STARTUP,
 	CXA_NETWORK_WIFISTATE_PROVISIONING,
 	CXA_NETWORK_WIFISTATE_ASSOCIATING,
 	CXA_NETWORK_WIFISTATE_ASSOCIATED,
-	CXA_NETWORK_WIFISTATE_MICROAP
+	CXA_NETWORK_WIFISTATE_MICROAP,
+	CXA_NETWORK_WIFISTATE_RESTARTING
 }cxa_network_wifiManager_state_t;
 
 
@@ -58,7 +60,7 @@ void cxa_network_wifiManager_start(void);
 
 cxa_network_wifiManager_state_t cxa_network_wifiManager_getState(void);
 
-bool cxa_network_wifiManager_restart(void);
+void cxa_network_wifiManager_restart(void);
 bool cxa_network_wifiManager_enterProvision(void);
 bool cxa_network_wifiManager_enterMicroAp(const char* ssidIn, const char* passphraseIn);
 
