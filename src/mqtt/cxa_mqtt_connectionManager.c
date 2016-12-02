@@ -67,8 +67,8 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 											const char* clientCertIn, size_t clientCertLen_bytesIn,
 											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn);
 
-static void wifiManCb_associated(const char *const ssidIn, void* userVarIn);
-static void wifiManCb_lostAssociation(const char *const ssidIn, void* userVarIn);
+static void wifiManCb_onConnect(const char *const ssidIn, void* userVarIn);
+static void wifiManCb_onDisconnect(void* userVarIn);
 
 static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 static void mqttClientCb_onConnectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
@@ -184,7 +184,7 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 	cxa_stateMachine_setInitialState(&stateMachine, STATE_ASSOCIATING);
 
 	// setup our WiFi
-	cxa_network_wifiManager_addListener(NULL, NULL, wifiManCb_associated, wifiManCb_lostAssociation, NULL, NULL, NULL);
+	cxa_network_wifiManager_addListener(NULL, NULL, NULL, wifiManCb_onConnect, wifiManCb_onDisconnect, NULL, NULL, NULL);
 
 	// and our mqtt client
 	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString());
@@ -192,16 +192,16 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 }
 
 
-static void wifiManCb_associated(const char *const ssidIn, void* userVarIn)
+static void wifiManCb_onConnect(const char *const ssidIn, void* userVarIn)
 {
-	cxa_logger_info(&logger, "associated");
+	cxa_logger_info(&logger, "wifi connected");
 	cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
 }
 
 
-static void wifiManCb_lostAssociation(const char *const ssidIn, void* userVarIn)
+static void wifiManCb_onDisconnect(void* userVarIn)
 {
-	cxa_logger_warn(&logger, "lost association");
+	cxa_logger_warn(&logger, "wifi disconnected");
 
 	// ensure we are disconnected regardless
 	cxa_mqtt_client_disconnect(&mqttClient.super);
