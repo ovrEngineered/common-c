@@ -75,7 +75,7 @@ void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_nod
 	cxa_array_initStd(&nodeIn->outstandingRequests, nodeIn->outstandingRequests_raw);
 
 	// setup our logger
-	cxa_logger_vinit(&nodeIn->logger, "mRpcNode_%s", nodeIn->name);
+	cxa_logger_init_formattedString(&nodeIn->logger, "mRpcNode_%s", nodeIn->name);
 
 	// add as a subnode (if we have a parent)
 	if( nodeIn->parentNode != NULL ) cxa_assert( cxa_array_append(&nodeIn->parentNode->subNodes, (void*)&nodeIn) );
