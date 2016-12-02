@@ -293,8 +293,9 @@ static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
 			break;
 	}
 
-	// our buffer for this go-round max 8 bytes plus null-term
-	char buff[9];
+	// our buffer for this go-round max...our pointer size
+	// plus [0x] plus null-term
+	char buff[sizeof(loggerIn)*2 + 4 + 1];
 
 	// print the time (if enabled)
 	#ifdef CXA_LOGGER_TIME_ENABLE
@@ -308,7 +309,6 @@ static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn)
 	writeField(loggerIn->name, largestloggerName_bytes);
 
 	// pointer (id of logger)
-	// 4+ includes [,], optional 0x (depends on printf implementation), terminating space
 	snprintf(buff, sizeof(buff), "[%p]", loggerIn);
 	writeField(buff, 5+(2*sizeof(void*)));
 
