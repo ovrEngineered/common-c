@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <cxa_config.h>
 #include "cxa_stateMachine.h"
 
 
@@ -61,7 +60,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn)
 	
 	// setup our logger if it's enabled
 	#ifdef CXA_STATE_MACHINE_ENABLE_LOGGING
-	cxa_logger_vinit(&smIn->logger, "fsm::%s", nameIn);
+	cxa_logger_init_formattedString(&smIn->logger, "fsm::%s", nameIn);
 	#endif
 	
 	// a timediff was _not_ supplied so we cannot do timed states
@@ -92,7 +91,7 @@ void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const c
 		.cb_enter=cb_enterIn, .cb_state=cb_stateIn, .cb_leave=cb_leaveIn, .userVar=userVarIn};
 
 	// add the new state to our array of states
-	cxa_assert(cxa_array_append(&smIn->states, &newState));
+	cxa_assert_msg(cxa_array_append(&smIn->states, &newState), "increase 'CXA_STATE_MACHINE_MAX_NUM_STATES'");
 	
 	// if we're currently not in a known state, enter this state (when update is called)
 	if( smIn->currState == NULL ) cxa_stateMachine_transition(smIn, idIn);
