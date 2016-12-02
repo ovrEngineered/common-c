@@ -343,7 +343,10 @@ static void rxStateCb_processPacket_enter(cxa_stateMachine_t *const smIn, int pr
 
 		cxa_protocolParser_notify_packetReceived(&mppIn->super, mppIn->super.currBuffer);
 	}
-	else cxa_logger_debug(&mppIn->super.logger, ERR_MALFORMED_PACKET);
+	else
+	{
+		cxa_logger_debug(&mppIn->super.logger, ERR_MALFORMED_PACKET);
+	}
 
 	// no matter what, we'll reset and wait for more data
 	cxa_stateMachine_transition(&mppIn->stateMachine, RX_STATE_WAIT_FIXEDHEADER_1);
