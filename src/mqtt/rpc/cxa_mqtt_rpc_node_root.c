@@ -114,14 +114,12 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
 	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_NOTI_PREFIX CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
 	#ifdef CXA_MQTTSERVER_ISAWS
-		cxa_logger_stepDebug();
 		cxa_mqtt_client_publish(clientIn,
 								CXA_MQTT_QOS_ATMOST_ONCE,
 								false,
 								stateTopic,
 								"{\"state\":{\"reported\":{\"connState\":1}}}", 38);
 	#else
-		cxa_logger_stepDebug();
 		cxa_mqtt_client_publish(clientIn,
 								CXA_MQTT_QOS_ATMOST_ONCE,
 								true,
