@@ -238,7 +238,7 @@ bool cxa_ioStream_vWriteString(cxa_ioStream_t *const ioStreamIn,
 								const char* formatIn, va_list argsIn,
 								bool truncateIfTooLargeIn, const char* truncateStringIn)
 {
-	cxa_assert(formatIn);
+	cxa_assert(ioStreamIn);
 	cxa_assert(formatIn);
 
 	bool retVal = false;
