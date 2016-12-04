@@ -78,8 +78,9 @@
 	#error "Unknown CXA_LOG_LEVEL specified"
 #endif
 
-#define cxa_logger_stepDebug()							cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, NULL)
-#define cxa_logger_stepDebug_msg(msgIn, ...)			cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, (msgIn), ##__VA_ARGS__)
+#define cxa_logger_stepDebug()								cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, NULL)
+#define cxa_logger_stepDebug_msg(msgIn, ...)				cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, (msgIn), ##__VA_ARGS__)
+#define cxa_logger_stepDebug_memDump(msgIn, ptrIn, lenIn)	cxa_logger_stepDebug_memDump_impl(__FILE__, __LINE__, (ptrIn), (lenIn), (msgIn))
 
 
 // ******** global type definitions *********
@@ -141,15 +142,23 @@ cxa_logger_t* cxa_logger_getSysLog(void);
  */
 void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const char* untermStringIn, size_t untermStrLen_bytesIn, const char* postFixIn);
 
-/**
- * @private
- */
-void cxa_logger_stepDebug_formattedString(const char* fileIn, const int lineNumIn, const char* formatIn, ...);
 
 /**
  * @private
  */
 void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...);
+
+
+/**
+ * @private
+ */
+void cxa_logger_stepDebug_formattedString(const char* fileIn, const int lineNumIn, const char* formatIn, ...);
+
+
+/**
+ * @private
+ */
+void cxa_logger_stepDebug_memDump_impl(const char* fileIn, const int lineNumIn, void* bytesIn, size_t numBytesIn, const char* msgIn);
 
 
 #endif // CXA_LOGGER_H_

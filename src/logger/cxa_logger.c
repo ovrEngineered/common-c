@@ -146,6 +146,47 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 }
 
 
+void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
+{
+	cxa_assert(loggerIn);
+	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
+				(levelIn == CXA_LOG_LEVEL_WARN) ||
+				(levelIn == CXA_LOG_LEVEL_INFO) ||
+				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
+				(levelIn == CXA_LOG_LEVEL_TRACE) );
+	cxa_assert(formatIn);
+	checkSysLogInit();
+
+	// if we don't have an ioStream, don't worry about it!
+	if( ioStream == NULL ) return;
+
+
+	cxa_criticalSection_enter();
+
+#ifdef CXA_CONSOLE_ENABLE
+	cxa_console_prelog();
+#endif
+
+	// common header
+	writeHeader(loggerIn, levelIn);
+
+	// now do our VARARGS
+	va_list varArgs;
+	va_start(varArgs, formatIn);
+	cxa_ioStream_vWriteString(ioStream, formatIn, varArgs, true, CXA_LOGGER_TRUNCATE_STRING);
+	va_end(varArgs);
+
+	// print EOL
+	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+
+#ifdef CXA_CONSOLE_ENABLE
+	cxa_console_postlog();
+#endif
+
+	cxa_criticalSection_exit();
+}
+
+
 void cxa_logger_stepDebug_formattedString(const char* fileIn, const int lineNumIn, const char* formatIn, ...)
 {
 	cxa_assert(fileIn);
@@ -191,19 +232,20 @@ void cxa_logger_stepDebug_formattedString(const char* fileIn, const int lineNumI
 }
 
 
-void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
+void cxa_logger_stepDebug_memDump_impl(const char* fileIn, const int lineNumIn, void* bytesIn, size_t numBytesIn, const char* msgIn)
 {
-	cxa_assert(loggerIn);
-	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
-				(levelIn == CXA_LOG_LEVEL_WARN) ||
-				(levelIn == CXA_LOG_LEVEL_INFO) ||
-				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
-				(levelIn == CXA_LOG_LEVEL_TRACE) );
-	cxa_assert(formatIn);
-	checkSysLogInit();
+	cxa_assert(fileIn);
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
+
+	// shorten our file name
+	char *file_sep = strrchr(fileIn, '/');
+	if(file_sep) fileIn = file_sep+1;
+	else{
+		file_sep = strrchr(fileIn, '\\');
+		if (file_sep) fileIn = file_sep+1;
+	}
 
 
 	cxa_criticalSection_enter();
@@ -213,13 +255,22 @@ void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t 
 #endif
 
 	// common header
-	writeHeader(loggerIn, levelIn);
+	writeHeader(&sysLog, CXA_LOG_LEVEL_DEBUG);
 
-	// now do our VARARGS
-	va_list varArgs;
-	va_start(varArgs, formatIn);
-	cxa_ioStream_vWriteString(ioStream, formatIn, varArgs, true, CXA_LOGGER_TRUNCATE_STRING);
-	va_end(varArgs);
+	// print our location
+	cxa_ioStream_writeFormattedString(ioStream,  "%s::%d - ", fileIn, lineNumIn);
+
+	// print our message
+	cxa_ioStream_writeString(ioStream, msgIn);
+
+	cxa_ioStream_writeString(ioStream, "{");
+	for( size_t i = 0; i < numBytesIn; i++ )
+	{
+		cxa_ioStream_writeFormattedString(ioStream, "%02X", ((uint8_t*)bytesIn)[i]);
+		if( i != (numBytesIn-1) ) cxa_ioStream_writeString(ioStream, ", ");
+	}
+	cxa_ioStream_writeString(ioStream, "}");
+
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
