@@ -448,8 +448,16 @@ static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event)
 			break;
 
 		case SYSTEM_EVENT_STA_DISCONNECTED:
-			// keep retrying
-			cxa_stateMachine_transition(&stateMachine, isStaConfigSet() ? STATE_ASSOCIATING : STATE_PROVISIONING);
+			if( currState == STATE_ASSOCIATING )
+			{
+				// this means we immediately failed to associate...
+				cxa_stateMachine_transition(&stateMachine, STATE_CONNECTION_TIMEOUT);
+			}
+			else
+			{
+				// keep retrying
+				cxa_stateMachine_transition(&stateMachine, isStaConfigSet() ? STATE_ASSOCIATING : STATE_PROVISIONING);
+			}
 			break;
 
 		case SYSTEM_EVENT_STA_GOT_IP:
