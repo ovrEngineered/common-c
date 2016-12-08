@@ -17,6 +17,7 @@
  */
 #include <cxa_esp32_timeBase.h>
 
+#include <math.h>
 #include <stddef.h>
 #include <sys/time.h>
 
@@ -60,7 +61,7 @@ uint32_t cxa_timeBase_getCount_us(void)
 	diff.tv_sec = tv.tv_sec - initVal.tv_sec;
 	diff.tv_usec = tv.tv_usec - initVal.tv_usec;
 
-	return diff.tv_sec * 1E6 + diff.tv_usec;
+	return fmod((diff.tv_sec * 1E6 + diff.tv_usec), UINT32_MAX);
 }
 
 
@@ -71,4 +72,8 @@ uint32_t cxa_timeBase_getMaxCount_us(void)
 
 
 // ******** local function implementations ********
-
+// missing from the current ESP-IDF
+double __ieee754_remainder(double x, double y)
+{
+	return x - y * floor(x/y);
+}
