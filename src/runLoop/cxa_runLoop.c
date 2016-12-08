@@ -31,10 +31,14 @@
 
 // ******** local macro definitions ********
 #ifndef CXA_RUNLOOP_INFOPRINT_PERIOD_MS
-	#define CXA_RUNLOOP_INFOPRINT_PERIOD_MS				10000
+	#define CXARUNLOOP_INFOPRINT_PERIOD_MS				10000
 #endif
 
 #define CXA_RUNLOOP_INFOPRINT_AVGNUMITERS				100
+
+#ifndef CXA_RUNLOOP_MAX_NUM_ENTRIES
+	#define CXA_RUNLOOP_MAX_NUM_ENTRIES					8
+#endif
 
 
 // ******** local type definitions ********
@@ -46,11 +50,14 @@ typedef struct
 
 
 static cxa_array_t cbs;
-static cxa_runLoop_entry_t cbs_raw[CXA_RUN_LOOP_MAX_NUM_ENTRIES];
+static cxa_runLoop_entry_t cbs_raw[CXA_RUNLOOP_MAX_NUM_ENTRIES];
 
 static cxa_logger_t logger;
 static cxa_timeDiff_t td_printInfo;
+
+#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
 static uint32_t averageIterPeriod_us = 0;
+#endif
 
 
 // ******** local function prototypes ********
@@ -102,19 +109,20 @@ void cxa_runLoop_iterate(void)
 {
 	if( !isInit ) cxa_runLoop_init();
 
-
+#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
 	uint32_t iter_startTime_us = cxa_timeBase_getCount_us();
+#endif
 
 	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
 	{
 		if( currEntry->cb != NULL) currEntry->cb(currEntry->userVar);
 	}
 
+#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
 	uint32_t iter_time_us = cxa_timeBase_getCount_us() - iter_startTime_us;
 	averageIterPeriod_us -= averageIterPeriod_us / CXA_RUNLOOP_INFOPRINT_AVGNUMITERS;
 	averageIterPeriod_us += iter_time_us;
 
-#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
 	if( cxa_timeDiff_isElapsed_recurring_ms(&td_printInfo, CXA_RUNLOOP_INFOPRINT_PERIOD_MS) )
 	{
 		cxa_logger_debug(&logger, "iteration  curr: %d ms  avg: %d ms", iter_time_us / 1000, averageIterPeriod_us / 1000);
