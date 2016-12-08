@@ -98,11 +98,14 @@ bool cxa_mqtt_client_network_connectToHost_clientCert(cxa_mqtt_client_network_t 
 	// let our super class know we are connecting
 	cxa_mqtt_client_super_connectingTransport(&clientIn->super);
 
-	return cxa_network_tcpClient_connectToHost_clientCert(clientIn->netClient, hostNameIn, portNumIn,
-														  serverRootCertIn, serverRootCertLen_bytesIn,
-														  clientCertIn, clientCertLen_bytesIn,
-														  clientPrivateKeyIn, clientPrivateKeyLen_bytesIn,
-														  NET_CONNECT_TIMEOUT_MS);
+	bool retVal = cxa_network_tcpClient_connectToHost_clientCert(clientIn->netClient, hostNameIn, portNumIn,
+														  	  	 serverRootCertIn, serverRootCertLen_bytesIn,
+																 clientCertIn, clientCertLen_bytesIn,
+																 clientPrivateKeyIn, clientPrivateKeyLen_bytesIn,
+																 NET_CONNECT_TIMEOUT_MS);
+	if( !retVal ) cxa_mqtt_client_super_disconnect(&clientIn->super);
+
+	return retVal;
 }
 
 

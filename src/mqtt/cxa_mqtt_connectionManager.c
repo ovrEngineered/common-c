@@ -257,7 +257,6 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextSta
 															  clientPrivateKey, clientPrivateKeyLen_bytes) )
 		{
 			cxa_logger_warn(&logger, "failed to start network connection");
-			cxa_stateMachine_transition(&stateMachine, STATE_ERROR);
 			return;
 		}
 	}
@@ -266,7 +265,6 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextSta
 		if( !cxa_mqtt_client_network_connectToHost(&mqttClient, mqtt_hostName, mqtt_portNum, mqtt_useTls, mqtt_username, mqtt_password, mqtt_passwordLen_bytes) )
 		{
 			cxa_logger_warn(&logger, "failed to start network connection");
-			cxa_stateMachine_transition(&stateMachine, STATE_ERROR);
 			return;
 		}
 	}

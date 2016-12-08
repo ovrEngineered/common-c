@@ -328,7 +328,7 @@ void cxa_mqtt_client_super_disconnect(cxa_mqtt_client_t *const clientIn)
 	cxa_assert(clientIn);
 
 	// we only want to notify our clients if we're connected
-	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return;
+	//if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return;
 
 	// transition
 	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
