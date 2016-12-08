@@ -216,10 +216,13 @@ void cxa_logger_stepDebug_formattedString(const char* fileIn, const int lineNumI
 	cxa_ioStream_writeFormattedString(ioStream, ((formatIn != NULL) ? "%s::%d - " : "%s::%d"), fileIn, lineNumIn);
 
 	// now do our VARARGS
-	va_list varArgs;
-	va_start(varArgs, formatIn);
-	cxa_ioStream_vWriteString(ioStream, formatIn, varArgs, true, CXA_LOGGER_TRUNCATE_STRING);
-	va_end(varArgs);
+	if( formatIn != NULL )
+	{
+		va_list varArgs;
+		va_start(varArgs, formatIn);
+		cxa_ioStream_vWriteString(ioStream, formatIn, varArgs, true, CXA_LOGGER_TRUNCATE_STRING);
+		va_end(varArgs);
+	}
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
