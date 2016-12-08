@@ -46,7 +46,7 @@ typedef enum
 	STATE_ASSOCIATING,
 	STATE_ASSOCIATED,
 	STATE_CONNECTED,
-	STATE_CONNECTION_TIMEOUT,
+	STATE_CONNECTION_FAILED,
 	STATE_STA_STOPPING,
 	STATE_PROVISIONING,
 	STATE_MICROAP,
@@ -84,7 +84,7 @@ static void stateCb_startup_enter(cxa_stateMachine_t *const smIn, int prevStateI
 static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
-static void stateCb_connectionTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connectionFailed_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_staStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_provisioning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_microAp_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
@@ -101,8 +101,9 @@ static void notify_disconnected(void);
 static void notify_connectFailed(void);
 static void notify_microAp(void);
 
-static void consoleCb_restore(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void consoleCb_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_getCfg(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void consoleCb_restart(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -113,6 +114,8 @@ static internalTargetMode_t targetWifiMode = INTTAR_MODE_DISABLED;
 static cxa_stateMachine_t stateMachine;
 
 static cxa_logger_t logger;
+
+static ip4_addr_t myIp = {.addr = 0};
 
 //static char microAp_ssid[33] = "";
 //static char microAp_passphrase[65] = "";
@@ -138,18 +141,19 @@ void cxa_network_wifiManager_init(void)
 	cxa_stateMachine_init(&stateMachine, "wifiMgr");
 	cxa_stateMachine_addState(&stateMachine, STATE_IDLE, "idle", stateCb_idle_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_STARTUP, "startup", stateCb_startup_enter, NULL, NULL, NULL);
-	cxa_stateMachine_addState_timed(&stateMachine, STATE_ASSOCIATING, "associating", STATE_CONNECTION_TIMEOUT, CONNECTION_TIMEOUT_MS, stateCb_associating_enter, NULL, NULL, NULL);
-	cxa_stateMachine_addState_timed(&stateMachine, STATE_ASSOCIATED, "associated", STATE_CONNECTION_TIMEOUT, CONNECTION_TIMEOUT_MS, NULL, NULL, NULL, NULL);
+	cxa_stateMachine_addState_timed(&stateMachine, STATE_ASSOCIATING, "associating", STATE_CONNECTION_FAILED, CONNECTION_TIMEOUT_MS, stateCb_associating_enter, NULL, NULL, NULL);
+	cxa_stateMachine_addState_timed(&stateMachine, STATE_ASSOCIATED, "associated", STATE_CONNECTION_FAILED, CONNECTION_TIMEOUT_MS, NULL, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, stateCb_connected_leave, NULL);
-	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTION_TIMEOUT, "connTimout", stateCb_connectionTimeout_enter, NULL, NULL, NULL);
+	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTION_FAILED, "connFail", stateCb_connectionFailed_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_STA_STOPPING, "staStopping", stateCb_staStopping_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_PROVISIONING, "provisioning", stateCb_provisioning_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_MICROAP, "microAp", stateCb_microAp_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_MICROAP_STOPPING, "microApStopping", stateCb_microApStopping_enter, NULL, NULL, NULL);
 	cxa_stateMachine_setInitialState(&stateMachine, STATE_IDLE);
 
-	cxa_console_addCommand("restore", consoleCb_restore, NULL);
-	cxa_console_addCommand("getCfg", consoleCb_getCfg, NULL);
+	cxa_console_addCommand("wifi_clear", consoleCb_clear, NULL);
+	cxa_console_addCommand("wifi_getCfg", consoleCb_getCfg, NULL);
+	cxa_console_addCommand("wifi_restart", consoleCb_restart, NULL);
 }
 
 
@@ -223,7 +227,7 @@ cxa_network_wifiManager_state_t cxa_network_wifiManager_getState(void)
 
 		case STATE_ASSOCIATING:
 		case STATE_ASSOCIATED:
-		case STATE_CONNECTION_TIMEOUT:
+		case STATE_CONNECTION_FAILED:
 			retVal = CXA_NETWORK_WIFISTATE_CONNECTING;
 			break;
 
@@ -348,11 +352,11 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStat
 }
 
 
-static void stateCb_connectionTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_connectionFailed_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	wifi_config_t wifiConfig;
 	esp_wifi_get_config(WIFI_IF_STA, &wifiConfig);
-	cxa_logger_info(&logger, "connection to '%s' timed out...retrying", wifiConfig.sta.ssid);
+	cxa_logger_info(&logger, "connection to '%s' failed...retrying", wifiConfig.sta.ssid);
 
 	notify_connectFailed();
 
@@ -362,6 +366,7 @@ static void stateCb_connectionTimeout_enter(cxa_stateMachine_t *const smIn, int 
 
 static void stateCb_staStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
+	esp_wifi_disconnect();
 	esp_wifi_stop();
 }
 
@@ -412,6 +417,10 @@ static void espCb_smartConfig(smartconfig_status_t status, void *pdata)
 			break;
 		}
 
+		case SC_STATUS_LINK_OVER:
+			esp_smartconfig_stop();
+			break;
+
 		default:
 			break;
 	}
@@ -448,20 +457,12 @@ static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event)
 			break;
 
 		case SYSTEM_EVENT_STA_DISCONNECTED:
-			if( currState == STATE_ASSOCIATING )
-			{
-				// this means we immediately failed to associate...
-				cxa_stateMachine_transition(&stateMachine, STATE_CONNECTION_TIMEOUT);
-			}
-			else
-			{
-				// keep retrying
-				cxa_stateMachine_transition(&stateMachine, isStaConfigSet() ? STATE_ASSOCIATING : STATE_PROVISIONING);
-			}
+			cxa_stateMachine_transition(&stateMachine, (currState == STATE_ASSOCIATING) ? STATE_CONNECTION_FAILED : STATE_STA_STOPPING);
 			break;
 
 		case SYSTEM_EVENT_STA_GOT_IP:
 			// we're associated!!
+			myIp.addr = event->event_info.got_ip.ip_info.ip.addr;
 			cxa_stateMachine_transition(&stateMachine, STATE_CONNECTED);
 			break;
 
@@ -562,9 +563,10 @@ static void notify_microAp(void)
 }
 
 
-static void consoleCb_restore(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+static void consoleCb_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
 	esp_wifi_restore();
+	cxa_logger_info(&logger, "wifi credentials cleared");
 }
 
 
@@ -573,5 +575,15 @@ static void consoleCb_getCfg(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 	wifi_config_t cfg;
 	esp_wifi_get_config(WIFI_IF_STA, &cfg);
 
-	cxa_logger_trace(&logger, "'%s'  '%s'", cfg.sta.ssid, cfg.sta.password);
+	cxa_logger_info(&logger, "ssid: '%s'  ip: %d.%d.%d.%d", cfg.sta.ssid,
+					((myIp.addr >> 0) & 0xFF),
+					((myIp.addr >> 8) & 0xFF),
+					((myIp.addr >> 16) & 0xFF),
+					((myIp.addr >> 24) & 0xFF));
+}
+
+
+static void consoleCb_restart(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+{
+	cxa_network_wifiManager_restart();
 }
