@@ -19,7 +19,7 @@
 // ******** includes ********
 #include <cxa_assert.h>
 
-#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
@@ -99,7 +99,7 @@ static bool scm_canSetBuffer(cxa_protocolParser_t *const superIn)
 	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)superIn;
 	cxa_assert(clePpIn);
 
-	rxState_t currState = cxa_stateMachine_getCurrentState(&clePpIn->stateMachine);
+	rxState_t currState = (rxState_t)cxa_stateMachine_getCurrentState(&clePpIn->stateMachine);
 	return (currState == RX_STATE_PROCESS_PACKET) || (currState == RX_STATE_IDLE);
 }
 
@@ -353,7 +353,10 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 
 		cxa_protocolParser_notify_packetReceived(&clePpIn->super, clePpIn->super.currBuffer);
 	}
-	else cxa_logger_debug(&clePpIn->super.logger, "improperly formatted message received");
+	else
+	{
+		cxa_logger_debug(&clePpIn->super.logger, "improperly formatted message received");
+	}
 
 	// no matter what, we'll reset and wait for more data
 	cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_0x80);
