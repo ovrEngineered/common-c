@@ -101,9 +101,9 @@ static void notify_disconnected(void);
 static void notify_connectFailed(void);
 static void notify_microAp(void);
 
-static void consoleCb_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
-static void consoleCb_getCfg(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
-static void consoleCb_restart(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void consoleCb_clear(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void consoleCb_restart(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -151,9 +151,9 @@ void cxa_network_wifiManager_init(void)
 	cxa_stateMachine_addState(&stateMachine, STATE_MICROAP_STOPPING, "microApStopping", stateCb_microApStopping_enter, NULL, NULL, NULL);
 	cxa_stateMachine_setInitialState(&stateMachine, STATE_IDLE);
 
-	cxa_console_addCommand("wifi_clear", consoleCb_clear, NULL);
-	cxa_console_addCommand("wifi_getCfg", consoleCb_getCfg, NULL);
-	cxa_console_addCommand("wifi_restart", consoleCb_restart, NULL);
+	cxa_console_addCommand("wifi_clear", "clears stored config", NULL, 0, consoleCb_clear, NULL);
+	cxa_console_addCommand("wifi_getCfg", "prints current config", NULL, 0, consoleCb_getCfg, NULL);
+	cxa_console_addCommand("wifi_restart", "restarts the WiFi stateMachine", NULL, 0, consoleCb_restart, NULL);
 }
 
 
@@ -563,14 +563,14 @@ static void notify_microAp(void)
 }
 
 
-static void consoleCb_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+static void consoleCb_clear(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
 	esp_wifi_restore();
 	cxa_logger_info(&logger, "wifi credentials cleared");
 }
 
 
-static void consoleCb_getCfg(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
 	wifi_config_t cfg;
 	esp_wifi_get_config(WIFI_IF_STA, &cfg);
@@ -583,7 +583,7 @@ static void consoleCb_getCfg(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 }
 
 
-static void consoleCb_restart(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+static void consoleCb_restart(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
 	cxa_network_wifiManager_restart();
 }
