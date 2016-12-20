@@ -41,7 +41,13 @@
 typedef struct
 {
 	char command[CXA_CONSOLE_MAX_COMMAND_LEN_BYTES+1];
+	char description[CXA_CONSOLE_MAX_DESCRIPTION_LEN_BYTES+1];
+
 	cxa_console_command_cb_t cb;
+
+	cxa_console_argDescriptor_t argDescs[CXA_CONSOLE_MAXNUM_ARGS];
+	size_t numArgs;
+
 	void* userVar;
 }commandEntry_t;
 
@@ -53,9 +59,10 @@ static void printCommandLine(void);
 static void printError(char* errorIn);
 static void printBlockLine(const char* textIn, size_t maxNumCols);
 static void clearScreenReturnHome(void);
+static void clearBuffer(void);
 
-static void command_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
-static void command_help(cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void command_clear(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void command_help(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -82,8 +89,8 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 	// setup our arrays
 	cxa_array_initStd(&commandBuffer, commandBuffer_raw);
 	cxa_array_initStd(&commandEntries, commandEntries_raw);
-	cxa_console_addCommand("clear", command_clear, NULL);
-	cxa_console_addCommand("help", command_help, NULL);
+	cxa_console_addCommand("clear", "clears the console", NULL, 0, command_clear, NULL);
+	cxa_console_addCommand("help", "prints available commands", NULL, 0, command_help, NULL);
 
 	// register for our runLoop
 	cxa_runLoop_addEntry(cb_onRunLoopUpdate, NULL);
@@ -93,17 +100,24 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 }
 
 
-void cxa_console_addCommand(const char* commandIn, cxa_console_command_cb_t cbIn, void* userVarIn)
+void cxa_console_addCommand(const char* commandIn, const char* descriptionIn,
+							cxa_console_argDescriptor_t *const argDescsIn, size_t numArgsIn,
+							cxa_console_command_cb_t cbIn, void* userVarIn)
 {
 	cxa_assert(commandIn);
 	cxa_assert(strlen(commandIn) <= CXA_CONSOLE_MAX_COMMAND_LEN_BYTES);
 	cxa_assert(cbIn);
+	if( numArgsIn > 0 ) cxa_assert(argDescsIn);
 
 	commandEntry_t newEntry = {
 			.cb = cbIn,
-			.userVar = userVarIn
+			.userVar = userVarIn,
+			.numArgs = numArgsIn
 	};
 	cxa_stringUtils_copy(newEntry.command, commandIn, sizeof(newEntry.command));
+	cxa_stringUtils_copy(newEntry.description, (descriptionIn != NULL) ? descriptionIn : "<none>", sizeof(newEntry.description));
+	if( numArgsIn > 0 ) memcpy(newEntry.argDescs, argDescsIn, sizeof(*argDescsIn) *numArgsIn);
+
 	cxa_assert(cxa_array_append(&commandEntries, &newEntry));
 }
 
@@ -141,33 +155,81 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			// end of a command...make sure it's not empty
 			if( cxa_array_isEmpty(&commandBuffer) ) return;
 
-			// process our command
+			// split our command line by spaces...this _will_ mangle our commandBuffer
+			char* tokSavePtr;
+			char* cmd = strtok_r(cxa_array_get(&commandBuffer, 0), " ", &tokSavePtr);
+
+			// look for our command
 			bool foundCommand = false;
 			cxa_array_iterate(&commandEntries, currEntry, commandEntry_t)
 			{
 				if( currEntry == NULL) continue;
 
-				if( cxa_stringUtils_startsWith(cxa_array_get(&commandBuffer, 0), currEntry->command) )
+				if( strcmp(cmd, currEntry->command) == 0 )
 				{
-					// we have a matching command...give it two new lines, then call the callback
-					cxa_array_clear(&commandBuffer);
+					foundCommand = true;
 
+					// we have a matching command...get ready to parse the arguments
+					// (if we have them)
+					cxa_array_t args;
+					cxa_stringUtils_parseResult_t args_raw[currEntry->numArgs];
+					if( currEntry->numArgs > 0 ) cxa_array_initStd(&args, args_raw);
+
+					// parse the arguments
+					char* currParam_str;
+					bool argParseError = false;
+					for( size_t i = 0; i < currEntry->numArgs; i++ )
+					{
+						cxa_console_argDescriptor_t* currArgDesc = &currEntry->argDescs[i];
+
+						// pull our argument string
+						currParam_str = strtok_r(NULL, " ", &tokSavePtr);
+						if( currParam_str == NULL )
+						{
+							printError("Too few arguments");
+							argParseError = true;
+							break;
+						}
+
+						// parse it into a known data type and store to our array
+						cxa_stringUtils_parseResult_t* parseVal = cxa_array_append_empty(&args);
+						if( !cxa_stringUtils_parseString(currParam_str, parseVal) ||
+							(parseVal->dataType != currArgDesc->dataType) )
+						{
+							printError("Incorrect argument type(s)");
+							argParseError = true;
+							break;
+						}
+
+						// save it into our array (which we'll pass to the user)
+						cxa_array_append(&args, &parseVal);
+					}
+					// make sure we break out of the outer loop as wel
+					if( argParseError ) break;
+
+					// make sure we don't have any extra arguments
+					if( strtok_r(NULL, " ", &tokSavePtr) != NULL )
+					{
+						printError("Too many arguments");
+						break;
+					}
+
+					// if we made it here, we parses our arguments correctly...
+					// give it two new lines, then call the callback
 					isExecutingCommand = true;
 					cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
 
-					if( currEntry->cb != NULL ) currEntry->cb(ioStream, currEntry->userVar);
+					if( currEntry->cb != NULL ) currEntry->cb((currEntry->numArgs > 0) ? &args : NULL, ioStream, currEntry->userVar);
 					cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
-
-					foundCommand = true;
 					break;
 				}
 			}
 			if( !foundCommand )
 			{
-				cxa_array_clear(&commandBuffer);
 				printError("Unknown command");
 			}
 
+			clearBuffer();
 			printCommandLine();
 			return;
 		}
@@ -189,7 +251,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 		if( !cxa_array_append(&commandBuffer, &rxByte) )
 		{
 			// commandBuffer is full
-			cxa_array_clear(&commandBuffer);
+			clearBuffer();
 			printError("Command too long for buffer");
 			printCommandLine();
 		}
@@ -274,20 +336,51 @@ static void clearScreenReturnHome(void)
 }
 
 
-static void command_clear(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+static void clearBuffer(void)
+{
+	cxa_array_clear(&commandBuffer);
+	memset(cxa_array_get_noBoundsCheck(&commandBuffer, 0), 0, cxa_array_getMaxSize_elems(&commandBuffer));
+}
+
+
+static void command_clear(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
 	clearScreenReturnHome();
 }
 
 
-static void command_help(cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+static void command_help(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
 	cxa_ioStream_writeLine(ioStream, "Available commands:");
 	cxa_array_iterate(&commandEntries, currEntry, commandEntry_t)
 	{
 		if( currEntry == NULL ) continue;
 
+		// first the command and description
 		for( int i = 0; i < 3; i++ ) cxa_ioStream_writeString(ioStream, " ");
-		cxa_ioStream_writeLine(ioStream, (char*)currEntry->command);
+		cxa_ioStream_writeString(ioStream, (char*)currEntry->command);
+		for( int i = 0; i < CXA_CONSOLE_MAX_COMMAND_LEN_BYTES - strlen(currEntry->command); i++ ) cxa_ioStream_writeString(ioStream, " ");
+		for( int i = 0; i < 3; i++ ) cxa_ioStream_writeString(ioStream, " ");
+		cxa_ioStream_writeLine(ioStream, (char*)currEntry->description);
+
+		// now the parameters (if applicable)
+		if( currEntry->numArgs > 0 )
+		{
+			// now the parameters header
+			for( int i = 0; i < CXA_CONSOLE_MAX_COMMAND_LEN_BYTES+6; i++ ) cxa_ioStream_writeString(ioStream, " ");
+			cxa_ioStream_writeLine(ioStream, "Parameters:");
+
+			// now each parameter
+			for( size_t i = 0; i < currEntry->numArgs; i++ )
+			{
+				cxa_console_argDescriptor_t* currParam = &currEntry->argDescs[i];
+
+				for( int i = 0; i < CXA_CONSOLE_MAX_COMMAND_LEN_BYTES+6; i++ ) cxa_ioStream_writeString(ioStream, " ");
+				const char* paramType = cxa_stringUtils_getStringForDataType(currParam->dataType);
+				cxa_ioStream_writeFormattedString(ioStream, "<%s>", paramType);
+				for( int i = 0; i < 11 - strlen(paramType); i++ ) cxa_ioStream_writeString(ioStream, " ");
+				cxa_ioStream_writeLine(ioStream, (char*)currParam->description);
+			}
+		}
 	}
 }
