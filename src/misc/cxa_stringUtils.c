@@ -358,7 +358,7 @@ bool cxa_stringUtils_parseString(char *const strIn, cxa_stringUtils_parseResult_
 {
 	if( strIn == NULL ) return false;
 
-	#ifndef errno_defined
+	#if !defined(errno_defined) && !defined(errno)
 	int errno = 0;
 	#endif
 
