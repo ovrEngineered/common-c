@@ -42,14 +42,15 @@ typedef struct
 
 
 // ******** local function prototypes ********
+double strtod (const char* str, char** endptr);
 
 
 // ********  local variable declarations *********
 static dataType_string_mapEntry_t DT_STRING_MAP[] =
 {
-		{CXA_STRINGUTILS_DATATYPE_DOUBLE, "double"},
+		{CXA_STRINGUTILS_DATATYPE_DOUBLE,  "double"},
 		{CXA_STRINGUTILS_DATATYPE_INTEGER, "integer"},
-		{CXA_STRINGUTILS_DATATYPE_STRING, "string"},
+		{CXA_STRINGUTILS_DATATYPE_STRING,  "string"},
 		{CXA_STRINGUTILS_DATATYPE_UNKNOWN, "unknown"}
 };
 
@@ -353,57 +354,73 @@ bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, bool 
 }
 
 
-//cxa_stringUtils_parseResult_t cxa_stringUtils_parseString(char *const strIn)
-//{
-//	cxa_stringUtils_parseResult_t retVal = {.dataType=CXA_STRINGUTILS_DATATYPE_UNKNOWN};
-//	if( strIn == NULL ) return retVal;
-//
-//	#ifndef errno_defined
-//	int errno = 0;
-//	#endif
-//
-//	// first things first...see if the string contains a period
-//	if( cxa_stringUtils_contains(strIn, ".") )
-//	{
-//		// this may be a double or a string
-//		char* p = strIn;
-//		errno = 0;
-//		double val = strtod(strIn, &p);
-//		if( (errno != 0) || (strIn == p) || (*p != 0) )
-//		{
-//			// couldn't parse a double...must be a string
-//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
-//			retVal.val_string = strIn;
-//		}
-//		else
-//		{
-//			// we parsed a double!
-//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_DOUBLE;
-//			retVal.val_double = val;
-//		}
-//	}
-//	else
-//	{
-//		// this may be a signed integer or a string
-//		char* p = strIn;
-//		errno = 0;
-//		long val = strtol(strIn, &p, 10);
-//		if( (errno != 0) || (strIn == p) || (*p != 0) )
-//		{
-//			// couldn't parse an integer...must be a string
-//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_STRING;
-//			retVal.val_string = strIn;
-//		}
-//		else
-//		{
-//			// we got an integer!
-//			retVal.dataType = CXA_STRINGUTILS_DATATYPE_INTEGER;
-//			retVal.val_int = val;
-//		}
-//	}
-//
-//	return retVal;
-//}
+bool cxa_stringUtils_parseString(char *const strIn, cxa_stringUtils_parseResult_t* parseResultOut)
+{
+	if( strIn == NULL ) return false;
+
+	#ifndef errno_defined
+	int errno = 0;
+	#endif
+
+	// first things first...see if the string contains a period
+	bool parseSuccess = false;
+	if( cxa_stringUtils_contains(strIn, ".") )
+	{
+		// this may be a double or a string
+		char* p = strIn;
+		errno = 0;
+		double val = strtod(strIn, &p);
+		if( (errno != 0) || (strIn == p) || (*p != 0) )
+		{
+			// couldn't parse a double...must be a string
+			parseSuccess = true;
+			if( parseResultOut != NULL )
+			{
+				parseResultOut->dataType = CXA_STRINGUTILS_DATATYPE_STRING;
+				parseResultOut->val_string = strIn;
+			}
+		}
+		else
+		{
+			// we parsed a double!
+			parseSuccess = true;
+			if( parseResultOut != NULL )
+			{
+				parseResultOut->dataType = CXA_STRINGUTILS_DATATYPE_DOUBLE;
+				parseResultOut->val_double = val;
+			}
+		}
+	}
+	else
+	{
+		// this may be a signed integer or a string
+		char* p = strIn;
+		errno = 0;
+		long val = strtol(strIn, &p, 10);
+		if( (errno != 0) || (strIn == p) || (*p != 0) )
+		{
+			// couldn't parse an integer...must be a string
+			parseSuccess = true;
+			if( parseResultOut != NULL )
+			{
+				parseResultOut->dataType = CXA_STRINGUTILS_DATATYPE_STRING;
+				parseResultOut->val_string = strIn;
+			}
+		}
+		else
+		{
+			// we got an integer!
+			parseSuccess = true;
+			if( parseResultOut != NULL )
+			{
+				parseResultOut->dataType = CXA_STRINGUTILS_DATATYPE_INTEGER;
+				parseResultOut->val_int = val;
+			}
+		}
+	}
+
+	return parseSuccess;
+}
 
 
 const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn)
