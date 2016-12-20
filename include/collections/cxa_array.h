@@ -83,7 +83,7 @@
  * @param[in] bufferIn pointer to the declared c-style array which
  * 		will contain the data for the array
  */
-#define cxa_array_initStd(arrIn, bufferIn)						cxa_array_init((arrIn), sizeof(*(bufferIn)), ((void*)(bufferIn)), sizeof(bufferIn))
+#define cxa_array_initStd(arrIn, bufferIn)						cxa_array_init((arrIn), ((bufferIn) == NULL) ? 0 : sizeof(*(bufferIn)), ((void*)(bufferIn)), ((bufferIn) == NULL) ? 0 : sizeof(bufferIn))
 
 
 /**
@@ -109,7 +109,9 @@
  * 		to the current array element of the datatype 'elemTypeIn'
  * @param[in] elemTypeIn the base datatype of each element (not their pointer)
  */
-#define cxa_array_iterate(arrIn, varNameIn, elemTypeIn)			for(elemTypeIn* (varNameIn) = ((elemTypeIn*)((arrIn)->bufferLoc)); (varNameIn) < (elemTypeIn*)&(((uint8_t*)((arrIn)->bufferLoc))[((arrIn)->insertIndex) * ((arrIn)->datatypeSize_bytes)]); (varNameIn)++)
+#define cxa_array_iterate(arrIn, varNameIn, elemTypeIn)			for(elemTypeIn* (varNameIn) = ((elemTypeIn*)((arrIn)->bufferLoc));		\
+																    (varNameIn) < (((arrIn)->bufferLoc == NULL) ? (elemTypeIn*)NULL : (elemTypeIn*)&(((uint8_t*)((arrIn)->bufferLoc))[((arrIn)->insertIndex) * ((arrIn)->datatypeSize_bytes)]));	\
+																    (varNameIn)++)
 
 
 // ******** global type definitions *********

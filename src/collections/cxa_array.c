@@ -45,13 +45,12 @@ void cxa_array_init(cxa_array_t *const arrIn, const size_t datatypeSize_bytesIn,
 {
 	cxa_assert(arrIn);
 	cxa_assert(datatypeSize_bytesIn > 0);
-	cxa_assert(bufferLocIn);
 	cxa_assert(bufferMaxSize_bytesIn >= datatypeSize_bytesIn);
 
 	// save our references
 	arrIn->bufferLoc = bufferLocIn;
 	arrIn->datatypeSize_bytes = datatypeSize_bytesIn;
-	arrIn->maxNumElements = bufferMaxSize_bytesIn / datatypeSize_bytesIn;
+	arrIn->maxNumElements = (datatypeSize_bytesIn > 0 ) ? (bufferMaxSize_bytesIn / datatypeSize_bytesIn) : 0;
 
 	// set some reasonable defaults
 	arrIn->insertIndex = 0;
@@ -62,7 +61,6 @@ void cxa_array_init_inPlace(cxa_array_t *const arrIn, const size_t datatypeSize_
 {
 	cxa_assert(arrIn);
 	cxa_assert(datatypeSize_bytesIn > 0);
-	cxa_assert(bufferLocIn);
 	cxa_assert( (currNumElemsIn*datatypeSize_bytesIn) <= bufferMaxSize_bytesIn );
 
 	// save our references
@@ -163,6 +161,7 @@ void* cxa_array_get(cxa_array_t *const arrIn, const size_t indexIn)
 void* cxa_array_get_noBoundsCheck(cxa_array_t *const arrIn, const size_t indexIn)
 {
 	cxa_assert(arrIn);
+	if( arrIn->bufferLoc == NULL ) return NULL;
 
 	// if we made it here, we're good to go
 	return (void*)(((uint8_t*)arrIn->bufferLoc) + (indexIn * arrIn->datatypeSize_bytes));
