@@ -52,7 +52,7 @@ static void consoleCb_stopScan(cxa_array_t *const argsIn, cxa_ioStream_t *const 
 
 // ********  local variable declarations *********
 static bool isInit = false;
-static cxa_esp32_btle_client_t singleton;
+static cxa_btle_client_t singleton;
 
 static bool stopScan = false;
 static esp_ble_scan_type_t currScanType;
@@ -65,7 +65,7 @@ cxa_btle_client_t* cxa_esp32_btle_client_getSingleton(void)
 {
 	if( !isInit ) init();
 
-	return &singleton.super;
+	return &singleton;
 }
 
 
@@ -73,7 +73,7 @@ cxa_btle_client_t* cxa_esp32_btle_client_getSingleton(void)
 static void init(void)
 {
 	// initialize our superclass
-	cxa_btle_client_init(&singleton.super, scm_startScan, scm_stopScan);
+	cxa_btle_client_init(&singleton, scm_startScan, scm_stopScan);
 
 	// and our logger
 	cxa_logger_init(&logger, "btleClient");
@@ -96,7 +96,7 @@ static void btleCb_event(uint32_t event, void *param)
 {
 	esp_ble_gap_cb_param_t* scanResult = (esp_ble_gap_cb_param_t *)param;
 
-	cxa_logger_stepDebug_msg("bleEvt: %d  %d", event, scanResult->scan_rst.search_evt);
+//	cxa_logger_stepDebug_msg("bleEvt: %d  %d", event, scanResult->scan_rst.search_evt);
 	if( (event == ESP_GAP_BLE_SCAN_RESULT_EVT) && (scanResult->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_RES_EVT) )
 	{
 		// advertisement received
@@ -139,18 +139,19 @@ static void btleCb_event(uint32_t event, void *param)
 
 				cxa_btle_client_parseAdvField(currField, &scanResult->scan_rst.ble_adv[currByteIndex]);
 
-				currByteIndex += currField->length;
+				// +1 is for the length byte itself
+				currByteIndex += currField->length + 1;
 			}
 		}
 
-		cxa_logger_stepDebug_msg("adv from %02X:%02X:%02X:%02X:%02X:%02X(%s)  %ddBm  %d fields",
+		cxa_logger_debug(&logger, "adv from %02X:%02X:%02X:%02X:%02X:%02X(%s)  %ddBm  %d fields",
 				rxPacket.addr[5], rxPacket.addr[4], rxPacket.addr[3],
 				rxPacket.addr[2], rxPacket.addr[1], rxPacket.addr[0],
 				rxPacket.isRandomAddress ? "r" : "p",
 				rxPacket.rssi, cxa_array_getSize_elems(&rxPacket.advFields));
 
 		// notify our listeners
-		cxa_btle_client_notify_advertRx(&singleton.super, &rxPacket);
+		cxa_btle_client_notify_advertRx(&singleton, &rxPacket);
 
 	}
 	else if( (event == ESP_GAP_BLE_SCAN_RESULT_EVT) && (scanResult->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_CMPL_EVT) )
@@ -159,16 +160,13 @@ static void btleCb_event(uint32_t event, void *param)
 		if( stopScan ) return;
 
 		// if we made it here, it was a timeout...restart the scan
-		scm_startScan(&singleton.super, (currScanType == BLE_SCAN_TYPE_ACTIVE));
+		scm_startScan(&singleton, (currScanType == BLE_SCAN_TYPE_ACTIVE));
 	}
 }
 
 
 static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 {
-	cxa_esp32_btle_client_t* btlecIn = (cxa_esp32_btle_client_t*)superIn;
-	cxa_assert(btlecIn);
-
 	// save our scan type
 	currScanType = (isActiveIn) ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
 
@@ -188,9 +186,6 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 
 static void scm_stopScan(cxa_btle_client_t *const superIn)
 {
-	cxa_esp32_btle_client_t* btlecIn = (cxa_esp32_btle_client_t*)superIn;
-	cxa_assert(btlecIn);
-
 	stopScan = true;
 	esp_ble_gap_stop_scanning();
 }
@@ -198,11 +193,11 @@ static void scm_stopScan(cxa_btle_client_t *const superIn)
 
 static void consoleCb_startScan(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
-	scm_startScan(&singleton.super, false);
+	scm_startScan(&singleton, false);
 }
 
 
 static void consoleCb_stopScan(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
-	scm_stopScan(&singleton.super);
+	scm_stopScan(&singleton);
 }

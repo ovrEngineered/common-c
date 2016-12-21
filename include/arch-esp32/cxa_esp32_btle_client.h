@@ -26,10 +26,6 @@
 
 
 // ******** global type definitions *********
-typedef struct
-{
-	cxa_btle_client_t super;
-}cxa_esp32_btle_client_t;
 
 
 // ******** global function prototypes ********

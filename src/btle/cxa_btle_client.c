@@ -22,6 +22,10 @@
 #include <cxa_assert.h>
 
 
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+
+
 // ******** local macro definitions ********
 
 
@@ -109,7 +113,7 @@ void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.onAdvert != NULL ) btlecIn->cbs.onAdvert(btlecIn->cbs.userVar, packetIn);
+	if( btlecIn->cbs.onAdvert != NULL ) btlecIn->cbs.onAdvert(packetIn, btlecIn->cbs.userVar);
 }
 
 
@@ -140,9 +144,9 @@ void cxa_btle_client_parseAdvField(cxa_btle_advField_t *const advFieldIn, uint8_
 		case CXA_BTLE_ADVFIELDTYPE_MAN_DATA:
 			advFieldIn->asManufacturerData.companyId = (uint16_t)*bytesIn;
 			bytesIn++;
-			advFieldIn->asManufacturerData.companyId |= ((uint16_t)*bytesIn) >> 8;
+			advFieldIn->asManufacturerData.companyId |= ((uint16_t)*bytesIn) << 8;
 			bytesIn++;
-			cxa_fixedByteBuffer_init_inPlace(&advFieldIn->asManufacturerData.manBytes, advFieldIn->length - 4, bytesIn, advFieldIn->length - 4);
+			cxa_fixedByteBuffer_init_inPlace(&advFieldIn->asManufacturerData.manBytes, advFieldIn->length - 3, bytesIn, advFieldIn->length - 3);
 			break;
 	}
 }

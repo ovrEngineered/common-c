@@ -92,7 +92,7 @@ typedef struct
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onAdvertRx_t)(void* userVar, cxa_btle_advPacket_t* packetIn);
+typedef void (*cxa_btle_client_cb_onAdvertRx_t)(cxa_btle_advPacket_t* packetIn, void* userVarIn);
 
 
 /**
