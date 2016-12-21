@@ -49,7 +49,7 @@ void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, bo
 	ledIn->driveOffState = driveOffStateIn;
 
 	// setup our internal state
-	cxa_timeDiff_init(&ledIn->td_blink, true);
+	cxa_timeDiff_init(&ledIn->td_blink);
 
 	// initialize our super class (since it sets our initial value)
 	cxa_led_init(&ledIn->super, scm_turnOn, scm_turnOff, scm_blink, NULL);

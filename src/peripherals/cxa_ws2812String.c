@@ -68,7 +68,7 @@ void cxa_ws2812String_init(cxa_ws2812String_t *const ws2812In, cxa_ws2812String_
 	ws2812In->scm_writeBytes(ws2812In, ws2812In->pixelBuffers, ws2812In->numPixels);
 
 	// setup our timeDiff
-	cxa_timeDiff_init(&ws2812In->td_fade, false);
+	cxa_timeDiff_init(&ws2812In->td_fade);
 
 	// setup our state machine
 	cxa_stateMachine_init(&ws2812In->stateMachine, "ws2812");

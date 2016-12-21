@@ -83,9 +83,9 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	// setup some initial values
 	clientIn->keepAliveTimeout_s = keepAliveTimeout_sIn;
 	clientIn->scm_onDisconnect = NULL;
-	cxa_timeDiff_init(&clientIn->td_timeout, true);
-	cxa_timeDiff_init(&clientIn->td_sendKeepAlive, true);
-	cxa_timeDiff_init(&clientIn->td_receiveKeepAlive, true);
+	cxa_timeDiff_init(&clientIn->td_timeout);
+	cxa_timeDiff_init(&clientIn->td_sendKeepAlive);
+	cxa_timeDiff_init(&clientIn->td_receiveKeepAlive);
 
 	// get a message (and buffer) for our protocol parser
 	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getFreeMessage_empty();

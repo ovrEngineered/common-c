@@ -168,7 +168,7 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 	mqtt_passwordLen_bytes = passwordLen_bytesIn;
 
 	// setup our connection standoff
-	cxa_timeDiff_init(&td_connStandoff, true);
+	cxa_timeDiff_init(&td_connStandoff);
 	srand(cxa_timeBase_getCount_us());
 
 	// setup our logger

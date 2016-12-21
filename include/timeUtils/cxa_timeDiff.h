@@ -59,7 +59,6 @@
 // ******** global type definitions *********
 typedef struct 
 {
-	bool isFirstCycle;
 	uint32_t startTime_us;
 }cxa_timeDiff_t;
 
@@ -70,13 +69,8 @@ typedef struct
  * @brief Initializes the timeDiff using the reference timeBase
  *
  * @param[in] tdIn the pre-allocated timeDiff object
- * @param[in] setStartTimeIn if true, the timeDiff will set the
- * 		"startTime" of the timeDiff to the current timeBase value.
- * 		If false, the "startTime" of the timeDiff will be zero. The
- * 		"startTime" affects when the varying isElapsed functions will
- * 		return true
  */
-void cxa_timeDiff_init(cxa_timeDiff_t *const tdIn, bool setStartTimeIn);
+void cxa_timeDiff_init(cxa_timeDiff_t *const tdIn);
 
 /**
  * @public

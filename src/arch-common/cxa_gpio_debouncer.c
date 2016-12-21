@@ -55,7 +55,7 @@ void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t 
 	debounceIn->isInTimeoutPeriod = false;
 
 	// setup our timediff
-	cxa_timeDiff_init(&debounceIn->td_debounce, false);
+	cxa_timeDiff_init(&debounceIn->td_debounce);
 
 	// setup our listener array
 	cxa_array_initStd(&debounceIn->listeners, debounceIn->listeners_raw);

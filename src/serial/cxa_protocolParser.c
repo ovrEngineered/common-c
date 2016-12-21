@@ -62,7 +62,7 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *c
 	ppIn->scm_writeBytes = scm_writeBytesIn;
 
 	// setup our timediff
-	cxa_timeDiff_init(&ppIn->td_timeout, false);
+	cxa_timeDiff_init(&ppIn->td_timeout);
 
 	// setup our logger
 	cxa_logger_init(&ppIn->logger, "protocolParser");

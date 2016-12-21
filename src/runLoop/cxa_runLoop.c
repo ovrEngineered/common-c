@@ -149,7 +149,7 @@ static void cxa_runLoop_init(void)
 
 	cxa_array_initStd(&cbs, cbs_raw);
 	cxa_logger_init(&logger, "runLoop");
-	cxa_timeDiff_init(&td_printInfo, true);
+	cxa_timeDiff_init(&td_printInfo);
 
 	isInit = true;
 }

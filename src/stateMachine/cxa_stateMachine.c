@@ -66,7 +66,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn)
 	// a timediff was _not_ supplied so we cannot do timed states
 	// even if they are enabled
 	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-	cxa_timeDiff_init(&smIn->td_timedTransition, true);
+	cxa_timeDiff_init(&smIn->td_timedTransition);
 	smIn->timedStatesEnabled = true;
 	#endif
 

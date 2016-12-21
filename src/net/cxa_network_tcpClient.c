@@ -56,7 +56,7 @@ void cxa_network_tcpClient_init(cxa_network_tcpClient_t *const netClientIn,
 	cxa_logger_init(&netClientIn->logger, "tcpClient");
 
 	// setup our timediff for future use
-	cxa_timeDiff_init(&netClientIn->td_genPurp, true);
+	cxa_timeDiff_init(&netClientIn->td_genPurp);
 
 	// setup our listener array
 	cxa_array_initStd(&netClientIn->listeners, netClientIn->listeners_raw);

@@ -109,7 +109,7 @@ bool cxa_ioStream_waitForCharSequence_withTimeout(cxa_ioStream_t *const ioStream
 	cxa_assert(targetSeqIn);
 
 	cxa_timeDiff_t td_timeout;
-	cxa_timeDiff_init(&td_timeout, true);
+	cxa_timeDiff_init(&td_timeout);
 
 	uint8_t rxByte;
 	while( !cxa_timeDiff_isElapsed_ms(&td_timeout, timeout_msIn) )

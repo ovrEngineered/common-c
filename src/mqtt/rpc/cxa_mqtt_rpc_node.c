@@ -172,7 +172,7 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
 		strlcpy(newRequest.id, msgId, sizeof(newRequest.id));
 
 		// initialize our timeout
-		cxa_timeDiff_init(&newRequest.td_timeout, true);
+		cxa_timeDiff_init(&newRequest.td_timeout);
 
 		// add to our list of outstanding requests
 		if( !cxa_array_append(&nodeIn->outstandingRequests, &newRequest) )
