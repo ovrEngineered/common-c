@@ -128,6 +128,12 @@ typedef void (*cxa_btle_client_scm_stopScan_t)(cxa_btle_client_t *const superIn)
 /**
  * @private
  */
+typedef bool (*cxa_btle_client_scm_isScanning_t)(cxa_btle_client_t *const superIn);
+
+
+/**
+ * @private
+ */
 struct cxa_btle_client
 {
 	struct
@@ -144,6 +150,8 @@ struct cxa_btle_client
 	{
 		cxa_btle_client_scm_startScan_t startScan;
 		cxa_btle_client_scm_stopScan_t stopScan;
+		cxa_btle_client_scm_isScanning_t isScanning;
+
 	}scms;
 };
 
@@ -154,7 +162,8 @@ struct cxa_btle_client
  */
 void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
-						  cxa_btle_client_scm_stopScan_t scm_stopScanIn);
+						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
+						  cxa_btle_client_scm_isScanning_t scm_isScanningIn);
 
 
 /**
@@ -185,6 +194,12 @@ void cxa_btle_client_stopScan(cxa_btle_client_t *const btlecIn,
 
 
 /**
+ * @public
+ */
+bool cxa_btle_client_isScanning(cxa_btle_client_t *const btlecIn);
+
+
+/**
  * @protected
  */
 void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_advPacket_t *packetIn);
@@ -193,6 +208,18 @@ void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_
 /**
  * @protected
  */
-void cxa_btle_client_parseAdvField(cxa_btle_advField_t *const advFieldIn, uint8_t* bytesIn);
+void cxa_btle_client_notify_scanStartFail(cxa_btle_client_t *const btlecIn);
+
+
+/**
+ * @protected
+ */
+bool cxa_btle_client_countAdvFields(uint8_t *const bytesIn, size_t maxLen_bytesIn, size_t *const numAdvFieldsOut);
+
+
+/**
+ * @protected
+ */
+bool cxa_btle_client_parseAdvFieldsForPacket(cxa_btle_advPacket_t *packetIn, size_t numAdvFieldsIn, uint8_t *const bytesIn, size_t maxLen_bytesIn);
 
 #endif

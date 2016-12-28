@@ -44,6 +44,7 @@ static void btleCb_event(uint32_t event, void *param);
 
 static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn);
 static void scm_stopScan(cxa_btle_client_t *const superIn);
+static bool scm_isScanning(cxa_btle_client_t *const superIn);
 
 
 static void consoleCb_startScan(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
@@ -54,7 +55,7 @@ static void consoleCb_stopScan(cxa_array_t *const argsIn, cxa_ioStream_t *const 
 static bool isInit = false;
 static cxa_btle_client_t singleton;
 
-static bool stopScan = false;
+static bool isScanning = false;
 static esp_ble_scan_type_t currScanType;
 
 static cxa_logger_t logger;
@@ -73,7 +74,7 @@ cxa_btle_client_t* cxa_esp32_btle_client_getSingleton(void)
 static void init(void)
 {
 	// initialize our superclass
-	cxa_btle_client_init(&singleton, scm_startScan, scm_stopScan);
+	cxa_btle_client_init(&singleton, scm_startScan, scm_stopScan, scm_isScanning);
 
 	// and our logger
 	cxa_logger_init(&logger, "btleClient");
@@ -89,6 +90,7 @@ static void init(void)
 	cxa_console_addCommand("btle.stopScan", "stop scan for adverts", NULL, 0, consoleCb_stopScan, NULL);
 
 	isInit = true;
+	isScanning = true;
 }
 
 
@@ -108,40 +110,21 @@ static void btleCb_event(uint32_t event, void *param)
 		rxPacket.rssi = scanResult->scan_rst.rssi;
 
 		// now the actual advert fields..first we must count them
-		int numAdvFields = 0;
-		size_t maxNumBytes = sizeof(scanResult->scan_rst.ble_adv);
-		for( size_t i = 0; i < maxNumBytes; i++ )
+		size_t numAdvFields = 0;
+		if( !cxa_btle_client_countAdvFields(scanResult->scan_rst.ble_adv, sizeof(scanResult->scan_rst.ble_adv), &numAdvFields) )
 		{
-			// at the start of a record...first byte is length
-			int fieldLen = scanResult->scan_rst.ble_adv[i];
-			if( fieldLen == 0 ) break;
-
-			if( (fieldLen + i) > maxNumBytes )
-			{
-				cxa_logger_warn(&logger, "malformed field, discarding");
-				return;
-			}
-
-			numAdvFields++;
-			i += fieldLen;
+			cxa_logger_warn(&logger, "malformed field, discarding");
+			return;
 		}
 
 		// now that we've counted them, we can parse them pretty safely (index-wise)
 		cxa_btle_advField_t fields_raw[numAdvFields];
 		cxa_array_initStd(&rxPacket.advFields, fields_raw);
-		if( numAdvFields > 0 )
+		if( !cxa_btle_client_parseAdvFieldsForPacket(&rxPacket, numAdvFields,
+				scanResult->scan_rst.ble_adv, sizeof(scanResult->scan_rst.ble_adv)) )
 		{
-			size_t currByteIndex = 0;
-			for( size_t i = 0; i < numAdvFields; i++ )
-			{
-				cxa_btle_advField_t* currField = (cxa_btle_advField_t*)cxa_array_append_empty(&rxPacket.advFields);
-				cxa_assert(currField);
-
-				cxa_btle_client_parseAdvField(currField, &scanResult->scan_rst.ble_adv[currByteIndex]);
-
-				// +1 is for the length byte itself
-				currByteIndex += currField->length + 1;
-			}
+			cxa_logger_warn(&logger, "malformed field, discarding");
+						return;
 		}
 
 		cxa_logger_debug(&logger, "adv from %02X:%02X:%02X:%02X:%02X:%02X(%s)  %ddBm  %d fields",
@@ -157,7 +140,7 @@ static void btleCb_event(uint32_t event, void *param)
 	else if( (event == ESP_GAP_BLE_SCAN_RESULT_EVT) && (scanResult->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_CMPL_EVT) )
 	{
 		// scanning done...this might be a timeout OR requested by the user
-		if( stopScan ) return;
+		if( !isScanning ) return;
 
 		// if we made it here, it was a timeout...restart the scan
 		scm_startScan(&singleton, (currScanType == BLE_SCAN_TYPE_ACTIVE));
@@ -179,15 +162,21 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 			.scan_window = 0x10
 	};
 	esp_ble_gap_set_scan_params(&scanParams);
-	stopScan = false;
+	isScanning = true;
 	esp_ble_gap_start_scanning(SCANPERIOD_S);
 }
 
 
 static void scm_stopScan(cxa_btle_client_t *const superIn)
 {
-	stopScan = true;
+	isScanning = false;
 	esp_ble_gap_stop_scanning();
+}
+
+
+static bool scm_isScanning(cxa_btle_client_t *const superIn)
+{
+	return isScanning;
 }
 
 

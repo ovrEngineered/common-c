@@ -33,6 +33,7 @@
 
 
 // ******** local function prototypes ********
+static void parseAdvField(cxa_btle_advField_t *advFieldIn, uint8_t* bytesIn);
 
 
 // ********  local variable declarations *********
@@ -41,14 +42,16 @@
 // ******** global function implementations ********
 void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
-						  cxa_btle_client_scm_stopScan_t scm_stopScanIn)
+						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
+						  cxa_btle_client_scm_isScanning_t scm_isScanningIn)
 {
 	cxa_assert(btlecIn);
-	cxa_assert(scm_startScanIn);
+	cxa_assert(scm_isScanningIn);
 
 	// save our references
 	btlecIn->scms.startScan = scm_startScanIn;
 	btlecIn->scms.stopScan = scm_stopScanIn;
+	btlecIn->scms.isScanning = scm_isScanningIn;
 
 	// clear our callbacks
 	memset((void*)&btlecIn->cbs, 0, sizeof(btlecIn->cbs));
@@ -109,6 +112,15 @@ void cxa_btle_client_stopScan(cxa_btle_client_t *const btlecIn,
 }
 
 
+bool cxa_btle_client_isScanning(cxa_btle_client_t *const btlecIn)
+{
+	cxa_assert(btlecIn);
+
+	cxa_assert(btlecIn->scms.isScanning != NULL);
+	return btlecIn->scms.isScanning(btlecIn);
+}
+
+
 void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_advPacket_t *packetIn)
 {
 	cxa_assert(btlecIn);
@@ -117,7 +129,62 @@ void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_
 }
 
 
-void cxa_btle_client_parseAdvField(cxa_btle_advField_t *const advFieldIn, uint8_t* bytesIn)
+void cxa_btle_client_notify_scanStartFail(cxa_btle_client_t *const btlecIn)
+{
+	cxa_assert(btlecIn);
+
+	if( btlecIn->cbs.onScanStartFail != NULL ) btlecIn->cbs.onScanStartFail(btlecIn->cbs.userVar);
+}
+
+
+bool cxa_btle_client_countAdvFields(uint8_t *const bytesIn, size_t maxLen_bytesIn, size_t *const numAdvFieldsOut)
+{
+	int numAdvFields = 0;
+	for( size_t i = 0; i < maxLen_bytesIn; i++ )
+	{
+		// at the start of a record...first byte is length
+		int fieldLen = bytesIn[i];
+		if( fieldLen == 0 ) break;
+
+		if( (fieldLen + i) > maxLen_bytesIn )
+		{
+			return false;
+		}
+
+		numAdvFields++;
+		i += fieldLen;
+	}
+	if( numAdvFieldsOut != NULL ) *numAdvFieldsOut = numAdvFields;
+	return true;
+}
+
+
+bool cxa_btle_client_parseAdvFieldsForPacket(cxa_btle_advPacket_t *packetIn, size_t numAdvFieldsIn, uint8_t *const bytesIn, size_t maxLen_bytesIn)
+{
+	cxa_assert(packetIn);
+	cxa_assert(bytesIn);
+
+	if( numAdvFieldsIn > 0 )
+	{
+		size_t currByteIndex = 0;
+		for( size_t i = 0; i < numAdvFieldsIn; i++ )
+		{
+			cxa_btle_advField_t* currField = (cxa_btle_advField_t*)cxa_array_append_empty(&packetIn->advFields);
+			if( currField == NULL ) return false;
+
+			parseAdvField(currField, &bytesIn[currByteIndex]);
+
+			// +1 is for the length byte itself
+			currByteIndex += currField->length + 1;
+		}
+	}
+
+	return true;
+}
+
+
+// ******** local function implementations ********
+static void parseAdvField(cxa_btle_advField_t *advFieldIn, uint8_t* bytesIn)
 {
 	cxa_assert(advFieldIn);
 	cxa_assert(bytesIn);
@@ -150,6 +217,3 @@ void cxa_btle_client_parseAdvField(cxa_btle_advField_t *const advFieldIn, uint8_
 			break;
 	}
 }
-
-
-// ******** local function implementations ********
