@@ -68,6 +68,15 @@ void cxa_esp32_usart_init_noHH(cxa_esp32_usart_t *const usartIn, uart_port_t uar
 	uart_param_config(usartIn->uartId, &uart_config);
 
 	cxa_assert(uart_driver_install(usartIn->uartId, 1024 * 2, 0, 10, NULL, 0) == ESP_OK);
+	switch( usartIn->uartId )
+	{
+		case UART_NUM_1:
+			cxa_assert(uart_set_pin(usartIn->uartId, 16, 17, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) == ESP_OK);
+			break;
+
+		default:
+			break;
+	}
 
 	// setup our ioStream (last once everything is setup)
 	cxa_ioStream_init(&usartIn->super.ioStream);
