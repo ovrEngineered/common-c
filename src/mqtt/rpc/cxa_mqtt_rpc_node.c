@@ -50,6 +50,8 @@ static void cb_onRunLoopUpdate(void* userVarIn);
 static cxa_mqtt_message_t* prepForResponse(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_message_t* reqMsgIn, cxa_linkedField_t **lf_payloadIn, cxa_linkedField_t **lf_retPayloadIn);
 static void sendResponse(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_methodRetVal_t retValIn, cxa_mqtt_message_t *responseMessageIn);
 
+static bool addNodePathToTopic(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_message_t *const msgIn);
+
 
 // ********  local variable declarations *********
 
@@ -210,7 +212,42 @@ bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, ch
 	cxa_assert(nodeIn);
 	cxa_assert(notiNameIn);
 
-	return false;
+	// first, we need to form our message
+	cxa_mqtt_message_t* msg = cxa_mqtt_messageFactory_getFreeMessage_empty();
+	if( (msg == NULL) ||
+		!cxa_mqtt_message_publish_init(msg, false, CXA_MQTT_QOS_ATMOST_ONCE, false,
+									  "", 0, dataIn, dataSize_bytesIn) )
+	{
+		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+		return false;
+	}
+
+	// now we need to get our topic/path in order
+	if( !cxa_mqtt_message_publish_topicName_prependCString(msg, notiNameIn) ||
+		!cxa_mqtt_message_publish_topicName_prependCString(msg, CXA_MQTT_RPCNODE_NOTI_PREFIX) ||
+		!cxa_mqtt_message_publish_topicName_prependCString(msg, "/") ||
+		!addNodePathToTopic(nodeIn, msg) )
+	{
+		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+		return false;
+	}
+
+	// make sure we can get the topic name for the message before we go further
+	char* remainingTopic;
+	uint16_t remainingTopicLen_bytes;
+	if( !cxa_mqtt_message_publish_getTopicName(msg, &remainingTopic, &remainingTopicLen_bytes) )
+	{
+		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+		return false;
+	}
+
+	// excellent...this is a notification so it's always headed upstream
+	nodeIn->scm_handleMessage_upstream(nodeIn, msg);
+
+	// release our sent message
+	cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+
+	return true;
 }
 
 
@@ -447,5 +484,22 @@ static void sendResponse(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_methodR
 		nodeIn->scm_handleMessage_upstream(nodeIn, responseMessageIn);
 	}else cxa_logger_warn(&nodeIn->logger, "error sending response");
 	cxa_mqtt_messageFactory_decrementMessageRefCount(responseMessageIn);
+}
+
+
+static bool addNodePathToTopic(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_message_t *const msgIn)
+{
+	cxa_assert(nodeIn);
+	cxa_assert(msgIn);
+
+	// add ourselves first
+	if( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, nodeIn->name) ) return false;
+
+	// add our parent if it exists
+	if( (nodeIn->parentNode != NULL) &&
+		( !cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
+		  !addNodePathToTopic(nodeIn->parentNode, msgIn)) ) return false;
+
+	return true;
 }
 
