@@ -227,7 +227,7 @@ bool cxa_mqtt_message_updateVariableLengthField(cxa_mqtt_message_t *const msgIn)
 		uint8_t currByte = remainingLength_actual % 128;
 		remainingLength_actual = remainingLength_actual / 128;
 		// if there are more data to encode, set the top bit of this byte
-		if( remainingLength_actual > 0 ) remainingLength_actual |= 128;
+		if( remainingLength_actual > 0 ) currByte |= 128;
 
 		varLenBytes[numBytes_varLenField++] = currByte;
 
