@@ -17,9 +17,11 @@
 
 
 // ******** includes ********
+#include <stdlib.h>
 #include <string.h>
 
 #include <cxa_assert.h>
+#include <cxa_timeBase.h>
 
 
 // ******** local macro definitions ********
@@ -50,6 +52,19 @@ bool cxa_uuid128_initFromBuffer(cxa_uuid128_t *const uuidIn, cxa_fixedByteBuffer
 	cxa_assert(fbbIn);
 
 	return cxa_fixedByteBuffer_get(fbbIn, indexIn, false, uuidIn->bytes, sizeof(uuidIn->bytes));
+}
+
+
+void cxa_uuid128_initRandom(cxa_uuid128_t *const uuidIn)
+{
+	cxa_assert(uuidIn);
+
+	srand(cxa_timeBase_getCount_us());
+	for( size_t i = 0; i < sizeof(uuidIn->bytes); i++ )
+	{
+		// generates [0-255]
+		uuidIn->bytes[i] = rand() % (255 + 1 - 0) + 0;
+	}
 }
 
 

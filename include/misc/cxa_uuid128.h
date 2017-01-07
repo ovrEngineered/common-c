@@ -43,6 +43,7 @@ typedef struct
 // ******** global function prototypes ********
 void cxa_uuid128_init(cxa_uuid128_t *const uuidIn, uint8_t *const bytesIn);
 bool cxa_uuid128_initFromBuffer(cxa_uuid128_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn);
+void cxa_uuid128_initRandom(cxa_uuid128_t *const uuidIn);
 
 bool cxa_uuid128_isEqual(cxa_uuid128_t *const uuid1In, cxa_uuid128_t *const uuid2In);
 
