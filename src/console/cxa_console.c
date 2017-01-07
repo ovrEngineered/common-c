@@ -367,8 +367,8 @@ static void command_help(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStre
 		if( currEntry->numArgs > 0 )
 		{
 			// now the parameters header
-			for( int i = 0; i < CXA_CONSOLE_MAX_COMMAND_LEN_BYTES+6; i++ ) cxa_ioStream_writeString(ioStream, " ");
-			cxa_ioStream_writeLine(ioStream, "Parameters:");
+//			for( int i = 0; i < CXA_CONSOLE_MAX_COMMAND_LEN_BYTES+6; i++ ) cxa_ioStream_writeString(ioStream, " ");
+//			cxa_ioStream_writeLine(ioStream, "Parameters:");
 
 			// now each parameter
 			for( size_t i = 0; i < currEntry->numArgs; i++ )
