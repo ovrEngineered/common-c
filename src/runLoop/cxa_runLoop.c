@@ -36,8 +36,8 @@
 
 #define CXA_RUNLOOP_INFOPRINT_AVGNUMITERS				100
 
-#ifndef CXA_RUNLOOP_MAX_NUM_ENTRIES
-	#define CXA_RUNLOOP_MAX_NUM_ENTRIES					8
+#ifndef CXA_RUN_LOOP_MAXNUM_ENTRIES
+	#define CXA_RUN_LOOP_MAXNUM_ENTRIES					8
 #endif
 
 
@@ -50,7 +50,7 @@ typedef struct
 
 
 static cxa_array_t cbs;
-static cxa_runLoop_entry_t cbs_raw[CXA_RUNLOOP_MAX_NUM_ENTRIES];
+static cxa_runLoop_entry_t cbs_raw[CXA_RUN_LOOP_MAXNUM_ENTRIES];
 
 static cxa_logger_t logger;
 static cxa_timeDiff_t td_printInfo;
@@ -75,7 +75,7 @@ void cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
 
 	// create our new entry
 	cxa_runLoop_entry_t newEntry = {.cb=cbIn, .userVar=userVarIn};
-	cxa_assert(cxa_array_append(&cbs, &newEntry));
+	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAX_NUM_ENTRIES");
 }
 
 
