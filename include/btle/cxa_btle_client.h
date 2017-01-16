@@ -27,6 +27,9 @@
 
 
 // ******** global macro definitions ********
+#ifndef CXA_BTLE_CLIENT_MAXNUM_LISTENERS
+	#define CXA_BTLE_CLIENT_MAXNUM_LISTENERS		2
+#endif
 
 
 // ******** global type definitions *********
@@ -92,6 +95,18 @@ typedef struct
 /**
  * @public
  */
+typedef void (*cxa_btle_client_cb_onReady_t)(cxa_btle_client_t *const btlecIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onFailedInit_t)(cxa_btle_client_t *const btlecIn, bool willAutoRetryIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
 typedef void (*cxa_btle_client_cb_onAdvertRx_t)(cxa_btle_advPacket_t* packetIn, void* userVarIn);
 
 
@@ -104,13 +119,19 @@ typedef void (*cxa_btle_client_cb_onScanResponseRx_t)(void* userVarIn);
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onScanStartFail_t)(void* userVarIn);
+typedef void (*cxa_btle_client_cb_onScanStart_t)(void* userVarIn, bool wasSuccessfulIn);
 
 
 /**
  * @public
  */
 typedef void (*cxa_btle_client_cb_onScanStop_t)(void* userVarIn);
+
+
+/**
+ * @private
+ */
+typedef bool (*cxa_btle_client_scm_isReady_t)(cxa_btle_client_t *const superIn);
 
 
 /**
@@ -134,13 +155,27 @@ typedef bool (*cxa_btle_client_scm_isScanning_t)(cxa_btle_client_t *const superI
 /**
  * @private
  */
+typedef struct
+{
+	cxa_btle_client_cb_onReady_t cb_onReady;
+	cxa_btle_client_cb_onFailedInit_t cb_onFailedInit;
+	void* userVar;
+}cxa_btle_client_listener_entry_t;
+
+
+/**
+ * @private
+ */
 struct cxa_btle_client
 {
+	cxa_array_t listeners;
+	cxa_btle_client_listener_entry_t listeners_raw[CXA_BTLE_CLIENT_MAXNUM_LISTENERS];
+
 	struct
 	{
 		cxa_btle_client_cb_onAdvertRx_t onAdvert;
 		cxa_btle_client_cb_onScanResponseRx_t onScanResp;
-		cxa_btle_client_cb_onScanStartFail_t onScanStartFail;
+		cxa_btle_client_cb_onScanStart_t onScanStart;
 		cxa_btle_client_cb_onScanStop_t onScanStop;
 
 		void* userVar;
@@ -148,6 +183,7 @@ struct cxa_btle_client
 
 	struct
 	{
+		cxa_btle_client_scm_isReady_t isReady;
 		cxa_btle_client_scm_startScan_t startScan;
 		cxa_btle_client_scm_stopScan_t stopScan;
 		cxa_btle_client_scm_isScanning_t isScanning;
@@ -161,6 +197,7 @@ struct cxa_btle_client
  * @protected
  */
 void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
+						  cxa_btle_client_scm_isReady_t scm_isReady,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
 						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
 						  cxa_btle_client_scm_isScanning_t scm_isScanningIn);
@@ -169,9 +206,18 @@ void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
 /**
  * @public
  */
+void cxa_btle_client_addListener(cxa_btle_client_t *const btlecIn,
+								 cxa_btle_client_cb_onReady_t cb_onReadyIn,
+								 cxa_btle_client_cb_onFailedInit_t cb_onFailedInitIn,
+								 void* userVarIn);
+
+
+/**
+ * @public
+ */
 void cxa_btle_client_startScan_passive(cxa_btle_client_t *const btlecIn,
+									   cxa_btle_client_cb_onScanStart_t cb_scanStartIn,
 									   cxa_btle_client_cb_onAdvertRx_t cb_advIn,
-									   cxa_btle_client_cb_onScanStartFail_t cb_scanStartFailIn,
 									   void* userVarIn);
 
 
@@ -179,9 +225,9 @@ void cxa_btle_client_startScan_passive(cxa_btle_client_t *const btlecIn,
  * @public
  */
 void cxa_btle_client_startScan_active(cxa_btle_client_t *const btlecIn,
+									  cxa_btle_client_cb_onScanStart_t cb_scanStartIn,
 									  cxa_btle_client_cb_onAdvertRx_t cb_advIn,
 									  cxa_btle_client_cb_onScanResponseRx_t cb_scanRespIn,
-									  cxa_btle_client_cb_onScanStartFail_t cb_scanStartFailIn,
 									  void* userVarIn);
 
 
@@ -196,7 +242,25 @@ void cxa_btle_client_stopScan(cxa_btle_client_t *const btlecIn,
 /**
  * @public
  */
+bool cxa_btle_client_isReady(cxa_btle_client_t *const btlecIn);
+
+
+/**
+ * @public
+ */
 bool cxa_btle_client_isScanning(cxa_btle_client_t *const btlecIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_onBecomesReady(cxa_btle_client_t *const btlecIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_onFailedInit(cxa_btle_client_t *const btlecIn, bool willAutoRetryIn);
 
 
 /**
@@ -208,7 +272,7 @@ void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_
 /**
  * @protected
  */
-void cxa_btle_client_notify_scanStartFail(cxa_btle_client_t *const btlecIn);
+void cxa_btle_client_notify_scanStart(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
 
 
 /**

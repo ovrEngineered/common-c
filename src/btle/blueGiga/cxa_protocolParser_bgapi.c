@@ -24,7 +24,7 @@
 
 
 // ******** local macro definitions ********
-#define MAX_NUM_RX_BYTES_PER_UPDATE		16
+#define MAX_NUM_RX_BYTES_PER_UPDATE		32
 #define RECEPTION_TIMEOUT_MS			5000
 
 

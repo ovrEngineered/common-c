@@ -74,7 +74,7 @@ cxa_btle_client_t* cxa_esp32_btle_client_getSingleton(void)
 static void init(void)
 {
 	// initialize our superclass
-	cxa_btle_client_init(&singleton, scm_startScan, scm_stopScan, scm_isScanning);
+	cxa_btle_client_init(&singleton, NULL, scm_startScan, scm_stopScan, scm_isScanning);
 
 	// and our logger
 	cxa_logger_init(&logger, "btleClient");
