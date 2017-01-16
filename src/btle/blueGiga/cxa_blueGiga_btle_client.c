@@ -243,13 +243,13 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 						return;
 		}
 
-		cxa_logger_debug(&btlecIn->logger, "adv from %02X:%02X:%02X:%02X:%02X:%02X(%s)  %ddBm  %d fields  %d bytes",
-						rxPacket.addr[5], rxPacket.addr[4], rxPacket.addr[3],
-						rxPacket.addr[2], rxPacket.addr[1], rxPacket.addr[0],
-						rxPacket.isRandomAddress ? "r" : "p",
-						rxPacket.rssi,
-						cxa_array_getSize_elems(&rxPacket.advFields),
-						cxa_fixedByteBuffer_getSize_bytes(packetIn));
+//		cxa_logger_debug(&btlecIn->logger, "adv from %02X:%02X:%02X:%02X:%02X:%02X(%s)  %ddBm  %d fields  %d bytes",
+//						rxPacket.addr[5], rxPacket.addr[4], rxPacket.addr[3],
+//						rxPacket.addr[2], rxPacket.addr[1], rxPacket.addr[0],
+//						rxPacket.isRandomAddress ? "r" : "p",
+//						rxPacket.rssi,
+//						cxa_array_getSize_elems(&rxPacket.advFields),
+//						cxa_fixedByteBuffer_getSize_bytes(packetIn));
 
 		// notify our listeners
 		cxa_btle_client_notify_advertRx(&btlecIn->super, &rxPacket);
