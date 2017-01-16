@@ -36,10 +36,6 @@
 
 #define CXA_RUNLOOP_INFOPRINT_AVGNUMITERS				100
 
-#ifndef CXA_RUN_LOOP_MAXNUM_ENTRIES
-	#define CXA_RUN_LOOP_MAXNUM_ENTRIES					8
-#endif
-
 
 // ******** local type definitions ********
 typedef struct
@@ -48,6 +44,13 @@ typedef struct
 	void *userVar;
 }cxa_runLoop_entry_t;
 
+
+// ******** local function prototypes ********
+static void cxa_runLoop_init(void);
+
+
+// ********  local variable declarations *********
+static bool isInit = false;
 
 static cxa_array_t cbs;
 static cxa_runLoop_entry_t cbs_raw[CXA_RUN_LOOP_MAXNUM_ENTRIES];
@@ -58,14 +61,6 @@ static cxa_timeDiff_t td_printInfo;
 #if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
 static uint32_t averageIterPeriod_us = 0;
 #endif
-
-
-// ******** local function prototypes ********
-static void cxa_runLoop_init(void);
-
-
-// ********  local variable declarations *********
-static bool isInit = false;
 
 
 // ******** global function implementations ********
