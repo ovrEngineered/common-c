@@ -19,6 +19,7 @@
 
 
 // ******** includes ********
+#include <stdbool.h>
 #include <stdio.h>
 #include <cxa_config.h>
 #include <cxa_usart.h>
@@ -58,8 +59,9 @@ struct cxa_esp32_usart
  * @param[in] usartIn pointer to a pre-allocated USART object
  * @param[in] uartIdIn the UARTID specifying the desired UART
  * @param[in] baudRate_bpsIn the desired baud rate, in bits-per-second
+ * @param[in] useHardwareHandshakingIn true to enable hardware handshaking
  */
-void cxa_esp32_usart_init_noHH(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn);
+void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn, bool useHardwareHandshakingIn);
 
 
 #endif

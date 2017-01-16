@@ -25,6 +25,7 @@ a * Copyright 2016 opencxa.org
 #include <stdbool.h>
 #include <cxa_assert.h>
 #include <cxa_delay.h>
+#include <cxa_numberUtils.h>
 
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
@@ -32,6 +33,7 @@ a * Copyright 2016 opencxa.org
 
 
 // ******** local macro definitions ********
+#define RX_RING_BUFFER_SIZE_BYTES			2048
 
 
 // ******** local type definitions ********
@@ -46,7 +48,7 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_esp32_usart_init_noHH(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn)
+void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn, bool useHardwareHandshakingIn)
 {
 	cxa_assert(usartIn);
 	cxa_assert( (uartIdIn == UART_NUM_0) ||
@@ -62,16 +64,18 @@ void cxa_esp32_usart_init_noHH(cxa_esp32_usart_t *const usartIn, uart_port_t uar
 			.data_bits = UART_DATA_8_BITS,
 			.parity = UART_PARITY_DISABLE,
 			.stop_bits = UART_STOP_BITS_1,
-			.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-			.rx_flow_ctrl_thresh = 120,
+			.flow_ctrl = useHardwareHandshakingIn ? UART_HW_FLOWCTRL_CTS_RTS : UART_HW_FLOWCTRL_DISABLE,
+			.rx_flow_ctrl_thresh = 120
 	};
 	uart_param_config(usartIn->uartId, &uart_config);
 
-	cxa_assert(uart_driver_install(usartIn->uartId, 1024 * 2, 0, 10, NULL, 0) == ESP_OK);
+	cxa_assert(uart_driver_install(usartIn->uartId, RX_RING_BUFFER_SIZE_BYTES, 0, 10, NULL, 0) == ESP_OK);
 	switch( usartIn->uartId )
 	{
 		case UART_NUM_1:
-			cxa_assert(uart_set_pin(usartIn->uartId, 16, 17, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) == ESP_OK);
+			cxa_assert(uart_set_pin(usartIn->uartId, 16, 17,
+								   (useHardwareHandshakingIn ? 21 : UART_PIN_NO_CHANGE),
+								   (useHardwareHandshakingIn ? 22 : UART_PIN_NO_CHANGE)) == ESP_OK);
 			break;
 
 		default:
