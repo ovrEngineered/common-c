@@ -30,10 +30,6 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_FF_MAX_LISTENERS
-	#define CXA_FF_MAX_LISTENERS		1
-#endif
-
 #define cxa_fixedFifo_initStd(fifoIn, onFullActionIn, bufferIn)						cxa_fixedFifo_init((fifoIn), (onFullActionIn), sizeof(*(bufferIn)), ((void*)(bufferIn)), sizeof(bufferIn))
 
 
@@ -51,41 +47,29 @@ typedef enum
 typedef void (*cxa_fixedFifo_cb_noLongerFull_t)(cxa_fixedFifo_t *const fifoIn, void* userVarIn);
 
 
-typedef struct
-{
-	cxa_fixedFifo_cb_noLongerFull_t cb_noLongerFull;
-
-	void* userVarIn;
-}cxa_fixedFifo_listener_entry_t;
-
-
 struct cxa_fixedFifo
 {
 	void *bufferLoc;
-	
+
 	size_t insertIndex;
 	size_t removeIndex;
 
 	size_t datatypeSize_bytes;
 	size_t maxNumElements;
-	
-	cxa_fixedFifo_onFullAction_t onFullAction;
 
-	cxa_array_t listeners;
-	cxa_fixedFifo_listener_entry_t listeners_raw[CXA_FF_MAX_LISTENERS];
+	cxa_fixedFifo_onFullAction_t onFullAction;
 };
 
 
 // ******** global function prototypes ********
 void cxa_fixedFifo_init(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_onFullAction_t onFullActionIn, const size_t datatypeSize_bytesIn, void *const bufferLocIn, const size_t bufferMaxSize_bytesIn);
 
-void cxa_fixedFifo_addListener(cxa_fixedFifo_t *const fifoIn, cxa_fixedFifo_cb_noLongerFull_t cb_noLongerFull, void* userVarIn);
-
 bool cxa_fixedFifo_queue(cxa_fixedFifo_t *const fifoIn, void *const elemIn);
 
 bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut);
 
 size_t cxa_fixedFifo_getCurrSize(cxa_fixedFifo_t *const fifoIn);
+size_t cxa_fixedFifo_getMaxSize(cxa_fixedFifo_t *const fifoIn);
 bool cxa_fixedFifo_isFull(cxa_fixedFifo_t *const fifoIn);
 bool cxa_fixedFifo_isEmpty(cxa_fixedFifo_t *const fifoIn);
 

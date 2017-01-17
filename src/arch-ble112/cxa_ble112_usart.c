@@ -49,8 +49,6 @@ static void usart_setBaudRate(const cxa_ble112_usart_id_t portIdIn, const cxa_bl
 static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn);
 static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
 
-static void fifo_cb_noLongerFull(cxa_fixedFifo_t *const fifoIn, void* userVarIn);
-
 static inline void rxIsr(cxa_ble112_usart_id_t idIn);
 
 
@@ -78,69 +76,68 @@ void cxa_ble112_usart_init_HH(cxa_ble112_usart_t *const usartIn, const cxa_ble11
 static void commonInit(cxa_ble112_usart_t *const usartIn, const cxa_ble112_usart_id_t idIn, const cxa_ble112_usart_pinConfig_t pinConfigIn, const cxa_ble112_usart_baudRate_t baudRateIn, bool flowControlEnabledIn)
 {
 	cxa_assert(usartIn);
+	// save our internal state
+	usartIn->id = idIn;
 
-		// save our internal state
-		usartIn->id = idIn;
+	// setup our receive fifo
+	cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void*)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
+	//cxa_fixedFifo_addListener(&usartIn->rxFifo, fifo_cb_noLongerFull, (void*)usartIn);
 
-		// setup our receive fifo
-		cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void*)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
-		cxa_fixedFifo_addListener(&usartIn->rxFifo, fifo_cb_noLongerFull, (void*)usartIn);
+	// configure our port...
+	if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
+	{
+		PERCFG &= ~0x01;
+		P0SEL |= 0x0C | (flowControlEnabledIn ? 0x30 : 0x00);
+		P2DIR = (P2DIR & (~0xC0));			// priority for PORT0 to USART0
+		U0CSR |= 0xC0;
+		UTX0IF = 0;
+		URX0IF = 0;
+		U0UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+	}
+	else if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
+	{
+		PERCFG |= 0x01;
+		P1SEL |= 0x30 | (flowControlEnabledIn ? 0xC0 : 0x00);
+		P2SEL &= 0x48;						// priority for PORT1 to USART
+		U0CSR |= 0xC0;
+		UTX0IF = 0;
+		URX0IF = 0;
+		U0UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+	}
+	else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
+	{
+		PERCFG &= ~0x02;
+		P0SEL |= 0x30 | (flowControlEnabledIn ? 0x0C : 0x00);
+		P2DIR = (P2DIR & (~0xC0)) | 0x40;	// priority for PORT0 to USART1
+		U1CSR |= 0xC0;
+		UTX1IF = 0;
+		URX1IF = 0;
+		U1UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+	}
+	else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
+	{
+		PERCFG |= 0x02;
+		P1SEL |= 0xC0 | (flowControlEnabledIn ? 0x30 : 0x00);
+		P2SEL = (P2SEL & (~0x60)) | 0x40;	// priority for PORT1 to USART1
+		U1CSR |= 0xC0;
+		UTX1IF = 0;
+		URX1IF = 0;
+		U1UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
+	}
 
-		// configure our port...
-		if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
-		{
-			PERCFG &= ~0x01;
-			P0SEL |= 0x0C | (flowControlEnabledIn ? 0x30 : 0x00);
-			P2DIR = (P2DIR & (~0xC0));			// priority for PORT0 to USART0
-			U0CSR |= 0xC0;
-			UTX0IF = 0;
-			URX0IF = 0;
-			U0UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
-		}
-		else if( (idIn == CXA_BLE112_USART_0) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
-		{
-			PERCFG |= 0x01;
-			P1SEL |= 0x30 | (flowControlEnabledIn ? 0xC0 : 0x00);
-			P2SEL &= 0x48;						// priority for PORT1 to USART
-			U0CSR |= 0xC0;
-			UTX0IF = 0;
-			URX0IF = 0;
-			U0UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
-		}
-		else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT1) )
-		{
-			PERCFG &= ~0x02;
-			P0SEL |= 0x30 | (flowControlEnabledIn ? 0x0C : 0x00);
-			P2DIR = (P2DIR & (~0xC0)) | 0x40;	// priority for PORT0 to USART1
-			U1CSR |= 0xC0;
-			UTX1IF = 0;
-			URX1IF = 0;
-			U1UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
-		}
-		else if( (idIn == CXA_BLE112_USART_1) && (pinConfigIn == CXA_BLE112_USART_PINCONFIG_ALT2) )
-		{
-			PERCFG |= 0x02;
-			P1SEL |= 0xC0 | (flowControlEnabledIn ? 0x30 : 0x00);
-			P2SEL = (P2SEL & (~0x60)) | 0x40;	// priority for PORT1 to USART1
-			U1CSR |= 0xC0;
-			UTX1IF = 0;
-			URX1IF = 0;
-			U1UCR |= (flowControlEnabledIn ? 0x40 : 0x00);
-		}
+	// set our baud rate
+	usart_setBaudRate(idIn, baudRateIn);
 
-		// set our baud rate
-		usart_setBaudRate(idIn, baudRateIn);
+	// associate this cxa usart with the ble112Usart (for interrupts)
+	ble112CxaUsartMap_setCxaUsart(usartIn->id, usartIn);
 
-		// associate this cxa usart with the ble112Usart (for interrupts)
-		ble112CxaUsartMap_setCxaUsart(usartIn->id, usartIn);
+	// enable reception interrupt
+	URX1IE = 1;
+	IEN0 |= 0x84; // 1000 0100
 
-		// enable reception interrupt
-		URX1IE = 1;
-		IEN0 |= 0x84; // 1000 0100
-
-		// setup our ioStream (last once everything is setup)
-		cxa_ioStream_init(&usartIn->super.ioStream);
-		cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
+	// setup our ioStream (last once everything is setup)
+	cxa_ioStream_init(&usartIn->super.ioStream);
+	cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
 }
 
 
@@ -252,7 +249,35 @@ static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, vo
 	cxa_ble112_usart_t* usartIn = (cxa_ble112_usart_t*)userVarIn;
 	cxa_assert(usartIn);
 
-	return cxa_fixedFifo_dequeue(&usartIn->rxFifo, (void*)byteOut) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
+	cxa_ioStream_readStatus_t retVal = cxa_fixedFifo_dequeue(&usartIn->rxFifo, (void*)byteOut) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
+
+	// we just dequeued a byte...give our usart a chance to handle some of the
+	// fifo before re-enabling reception
+	if( cxa_fixedFifo_getCurrSize(&usartIn->rxFifo) < (cxa_fixedFifo_getMaxSize(&usartIn->rxFifo)/2) )
+	{
+		switch( usartIn->id )
+		{
+			case CXA_BLE112_USART_0:
+				if( !URX0IE )
+				{
+					URX0IE = 1;
+					// force an interrupt to get the waiting byte
+					if( (U0CSR & 0x04) ) URX0IF = 1;
+				}
+				break;
+
+			case CXA_BLE112_USART_1:
+				if( !URX1IE )
+				{
+					URX1IE = 1;
+					// force an interrupt to get the waiting byte
+					if( (U1CSR & 0x04) ) URX1IF = 1;
+				}
+				break;
+		}
+	}
+
+	return retVal;
 }
 
 
@@ -269,52 +294,17 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 				U0DBUF = ((uint8_t*)buffIn)[i];
 				while (UTX0IF == 0);
 				UTX0IF = 0;
-
 				break;
 
 			case CXA_BLE112_USART_1:
 				U1DBUF = ((uint8_t*)buffIn)[i];
 				while (UTX1IF == 0);
-		        UTX1IF = 0;
-				
+				UTX1IF = 0;
 				break;
 		}
 	}
 
 	return true;
-}
-
-
-static void fifo_cb_noLongerFull(cxa_fixedFifo_t *const fifoIn, void* userVarIn)
-{
-	cxa_ble112_usart_t *const usartIn = (cxa_ble112_usart_t*)userVarIn;
-	cxa_assert(usartIn);
-
-	switch( usartIn->id )
-	{
-		case CXA_BLE112_USART_0:
-			// see if we have a byte waiting in the buffer
-			if( (U0CSR & 0x04) )
-			{
-				uint8_t rxChar = U0DBUF;
-				cxa_fixedFifo_queue(&usartIn->rxFifo, (void*)&rxChar);
-			}
-			// regardless of whether we had a byte waiting, we should re-enable interrupts
-			if( !URX0IE ) URX0IE = 1;
-
-			break;
-
-		case CXA_BLE112_USART_1:
-			// see if we have a byte waiting in the buffer
-			if( (U1CSR & 0x04) )
-			{
-				uint8_t rxChar = U1DBUF;
-				cxa_fixedFifo_queue(&usartIn->rxFifo, (void*)&rxChar);
-			}
-			// regardless of whether we had a byte waiting, we should re-enable interrupts
-			if( !URX1IE ) URX1IE = 1;
-			break;
-	}
 }
 
 
