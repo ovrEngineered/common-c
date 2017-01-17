@@ -400,7 +400,7 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 		return;
 	}
 
-	cxa_logger_warn(&btlecIn->logger, "scan started");
+	cxa_logger_info(&btlecIn->logger, "scan started");
 	cxa_btle_client_notify_scanStart(&btlecIn->super, true);
 }
 
