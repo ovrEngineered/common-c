@@ -42,12 +42,12 @@
 	#define CXA_RPC_NODE_MAX_NAME_LEN_BYTES				10
 #endif
 
-#ifndef CXA_RPC_NODE_MAX_NUM_SUBNODES
-	#define CXA_RPC_NODE_MAX_NUM_SUBNODES				5
+#ifndef CXA_RPC_NODE_MAXNUM_SUBNODES
+	#define CXA_RPC_NODE_MAXNUM_SUBNODES				5
 #endif
 
-#ifndef CXA_RPC_NODE_MAX_NUM_METHODS
-	#define CXA_RPC_NODE_MAX_NUM_METHODS				5
+#ifndef CXA_RPC_NODE_MAXNUM_METHODS
+	#define CXA_RPC_NODE_MAXNUM_METHODS				5
 #endif
 
 #ifndef CXA_RPC_NODE_MAX_METHOD_NAME_LEN_BYTES
@@ -103,10 +103,10 @@ struct cxa_rpc_node
 	bool isLocalRoot;
 
 	cxa_array_t subnodes;
-	cxa_rpc_messageHandler_t* subnodes_raw[CXA_RPC_NODE_MAX_NUM_SUBNODES];
+	cxa_rpc_messageHandler_t* subnodes_raw[CXA_RPC_NODE_MAXNUM_SUBNODES];
 
 	cxa_array_t methods;
-	cxa_rpc_node_method_cbEntry_t methods_raw[CXA_RPC_NODE_MAX_NUM_METHODS];
+	cxa_rpc_node_method_cbEntry_t methods_raw[CXA_RPC_NODE_MAXNUM_METHODS];
 
 	cxa_array_t inflightSyncRequests;
 	cxa_rpc_node_inflightSyncRequestEntry_t inflightSyncRequests_raw[CXA_RPC_NODE_MAX_INFLIGHT_SYNC_REQUESTS];

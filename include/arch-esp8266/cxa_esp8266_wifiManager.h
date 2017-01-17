@@ -24,8 +24,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_ESP8266_WIFIMGR_MAX_NUM_LISTENERS
-	#define CXA_ESP8266_WIFIMGR_MAX_NUM_LISTENERS		1
+#ifndef CXA_ESP8266_WIFIMGR_MAXNUM_LISTENERS
+	#define CXA_ESP8266_WIFIMGR_MAXNUM_LISTENERS		1
 #endif
 
 

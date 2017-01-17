@@ -91,7 +91,7 @@ void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const c
 		.cb_enter=cb_enterIn, .cb_state=cb_stateIn, .cb_leave=cb_leaveIn, .userVar=userVarIn};
 
 	// add the new state to our array of states
-	cxa_assert_msg(cxa_array_append(&smIn->states, &newState), "increase 'CXA_STATE_MACHINE_MAX_NUM_STATES'");
+	cxa_assert_msg(cxa_array_append(&smIn->states, &newState), "increase 'CXA_STATE_MACHINE_MAXNUM_STATES'");
 	
 	// if we're currently not in a known state, enter this state (when update is called)
 	if( smIn->currState == NULL ) cxa_stateMachine_transition(smIn, idIn);

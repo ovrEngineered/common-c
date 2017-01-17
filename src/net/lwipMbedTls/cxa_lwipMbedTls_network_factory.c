@@ -25,12 +25,12 @@
 
 
 // ******** local macro definitions ********
-#ifndef CXA_LWIPMBEDTLS_MAX_NUM_TCP_CLIENTS
-	#define CXA_LWIPMBEDTLS_MAX_NUM_TCP_CLIENTS		1
+#ifndef CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS
+	#define CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS		1
 #endif
 
-#ifndef CXA_LWIPMBDEDTLS_MAX_NUM_TCP_SERVERS
-	#define CXA_LWIPMBDEDTLS_MAX_NUM_TCP_SERVERS	0
+#ifndef CXA_LWIPMBDEDTLS_MAXNUM_TCP_SERVERS
+	#define CXA_LWIPMBDEDTLS_MAXNUM_TCP_SERVERS	0
 #else
 	#error "TCP server support not available"
 #endif
@@ -51,8 +51,8 @@ static void cxa_network_factory_init(void);
 // ********  local variable declarations *********
 static bool isInit = false;
 
-#if CXA_LWIPMBEDTLS_MAX_NUM_TCP_CLIENTS > 0
-static tcpClient_entry_t tcpClientMap[CXA_LWIPMBEDTLS_MAX_NUM_TCP_CLIENTS];
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS > 0
+static tcpClient_entry_t tcpClientMap[CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS];
 #endif
 
 
@@ -105,7 +105,7 @@ void cxa_network_factory_freeTcpServer(cxa_network_tcpServer_t *const serverIn)
 // ******** local function implementations ********
 static void cxa_network_factory_init(void)
 {
-#if CXA_LWIPMBEDTLS_MAX_NUM_TCP_CLIENTS > 0
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS > 0
 	for( size_t i = 0; i < (sizeof(tcpClientMap)/sizeof(*tcpClientMap)); i++ )
 	{
 		tcpClientMap[i].isReserved = false;

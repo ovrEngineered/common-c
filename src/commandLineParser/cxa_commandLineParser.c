@@ -127,7 +127,7 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 
 	// setup an array so we can keep track of which options are present
 	cxa_array_t presentOptions;
-	cxa_commandLineParser_optionEntry_t* presentOptions_raw[CXA_COMMAND_LINE_PARSER_MAX_NUM_OPTIONS];
+	cxa_commandLineParser_optionEntry_t* presentOptions_raw[CXA_COMMAND_LINE_PARSER_MAXNUM_OPTIONS];
 	cxa_array_initStd(&presentOptions, presentOptions_raw);
 
 	// iterate through our CL arguments

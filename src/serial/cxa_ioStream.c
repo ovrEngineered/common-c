@@ -39,8 +39,8 @@
 	#define CXA_IOSTREAM_FORMATTED_BUFFERLEN_BYTES				24
 #endif
 
-#ifndef CXA_IOSTREAM_MAX_NUM_CLEARED_BYTES
-	#define CXA_IOSTREAM_MAX_NUM_CLEARED_BYTES					80
+#ifndef CXA_IOSTREAM_MAXNUM_CLEARED_BYTES
+	#define CXA_IOSTREAM_MAXNUM_CLEARED_BYTES					80
 #endif
 
 
@@ -140,7 +140,7 @@ void cxa_ioStream_clearReadBuffer(cxa_ioStream_t *const ioStreamIn)
 {
 	cxa_assert(ioStreamIn);
 
-	for( int i = 0; i < CXA_IOSTREAM_MAX_NUM_CLEARED_BYTES; i++ )
+	for( int i = 0; i < CXA_IOSTREAM_MAXNUM_CLEARED_BYTES; i++ )
 	{
 		if( cxa_ioStream_readByte(ioStreamIn, NULL) != CXA_IOSTREAM_READSTAT_GOTDATA ) return;
 	}

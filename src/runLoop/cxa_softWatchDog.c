@@ -40,7 +40,7 @@ static void cb_onRunLoopUpdate(void* userVarIn);
 static bool isInit = false;
 
 static cxa_array_t watchdogs;
-static cxa_softWatchDog_t* watchdogs_raw[CXA_SOFTWATCHDOG_MAX_NUM_ENTRIES];
+static cxa_softWatchDog_t* watchdogs_raw[CXA_SOFTWATCHDOG_MAXNUM_ENTRIES];
 
 
 // ******** global function implementations ********

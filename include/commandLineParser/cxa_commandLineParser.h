@@ -34,8 +34,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_COMMAND_LINE_PARSER_MAX_NUM_OPTIONS
-	#define CXA_COMMAND_LINE_PARSER_MAX_NUM_OPTIONS		10
+#ifndef CXA_COMMAND_LINE_PARSER_MAXNUM_OPTIONS
+	#define CXA_COMMAND_LINE_PARSER_MAXNUM_OPTIONS		10
 #endif
 
 
@@ -80,7 +80,7 @@ struct cxa_commandLineParser
 	char* description;
 
 	cxa_array_t options;
-	cxa_commandLineParser_optionEntry_t options_raw[CXA_COMMAND_LINE_PARSER_MAX_NUM_OPTIONS];
+	cxa_commandLineParser_optionEntry_t options_raw[CXA_COMMAND_LINE_PARSER_MAXNUM_OPTIONS];
 };
 
 

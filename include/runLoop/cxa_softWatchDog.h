@@ -25,8 +25,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_SOFTWATCHDOG_MAX_NUM_ENTRIES
-	#define CXA_SOFTWATCHDOG_MAX_NUM_ENTRIES				10
+#ifndef CXA_SOFTWATCHDOG_MAXNUM_ENTRIES
+	#define CXA_SOFTWATCHDOG_MAXNUM_ENTRIES				10
 #endif
 
 

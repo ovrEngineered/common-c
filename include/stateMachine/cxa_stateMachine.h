@@ -21,7 +21,7 @@
  * @file <description>
  *
  * Configuration Options:
- *		CXA_STATE_MACHINE_MAX_NUM_STATES
+ *		CXA_STATE_MACHINE_MAXNUM_STATES
  *		CXA_STATE_MACHINE_ENABLE_LOGGING
  *		CXA_STATE_MACHINE_ENABLE_TIMED_STATES
  *
@@ -43,8 +43,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_STATE_MACHINE_MAX_NUM_STATES
-	#define CXA_STATE_MACHINE_MAX_NUM_STATES				16
+#ifndef CXA_STATE_MACHINE_MAXNUM_STATES
+	#define CXA_STATE_MACHINE_MAXNUM_STATES				16
 #endif
 
 #define CXA_STATE_MACHINE_STATE_UNKNOWN						-1
@@ -108,7 +108,7 @@ struct cxa_stateMachine
 	cxa_stateMachine_state_t* nextState;
 	
 	cxa_array_t states;
-	cxa_stateMachine_state_t states_raw[CXA_STATE_MACHINE_MAX_NUM_STATES];
+	cxa_stateMachine_state_t states_raw[CXA_STATE_MACHINE_MAXNUM_STATES];
 	
 	#ifdef CXA_STATE_MACHINE_ENABLE_LOGGING
 		cxa_logger_t logger;

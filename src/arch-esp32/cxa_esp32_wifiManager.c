@@ -108,7 +108,7 @@ static void consoleCb_restart(cxa_array_t *const argsIn, cxa_ioStream_t *const i
 
 // ********  local variable declarations *********
 static cxa_array_t listeners;
-static listener_t listeners_raw[CXA_NETWORK_WIFIMGR_MAX_NUM_LISTENERS];
+static listener_t listeners_raw[CXA_NETWORK_WIFIMGR_MAXNUM_LISTENERS];
 
 static internalTargetMode_t targetWifiMode = INTTAR_MODE_DISABLED;
 static cxa_stateMachine_t stateMachine;

@@ -41,8 +41,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS
-	#define CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS		2
+#ifndef CXA_RPC_NODEREMOTE_MAXNUM_LINK_LISTENERS
+	#define CXA_RPC_NODEREMOTE_MAXNUM_LINK_LISTENERS		2
 #endif
 
 
@@ -77,7 +77,7 @@ struct cxa_rpc_nodeRemote
 	cxa_timeDiff_t td_provision;
 
 	cxa_array_t linkListeners;
-	cxa_rpc_nodeRemote_linkListener_t linkListeners_raw[CXA_RPC_NODEREMOTE_MAX_NUM_LINK_LISTENERS];
+	cxa_rpc_nodeRemote_linkListener_t linkListeners_raw[CXA_RPC_NODEREMOTE_MAXNUM_LINK_LISTENERS];
 };
 
 

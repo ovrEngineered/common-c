@@ -29,8 +29,8 @@
 // ******** local macro definitions ********
 #define SNTP_SERVER									"pool.ntp.org"
 
-#ifndef CXA_SNTPCLIENT_MAX_NUM_LISTENERS
-	#define CXA_SNTPCLIENT_MAX_NUM_LISTENERS		4
+#ifndef CXA_SNTPCLIENT_MAXNUM_LISTENERS
+	#define CXA_SNTPCLIENT_MAXNUM_LISTENERS		4
 #endif
 
 
@@ -51,7 +51,7 @@ static void wifiCb_onDisconnected(void* userVarIn);
 static bool isInit = false;
 
 static cxa_array_t listeners;
-static listenerEntry_t listeners_raw[CXA_SNTPCLIENT_MAX_NUM_LISTENERS];
+static listenerEntry_t listeners_raw[CXA_SNTPCLIENT_MAXNUM_LISTENERS];
 
 
 // ******** global function implementations ********

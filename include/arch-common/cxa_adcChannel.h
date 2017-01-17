@@ -36,8 +36,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_ADCCHAN_MAX_NUM_LISTENERS
-#define CXA_ADCCHAN_MAX_NUM_LISTENERS		1
+#ifndef CXA_ADCCHAN_MAXNUM_LISTENERS
+#define CXA_ADCCHAN_MAXNUM_LISTENERS		1
 #endif
 
 
@@ -86,7 +86,7 @@ struct cxa_adcChannel
 	cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ss;
 
 	cxa_array_t listeners;
-	cxa_adcChannel_listener_t listeners_raw[CXA_ADCCHAN_MAX_NUM_LISTENERS];
+	cxa_adcChannel_listener_t listeners_raw[CXA_ADCCHAN_MAXNUM_LISTENERS];
 };
 
 

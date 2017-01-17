@@ -64,7 +64,7 @@ static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, int nextSta
 static struct sdk_station_config storedNetwork;
 
 static cxa_array_t listeners;
-static listener_t listeners_raw[CXA_ESP8266_WIFIMGR_MAX_NUM_LISTENERS];
+static listener_t listeners_raw[CXA_ESP8266_WIFIMGR_MAXNUM_LISTENERS];
 
 static cxa_stateMachine_t stateMachine;
 static cxa_timeDiff_t td_genPurpose;

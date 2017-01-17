@@ -24,8 +24,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_NETWORK_WIFIMGR_MAX_NUM_LISTENERS
-	#define CXA_NETWORK_WIFIMGR_MAX_NUM_LISTENERS		2
+#ifndef CXA_NETWORK_WIFIMGR_MAXNUM_LISTENERS
+	#define CXA_NETWORK_WIFIMGR_MAXNUM_LISTENERS		2
 #endif
 
 

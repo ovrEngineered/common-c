@@ -53,7 +53,7 @@ static void cxa_runLoop_init(void);
 static bool isInit = false;
 
 static cxa_array_t cbs;
-static cxa_runLoop_entry_t cbs_raw[CXA_RUN_LOOP_MAXNUM_ENTRIES];
+static cxa_runLoop_entry_t cbs_raw[CXA_RUNLOOP_MAXNUM_ENTRIES];
 
 static cxa_logger_t logger;
 static cxa_timeDiff_t td_printInfo;
@@ -70,7 +70,7 @@ void cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
 
 	// create our new entry
 	cxa_runLoop_entry_t newEntry = {.cb=cbIn, .userVar=userVarIn};
-	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAX_NUM_ENTRIES");
+	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
 }
 
 

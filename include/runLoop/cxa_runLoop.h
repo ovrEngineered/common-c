@@ -31,8 +31,8 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_RUN_LOOP_MAX_NUM_ENTRIES
-	#define CXA_RUN_LOOP_MAX_NUM_ENTRIES				10
+#ifndef CXA_RUNLOOP_MAXNUM_ENTRIES
+	#define CXA_RUNLOOP_MAXNUM_ENTRIES				10
 #endif
 
 
