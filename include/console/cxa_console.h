@@ -29,6 +29,10 @@
 #error "Must define CXA_CONSOLE_ENABLE in 'cxa_config.h' to use console"
 #endif
 
+#ifndef CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES
+	#define CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES		32
+#endif
+
 #ifndef CXA_CONSOLE_MAXNUM_COMMANDS
 	#define CXA_CONSOLE_MAXNUM_COMMANDS				10
 #endif
@@ -69,6 +73,7 @@ void cxa_console_addCommand(const char* commandIn, const char* descriptionIn,
 							cxa_console_argDescriptor_t* argDescsIn, size_t numArgsIn,
 							cxa_console_command_cb_t cbIn, void* userVarIn);
 
+void cxa_console_printErrorToIoStream(cxa_ioStream_t *const ioStreamIn, const char *const errorIn);
 
 /**
  * @protected

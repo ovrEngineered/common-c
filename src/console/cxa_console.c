@@ -31,7 +31,6 @@
 
 // ******** local macro definitions ********
 #define HEADER_NUM_COLS					40
-#define COMMAND_BUFFER_LEN_BYTES		20
 #define COMMAND_PROMPT					" > "
 #define ESCAPE							"\x1b"
 #define CONSOLE_RESPONSE_TIMEOUT_MS		2000
@@ -56,7 +55,6 @@ typedef struct
 static void cb_onRunLoopUpdate(void* userVarIn);
 static void printBootHeader(const char* deviceNameIn);
 static void printCommandLine(void);
-static void printError(char* errorIn);
 static void printBlockLine(const char* textIn, size_t maxNumCols);
 static void clearScreenReturnHome(void);
 static void clearBuffer(void);
@@ -69,7 +67,7 @@ static void command_help(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStre
 static cxa_ioStream_t* ioStream = NULL;
 
 static cxa_array_t commandBuffer;
-static char commandBuffer_raw[COMMAND_BUFFER_LEN_BYTES];
+static char commandBuffer_raw[CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES];
 
 static cxa_array_t commandEntries;
 static commandEntry_t commandEntries_raw[CXA_CONSOLE_MAXNUM_COMMANDS+2];
@@ -119,6 +117,17 @@ void cxa_console_addCommand(const char* commandIn, const char* descriptionIn,
 	if( numArgsIn > 0 ) memcpy(newEntry.argDescs, argDescsIn, sizeof(*argDescsIn) *numArgsIn);
 
 	cxa_assert(cxa_array_append(&commandEntries, &newEntry));
+}
+
+
+void cxa_console_printErrorToIoStream(cxa_ioStream_t *const ioStreamIn, const char *const errorIn)
+{
+	cxa_assert(ioStreamIn);
+	cxa_assert(errorIn);
+
+	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+	cxa_ioStream_writeString(ioStream, "!! ");
+	cxa_ioStream_writeLine(ioStream, errorIn);
 }
 
 
@@ -186,7 +195,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 						currParam_str = strtok_r(NULL, " ", &tokSavePtr);
 						if( currParam_str == NULL )
 						{
-							printError("Too few arguments");
+							cxa_console_printErrorToIoStream(ioStream, "Too few arguments");
 							argParseError = true;
 							break;
 						}
@@ -196,13 +205,11 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 						if( !cxa_stringUtils_parseString(currParam_str, parseVal) ||
 							(parseVal->dataType != currArgDesc->dataType) )
 						{
-							printError("Incorrect argument type(s)");
+							cxa_console_printErrorToIoStream(ioStream, "Incorrect argument type(s)");
 							argParseError = true;
 							break;
 						}
 
-						// save it into our array (which we'll pass to the user)
-						cxa_array_append(&args, &parseVal);
 					}
 					// make sure we break out of the outer loop as wel
 					if( argParseError ) break;
@@ -210,7 +217,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 					// make sure we don't have any extra arguments
 					if( strtok_r(NULL, " ", &tokSavePtr) != NULL )
 					{
-						printError("Too many arguments");
+						cxa_console_printErrorToIoStream(ioStream, "Too many arguments");
 						break;
 					}
 
@@ -226,7 +233,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			}
 			if( !foundCommand )
 			{
-				printError("Unknown command");
+				cxa_console_printErrorToIoStream(ioStream, "Unknown command");
 			}
 
 			clearBuffer();
@@ -252,7 +259,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 		{
 			// commandBuffer is full
 			clearBuffer();
-			printError("Command too long for buffer");
+			cxa_console_printErrorToIoStream(ioStream, "Command too long for buffer");
 			printCommandLine();
 		}
 		else
@@ -289,16 +296,6 @@ static void printCommandLine(void)
 		cxa_ioStream_writeByte(ioStream, *currCharPtr);
 	}
 	isExecutingCommand = false;
-}
-
-
-static void printError(char* errorIn)
-{
-	cxa_assert(errorIn);
-
-	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
-	cxa_ioStream_writeString(ioStream, "!! ");
-	cxa_ioStream_writeLine(ioStream, errorIn);
 }
 
 
