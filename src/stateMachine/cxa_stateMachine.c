@@ -84,7 +84,7 @@ void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const c
 	cxa_assert(idIn != CXA_STATE_MACHINE_STATE_UNKNOWN);
 
 	// make sure we don't already have this state added
-	cxa_assert(getState_byId(smIn, idIn) == NULL);
+	cxa_assert_msg((getState_byId(smIn, idIn) == NULL), "duplicate state");
 
 	// create our new state
 	cxa_stateMachine_state_t newState = {.type=CXA_STATE_MACHINE_STATE_TYPE_NORMAL, .stateId=idIn, .stateName=nameIn,
