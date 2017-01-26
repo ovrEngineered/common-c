@@ -354,6 +354,55 @@ bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, bool 
 }
 
 
+bool cxa_stringUtils_hexStringToBytes(const char *const hexStringIn, size_t numBytesIn, bool transposeIn, uint8_t* bytesOut)
+{
+	cxa_assert(hexStringIn);
+
+	size_t strLength_bytes = strlen(hexStringIn);
+	if( (strLength_bytes / 2) < numBytesIn ) return false;
+
+	memset(bytesOut, 0, numBytesIn);
+
+	for( size_t i = 0; i < strLength_bytes; i++ )
+	{
+		uint8_t currChar = hexStringIn[i];
+
+		// keep all alpha characters upper case
+		if( islower(currChar) ) currChar = toupper(currChar);
+
+		// convert to a value
+		uint8_t currVal = 0;
+		if( (48 <= currChar) && (currChar <= 57) )
+		{
+			currVal = currChar - 48;				// 0-9
+		}
+		else if( (65 <= currChar) && (currChar <= 70) )
+		{
+			currVal = (currChar - 65) + 10;			// A-F
+		}
+		else
+		{
+			return false;
+		}
+
+		size_t currByte = i / 2;
+		if( transposeIn ) currByte = numBytesIn - currByte - 1;
+		if( i % 2 )
+		{
+			// lower nibble
+			bytesOut[currByte] |= (currVal << 0);
+		}
+		else
+		{
+			// upper nibble
+			bytesOut[currByte] |= (currVal << 4);
+		}
+	}
+
+	return true;
+}
+
+
 bool cxa_stringUtils_parseString(char *const strIn, cxa_stringUtils_parseResult_t* parseResultOut)
 {
 	if( strIn == NULL ) return false;
