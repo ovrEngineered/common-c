@@ -43,6 +43,8 @@ typedef struct
 // ******** global function prototypes ********
 void cxa_eui48_init(cxa_eui48_t *const uuidIn, uint8_t *const bytesIn);
 bool cxa_eui48_initFromBuffer(cxa_eui48_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn);
+bool cxa_eui48_initFromString(cxa_eui48_t *const uuidIn, const char *const stringIn);
+void cxa_eui48_initFromEui48(cxa_eui48_t *const targetIn, cxa_eui48_t *const sourceIn);
 void cxa_eui48_initRandom(cxa_eui48_t *const uuidIn);
 
 bool cxa_eui48_isEqual(cxa_eui48_t *const uuid1In, cxa_eui48_t *const uuid2In);

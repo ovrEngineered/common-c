@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include <cxa_assert.h>
+#include <cxa_stringUtils.h>
 #include <cxa_timeBase.h>
 
 #define CXA_LOG_LEVEL				CXA_LOG_LEVEL_TRACE
@@ -54,6 +55,46 @@ bool cxa_eui48_initFromBuffer(cxa_eui48_t *const uuidIn, cxa_fixedByteBuffer_t *
 	cxa_assert(fbbIn);
 
 	return cxa_fixedByteBuffer_get(fbbIn, indexIn, false, uuidIn->bytes, sizeof(uuidIn->bytes));
+}
+
+
+bool cxa_eui48_initFromString(cxa_eui48_t *const uuidIn, const char *const stringIn)
+{
+	cxa_assert(uuidIn);
+	cxa_assert(stringIn);
+
+	size_t strLength_bytes = strlen(stringIn);
+	if( strLength_bytes != 17 ) return false;
+
+	char stringWithoutColons[13];
+	memset(stringWithoutColons, 0, sizeof(stringWithoutColons));
+	uint8_t insertIndex = 0;
+
+	uint8_t numColons = 0;
+	for( size_t i = 0; i < strLength_bytes; i++ )
+	{
+		if( stringIn[i] != ':' )
+		{
+			stringWithoutColons[insertIndex++] = stringIn[i];
+		}
+		else
+		{
+			numColons++;
+		}
+	}
+
+	if( numColons != 5 ) return false;
+
+	return cxa_stringUtils_hexStringToBytes(stringWithoutColons, sizeof(uuidIn->bytes), true, uuidIn->bytes);
+}
+
+
+void cxa_eui48_initFromEui48(cxa_eui48_t *const targetIn, cxa_eui48_t *const sourceIn)
+{
+	cxa_assert(targetIn);
+	cxa_assert(sourceIn);
+
+	memcpy(targetIn->bytes, sourceIn->bytes, sizeof(targetIn->bytes));
 }
 
 
