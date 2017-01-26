@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include <cxa_assert.h>
+#include <cxa_stringUtils.h>
 #include <cxa_timeBase.h>
 
 
@@ -51,7 +52,38 @@ bool cxa_uuid128_initFromBuffer(cxa_uuid128_t *const uuidIn, cxa_fixedByteBuffer
 	cxa_assert(uuidIn);
 	cxa_assert(fbbIn);
 
-	return cxa_fixedByteBuffer_get(fbbIn, indexIn, false, uuidIn->bytes, sizeof(uuidIn->bytes));
+	return cxa_fixedByteBuffer_get(fbbIn, indexIn, true, uuidIn->bytes, sizeof(uuidIn->bytes));
+}
+
+
+bool cxa_uuid128_initFromString(cxa_uuid128_t *const uuidIn, const char *const stringIn)
+{
+	cxa_assert(uuidIn);
+
+	// 10250893-25f7-42a0-a756-ea9077377101
+	size_t strLength_bytes = strlen(stringIn);
+	if( strLength_bytes != 36 ) return false;
+
+	char stringWithoutDashes[33];
+	memset(stringWithoutDashes, 0, sizeof(stringWithoutDashes));
+	uint8_t insertIndex = 0;
+
+	uint8_t numDashes = 0;
+	for( size_t i = 0; i < strLength_bytes; i++ )
+	{
+		if( stringIn[i] != '-' )
+		{
+			stringWithoutDashes[insertIndex++] = stringIn[i];
+		}
+		else
+		{
+			numDashes++;
+		}
+	}
+
+	if( numDashes != 4 ) return false;
+
+	return cxa_stringUtils_hexStringToBytes(stringWithoutDashes, sizeof(uuidIn->bytes), true, uuidIn->bytes);
 }
 
 
