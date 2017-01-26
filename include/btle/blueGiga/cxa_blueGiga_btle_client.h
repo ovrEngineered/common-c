@@ -21,6 +21,7 @@
 // ******** includes ********
 #include <cxa_blueGiga_types.h>
 #include <cxa_btle_client.h>
+#include <cxa_btle_uuid.h>
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_gpio.h>
 #include <cxa_ioStream.h>
@@ -39,6 +40,16 @@
  * @public
  */
 typedef struct cxa_blueGiga_btle_client cxa_blueGiga_btle_client_t;
+
+
+/**
+ * @private
+ */
+typedef enum
+{
+	CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_READ,
+	CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_WRITE
+}cxa_blueGiga_btle_client_procedureType_t;
 
 
 /**
@@ -74,7 +85,32 @@ struct cxa_blueGiga_btle_client
 	}inFlightRequest;
 
 	bool isActiveScan;
-	cxa_stateMachine_t stateMachine;
+
+	cxa_eui48_t connectAddr;
+	bool isConnectAddrRandom;
+
+	uint8_t currConnHandle;
+
+	struct
+	{
+		cxa_softWatchDog_t watchdog;
+
+		cxa_blueGiga_btle_client_procedureType_t procedureType;
+
+		cxa_btle_uuid_t readWriteTargetUuid_service;
+		cxa_btle_uuid_t readWriteTargetUuid_characteristic;
+
+		uint8_t writeData[20];
+		uint8_t writeDataLength_bytes;
+
+		uint16_t serviceHandle_start;
+		uint16_t serviceHandle_end;
+
+		uint16_t characteristicHandle;
+	}currProcedure;
+
+	cxa_stateMachine_t stateMachine_conn;
+	cxa_stateMachine_t stateMachine_currProcedure;
 
 	cxa_logger_t logger;
 };

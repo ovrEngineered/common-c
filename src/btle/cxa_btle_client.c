@@ -44,7 +44,11 @@ void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
 						  cxa_btle_client_scm_isReady_t scm_isReadyIn,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
 						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
-						  cxa_btle_client_scm_isScanning_t scm_isScanningIn)
+						  cxa_btle_client_scm_isScanning_t scm_isScanningIn,
+						  cxa_btle_client_scm_startConnection_t scm_startConnectionIn,
+						  cxa_btle_client_scm_stopConnection_t scm_stopConnectionIn,
+						  cxa_btle_client_scm_isConnected_t scm_isConnectedIn,
+						  cxa_btle_client_scm_writeToCharacteristic_t scm_writeToCharIn)
 {
 	cxa_assert(btlecIn);
 	cxa_assert(scm_startScanIn);
@@ -56,6 +60,10 @@ void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
 	btlecIn->scms.startScan = scm_startScanIn;
 	btlecIn->scms.stopScan = scm_stopScanIn;
 	btlecIn->scms.isScanning = scm_isScanningIn;
+	btlecIn->scms.startConnection = scm_startConnectionIn;
+	btlecIn->scms.stopConnection = scm_stopConnectionIn;
+	btlecIn->scms.isConnected = scm_isConnectedIn;
+	btlecIn->scms.writeToCharacteristic = scm_writeToCharIn;
 
 	// clear our callbacks
 	memset((void*)&btlecIn->cbs, 0, sizeof(btlecIn->cbs));
@@ -88,9 +96,9 @@ void cxa_btle_client_startScan_passive(cxa_btle_client_t *const btlecIn,
 	cxa_assert(btlecIn);
 
 	// save our callbacks
-	btlecIn->cbs.onAdvert = cb_advIn;
-	btlecIn->cbs.onScanStart = cb_scanStartIn;
-	btlecIn->cbs.userVar = userVarIn;
+	btlecIn->cbs.scanning.onAdvert = cb_advIn;
+	btlecIn->cbs.scanning.onScanStart = cb_scanStartIn;
+	btlecIn->cbs.scanning.userVar = userVarIn;
 
 	// start our scan
 	cxa_assert(btlecIn->scms.startScan);
@@ -107,10 +115,10 @@ void cxa_btle_client_startScan_active(cxa_btle_client_t *const btlecIn,
 	cxa_assert(btlecIn);
 
 	// save our callbacks
-	btlecIn->cbs.onAdvert = cb_advIn;
-	btlecIn->cbs.onScanResp = cb_scanRespIn;
-	btlecIn->cbs.onScanStart = cb_scanStartIn;
-	btlecIn->cbs.userVar = userVarIn;
+	btlecIn->cbs.scanning.onAdvert = cb_advIn;
+	btlecIn->cbs.scanning.onScanResp = cb_scanRespIn;
+	btlecIn->cbs.scanning.onScanStart = cb_scanStartIn;
+	btlecIn->cbs.scanning.userVar = userVarIn;
 
 	// start our scan
 	cxa_assert(btlecIn->scms.startScan);
@@ -125,8 +133,8 @@ void cxa_btle_client_stopScan(cxa_btle_client_t *const btlecIn,
 	cxa_assert(btlecIn);
 
 	// save our callbacks
-	btlecIn->cbs.onScanStop = cb_scanStopIn;
-	btlecIn->cbs.userVar = userVarIn;
+	btlecIn->cbs.scanning.onScanStop = cb_scanStopIn;
+	btlecIn->cbs.scanning.userVar = userVarIn;
 
 	// stop our scan
 	cxa_assert(btlecIn->scms.stopScan);
@@ -148,6 +156,64 @@ bool cxa_btle_client_isScanning(cxa_btle_client_t *const btlecIn)
 
 	cxa_assert(btlecIn->scms.isScanning != NULL);
 	return btlecIn->scms.isScanning(btlecIn);
+}
+
+
+void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn,
+									 cxa_btle_client_cb_onConnectionOpened_t cb_connectionOpenedIn,
+									 cxa_btle_client_cb_onConnectionClosed_t cb_connectionUnintentionallyClosedIn,
+									 void* userVarIn)
+{
+	cxa_assert(btlecIn);
+
+	// save our callbacks
+	btlecIn->cbs.connecting.onConnectionOpened = cb_connectionOpenedIn;
+	btlecIn->cbs.connecting.onConnectionClosed = cb_connectionUnintentionallyClosedIn;
+	btlecIn->cbs.connecting.userVar = userVarIn;
+
+	cxa_assert(btlecIn->scms.startConnection != NULL);
+	btlecIn->scms.startConnection(btlecIn, addrIn, isRandomAddrIn);
+}
+
+
+void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
+									cxa_btle_client_cb_onConnectionClosed_t cb_connectionClosedIn,
+									void *userVarIn)
+{
+	cxa_assert(btlecIn);
+
+	// save our callbacks
+	btlecIn->cbs.connecting.onConnectionClosed = cb_connectionClosedIn;
+	btlecIn->cbs.connecting.userVar = userVarIn;
+
+	cxa_assert(btlecIn->scms.stopConnection != NULL);
+	btlecIn->scms.stopConnection(btlecIn);
+}
+
+
+bool cxa_btle_client_isConnected(cxa_btle_client_t *const btlecIn)
+{
+	cxa_assert(btlecIn);
+
+	return (btlecIn->scms.isConnected != NULL) ? btlecIn->scms.isConnected(btlecIn) : false;
+}
+
+
+void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
+										   const char *const serviceIdIn,
+										   const char *const characteristicIdIn,
+										   cxa_fixedByteBuffer_t *const dataIn,
+										   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
+										   void* userVarIn)
+{
+	cxa_assert(btlecIn);
+
+	// save our callbacks
+	btlecIn->cbs.writing.onWriteComplete = cb_writeCompleteIn;
+	btlecIn->cbs.writing.userVar = userVarIn;
+
+	cxa_assert(btlecIn->scms.writeToCharacteristic != NULL);
+	btlecIn->scms.writeToCharacteristic(btlecIn, serviceIdIn, characteristicIdIn, dataIn);
 }
 
 
@@ -181,7 +247,7 @@ void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.onAdvert != NULL ) btlecIn->cbs.onAdvert(packetIn, btlecIn->cbs.userVar);
+	if( btlecIn->cbs.scanning.onAdvert != NULL ) btlecIn->cbs.scanning.onAdvert(packetIn, btlecIn->cbs.scanning.userVar);
 }
 
 
@@ -189,7 +255,39 @@ void cxa_btle_client_notify_scanStart(cxa_btle_client_t *const btlecIn, bool was
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.onScanStart != NULL ) btlecIn->cbs.onScanStart(btlecIn->cbs.userVar, wasSuccessfulIn);
+	if( btlecIn->cbs.scanning.onScanStart != NULL ) btlecIn->cbs.scanning.onScanStart(btlecIn->cbs.scanning.userVar, wasSuccessfulIn);
+}
+
+
+void cxa_btle_client_notify_scanStop(cxa_btle_client_t *const btlecIn)
+{
+	cxa_assert(btlecIn);
+
+	if( btlecIn->cbs.scanning.onScanStop != NULL ) btlecIn->cbs.scanning.onScanStop(btlecIn->cbs.scanning.userVar);
+}
+
+
+void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn)
+{
+	cxa_assert(btlecIn);
+
+	if( btlecIn->cbs.connecting.onConnectionOpened != NULL ) btlecIn->cbs.connecting.onConnectionOpened(btlecIn->cbs.connecting.userVar, wasSuccessfulIn);
+}
+
+
+void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn)
+{
+	cxa_assert(btlecIn);
+
+	if( btlecIn->cbs.connecting.onConnectionClosed != NULL ) btlecIn->cbs.connecting.onConnectionClosed(btlecIn->cbs.connecting.userVar);
+}
+
+
+void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn)
+{
+	cxa_assert(btlecIn);
+
+	if( btlecIn->cbs.writing.onWriteComplete != NULL ) btlecIn->cbs.writing.onWriteComplete(btlecIn->cbs.writing.userVar, wasSuccessfulIn);
 }
 
 
@@ -212,6 +310,12 @@ bool cxa_btle_client_countAdvFields(uint8_t *const bytesIn, size_t maxLen_bytesI
 	}
 	if( numAdvFieldsOut != NULL ) *numAdvFieldsOut = numAdvFields;
 	return true;
+}
+
+
+void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn)
+{
+
 }
 
 

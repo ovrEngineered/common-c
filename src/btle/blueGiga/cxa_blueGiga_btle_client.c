@@ -23,25 +23,47 @@
 #include <cxa_console.h>
 #include <cxa_delay.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
 
 
 // ******** local macro definitions ********
-#define RESET_TIME_MS			2000
-#define WAIT_BOOT_TIME_MS		2000
+#define RESET_TIME_MS					2000
+#define WAIT_BOOT_TIME_MS				2000
 
-#define COMMAND_TIMEOUT_MS		1500
+#define COMMAND_TIMEOUT_MS				1500
+
+#define READWRITE_TIMEOUT_MS			2000
+
+#define CONNECTION_INTERVAL_MIN_MS		50			// must be intervals of 1.25ms
+#define CONNECTION_INTERVAL_MAX_MS		500			// must be intervals of 1.25ms
+#define CONNECTION_LATENCY				10			// num missed conn intervals
+// per BTLE spec
+#define CONNECTION_TIMEOUT_MS			((1 + CONNECTION_LATENCY) * CONNECTION_INTERVAL_MAX_MS * 2)
 
 
 // ******** local type definitions ********
 typedef enum
 {
-	STATE_RESET,
-	STATE_WAIT_BOOT,
-	STATE_IDLE,
-	STATE_SCANNING
-}state_t;
+	CONNSTATE_RESET,
+	CONNSTATE_WAIT_BOOT,
+	CONNSTATE_IDLE,
+	CONNSTATE_SCANNING,
+	CONNSTATE_CONNECTING,
+	CONNSTATE_CONNECTED
+}connState_t;
+
+
+typedef enum
+{
+	PROCSTATE_NOT_READY,
+	PROCSTATE_IDLE,
+	PROCSTATE_RESOLVE_SERVICE_HANDLE,
+	PROCSTATE_RESOLVE_CHARACTERISTIC_HANDLE,
+	PROCSTATE_READ_CHARACTERISTIC,
+	PROCSTATE_WRITE_CHARACTERISTIC,
+	PROCSTATE_ERROR
+}procedureState_t;
 
 
 // ******** local function prototypes ********
@@ -56,24 +78,45 @@ static cxa_blueGiga_methodId_t getMethod(cxa_fixedByteBuffer_t *const fbbIn);
 static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedByteBuffer_t *const packetIn);
 static void handleBgResponse(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedByteBuffer_t *const packetIn);
 static void handleBgTimeout(void* userVarIn);
+static void handleReadWriteTimeout(void* userVarIn);
 
 static void protoParseCb_onPacketRx(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
 
-static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const bltecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const packetIn);
-static void responseCb_discover(cxa_blueGiga_btle_client_t *const bltecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const packetIn);
+static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
 
 static bool scm_isReady(cxa_btle_client_t *const superIn);
 static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn);
 static void scm_stopScan(cxa_btle_client_t *const superIn);
 static bool scm_isScanning(cxa_btle_client_t *const superIn);
+static void scm_startConnection(cxa_btle_client_t *const superIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn);
+static void scm_stopConnection(cxa_btle_client_t *const superIn);
+static bool scm_isConnected(cxa_btle_client_t *const superIn);
+static void scm_writeToCharacteristic(cxa_btle_client_t *const superIn,
+									  const char *const serviceIdIn,
+									  const char *const characteristicIdIn,
+									  cxa_fixedByteBuffer_t *const dataIn);
 
-static void stateCb_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
-static void stateCb_waitBoot_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
-static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_scanning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_scanning_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_conn_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_conn_waitBoot_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_conn_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_conn_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_conn_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_conn_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+
+static void stateCb_currProc_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_currProc_resolveService_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_currProc_resolveCharacteristic_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_currProc_readCharacteristic_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_currProc_writeCharacteristic_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_currProc_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -86,12 +129,15 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_assert(iosIn);
 	cxa_assert(gpio_resetIn);
 
-	// save our references
+	// save our references and initialize our internal state
 	btlecIn->gpio_reset = gpio_resetIn;
 	cxa_softWatchDog_init(&btlecIn->inFlightRequest.watchdog, COMMAND_TIMEOUT_MS, handleBgTimeout, (void*)btlecIn);
+	cxa_softWatchDog_init(&btlecIn->currProcedure.watchdog, READWRITE_TIMEOUT_MS, handleReadWriteTimeout, (void*)btlecIn);
 
 	// initialize our superclass
-	cxa_btle_client_init(&btlecIn->super, scm_isReady, scm_startScan, scm_stopScan, scm_isScanning);
+	cxa_btle_client_init(&btlecIn->super, scm_isReady,
+						 scm_startScan, scm_stopScan, scm_isScanning,
+						 scm_startConnection, scm_stopConnection, scm_isConnected, scm_writeToCharacteristic);
 
 	// and our logger
 	cxa_logger_init(&btlecIn->logger, "btleClient");
@@ -104,13 +150,26 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_protocolParser_bgapi_init(&btlecIn->protoParse, iosIn, &btlecIn->fbb_rx);
 	cxa_protocolParser_addPacketListener(&btlecIn->protoParse.super, protoParseCb_onPacketRx, (void*)btlecIn);
 
-	// and our state machine
-	cxa_stateMachine_init(&btlecIn->stateMachine, "blueGiga");
-	cxa_stateMachine_addState_timed(&btlecIn->stateMachine, STATE_RESET, "reset", STATE_WAIT_BOOT, RESET_TIME_MS, stateCb_reset_enter, NULL, stateCb_reset_leave, (void*)btlecIn);
-	cxa_stateMachine_addState_timed(&btlecIn->stateMachine, STATE_WAIT_BOOT, "waitBoot", STATE_RESET, WAIT_BOOT_TIME_MS, NULL, NULL, stateCb_waitBoot_leave, (void*)btlecIn);
-	cxa_stateMachine_addState(&btlecIn->stateMachine, STATE_IDLE, "idle", stateCb_idle_enter, stateCb_idle_state, NULL, (void*)btlecIn);
-	cxa_stateMachine_addState(&btlecIn->stateMachine, STATE_SCANNING, "scanning", stateCb_scanning_enter, NULL, stateCb_scanning_leave, (void*)btlecIn);
-	cxa_stateMachine_setInitialState(&btlecIn->stateMachine, STATE_RESET);
+	// and our connection state machine
+	cxa_stateMachine_init(&btlecIn->stateMachine_conn, "blueGiga_conn");
+	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_RESET, "reset", CONNSTATE_WAIT_BOOT, RESET_TIME_MS, stateCb_conn_reset_enter, NULL, stateCb_conn_reset_leave, (void*)btlecIn);
+	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_WAIT_BOOT, "waitBoot", CONNSTATE_RESET, WAIT_BOOT_TIME_MS, NULL, NULL, stateCb_conn_waitBoot_leave, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_IDLE, "idle", stateCb_conn_idle_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_SCANNING, "scanning", stateCb_conn_scanning_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTING, "connecting", stateCb_conn_connecting_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTED, "connected", stateCb_conn_connected_enter, NULL, stateCb_conn_connected_leave, (void*)btlecIn);
+	cxa_stateMachine_setInitialState(&btlecIn->stateMachine_conn, CONNSTATE_RESET);
+
+	// and our procedure state machine
+	cxa_stateMachine_init(&btlecIn->stateMachine_currProcedure, "blueGiga_proc");
+	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_NOT_READY, "notReady", NULL, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_IDLE, "idle", stateCb_currProc_idle_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_RESOLVE_SERVICE_HANDLE, "resServHan", stateCb_currProc_resolveService_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_RESOLVE_CHARACTERISTIC_HANDLE, "resCharHan", stateCb_currProc_resolveCharacteristic_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_READ_CHARACTERISTIC, "readChar", stateCb_currProc_readCharacteristic_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_WRITE_CHARACTERISTIC, "writeChar", stateCb_currProc_writeCharacteristic_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR, "error", stateCb_currProc_error_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_setInitialState(&btlecIn->stateMachine_currProcedure, PROCSTATE_NOT_READY);
 }
 
 
@@ -199,7 +258,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 		cxa_logger_debug(&btlecIn->logger, "boot  sw: %d.%d.%d  prot: %d  hw: %d",
 				sw_major, sw_minor,patch, protocol, hw);
 
-		cxa_stateMachine_transition(&btlecIn->stateMachine, STATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
 	}
 	else if( (classId == CXA_BLUEGIGA_CLASSID_GAP) && (method == CXA_BLUEGIGA_EVENTID_GAP_SCANRESPONSE) )
 	{
@@ -217,7 +276,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 			(packetType != CXA_BLUEGIGA_SCANRESP_TYPE_NONCONN_ADVERT) ) return;
 
 		// address information
-		if( !cxa_fixedByteBuffer_get(packetIn, 6, false, rxPacket.addr, sizeof(rxPacket.addr)) ) return;
+		if( !cxa_eui48_initFromBuffer(&rxPacket.addr, packetIn, 6) ) return;
 		if( !cxa_fixedByteBuffer_get_uint8(packetIn, 12, rxPacket.isRandomAddress) ) return;
 
 		// get our actual data bytes
@@ -243,13 +302,14 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 						return;
 		}
 
-//		cxa_logger_debug(&btlecIn->logger, "adv from %02X:%02X:%02X:%02X:%02X:%02X(%s)  %ddBm  %d fields  %d bytes",
-//						rxPacket.addr[5], rxPacket.addr[4], rxPacket.addr[3],
-//						rxPacket.addr[2], rxPacket.addr[1], rxPacket.addr[0],
-//						rxPacket.isRandomAddress ? "r" : "p",
-//						rxPacket.rssi,
-//						cxa_array_getSize_elems(&rxPacket.advFields),
-//						cxa_fixedByteBuffer_getSize_bytes(packetIn));
+		cxa_eui48_string_t addr_str;
+		cxa_eui48_toString(&rxPacket.addr, &addr_str);
+		cxa_logger_trace(&btlecIn->logger, "adv from %s(%s)  %ddBm  %d fields  %d bytes",
+						addr_str.str,
+						rxPacket.isRandomAddress ? "r" : "p",
+						rxPacket.rssi,
+						cxa_array_getSize_elems(&rxPacket.advFields),
+						cxa_fixedByteBuffer_getSize_bytes(packetIn));
 
 		// notify our listeners
 		cxa_btle_client_notify_advertRx(&btlecIn->super, &rxPacket);
@@ -269,7 +329,134 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 			if( cb != NULL ) cb(btlecIn, false, NULL);
 		}
 
-		cxa_stateMachine_transition(&btlecIn->stateMachine, STATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+	}
+	else if( (classId == CXA_BLUEGIGA_CLASSID_CONNECTION) && (method == CXA_BLUEGIGA_EVENTID_CONNECTION_STATUS) )
+	{
+		// there's a lot of info here, but we're mostly interested in the handle and connection flags
+		uint8_t connHandle, connFlags;
+		if( !cxa_fixedByteBuffer_get_uint8(packetIn, 4, connHandle) ||
+			!cxa_fixedByteBuffer_get_uint8(packetIn, 5, connFlags) ) return;
+
+		if( connHandle != btlecIn->currConnHandle )
+		{
+			cxa_logger_warn(&btlecIn->logger, "rx status for unknown handle %d", connHandle);
+			return;
+		}
+
+		// if we made it here, the data is for our connection...make sure we're connected
+		if( !(connFlags & (1 << 0)) )
+		{
+			cxa_logger_warn(&btlecIn->logger, "rx status reports not connected");
+			return;
+		}
+
+		// if we made it here, we're connected...
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTED);
+	}
+	else if( (classId == CXA_BLUEGIGA_CLASSID_CONNECTION) && (method == CXA_BLUEGIGA_EVENTID_CONNECTION_DISCONNECTED) )
+	{
+		cxa_logger_debug(&btlecIn->logger, "disconnect reported");
+		if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) == CONNSTATE_CONNECTED )
+		{
+			cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		}
+	}
+	else if( (classId == CXA_BLUEGIGA_CLASSID_ATTR_CLIENT) && (method == CXA_BLUEGIGA_EVENTID_ATTR_CLIENT_PROCEDURE_COMPLETE) )
+	{
+		uint16_t result;
+		if( !cxa_fixedByteBuffer_get_uint16LE(packetIn, 5, result) ) return;
+
+		if( result > 0 )
+		{
+			cxa_logger_debug(&btlecIn->logger, "procedure completed with error: 0x%04X", result);
+			cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+			return;
+		}
+
+		// if we made it here, the procedure was successful...what we do next depends on what we were doing
+		procedureState_t currProcState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure);
+		if( currProcState == PROCSTATE_RESOLVE_SERVICE_HANDLE )
+		{
+			if( (btlecIn->currProcedure.serviceHandle_start == 0) || (btlecIn->currProcedure.serviceHandle_end == 0) )
+			{
+				cxa_logger_debug(&btlecIn->logger, "failed to resolve service uuid");
+				cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+				return;
+			}
+
+			// if we made it here, we resolved the service uuid properly...try to resolve the characteristic id
+			cxa_logger_debug(&btlecIn->logger, "service handle resolved");
+			cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_RESOLVE_CHARACTERISTIC_HANDLE);
+		}
+		else if( currProcState == PROCSTATE_RESOLVE_CHARACTERISTIC_HANDLE )
+		{
+			if( btlecIn->currProcedure.characteristicHandle == 0 )
+			{
+				cxa_logger_debug(&btlecIn->logger, "failed to resolve characteristic uuid");
+				cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+				return;
+			}
+
+			cxa_logger_debug(&btlecIn->logger, "characteristic handle resolved");
+			if( btlecIn->currProcedure.procedureType == CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_READ )
+			{
+				cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_READ_CHARACTERISTIC);
+			}
+			else if( btlecIn->currProcedure.procedureType == CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_WRITE )
+			{
+				cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_WRITE_CHARACTERISTIC);
+			}
+		}
+	}
+	else if( (classId == CXA_BLUEGIGA_CLASSID_ATTR_CLIENT) && (method == CXA_BLUEGIGA_EVENTID_ATTR_CLIENT_GROUP_FOUND) )
+	{
+		if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure) != PROCSTATE_RESOLVE_SERVICE_HANDLE ) return;
+
+		uint16_t startHandle;
+		if( !cxa_fixedByteBuffer_get_uint16LE(packetIn, 5, startHandle) ) return;
+
+		uint16_t endHandle;
+		if( !cxa_fixedByteBuffer_get_uint16LE(packetIn, 7, endHandle) ) return;
+
+		uint8_t uuidSize_bytes;
+		if( !cxa_fixedByteBuffer_get_uint8(packetIn, 9, uuidSize_bytes) ) return;
+
+		cxa_btle_uuid_t uuid;
+		cxa_btle_uuid_string_t uuid_str;
+		if( !cxa_btle_uuid_initFromBuffer(&uuid, packetIn, 10, uuidSize_bytes) ) return;
+		cxa_btle_uuid_toString(&uuid, &uuid_str);
+
+		// if this isn't the UUID we're looking for, ignore it
+		if( !cxa_btle_uuid_isEqual(&uuid, &btlecIn->currProcedure.readWriteTargetUuid_service) ) return;
+
+		// if we made it here, we found our target service handle start/stop...record it
+		// BUT we still need to wait for the end-of-procedure event to continue
+		btlecIn->currProcedure.serviceHandle_start = startHandle;
+		btlecIn->currProcedure.serviceHandle_end = endHandle;
+	}
+	else if( (classId = CXA_BLUEGIGA_CLASSID_ATTR_CLIENT) && (method == CXA_BLUEGIGA_EVENTID_ATTR_CLIENT_FIND_INFO_FOUND) )
+	{
+		uint16_t charHandle;
+		if( !cxa_fixedByteBuffer_get_uint16LE(packetIn, 5, charHandle) ) return;
+
+		uint8_t uuidSize_bytes;
+		if( !cxa_fixedByteBuffer_get_uint8(packetIn, 7, uuidSize_bytes) ) return;
+
+		cxa_btle_uuid_t uuid;
+		cxa_btle_uuid_string_t uuid_str;
+		if( !cxa_btle_uuid_initFromBuffer(&uuid, packetIn, 8, uuidSize_bytes) ) return;
+		cxa_btle_uuid_toString(&uuid, &uuid_str);
+
+		cxa_logger_stepDebug_msg("charHandle: 0x%04X  uuid: %s", charHandle, uuid_str.str);
+
+		// if this isn't the UUID we're looking for, ignore it
+		if( !cxa_btle_uuid_isEqual(&uuid, &btlecIn->currProcedure.readWriteTargetUuid_characteristic) ) return;
+
+		// if we made it here, we found our target characteristic handle
+		btlecIn->currProcedure.characteristicHandle = charHandle;
+
+		cxa_logger_stepDebug();
 	}
 	else
 	{
@@ -333,6 +520,16 @@ static void handleBgTimeout(void* userVarIn)
 }
 
 
+static void handleReadWriteTimeout(void* userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_warn(&btlecIn->logger, "read/write timeout");
+	cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+}
+
+
 static void protoParseCb_onPacketRx(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
@@ -360,19 +557,19 @@ static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, 
 	cxa_assert(btlecIn);
 
 	// we only expect this when we're starting to scan...
-	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine) != STATE_SCANNING ) return;
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
 
 	// check our return value
 	uint16_t response;
 	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )
 	{
-		cxa_logger_warn(&btlecIn->logger, "error setting scan params, aborting scan");
+		cxa_logger_warn(&btlecIn->logger, "error setting scan params 0x%04X, aborting scan", response);
 		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
-		cxa_stateMachine_transition(&btlecIn->stateMachine, STATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
 		return;
 	}
 
-	cxa_logger_warn(&btlecIn->logger, "parameters set successfully, starting scan");
+	cxa_logger_debug(&btlecIn->logger, "parameters set successfully, starting scan");
 
 	// start scan (discover all devices)
 	cxa_fixedByteBuffer_t params;
@@ -388,15 +585,15 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 	cxa_assert(btlecIn);
 
 	// we only expect this when we're starting to scan...
-	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine) != STATE_SCANNING ) return;
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
 
 	// check our return value
 	uint16_t response;
 	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )
 	{
-		cxa_logger_warn(&btlecIn->logger, "error starting scan, aborting");
+		cxa_logger_warn(&btlecIn->logger, "error starting scan 0x%04X, aborting", response);
 		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
-		cxa_stateMachine_transition(&btlecIn->stateMachine, STATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
 		return;
 	}
 
@@ -405,13 +602,126 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 }
 
 
+static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+{
+	// we only expect this when we're starting to scan...
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
+
+	// check our return value
+	uint16_t response;
+	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "problem stopping scan %d 0x%04X", wasSuccessfulIn, response);
+		return;
+	}
+
+	cxa_logger_debug(&btlecIn->logger, "scan stopped");
+	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+}
+
+
+static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+{
+	cxa_assert(btlecIn);
+
+	// we only expect this when we're connecting...
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTING ) return;
+
+	// check our return value
+	uint16_t response;
+	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "error starting connection 0x%04X, aborting", response);
+		cxa_btle_client_notify_connectionStarted(&btlecIn->super, false);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		return;
+	}
+
+	// if we made it here, connection was started successfully, get our connection handle
+	if( !cxa_fixedByteBuffer_get_uint8(payloadIn, 2, btlecIn->currConnHandle) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "error parsing conn response, aborting", response);
+		cxa_btle_client_notify_connectionStarted(&btlecIn->super, false);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		return;
+	}
+
+	cxa_logger_info(&btlecIn->logger, "connection started w/ handle %d, waiting for response", btlecIn->currConnHandle);
+}
+
+
+static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+{
+	cxa_assert(btlecIn);
+
+	// we only expect this when we're connected...
+	if( (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTED) ||
+		(cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure) != PROCSTATE_RESOLVE_SERVICE_HANDLE) ) return;
+
+	// check our return value
+	uint16_t response;
+	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 1, response) || (response != 0) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "error finding by group type 0x%04X, aborting", response);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+		return;
+	}
+
+	cxa_logger_debug(&btlecIn->logger, "find by group type started successfully");
+}
+
+
+static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+{
+	cxa_assert(btlecIn);
+
+	// we only expect this when we're connected...
+	if( (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTED) ||
+		(cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure) != PROCSTATE_RESOLVE_CHARACTERISTIC_HANDLE) ) return;
+
+	// check our return value
+	uint16_t response;
+	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 1, response) || (response != 0) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "error finding char. info, aborting", response);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+		return;
+	}
+
+	cxa_logger_debug(&btlecIn->logger, "find info started successfully");
+}
+
+
+static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+{
+	cxa_assert(btlecIn);
+
+	// we only expect this when we're connected...
+	if( (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTED) ||
+		(cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure) != PROCSTATE_WRITE_CHARACTERISTIC) ) return;
+
+	// check our return value
+	uint16_t response;
+	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 1, response) || (response != 0) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "error writing char., aborting", response);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+		return;
+	}
+
+	cxa_logger_debug(&btlecIn->logger, "attribute written successfully");
+	cxa_btle_client_notify_writeComplete(&btlecIn->super, true);
+	cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_IDLE);
+}
+
+
 static bool scm_isReady(cxa_btle_client_t *const superIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
 	cxa_assert(btlecIn);
 
-	state_t currState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine);
-	return (currState == STATE_IDLE) || (currState == STATE_SCANNING);
+	connState_t currState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn);
+	return (currState == CONNSTATE_IDLE) || (currState == CONNSTATE_SCANNING);
 }
 
 
@@ -421,7 +731,7 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 	cxa_assert(btlecIn);
 
 	// make sure we're in the proper state
-	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine) != STATE_IDLE )
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_IDLE )
 	{
 		cxa_logger_warn(&btlecIn->logger, "not ready to start scan");
 		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
@@ -429,7 +739,7 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 	}
 
 	btlecIn->isActiveScan = isActiveIn;
-	cxa_stateMachine_transition(&btlecIn->stateMachine, STATE_SCANNING);
+	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_SCANNING);
 }
 
 
@@ -438,11 +748,11 @@ static void scm_stopScan(cxa_btle_client_t *const superIn)
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
 	cxa_assert(btlecIn);
 
-	state_t currState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine);
-	if( currState == STATE_SCANNING )
-	{
-		cxa_stateMachine_transition(&btlecIn->stateMachine, STATE_IDLE);
-	}
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
+
+	// send our command to stop scanning
+	cxa_logger_debug(&btlecIn->logger, "stopping scan");
+	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, responseCb_endProcedure);
 }
 
 
@@ -451,11 +761,108 @@ static bool scm_isScanning(cxa_btle_client_t *const superIn)
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
 	cxa_assert(btlecIn);
 
-	return (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine) == STATE_SCANNING);
+	return (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) == CONNSTATE_SCANNING);
 }
 
 
-static void stateCb_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void scm_startConnection(cxa_btle_client_t *const superIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
+	cxa_assert(btlecIn);
+
+	// make sure we're in the proper state
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_IDLE )
+	{
+		cxa_logger_warn(&btlecIn->logger, "not ready to connect");
+		cxa_btle_client_notify_connectionStarted(&btlecIn->super, false);
+		return;
+	}
+
+	// save our address info for the connection stage
+	memcpy(&btlecIn->connectAddr, addrIn, sizeof(btlecIn->connectAddr));
+	btlecIn->isConnectAddrRandom = isRandomAddrIn;
+
+	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTING);
+
+	return;
+}
+
+
+static void scm_stopConnection(cxa_btle_client_t *const superIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
+	cxa_assert(btlecIn);
+
+	connState_t currState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn);
+	if( (currState != CONNSTATE_CONNECTING) || (currState != CONNSTATE_CONNECTED) ) return;
+
+	cxa_logger_debug(&btlecIn->logger, "closing scan");
+
+	// send our command to close the connection
+	cxa_fixedByteBuffer_t params;
+	uint8_t params_raw[1];
+	cxa_fixedByteBuffer_initStd(&params, params_raw);
+	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
+
+	// no response callback since we'll get an event when the disconnect occurs
+	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_CONNECTION, CXA_BLUEGIGA_METHODID_CONNECTION_DISCONNECT, &params, NULL);
+}
+
+
+static bool scm_isConnected(cxa_btle_client_t *const superIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
+	cxa_assert(btlecIn);
+
+	return cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) == CONNSTATE_CONNECTED;
+}
+
+
+static void scm_writeToCharacteristic(cxa_btle_client_t *const superIn,
+									  const char *const serviceIdIn,
+									  const char *const characteristicIdIn,
+									  cxa_fixedByteBuffer_t *const dataIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
+	cxa_assert(btlecIn);
+	cxa_assert(dataIn);
+
+	// make sure we're not in the middle of a procedure
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure) != PROCSTATE_IDLE )
+	{
+		cxa_logger_warn(&btlecIn->logger, "procedure in progress");
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+		return;
+	}
+
+	// make sure we're not sending too much / too little
+	size_t numBytesOfData = cxa_fixedByteBuffer_getSize_bytes(dataIn);
+	if( (numBytesOfData == 0) || (numBytesOfData > 20) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "too much/little data to send");
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+		return;
+	}
+
+	// save our target service and characteristic
+	if( !cxa_btle_uuid_initFromString(&btlecIn->currProcedure.readWriteTargetUuid_service, serviceIdIn) ||
+		!cxa_btle_uuid_initFromString(&btlecIn->currProcedure.readWriteTargetUuid_characteristic, characteristicIdIn) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "invalid service/characteristic uuid");
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+		return;
+	}
+
+	// save our data locally (since it won't be written for a while)
+	memcpy(btlecIn->currProcedure.writeData, cxa_fixedByteBuffer_get_pointerToIndex(dataIn, 0), numBytesOfData);
+	btlecIn->currProcedure.writeDataLength_bytes = numBytesOfData;
+
+	btlecIn->currProcedure.procedureType = CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_WRITE;
+	cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_RESOLVE_SERVICE_HANDLE);
+}
+
+
+static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
@@ -464,7 +871,7 @@ static void stateCb_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdI
 }
 
 
-static void stateCb_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+static void stateCb_conn_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
@@ -473,40 +880,41 @@ static void stateCb_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdI
 }
 
 
-static void stateCb_waitBoot_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+static void stateCb_conn_waitBoot_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
 	// failed to receive our boot message
-	if( nextStateIdIn == STATE_RESET )
+	if( nextStateIdIn == CONNSTATE_RESET )
 	{
 		cxa_btle_client_notify_onFailedInit(&btlecIn->super, true);
 	}
 }
 
 
-static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_conn_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
 	// we've just booted, let our listeners know
-	if( prevStateIdIn == STATE_WAIT_BOOT )
+	if( prevStateIdIn == CONNSTATE_WAIT_BOOT )
 	{
 		cxa_btle_client_notify_onBecomesReady(&btlecIn->super);
+	}
+	else if( prevStateIdIn == CONNSTATE_SCANNING )
+	{
+		cxa_btle_client_notify_scanStop(&btlecIn->super);
+	}
+	else if( prevStateIdIn == CONNSTATE_CONNECTED )
+	{
+		cxa_btle_client_notify_connectionClose(&btlecIn->super);
 	}
 }
 
 
-static void stateCb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
-	cxa_assert(btlecIn);
-}
-
-
-static void stateCb_scanning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
@@ -524,13 +932,178 @@ static void stateCb_scanning_enter(cxa_stateMachine_t *const smIn, int prevState
 }
 
 
-static void stateCb_scanning_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+static void stateCb_conn_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
-	cxa_logger_debug(&btlecIn->logger, "stopping scan");
+	cxa_logger_debug(&btlecIn->logger, "connecting");
 
-	// end procedure
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, NULL);
+	cxa_fixedByteBuffer_t params;
+	uint8_t params_raw[15];
+	cxa_fixedByteBuffer_initStd(&params, params_raw);
+	cxa_fixedByteBuffer_append(&params, btlecIn->connectAddr.bytes, sizeof(btlecIn->connectAddr.bytes));
+	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->isConnectAddrRandom);
+	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)(CONNECTION_INTERVAL_MIN_MS / 1.25));
+	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)(CONNECTION_INTERVAL_MAX_MS / 1.25));
+	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)(CONNECTION_TIMEOUT_MS / 10.0));
+	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)CONNECTION_LATENCY);
+	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_CONNECT_DIRECT, &params, responseCb_connectDirect);
 }
+
+
+static void stateCb_conn_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "connected");
+	cxa_stateMachine_transitionNow(&btlecIn->stateMachine_currProcedure, PROCSTATE_IDLE);
+	cxa_btle_client_notify_connectionStarted(&btlecIn->super, true);
+}
+
+
+static void stateCb_conn_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "disconnected");
+	procedureState_t procState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure);
+	if( (procState != PROCSTATE_NOT_READY) &&
+		(procState != PROCSTATE_IDLE) &&
+		(procState != PROCSTATE_ERROR) )
+	{
+		cxa_logger_debug(&btlecIn->logger, "ending procedure in-progress");
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
+		return;
+	}
+	else
+	{
+		cxa_stateMachine_transitionNow(&btlecIn->stateMachine_currProcedure, PROCSTATE_NOT_READY);
+	}
+}
+
+
+static void stateCb_currProc_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "idle");
+
+	// make sure our watchdog is paused
+	cxa_softWatchDog_pause(&btlecIn->currProcedure.watchdog);
+}
+
+
+static void stateCb_currProc_resolveService_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "resolving service handle");
+
+	// set our internal state appropriately
+	btlecIn->currProcedure.serviceHandle_start = 0;
+	btlecIn->currProcedure.serviceHandle_end = 0;
+
+	// need to send attclient_read_by_group_type to start figuring out our handle
+	cxa_fixedByteBuffer_t params;
+	uint8_t params_raw[8];
+	cxa_fixedByteBuffer_initStd(&params, params_raw);
+	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
+	cxa_fixedByteBuffer_append_uint16LE(&params, 0x0001);
+	cxa_fixedByteBuffer_append_uint16LE(&params, 0xFFFF);
+
+	cxa_fixedByteBuffer_append_uint8(&params, 2);
+	cxa_fixedByteBuffer_append_uint16LE(&params, 0x2800);
+	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_READ_BY_GROUP_TYPE, &params, responseCb_findByGroupType);
+
+	// reset our watchdog so we can eventually timeout if needed
+	cxa_softWatchDog_kick(&btlecIn->currProcedure.watchdog);
+}
+
+
+static void stateCb_currProc_resolveCharacteristic_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "resolving characteristic handle");
+
+	// set our internal state appropriately
+	btlecIn->currProcedure.characteristicHandle = 0;
+
+	// need to send attclient_find_information to start figuring out our handle
+	cxa_fixedByteBuffer_t params;
+	uint8_t params_raw[5];
+	cxa_fixedByteBuffer_initStd(&params, params_raw);
+	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
+	cxa_fixedByteBuffer_append_uint16LE(&params, btlecIn->currProcedure.serviceHandle_start);
+	cxa_fixedByteBuffer_append_uint16LE(&params, btlecIn->currProcedure.serviceHandle_end);
+	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_FIND_INFO, &params, responseCb_findInformation);
+
+	// reset our watchdog to give us more time
+	cxa_softWatchDog_kick(&btlecIn->currProcedure.watchdog);
+}
+
+
+static void stateCb_currProc_readCharacteristic_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "read char");
+}
+
+
+static void stateCb_currProc_writeCharacteristic_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "writing %d bytes", btlecIn->currProcedure.writeDataLength_bytes);
+
+	cxa_fixedByteBuffer_t params;
+	uint8_t params_raw[4+btlecIn->currProcedure.writeDataLength_bytes];
+	cxa_fixedByteBuffer_initStd(&params, params_raw);
+	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
+	cxa_fixedByteBuffer_append_uint16LE(&params, btlecIn->currProcedure.characteristicHandle);
+
+	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currProcedure.writeDataLength_bytes);
+	cxa_fixedByteBuffer_append(&params, btlecIn->currProcedure.writeData, btlecIn->currProcedure.writeDataLength_bytes);
+	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_ATTRIBUTE_WRITE, &params, responseCb_attributeWrite);
+}
+
+
+static void stateCb_currProc_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_logger_debug(&btlecIn->logger, "procedure encountered error");
+	switch( btlecIn->currProcedure.procedureType )
+	{
+		case CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_READ:
+			cxa_btle_client_notify_readComplete(&btlecIn->super, false);
+			break;
+
+		case CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_WRITE:
+			cxa_btle_client_notify_writeComplete(&btlecIn->super, false);
+			break;
+	}
+
+	// if we're still connected, we can continue...if the error was caused by a disconnection
+	// then we'll now be in the "not-ready" state
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) == CONNSTATE_CONNECTED )
+	{
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_IDLE);
+	}
+	else
+	{
+		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_NOT_READY);
+	}
+}
+
+

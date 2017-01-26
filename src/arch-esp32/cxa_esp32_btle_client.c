@@ -74,7 +74,7 @@ cxa_btle_client_t* cxa_esp32_btle_client_getSingleton(void)
 static void init(void)
 {
 	// initialize our superclass
-	cxa_btle_client_init(&singleton, NULL, scm_startScan, scm_stopScan, scm_isScanning);
+	cxa_btle_client_init(&singleton, NULL, scm_startScan, scm_stopScan, scm_isScanning, NULL, NULL, NULL, NULL);
 
 	// and our logger
 	cxa_logger_init(&logger, "btleClient");
@@ -105,7 +105,7 @@ static void btleCb_event(uint32_t event, void *param)
 		cxa_btle_advPacket_t rxPacket;
 
 		// simple stuff first
-		memcpy(rxPacket.addr, scanResult->scan_rst.bda, sizeof(rxPacket.addr));
+		cxa_eui48_init(&rxPacket.addr, scanResult->scan_rst.bda);
 		rxPacket.isRandomAddress = (scanResult->scan_rst.ble_addr_type == BLE_ADDR_TYPE_RANDOM);
 		rxPacket.rssi = scanResult->scan_rst.rssi;
 
@@ -127,9 +127,10 @@ static void btleCb_event(uint32_t event, void *param)
 						return;
 		}
 
-		cxa_logger_debug(&logger, "adv from %02X:%02X:%02X:%02X:%02X:%02X(%s)  %ddBm  %d fields",
-				rxPacket.addr[5], rxPacket.addr[4], rxPacket.addr[3],
-				rxPacket.addr[2], rxPacket.addr[1], rxPacket.addr[0],
+		cxa_eui48_string_t eui48_str;
+		cxa_eui48_toString(&rxPacket.addr, &eui48_str);
+		cxa_logger_debug(&logger, "adv from %s(%s)  %ddBm  %d fields",
+				eui48_str.str,
 				rxPacket.isRandomAddress ? "r" : "p",
 				rxPacket.rssi, cxa_array_getSize_elems(&rxPacket.advFields));
 

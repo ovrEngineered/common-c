@@ -23,7 +23,9 @@
 #include <stdint.h>
 
 #include <cxa_array.h>
+#include <cxa_eui48.h>
 #include <cxa_fixedByteBuffer.h>
+#include <cxa_uuid128.h>
 
 
 // ******** global macro definitions ********
@@ -84,7 +86,7 @@ typedef struct
  */
 typedef struct
 {
-	uint8_t addr[6];
+	cxa_eui48_t addr;
 	bool isRandomAddress;
 	int rssi;
 
@@ -129,6 +131,24 @@ typedef void (*cxa_btle_client_cb_onScanStop_t)(void* userVarIn);
 
 
 /**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onConnectionOpened_t)(void* userVarIn, bool wasSuccessfulIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onConnectionClosed_t)(void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onWriteComplete_t)(void* userVarIn, bool wasSuccesfulIn);
+
+
+/**
  * @private
  */
 typedef bool (*cxa_btle_client_scm_isReady_t)(cxa_btle_client_t *const superIn);
@@ -155,6 +175,33 @@ typedef bool (*cxa_btle_client_scm_isScanning_t)(cxa_btle_client_t *const superI
 /**
  * @private
  */
+typedef void (*cxa_btle_client_scm_startConnection_t)(cxa_btle_client_t *const superIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_btle_client_scm_stopConnection_t)(cxa_btle_client_t *const superIn);
+
+
+/**
+ * @private
+ */
+typedef bool (*cxa_btle_client_scm_isConnected_t)(cxa_btle_client_t *const superIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_btle_client_scm_writeToCharacteristic_t)(cxa_btle_client_t *const superIn,
+															const char *const serviceIdIn,
+															const char *const characteristicIdIn,
+															cxa_fixedByteBuffer_t *const dataIn);
+
+
+/**
+ * @private
+ */
 typedef struct
 {
 	cxa_btle_client_cb_onReady_t cb_onReady;
@@ -173,21 +220,42 @@ struct cxa_btle_client
 
 	struct
 	{
-		cxa_btle_client_cb_onAdvertRx_t onAdvert;
-		cxa_btle_client_cb_onScanResponseRx_t onScanResp;
-		cxa_btle_client_cb_onScanStart_t onScanStart;
-		cxa_btle_client_cb_onScanStop_t onScanStop;
+		struct
+		{
+			cxa_btle_client_cb_onAdvertRx_t onAdvert;
+			cxa_btle_client_cb_onScanResponseRx_t onScanResp;
+			cxa_btle_client_cb_onScanStart_t onScanStart;
+			cxa_btle_client_cb_onScanStop_t onScanStop;
+			void *userVar;
+		}scanning;
 
-		void* userVar;
+		struct
+		{
+			cxa_btle_client_cb_onConnectionOpened_t onConnectionOpened;
+			cxa_btle_client_cb_onConnectionClosed_t onConnectionClosed;
+			void* userVar;
+		}connecting;
+
+		struct
+		{
+			cxa_btle_client_cb_onWriteComplete_t onWriteComplete;
+			void* userVar;
+		}writing;
 	}cbs;
 
 	struct
 	{
 		cxa_btle_client_scm_isReady_t isReady;
+
 		cxa_btle_client_scm_startScan_t startScan;
 		cxa_btle_client_scm_stopScan_t stopScan;
 		cxa_btle_client_scm_isScanning_t isScanning;
 
+		cxa_btle_client_scm_startConnection_t startConnection;
+		cxa_btle_client_scm_stopConnection_t stopConnection;
+		cxa_btle_client_scm_isConnected_t isConnected;
+
+		cxa_btle_client_scm_writeToCharacteristic_t writeToCharacteristic;
 	}scms;
 };
 
@@ -197,10 +265,14 @@ struct cxa_btle_client
  * @protected
  */
 void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
-						  cxa_btle_client_scm_isReady_t scm_isReady,
+						  cxa_btle_client_scm_isReady_t scm_isReadyIn,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
 						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
-						  cxa_btle_client_scm_isScanning_t scm_isScanningIn);
+						  cxa_btle_client_scm_isScanning_t scm_isScanningIn,
+						  cxa_btle_client_scm_startConnection_t scm_startConnectionIn,
+						  cxa_btle_client_scm_stopConnection_t scm_stopConnectionIn,
+						  cxa_btle_client_scm_isConnected_t scm_isConnectedIn,
+						  cxa_btle_client_scm_writeToCharacteristic_t scm_writeToCharIn);
 
 
 /**
@@ -252,6 +324,40 @@ bool cxa_btle_client_isScanning(cxa_btle_client_t *const btlecIn);
 
 
 /**
+ * @public
+ */
+void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn,
+									 cxa_btle_client_cb_onConnectionOpened_t cb_connectionOpenedIn,
+									 cxa_btle_client_cb_onConnectionClosed_t cb_connectionUnintentionallyClosedIn,
+									 void* userVarIn);
+
+
+/**
+ * @public
+ */
+void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
+									cxa_btle_client_cb_onConnectionClosed_t cb_connectionClosedIn,
+									void *userVarIn);
+
+
+/**
+ * @public
+ */
+bool cxa_btle_client_isConnected(cxa_btle_client_t *const btlecIn);
+
+
+/**
+ * @public
+ */
+void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
+										   const char *const serviceIdIn,
+										   const char *const characteristicIdIn,
+										   cxa_fixedByteBuffer_t *const dataIn,
+										   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
+										   void* userVarIn);
+
+
+/**
  * @protected
  */
 void cxa_btle_client_notify_onBecomesReady(cxa_btle_client_t *const btlecIn);
@@ -273,6 +379,36 @@ void cxa_btle_client_notify_advertRx(cxa_btle_client_t *const btlecIn, cxa_btle_
  * @protected
  */
 void cxa_btle_client_notify_scanStart(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_scanStop(cxa_btle_client_t *const btlecIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
 
 
 /**
