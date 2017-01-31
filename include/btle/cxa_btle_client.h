@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include <cxa_array.h>
+#include <cxa_btle_uuid.h>
 #include <cxa_eui48.h>
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_uuid128.h>
@@ -121,7 +122,7 @@ typedef void (*cxa_btle_client_cb_onScanResponseRx_t)(void* userVarIn);
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onScanStart_t)(void* userVarIn, bool wasSuccessfulIn);
+typedef void (*cxa_btle_client_cb_onScanStart_t)(bool wasSuccessfulIn, void* userVarIn);
 
 
 /**
@@ -133,7 +134,7 @@ typedef void (*cxa_btle_client_cb_onScanStop_t)(void* userVarIn);
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onConnectionOpened_t)(void* userVarIn, bool wasSuccessfulIn);
+typedef void (*cxa_btle_client_cb_onConnectionOpened_t)(bool wasSuccessfulIn, void* userVarIn);
 
 
 /**
@@ -145,7 +146,9 @@ typedef void (*cxa_btle_client_cb_onConnectionClosed_t)(void* userVarIn);
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onWriteComplete_t)(void* userVarIn, bool wasSuccesfulIn);
+typedef void (*cxa_btle_client_cb_onWriteComplete_t)(cxa_btle_uuid_t *const uuid_serviceIn,
+													 cxa_btle_uuid_t *const uuid_charIn,
+													 bool wasSuccessfulIn, void* userVarIn);
 
 
 /**
@@ -349,10 +352,22 @@ bool cxa_btle_client_isConnected(cxa_btle_client_t *const btlecIn);
 /**
  * @public
  */
+void cxa_btle_client_writeToCharacteristic_fbb(cxa_btle_client_t *const btlecIn,
+										   	   const char *const serviceIdIn,
+											   const char *const characteristicIdIn,
+											   cxa_fixedByteBuffer_t *const dataIn,
+											   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
+											   void* userVarIn);
+
+
+/**
+ * @public
+ */
 void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
 										   const char *const serviceIdIn,
 										   const char *const characteristicIdIn,
-										   cxa_fixedByteBuffer_t *const dataIn,
+										   void *const dataIn,
+										   size_t numBytesIn,
 										   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
 										   void* userVarIn);
 
@@ -402,13 +417,19 @@ void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn);
 /**
  * @protected
  */
-void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
+void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn,
+										  cxa_btle_uuid_t *const uuid_serviceIn,
+										  cxa_btle_uuid_t *const uuid_charIn,
+										  bool wasSuccessfulIn);
 
 
 /**
  * @protected
  */
-void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
+void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn,
+		  	  	  	  	  	  	  	     cxa_btle_uuid_t *const uuid_serviceIn,
+										 cxa_btle_uuid_t *const uuid_charIn,
+										 bool wasSuccessfulIn);
 
 
 /**

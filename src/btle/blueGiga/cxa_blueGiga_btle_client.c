@@ -255,7 +255,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 			!cxa_fixedByteBuffer_get_uint8(packetIn, 14, protocol) ||
 			!cxa_fixedByteBuffer_get_uint8(packetIn, 15, hw) ) return;
 
-		cxa_logger_debug(&btlecIn->logger, "boot  sw: %d.%d.%d  prot: %d  hw: %d",
+		cxa_logger_info(&btlecIn->logger, "boot  sw: %d.%d.%d  prot: %d  hw: %d",
 				sw_major, sw_minor,patch, protocol, hw);
 
 		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
@@ -378,9 +378,9 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 		procedureState_t currProcState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure);
 		if( currProcState == PROCSTATE_RESOLVE_SERVICE_HANDLE )
 		{
-			if( (btlecIn->currProcedure.serviceHandle_start == 0) || (btlecIn->currProcedure.serviceHandle_end == 0) )
+			if( (btlecIn->currProcedure.serviceHandle_start == 0) && (btlecIn->currProcedure.serviceHandle_end == 0) )
 			{
-				cxa_logger_debug(&btlecIn->logger, "failed to resolve service uuid");
+				cxa_logger_warn(&btlecIn->logger, "failed to resolve service uuid");
 				cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
 				return;
 			}
@@ -393,7 +393,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 		{
 			if( btlecIn->currProcedure.characteristicHandle == 0 )
 			{
-				cxa_logger_debug(&btlecIn->logger, "failed to resolve characteristic uuid");
+				cxa_logger_warn(&btlecIn->logger, "failed to resolve characteristic uuid");
 				cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
 				return;
 			}
@@ -448,15 +448,11 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 		if( !cxa_btle_uuid_initFromBuffer(&uuid, packetIn, 8, uuidSize_bytes) ) return;
 		cxa_btle_uuid_toString(&uuid, &uuid_str);
 
-		cxa_logger_stepDebug_msg("charHandle: 0x%04X  uuid: %s", charHandle, uuid_str.str);
-
 		// if this isn't the UUID we're looking for, ignore it
 		if( !cxa_btle_uuid_isEqual(&uuid, &btlecIn->currProcedure.readWriteTargetUuid_characteristic) ) return;
 
 		// if we made it here, we found our target characteristic handle
 		btlecIn->currProcedure.characteristicHandle = charHandle;
-
-		cxa_logger_stepDebug();
 	}
 	else
 	{
@@ -615,7 +611,7 @@ static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, b
 		return;
 	}
 
-	cxa_logger_debug(&btlecIn->logger, "scan stopped");
+	cxa_logger_info(&btlecIn->logger, "scan stopped");
 	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
 }
 
@@ -646,7 +642,7 @@ static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, 
 		return;
 	}
 
-	cxa_logger_info(&btlecIn->logger, "connection started w/ handle %d, waiting for response", btlecIn->currConnHandle);
+	cxa_logger_debug(&btlecIn->logger, "connection started w/ handle %d, waiting for response", btlecIn->currConnHandle);
 }
 
 
@@ -709,8 +705,7 @@ static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn,
 		return;
 	}
 
-	cxa_logger_debug(&btlecIn->logger, "attribute written successfully");
-	cxa_btle_client_notify_writeComplete(&btlecIn->super, true);
+	cxa_logger_info(&btlecIn->logger, "write completed successfully");
 	cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_IDLE);
 }
 
@@ -794,9 +789,9 @@ static void scm_stopConnection(cxa_btle_client_t *const superIn)
 	cxa_assert(btlecIn);
 
 	connState_t currState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn);
-	if( (currState != CONNSTATE_CONNECTING) || (currState != CONNSTATE_CONNECTED) ) return;
+	if( (currState != CONNSTATE_CONNECTING) && (currState != CONNSTATE_CONNECTED) ) return;
 
-	cxa_logger_debug(&btlecIn->logger, "closing scan");
+	cxa_logger_debug(&btlecIn->logger, "closing connection");
 
 	// send our command to close the connection
 	cxa_fixedByteBuffer_t params;
@@ -852,6 +847,12 @@ static void scm_writeToCharacteristic(cxa_btle_client_t *const superIn,
 		cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
 		return;
 	}
+
+	cxa_btle_uuid_string_t serviceUuid_str, charUuid_str;
+	cxa_btle_uuid_toShortString(&btlecIn->currProcedure.readWriteTargetUuid_service, &serviceUuid_str);
+	cxa_btle_uuid_toShortString(&btlecIn->currProcedure.readWriteTargetUuid_characteristic, &charUuid_str);
+
+	cxa_logger_info(&btlecIn->logger, "writing %d bytes to '...%s'::'...%s'", numBytesOfData, serviceUuid_str.str, charUuid_str.str);
 
 	// save our data locally (since it won't be written for a while)
 	memcpy(btlecIn->currProcedure.writeData, cxa_fixedByteBuffer_get_pointerToIndex(dataIn, 0), numBytesOfData);
@@ -937,7 +938,9 @@ static void stateCb_conn_connecting_enter(cxa_stateMachine_t *const smIn, int pr
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
-	cxa_logger_debug(&btlecIn->logger, "connecting");
+	cxa_eui48_string_t eui48_str;
+	cxa_eui48_toString(&btlecIn->connectAddr, &eui48_str);
+	cxa_logger_info(&btlecIn->logger, "connecting to '%s'", eui48_str.str);
 
 	cxa_fixedByteBuffer_t params;
 	uint8_t params_raw[15];
@@ -957,7 +960,10 @@ static void stateCb_conn_connected_enter(cxa_stateMachine_t *const smIn, int pre
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
-	cxa_logger_debug(&btlecIn->logger, "connected");
+	cxa_eui48_string_t eui48_str;
+	cxa_eui48_toString(&btlecIn->connectAddr, &eui48_str);
+	cxa_logger_info(&btlecIn->logger, "connected to '%s'", eui48_str.str);
+
 	cxa_stateMachine_transitionNow(&btlecIn->stateMachine_currProcedure, PROCSTATE_IDLE);
 	cxa_btle_client_notify_connectionStarted(&btlecIn->super, true);
 }
@@ -968,7 +974,10 @@ static void stateCb_conn_connected_leave(cxa_stateMachine_t *const smIn, int nex
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
-	cxa_logger_debug(&btlecIn->logger, "disconnected");
+	cxa_eui48_string_t eui48_str;
+	cxa_eui48_toString(&btlecIn->connectAddr, &eui48_str);
+	cxa_logger_info(&btlecIn->logger, "disconnected from '%s'", eui48_str.str);
+
 	procedureState_t procState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_currProcedure);
 	if( (procState != PROCSTATE_NOT_READY) &&
 		(procState != PROCSTATE_IDLE) &&
@@ -990,7 +999,28 @@ static void stateCb_currProc_idle_enter(cxa_stateMachine_t *const smIn, int prev
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
-	cxa_logger_debug(&btlecIn->logger, "idle");
+	// do any success notifications first
+	switch( (procedureState_t)prevStateIdIn )
+	{
+		case PROCSTATE_READ_CHARACTERISTIC:
+			cxa_btle_client_notify_readComplete(&btlecIn->super,
+					 	 	 	 	 	 	    &btlecIn->currProcedure.readWriteTargetUuid_service,
+												&btlecIn->currProcedure.readWriteTargetUuid_characteristic,
+												true);
+			break;
+
+		case PROCSTATE_WRITE_CHARACTERISTIC:
+			cxa_btle_client_notify_writeComplete(&btlecIn->super,
+												 &btlecIn->currProcedure.readWriteTargetUuid_service,
+												 &btlecIn->currProcedure.readWriteTargetUuid_characteristic,
+												 true);
+			break;
+
+		default:
+			break;
+	}
+
+	cxa_logger_debug(&btlecIn->logger, "procedure is idle");
 
 	// make sure our watchdog is paused
 	cxa_softWatchDog_pause(&btlecIn->currProcedure.watchdog);
@@ -1086,11 +1116,17 @@ static void stateCb_currProc_error_enter(cxa_stateMachine_t *const smIn, int pre
 	switch( btlecIn->currProcedure.procedureType )
 	{
 		case CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_READ:
-			cxa_btle_client_notify_readComplete(&btlecIn->super, false);
+			cxa_btle_client_notify_readComplete(&btlecIn->super,
+					 	 	 	 	 	 	 	&btlecIn->currProcedure.readWriteTargetUuid_service,
+												&btlecIn->currProcedure.readWriteTargetUuid_characteristic,
+												false);
 			break;
 
 		case CXA_BLUEGIGA_BTLE_PROCEDURE_TYPE_WRITE:
-			cxa_btle_client_notify_writeComplete(&btlecIn->super, false);
+			cxa_btle_client_notify_writeComplete(&btlecIn->super,
+					 	 	 	 	 	 	 	 &btlecIn->currProcedure.readWriteTargetUuid_service,
+												 &btlecIn->currProcedure.readWriteTargetUuid_characteristic,
+												 false);
 			break;
 	}
 

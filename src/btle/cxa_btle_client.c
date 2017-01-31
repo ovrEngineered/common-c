@@ -199,10 +199,29 @@ bool cxa_btle_client_isConnected(cxa_btle_client_t *const btlecIn)
 }
 
 
+void cxa_btle_client_writeToCharacteristic_fbb(cxa_btle_client_t *const btlecIn,
+											   const char *const serviceIdIn,
+											   const char *const characteristicIdIn,
+											   cxa_fixedByteBuffer_t *const dataIn,
+											   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
+											   void* userVarIn)
+{
+	cxa_assert(btlecIn);
+
+	// save our callbacks
+	btlecIn->cbs.writing.onWriteComplete = cb_writeCompleteIn;
+	btlecIn->cbs.writing.userVar = userVarIn;
+
+	cxa_assert(btlecIn->scms.writeToCharacteristic != NULL);
+	btlecIn->scms.writeToCharacteristic(btlecIn, serviceIdIn, characteristicIdIn, dataIn);
+}
+
+
 void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
 										   const char *const serviceIdIn,
 										   const char *const characteristicIdIn,
-										   cxa_fixedByteBuffer_t *const dataIn,
+										   void *const dataIn,
+										   size_t numBytesIn,
 										   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
 										   void* userVarIn)
 {
@@ -213,7 +232,11 @@ void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
 	btlecIn->cbs.writing.userVar = userVarIn;
 
 	cxa_assert(btlecIn->scms.writeToCharacteristic != NULL);
-	btlecIn->scms.writeToCharacteristic(btlecIn, serviceIdIn, characteristicIdIn, dataIn);
+
+	cxa_fixedByteBuffer_t fbb_data;
+	cxa_fixedByteBuffer_init(&fbb_data, dataIn, numBytesIn);
+
+	btlecIn->scms.writeToCharacteristic(btlecIn, serviceIdIn, characteristicIdIn, &fbb_data);
 }
 
 
@@ -255,7 +278,7 @@ void cxa_btle_client_notify_scanStart(cxa_btle_client_t *const btlecIn, bool was
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.scanning.onScanStart != NULL ) btlecIn->cbs.scanning.onScanStart(btlecIn->cbs.scanning.userVar, wasSuccessfulIn);
+	if( btlecIn->cbs.scanning.onScanStart != NULL ) btlecIn->cbs.scanning.onScanStart(wasSuccessfulIn, btlecIn->cbs.scanning.userVar);
 }
 
 
@@ -271,7 +294,7 @@ void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, 
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.connecting.onConnectionOpened != NULL ) btlecIn->cbs.connecting.onConnectionOpened(btlecIn->cbs.connecting.userVar, wasSuccessfulIn);
+	if( btlecIn->cbs.connecting.onConnectionOpened != NULL ) btlecIn->cbs.connecting.onConnectionOpened(wasSuccessfulIn, btlecIn->cbs.connecting.userVar);
 }
 
 
@@ -283,11 +306,30 @@ void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn)
 }
 
 
-void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn)
+void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn,
+										  cxa_btle_uuid_t *const uuid_serviceIn,
+										  cxa_btle_uuid_t *const uuid_charIn,
+										  bool wasSuccessfulIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(uuid_serviceIn);
+	cxa_assert(uuid_charIn);
 
-	if( btlecIn->cbs.writing.onWriteComplete != NULL ) btlecIn->cbs.writing.onWriteComplete(btlecIn->cbs.writing.userVar, wasSuccessfulIn);
+	if( btlecIn->cbs.writing.onWriteComplete != NULL )
+	{
+		btlecIn->cbs.writing.onWriteComplete(uuid_serviceIn, uuid_charIn, wasSuccessfulIn, btlecIn->cbs.writing.userVar);
+	}
+}
+
+
+void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn,
+		  	  	  	  	  	  	  	     cxa_btle_uuid_t *const uuid_serviceIn,
+										 cxa_btle_uuid_t *const uuid_charIn,
+										 bool wasSuccessfulIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(uuid_serviceIn);
+	cxa_assert(uuid_charIn);
 }
 
 
@@ -310,12 +352,6 @@ bool cxa_btle_client_countAdvFields(uint8_t *const bytesIn, size_t maxLen_bytesI
 	}
 	if( numAdvFieldsOut != NULL ) *numAdvFieldsOut = numAdvFields;
 	return true;
-}
-
-
-void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn)
-{
-
 }
 
 
