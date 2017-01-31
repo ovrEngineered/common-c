@@ -152,8 +152,11 @@ void cxa_eui48_toShortString(cxa_eui48_t *const uuidIn, cxa_eui48_string_t *cons
 
 	cxa_eui48_string_t tmpStr;
 	cxa_eui48_toString(uuidIn, &tmpStr);
-	strcpy(strOut->str, tmpStr.str+sizeof(tmpStr.str)-6);
-	strOut->str[5] = 0;
+
+	char* lastChars = cxa_stringUtils_getLastCharacters(tmpStr.str, 5);
+	if( lastChars == NULL ) lastChars = tmpStr.str;
+
+	strlcpy(strOut->str, lastChars, sizeof(strOut->str));
 }
 
 

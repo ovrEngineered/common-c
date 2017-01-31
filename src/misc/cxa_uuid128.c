@@ -83,7 +83,7 @@ bool cxa_uuid128_initFromString(cxa_uuid128_t *const uuidIn, const char *const s
 
 	if( numDashes != 4 ) return false;
 
-	return cxa_stringUtils_hexStringToBytes(stringWithoutDashes, sizeof(uuidIn->bytes), true, uuidIn->bytes);
+	return cxa_stringUtils_hexStringToBytes(stringWithoutDashes, sizeof(uuidIn->bytes), false, uuidIn->bytes);
 }
 
 
@@ -165,8 +165,13 @@ void cxa_uuid128_toShortString(cxa_uuid128_t *const uuidIn, cxa_uuid128_string_t
 	cxa_assert(uuidIn);
 	cxa_assert(strOut);
 
-	cxa_uuid128_toString(uuidIn, strOut);
-	strOut->str[7] = 0;
+	cxa_uuid128_string_t tmpStr;
+	cxa_uuid128_toString(uuidIn, &tmpStr);
+
+	char* lastChars = cxa_stringUtils_getLastCharacters(tmpStr.str, 4);
+	if( lastChars == NULL ) lastChars = tmpStr.str;
+
+	strlcpy(strOut->str, lastChars, sizeof(strOut->str));
 }
 
 
