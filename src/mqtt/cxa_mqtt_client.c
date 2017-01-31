@@ -162,7 +162,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 		.cb_onDisconnect=cb_onDisconnectIn,
 		.userVar=userVarIn
 	};
-	cxa_assert( cxa_array_append(&clientIn->listeners, &newEntry) );
+	cxa_assert_msg(cxa_array_append(&clientIn->listeners, &newEntry), "increase CXA_MQTT_CLIENT_MAXNUM_LISTENERS");
 }
 
 
