@@ -73,7 +73,7 @@ void cxa_esp32_gpio_init_output(cxa_esp32_gpio_t *const gpioIn, const gpio_num_t
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
 
-	// initialze our super class
+	// initialize our super class
 	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 
 	// set our initial value (before we set direction to avoid glitches)
