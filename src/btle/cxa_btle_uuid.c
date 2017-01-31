@@ -72,7 +72,7 @@ bool cxa_btle_uuid_initFromString(cxa_btle_uuid_t *const uuidIn, const char *con
 	else if( strLen_bytes == 36 )
 	{
 		// 128-bit
-		uuidIn->type = CXA_BTLE_UUID_TYPE_16BIT;
+		uuidIn->type = CXA_BTLE_UUID_TYPE_128BIT;
 		retVal = cxa_uuid128_initFromString(&uuidIn->as128Bit, strIn);
 	}
 
@@ -90,6 +90,18 @@ bool cxa_btle_uuid_isEqual(cxa_btle_uuid_t *const uuid1In, cxa_btle_uuid_t *cons
 	return (uuid1In->type == CXA_BTLE_UUID_TYPE_16BIT) ?
 		   (uuid1In->as16Bit == uuid2In->as16Bit) :
 		   cxa_uuid128_isEqual(&uuid1In->as128Bit, &uuid2In->as128Bit);
+}
+
+
+bool cxa_btle_uuid_isEqualToString(cxa_btle_uuid_t *const uuid1In, const char *const strIn)
+{
+	cxa_assert(uuid1In);
+	cxa_assert(strIn);
+
+	cxa_btle_uuid_t tmpUuid;
+	if( !cxa_btle_uuid_initFromString(&tmpUuid, strIn) ) return false;
+
+	return cxa_btle_uuid_isEqual(uuid1In, &tmpUuid);
 }
 
 
@@ -112,6 +124,21 @@ void cxa_btle_uuid_toString(cxa_btle_uuid_t *const uuidIn, cxa_btle_uuid_string_
 			break;
 		}
 	}
+}
+
+
+void cxa_btle_uuid_toShortString(cxa_btle_uuid_t *const uuidIn, cxa_btle_uuid_string_t *const strOut)
+{
+	cxa_assert(uuidIn);
+	cxa_assert(strOut);
+
+	cxa_btle_uuid_string_t tmpStr;
+	cxa_btle_uuid_toString(uuidIn, &tmpStr);
+
+	char* lastChars = cxa_stringUtils_getLastCharacters(tmpStr.str, 4);
+	if( lastChars == NULL ) lastChars = tmpStr.str;
+
+	strlcpy(strOut->str, lastChars, sizeof(strOut->str));
 }
 
 

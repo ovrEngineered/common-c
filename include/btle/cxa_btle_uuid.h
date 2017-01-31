@@ -67,7 +67,9 @@ bool cxa_btle_uuid_initFromBuffer(cxa_btle_uuid_t *const uuidIn, cxa_fixedByteBu
 bool cxa_btle_uuid_initFromString(cxa_btle_uuid_t *const uuidIn, const char *const strIn);
 
 bool cxa_btle_uuid_isEqual(cxa_btle_uuid_t *const uuid1In, cxa_btle_uuid_t *const uuid2In);
+bool cxa_btle_uuid_isEqualToString(cxa_btle_uuid_t *const uuid1In, const char *const strIn);
 
 void cxa_btle_uuid_toString(cxa_btle_uuid_t *const uuidIn, cxa_btle_uuid_string_t *const strOut);
+void cxa_btle_uuid_toShortString(cxa_btle_uuid_t *const uuidIn, cxa_btle_uuid_string_t *const strOut);
 
 #endif
