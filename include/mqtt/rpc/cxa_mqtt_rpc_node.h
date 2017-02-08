@@ -163,6 +163,12 @@ struct cxa_mqtt_rpc_node
 /**
  * @public
  */
+void cxa_mqtt_rpc_node_init_formattedString(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, ...);
+
+
+/**
+ * @public
+ */
 void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, va_list varArgsIn);
 
 

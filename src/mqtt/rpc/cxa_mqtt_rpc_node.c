@@ -57,6 +57,19 @@ static bool addNodePathToTopic(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_messa
 
 
 // ******** global function implementations ********
+void cxa_mqtt_rpc_node_init_formattedString(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, ...)
+{
+	cxa_assert(nodeIn);
+	cxa_assert(parentNodeIn);
+	cxa_assert(nameFmtIn);
+
+	va_list varArgs;
+	va_start(varArgs, nameFmtIn);
+	cxa_mqtt_rpc_node_vinit(nodeIn, parentNodeIn, nameFmtIn, varArgs);
+	va_end(varArgs);
+}
+
+
 void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(nodeIn);
@@ -263,17 +276,17 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 
 	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
 
-	if( cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, "/", 1) ||
-		cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)))
-	{
+//	if( cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, "/", 1) ||
+//		cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)))
+//	{
 		// this message is addressed from the global root or the local root respectively...send it up!
 		if( superIn->parentNode != NULL ) superIn->parentNode->scm_handleMessage_upstream(superIn->parentNode, msgIn);
-	}
-	else
-	{
-		// this message is non-root relative...that means it probably originated someplace system-local
-		// @TODO implement this
-	}
+//	}
+//	else
+//	{
+//		// this message is non-root relative...that means it probably originated someplace system-local
+//		// @TODO implement this
+//	}
 }
 
 
