@@ -43,6 +43,10 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 
 static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_mqtt_message_t *const msgIn);
 
+static cxa_mqtt_rpc_methodRetVal_t rpcMethodCb_isAlive(cxa_mqtt_rpc_node_t *const superIn,
+													   cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const returnParamsOut,
+													   void* userVarIn);
+
 
 // ********  local variable declarations *********
 
@@ -97,6 +101,8 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	// register for mqtt events
 	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, (void*)nodeIn);
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
+
+	cxa_mqtt_rpc_node_addMethod(&nodeIn->super, "isAlive", rpcMethodCb_isAlive, (void*)nodeIn);
 }
 
 
@@ -162,10 +168,21 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
 			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, nodeIn->super.name) ) return;
 	}
-
-	// if we made it here, forward this message up to the cloud
-	if( (msgIn != NULL) && cxa_mqtt_client_isConnected(nodeIn->mqttClient) )
+	else if( (msgIn != NULL) && cxa_mqtt_client_isConnected(nodeIn->mqttClient) )
 	{
 		cxa_mqtt_client_publish_message(nodeIn->mqttClient, msgIn);
 	}
+}
+
+
+static cxa_mqtt_rpc_methodRetVal_t rpcMethodCb_isAlive(cxa_mqtt_rpc_node_t *const superIn,
+													   cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const returnParamsOut,
+													   void* userVarIn)
+{
+	cxa_mqtt_rpc_node_root_t* nodeIn = (cxa_mqtt_rpc_node_root_t*)superIn;
+	cxa_assert(nodeIn);
+
+	cxa_linkedField_append_uint8(returnParamsOut, 37);
+
+	return CXA_MQTT_RPC_METHODRETVAL_SUCCESS;
 }
