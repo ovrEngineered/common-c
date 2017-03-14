@@ -55,6 +55,9 @@ void cxa_esp32_gpio_init_input(cxa_esp32_gpio_t *const gpioIn, const gpio_num_t 
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
 
+	// make sure our pin is GPIO
+	gpio_pad_select_gpio(pinNumIn);
+
 	// initialize our super class
 	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 
@@ -72,6 +75,9 @@ void cxa_esp32_gpio_init_output(cxa_esp32_gpio_t *const gpioIn, const gpio_num_t
 	// save our references
 	gpioIn->pinNum = pinNumIn;
 	gpioIn->polarity = polarityIn;
+
+	// make sure our pin is GPIO
+	gpio_pad_select_gpio(pinNumIn);
 
 	// initialize our super class
 	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
