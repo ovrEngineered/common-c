@@ -19,6 +19,7 @@
 
 
 // ******** includes ********
+#include <cxa_blueGiga_gpio.h>
 #include <cxa_blueGiga_types.h>
 #include <cxa_btle_client.h>
 #include <cxa_btle_uuid.h>
@@ -33,6 +34,11 @@
 
 // ******** global macro definitions ********
 #define CXA_BLUEGIGA_BTLE_MAX_PACKET_SIZE		64
+
+
+#ifndef CXA_BLUEGIGA_BTLE_MAX_NUM_GPIOS
+	#define CXA_BLUEGIGA_BTLE_MAX_NUM_GPIOS		2
+#endif
 
 
 // ******** global type definitions *********
@@ -109,6 +115,8 @@ struct cxa_blueGiga_btle_client
 		uint16_t characteristicHandle;
 	}currProcedure;
 
+	cxa_blueGiga_gpio_t gpios[CXA_BLUEGIGA_BTLE_MAX_NUM_GPIOS];
+
 	cxa_stateMachine_t stateMachine_conn;
 	cxa_stateMachine_t stateMachine_currProcedure;
 
@@ -118,5 +126,11 @@ struct cxa_blueGiga_btle_client
 
 // ******** global function prototypes ********
 void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cxa_ioStream_t *const iosIn, cxa_gpio_t *const gpio_resetIn);
+
+bool cxa_blueGiga_btle_client_sendCommand(cxa_blueGiga_btle_client_t *const btlecIn,
+										  cxa_blueGiga_classId_t classIdIn, cxa_blueGiga_methodId_t methodIdIn, cxa_fixedByteBuffer_t *const payloadIn,
+										  cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn);
+
+cxa_gpio_t* cxa_blueGiga_btle_client_getGpio(cxa_blueGiga_btle_client_t *const btlecIn, uint8_t portNumIn, uint8_t chanNumIn);
 
 #endif

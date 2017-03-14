@@ -47,6 +47,7 @@ typedef enum
 {
 	CONNSTATE_RESET,
 	CONNSTATE_WAIT_BOOT,
+	CONNSTATE_CONFIG_PERIPHS,
 	CONNSTATE_IDLE,
 	CONNSTATE_SCANNING,
 	CONNSTATE_CONNECTING,
@@ -67,10 +68,6 @@ typedef enum
 
 
 // ******** local function prototypes ********
-static bool sendCommand(cxa_blueGiga_btle_client_t *const btlecIn,
-						cxa_blueGiga_classId_t classIdIn, cxa_blueGiga_methodId_t methodIdIn, cxa_fixedByteBuffer_t *const payloadIn,
-						cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn);
-
 static cxa_blueGiga_msgType_t getMsgType(cxa_fixedByteBuffer_t *const fbbIn);
 static cxa_blueGiga_classId_t getClassId(cxa_fixedByteBuffer_t *const fbbIn);
 static cxa_blueGiga_methodId_t getMethod(cxa_fixedByteBuffer_t *const fbbIn);
@@ -90,6 +87,8 @@ static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn
 static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
 static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
 
+static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool wasSuccessfulIn);
+
 static bool scm_isReady(cxa_btle_client_t *const superIn);
 static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn);
 static void scm_stopScan(cxa_btle_client_t *const superIn);
@@ -105,6 +104,7 @@ static void scm_writeToCharacteristic(cxa_btle_client_t *const superIn,
 static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_conn_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_conn_waitBoot_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_conn_configPeriphs_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_conn_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_conn_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
@@ -150,10 +150,17 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_protocolParser_bgapi_init(&btlecIn->protoParse, iosIn, &btlecIn->fbb_rx);
 	cxa_protocolParser_addPacketListener(&btlecIn->protoParse.super, protoParseCb_onPacketRx, (void*)btlecIn);
 
+	// our gpios (unused at the moment)
+	for( size_t i = 0; i < (sizeof(btlecIn->gpios)/sizeof(*btlecIn->gpios)); i++ )
+	{
+		btlecIn->gpios[i].isUsed = false;
+	}
+
 	// and our connection state machine
 	cxa_stateMachine_init(&btlecIn->stateMachine_conn, "blueGiga_conn");
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_RESET, "reset", CONNSTATE_WAIT_BOOT, RESET_TIME_MS, stateCb_conn_reset_enter, NULL, stateCb_conn_reset_leave, (void*)btlecIn);
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_WAIT_BOOT, "waitBoot", CONNSTATE_RESET, WAIT_BOOT_TIME_MS, NULL, NULL, stateCb_conn_waitBoot_leave, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONFIG_PERIPHS, "idle", stateCb_conn_configPeriphs_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_IDLE, "idle", stateCb_conn_idle_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_SCANNING, "scanning", stateCb_conn_scanning_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTING, "connecting", stateCb_conn_connecting_enter, NULL, NULL, (void*)btlecIn);
@@ -173,10 +180,9 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 }
 
 
-// ******** local function implementations ********
-static bool sendCommand(cxa_blueGiga_btle_client_t *const btlecIn,
-						cxa_blueGiga_classId_t classIdIn, cxa_blueGiga_methodId_t methodIdIn, cxa_fixedByteBuffer_t *const payloadIn,
-						cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn)
+bool cxa_blueGiga_btle_client_sendCommand(cxa_blueGiga_btle_client_t *const btlecIn,
+										  cxa_blueGiga_classId_t classIdIn, cxa_blueGiga_methodId_t methodIdIn, cxa_fixedByteBuffer_t *const payloadIn,
+										  cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn)
 {
 	cxa_assert(btlecIn);
 
@@ -203,6 +209,30 @@ static bool sendCommand(cxa_blueGiga_btle_client_t *const btlecIn,
 }
 
 
+cxa_gpio_t* cxa_blueGiga_btle_client_getGpio(cxa_blueGiga_btle_client_t *const btlecIn, uint8_t portNumIn, uint8_t chanNumIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(portNumIn <= 2);
+	cxa_assert(chanNumIn <= 7);
+
+	cxa_gpio_t* retVal = NULL;
+	for( size_t i = 0; i < (sizeof(btlecIn->gpios)/sizeof(*btlecIn->gpios)); i++ )
+	{
+		cxa_blueGiga_gpio_t* currGpio = &btlecIn->gpios[i];
+		if( !currGpio->isUsed )
+		{
+			// if we made it here, we found an used gpio
+			cxa_blueGiga_gpio_init(currGpio, btlecIn, portNumIn, chanNumIn);
+			retVal = &currGpio->super;
+			break;
+		}
+	}
+
+	return retVal;
+}
+
+
+// ******** local function implementations ********
 static cxa_blueGiga_msgType_t getMsgType(cxa_fixedByteBuffer_t *const fbbIn)
 {
 	cxa_assert(fbbIn);
@@ -258,7 +288,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 		cxa_logger_info(&btlecIn->logger, "boot  sw: %d.%d.%d  prot: %d  hw: %d",
 				sw_major, sw_minor,patch, protocol, hw);
 
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_CONFIG_PERIPHS);
 	}
 	else if( (classId == CXA_BLUEGIGA_CLASSID_GAP) && (method == CXA_BLUEGIGA_EVENTID_GAP_SCANRESPONSE) )
 	{
@@ -572,7 +602,7 @@ static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, 
 	uint8_t params_raw[1];
 	cxa_fixedByteBuffer_initStd(&params, params_raw);
 	cxa_fixedByteBuffer_append_uint8(&params, 2);											// all devices
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_DISCOVER, &params, responseCb_discover);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_DISCOVER, &params, responseCb_discover);
 }
 
 
@@ -710,6 +740,15 @@ static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn,
 }
 
 
+static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool wasSuccessfulIn)
+{
+	cxa_assert(btlecIn);
+
+	if( wasSuccessfulIn ) cxa_logger_info(&btlecIn->logger, "gpios configured successfully");
+	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, (wasSuccessfulIn ? CONNSTATE_IDLE : CONNSTATE_RESET));
+}
+
+
 static bool scm_isReady(cxa_btle_client_t *const superIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
@@ -747,7 +786,7 @@ static void scm_stopScan(cxa_btle_client_t *const superIn)
 
 	// send our command to stop scanning
 	cxa_logger_debug(&btlecIn->logger, "stopping scan");
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, responseCb_endProcedure);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, responseCb_endProcedure);
 }
 
 
@@ -800,7 +839,7 @@ static void scm_stopConnection(cxa_btle_client_t *const superIn)
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
 
 	// no response callback since we'll get an event when the disconnect occurs
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_CONNECTION, CXA_BLUEGIGA_METHODID_CONNECTION_DISCONNECT, &params, NULL);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_CONNECTION, CXA_BLUEGIGA_METHODID_CONNECTION_DISCONNECT, &params, NULL);
 }
 
 
@@ -894,13 +933,22 @@ static void stateCb_conn_waitBoot_leave(cxa_stateMachine_t *const smIn, int next
 }
 
 
+static void stateCb_conn_configPeriphs_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
+	cxa_assert(btlecIn);
+
+	cxa_blueGiga_configureGpiosForBlueGiga(btlecIn, gpioCb_onGpiosConfigured);
+}
+
+
 static void stateCb_conn_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
 	// we've just booted, let our listeners know
-	if( prevStateIdIn == CONNSTATE_WAIT_BOOT )
+	if( prevStateIdIn == CONNSTATE_CONFIG_PERIPHS )
 	{
 		cxa_btle_client_notify_onBecomesReady(&btlecIn->super);
 	}
@@ -929,7 +977,7 @@ static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prev
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x004B);									// scan interval (default)
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x0032);									// scan window (default)
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->isActiveScan);
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_SETSCANPARAMS, &params, responseCb_setScanParams);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_SETSCANPARAMS, &params, responseCb_setScanParams);
 }
 
 
@@ -951,7 +999,7 @@ static void stateCb_conn_connecting_enter(cxa_stateMachine_t *const smIn, int pr
 	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)(CONNECTION_INTERVAL_MAX_MS / 1.25));
 	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)(CONNECTION_TIMEOUT_MS / 10.0));
 	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)CONNECTION_LATENCY);
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_CONNECT_DIRECT, &params, responseCb_connectDirect);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_CONNECT_DIRECT, &params, responseCb_connectDirect);
 }
 
 
@@ -1048,7 +1096,7 @@ static void stateCb_currProc_resolveService_enter(cxa_stateMachine_t *const smIn
 
 	cxa_fixedByteBuffer_append_uint8(&params, 2);
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x2800);
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_READ_BY_GROUP_TYPE, &params, responseCb_findByGroupType);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_READ_BY_GROUP_TYPE, &params, responseCb_findByGroupType);
 
 	// reset our watchdog so we can eventually timeout if needed
 	cxa_softWatchDog_kick(&btlecIn->currProcedure.watchdog);
@@ -1072,7 +1120,7 @@ static void stateCb_currProc_resolveCharacteristic_enter(cxa_stateMachine_t *con
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
 	cxa_fixedByteBuffer_append_uint16LE(&params, btlecIn->currProcedure.serviceHandle_start);
 	cxa_fixedByteBuffer_append_uint16LE(&params, btlecIn->currProcedure.serviceHandle_end);
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_FIND_INFO, &params, responseCb_findInformation);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_FIND_INFO, &params, responseCb_findInformation);
 
 	// reset our watchdog to give us more time
 	cxa_softWatchDog_kick(&btlecIn->currProcedure.watchdog);
@@ -1103,7 +1151,7 @@ static void stateCb_currProc_writeCharacteristic_enter(cxa_stateMachine_t *const
 
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currProcedure.writeDataLength_bytes);
 	cxa_fixedByteBuffer_append(&params, btlecIn->currProcedure.writeData, btlecIn->currProcedure.writeDataLength_bytes);
-	sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_ATTRIBUTE_WRITE, &params, responseCb_attributeWrite);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_ATTRIBUTE_WRITE, &params, responseCb_attributeWrite);
 }
 
 
