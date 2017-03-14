@@ -291,7 +291,7 @@ static bool isStaConfigSet(void)
 	wifi_config_t wifiConfig;
 	esp_wifi_get_config(WIFI_IF_STA, &wifiConfig);
 
-	return (strlen(wifiConfig.sta.ssid) > 0);
+	return (strlen((char*)wifiConfig.sta.ssid) > 0);
 }
 
 
@@ -457,6 +457,7 @@ static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event)
 			break;
 
 		case SYSTEM_EVENT_STA_DISCONNECTED:
+			cxa_logger_debug(&logger, "reason: %d", event->event_info.disconnected.reason);
 			cxa_stateMachine_transition(&stateMachine, (currState == STATE_ASSOCIATING) ? STATE_CONNECTION_FAILED : STATE_STA_STOPPING);
 			break;
 
@@ -505,7 +506,7 @@ static void notify_connecting(void)
 	{
 		if( currListener == NULL ) continue;
 
-		if( currListener->cb_connectingToSsid != NULL ) currListener->cb_connectingToSsid(cfg.sta.ssid, currListener->userVarIn);
+		if( currListener->cb_connectingToSsid != NULL ) currListener->cb_connectingToSsid((char*)cfg.sta.ssid, currListener->userVarIn);
 	}
 }
 
@@ -519,7 +520,7 @@ static void notify_connected(void)
 	{
 		if( currListener == NULL ) continue;
 
-		if( currListener->cb_connectedToSsid != NULL ) currListener->cb_connectedToSsid(cfg.sta.ssid, currListener->userVarIn);
+		if( currListener->cb_connectedToSsid != NULL ) currListener->cb_connectedToSsid((char*)cfg.sta.ssid, currListener->userVarIn);
 	}
 }
 
@@ -544,7 +545,7 @@ static void notify_connectFailed(void)
 	{
 		if( currListener == NULL ) continue;
 
-		if( currListener->cb_connectionToSsidFailed != NULL ) currListener->cb_connectionToSsidFailed(cfg.sta.ssid, currListener->userVarIn);
+		if( currListener->cb_connectionToSsidFailed != NULL ) currListener->cb_connectionToSsidFailed((char*)cfg.sta.ssid, currListener->userVarIn);
 	}
 }
 
@@ -558,7 +559,7 @@ static void notify_microAp(void)
 	{
 		if( currListener == NULL ) continue;
 
-		if( currListener->cb_microApEnter != NULL ) currListener->cb_microApEnter(cfg.sta.ssid, currListener->userVarIn);
+		if( currListener->cb_microApEnter != NULL ) currListener->cb_microApEnter((char*)cfg.sta.ssid, currListener->userVarIn);
 	}
 }
 
