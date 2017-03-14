@@ -26,6 +26,7 @@
 #include <cxa_fixedFifo.h>
 #include <cxa_gpio.h>
 
+#include <driver/gpio.h>
 #include <driver/uart.h>
 
 
@@ -61,7 +62,8 @@ struct cxa_esp32_usart
  * @param[in] baudRate_bpsIn the desired baud rate, in bits-per-second
  * @param[in] useHardwareHandshakingIn true to enable hardware handshaking
  */
-void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn, bool useHardwareHandshakingIn);
+void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn,
+						  const gpio_num_t txPinIn, const gpio_num_t rxPinIn, bool useHardwareHandshakingIn);
 
 
 #endif

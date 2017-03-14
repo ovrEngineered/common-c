@@ -48,7 +48,8 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn, bool useHardwareHandshakingIn)
+void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn,
+						  const gpio_num_t txPinIn, const gpio_num_t rxPinIn, bool useHardwareHandshakingIn)
 {
 	cxa_assert(usartIn);
 	cxa_assert( (uartIdIn == UART_NUM_0) ||
@@ -70,17 +71,8 @@ void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn
 	uart_param_config(usartIn->uartId, &uart_config);
 
 	cxa_assert(uart_driver_install(usartIn->uartId, RX_RING_BUFFER_SIZE_BYTES, 0, 10, NULL, 0) == ESP_OK);
-	switch( usartIn->uartId )
-	{
-		case UART_NUM_1:
-			cxa_assert(uart_set_pin(usartIn->uartId, 16, 17,
-								   (useHardwareHandshakingIn ? 21 : UART_PIN_NO_CHANGE),
-								   (useHardwareHandshakingIn ? 22 : UART_PIN_NO_CHANGE)) == ESP_OK);
-			break;
+	cxa_assert(uart_set_pin(usartIn->uartId, txPinIn, rxPinIn, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) == ESP_OK);
 
-		default:
-			break;
-	}
 
 	// setup our ioStream (last once everything is setup)
 	cxa_ioStream_init(&usartIn->super.ioStream);
