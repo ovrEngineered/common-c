@@ -81,6 +81,7 @@
 #define cxa_logger_stepDebug()								cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, NULL)
 #define cxa_logger_stepDebug_msg(msgIn, ...)				cxa_logger_stepDebug_formattedString(__FILE__, __LINE__, (msgIn), ##__VA_ARGS__)
 #define cxa_logger_stepDebug_memDump(msgIn, ptrIn, lenIn)	cxa_logger_stepDebug_memDump_impl(__FILE__, __LINE__, (ptrIn), (lenIn), (msgIn))
+#define cxa_logger_stepDebug_memDump_fbb(msgIn, fbbIn)		cxa_logger_stepDebug_memDump_impl(__FILE__, __LINE__, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), (msgIn))
 
 
 // ******** global type definitions *********
