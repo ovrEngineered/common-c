@@ -42,8 +42,8 @@ static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn);
 static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn);
 static bool scm_getValue(cxa_gpio_t *const superIn);
 
-static void responseCb_ioPortDirConfig(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
-static void responseCb_ioPortWriteValue(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_ioPortDirConfig(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
+static void responseCb_ioPortWriteValue(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -62,7 +62,7 @@ void cxa_blueGiga_gpio_init(cxa_blueGiga_gpio_t *const gpioIn, cxa_blueGiga_btle
 	gpioIn->isUsed = true;
 	gpioIn->portNum = portNumIn;
 	gpioIn->chanNum = chanNumIn;
-	gpioIn->btlecIn = btlecIn;
+	gpioIn->btlec = btlecIn;
 
 	gpioIn->lastDirection = CXA_GPIO_DIR_INPUT;
 	gpioIn->lastOutputVal = 0;
@@ -109,7 +109,7 @@ static void sendDirRegForPort(cxa_blueGiga_btle_client_t* btlecIn, uint8_t portN
 	cxa_fixedByteBuffer_append_uint8(&fbb_params, portNumIn);
 	cxa_fixedByteBuffer_append_uint8(&fbb_params, dirReg);
 
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_HARDWARE, CXA_BLUEGIGA_METHODID_HW_PORTCONFIGDIR, &fbb_params, responseCb_ioPortDirConfig);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_HARDWARE, CXA_BLUEGIGA_METHODID_HW_PORTCONFIGDIR, &fbb_params, responseCb_ioPortDirConfig, NULL);
 }
 
 
@@ -142,7 +142,7 @@ static void sendAllOutputValsForPort(cxa_blueGiga_btle_client_t* btlecIn, uint8_
 	cxa_fixedByteBuffer_append_uint8(&fbb_params, mask);
 	cxa_fixedByteBuffer_append_uint8(&fbb_params, val);
 
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_HARDWARE, CXA_BLUEGIGA_METHODID_HW_PORTCONFIGDIR, &fbb_params, responseCb_ioPortWriteValue);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_HARDWARE, CXA_BLUEGIGA_METHODID_HW_PORTCONFIGDIR, &fbb_params, responseCb_ioPortWriteValue, NULL);
 }
 
 
@@ -154,7 +154,7 @@ static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction
 	// save our direction
 	gpioIn->lastDirection = dirIn;
 
-	if( cxa_btle_client_isReady(&gpioIn->btlecIn->super) ) sendDirRegForPort(gpioIn->btlecIn, gpioIn->portNum);
+	if( cxa_btle_client_isReady(&gpioIn->btlec->super) ) sendDirRegForPort(gpioIn->btlec, gpioIn->portNum);
 }
 
 
@@ -192,7 +192,7 @@ static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	uint8_t polVal = (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn;
 	gpioIn->lastOutputVal = valIn;
 
-	if( cxa_btle_client_isReady(&gpioIn->btlecIn->super) )
+	if( cxa_btle_client_isReady(&gpioIn->btlec->super) )
 	{
 		// get our message ready to send
 		cxa_fixedByteBuffer_t fbb_params;
@@ -202,7 +202,7 @@ static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 		cxa_fixedByteBuffer_append_uint8(&fbb_params, (1 << gpioIn->chanNum));
 		cxa_fixedByteBuffer_append_uint8(&fbb_params, (polVal << gpioIn->chanNum));
 
-		cxa_blueGiga_btle_client_sendCommand(gpioIn->btlecIn, CXA_BLUEGIGA_CLASSID_HARDWARE, CXA_BLUEGIGA_METHODID_HW_PORTCONFIGDIR, &fbb_params, responseCb_ioPortWriteValue);
+		cxa_blueGiga_btle_client_sendCommand(gpioIn->btlec, CXA_BLUEGIGA_CLASSID_HARDWARE, CXA_BLUEGIGA_METHODID_HW_PORTCONFIGDIR, &fbb_params, responseCb_ioPortWriteValue, NULL);
 	}
 }
 
@@ -216,7 +216,7 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 }
 
 
-static void responseCb_ioPortDirConfig(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_ioPortDirConfig(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	// check our return value
 	uint16_t response;
@@ -242,7 +242,7 @@ static void responseCb_ioPortDirConfig(cxa_blueGiga_btle_client_t *const btlecIn
 }
 
 
-static void responseCb_ioPortWriteValue(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_ioPortWriteValue(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	// check our return value
 	uint16_t response;

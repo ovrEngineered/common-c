@@ -1,6 +1,6 @@
 /**
  * @file
- * @copyright 2017 opencxa.org
+ * @copyright 2016 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,25 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_BLUEGIGA_GPIO_H_
-#define CXA_BLUEGIGA_GPIO_H_
+#ifndef CXA_BLUEGIGA_I2C_MASTER_H_
+#define CXA_BLUEGIGA_I2C_MASTER_H_
 
 
 // ******** includes ********
-#include <stdint.h>
-
-#include <cxa_gpio.h>
+#include <cxa_i2cMaster.h>
 
 
 // ******** global macro definitions ********
 
 
 // ******** global type definitions *********
+/**
+ * @public
+ * @brief "Forward" declaration of the cxa_blueGiga_i2cMaster_t object
+ */
+typedef struct cxa_blueGiga_i2cMaster cxa_blueGiga_i2cMaster_t;
+
+
 /**
  * @public
  * Forward declaration of blueGiga_btle_client to avoid
@@ -37,40 +42,23 @@ typedef struct cxa_blueGiga_btle_client cxa_blueGiga_btle_client_t;
 
 
 /**
- * @public
- */
-typedef void (*cxa_blueGiga_gpio_cb_onGpiosConfigured_t)(cxa_blueGiga_btle_client_t* btlecIn, bool wasSuccessfulIn);
-
-
-/**
  * @private
  */
-typedef struct
+struct cxa_blueGiga_i2cMaster
 {
-	cxa_gpio_t super;
-
-	bool isUsed;
-
+	cxa_i2cMaster_t super;
+	
 	cxa_blueGiga_btle_client_t* btlec;
-	uint8_t portNum;
-	uint8_t chanNum;
 
-	cxa_gpio_polarity_t polarity;
-	cxa_gpio_direction_t lastDirection;
-	bool lastOutputVal;
-}cxa_blueGiga_gpio_t;
+	size_t expectedNumBytesToWrite;
+};
 
 
 // ******** global function prototypes ********
 /**
  * @protected
  */
-void cxa_blueGiga_gpio_init(cxa_blueGiga_gpio_t *const gpioIn, cxa_blueGiga_btle_client_t* btlecIn, uint8_t portNumIn, uint8_t chanNumIn);
+void cxa_blueGiga_i2cMaster_init(cxa_blueGiga_i2cMaster_t *const i2cIn, cxa_blueGiga_btle_client_t* btlecIn);
 
 
-/**
- * @protected
- */
-void cxa_blueGiga_configureGpiosForBlueGiga(cxa_blueGiga_btle_client_t* btlecIn, cxa_blueGiga_gpio_cb_onGpiosConfigured_t cbIn);
-
-#endif
+#endif // CXA_BLUEGIGA_I2C_H_

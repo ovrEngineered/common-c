@@ -23,7 +23,7 @@
 #include <cxa_console.h>
 #include <cxa_delay.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
@@ -79,13 +79,13 @@ static void handleReadWriteTimeout(void* userVarIn);
 
 static void protoParseCb_onPacketRx(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
 
-static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
-static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
-static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
-static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
-static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
-static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
-static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
+static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
+static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
+static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
+static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
+static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
+static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
 
 static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool wasSuccessfulIn);
 
@@ -156,6 +156,9 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 		btlecIn->gpios[i].isUsed = false;
 	}
 
+	// our i2c
+	cxa_blueGiga_i2cMaster_init(&btlecIn->i2cMaster, btlecIn);
+
 	// and our connection state machine
 	cxa_stateMachine_init(&btlecIn->stateMachine_conn, "blueGiga_conn");
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_RESET, "reset", CONNSTATE_WAIT_BOOT, RESET_TIME_MS, stateCb_conn_reset_enter, NULL, stateCb_conn_reset_leave, (void*)btlecIn);
@@ -182,7 +185,7 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 
 bool cxa_blueGiga_btle_client_sendCommand(cxa_blueGiga_btle_client_t *const btlecIn,
 										  cxa_blueGiga_classId_t classIdIn, cxa_blueGiga_methodId_t methodIdIn, cxa_fixedByteBuffer_t *const payloadIn,
-										  cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn)
+										  cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
@@ -201,6 +204,7 @@ bool cxa_blueGiga_btle_client_sendCommand(cxa_blueGiga_btle_client_t *const btle
 	btlecIn->inFlightRequest.classId = classIdIn;
 	btlecIn->inFlightRequest.methodId = methodIdIn;
 	btlecIn->inFlightRequest.cb_onResponse = cb_onResponseIn;
+	btlecIn->inFlightRequest.userVar = userVarIn;
 
 	bool retVal = cxa_protocolParser_writePacket(&btlecIn->protoParse.super, &btlecIn->fbb_tx);
 	if( retVal ) cxa_softWatchDog_kick(&btlecIn->inFlightRequest.watchdog);
@@ -229,6 +233,14 @@ cxa_gpio_t* cxa_blueGiga_btle_client_getGpio(cxa_blueGiga_btle_client_t *const b
 	}
 
 	return retVal;
+}
+
+
+cxa_i2cMaster_t* cxa_blueGiga_btle_client_getI2cMaster(cxa_blueGiga_btle_client_t *const btlecIn)
+{
+	cxa_assert(btlecIn);
+
+	return &btlecIn->i2cMaster.super;
 }
 
 
@@ -356,7 +368,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 		{
 			cxa_blueGiga_btle_client_cb_onResponse_t cb = btlecIn->inFlightRequest.cb_onResponse;
 			cxa_softWatchDog_pause(&btlecIn->inFlightRequest.watchdog);
-			if( cb != NULL ) cb(btlecIn, false, NULL);
+			if( cb != NULL ) cb(btlecIn, false, NULL, btlecIn->inFlightRequest.userVar);
 		}
 
 		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
@@ -518,7 +530,7 @@ static void handleBgResponse(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixe
 		// reset paused _before_ we call our callback (so the callback can send a message if it desires)
 		cxa_blueGiga_btle_client_cb_onResponse_t cb = btlecIn->inFlightRequest.cb_onResponse;
 		cxa_softWatchDog_pause(&btlecIn->inFlightRequest.watchdog);
-		if( cb != NULL ) cb(btlecIn, false, NULL);
+		if( cb != NULL ) cb(btlecIn, false, NULL, btlecIn->inFlightRequest.userVar);
 		return;
 	}
 
@@ -528,7 +540,7 @@ static void handleBgResponse(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixe
 	// reset paused _before_ we call our callback (so the callback can send a message if it desires)
 	cxa_blueGiga_btle_client_cb_onResponse_t cb = btlecIn->inFlightRequest.cb_onResponse;
 	cxa_softWatchDog_pause(&btlecIn->inFlightRequest.watchdog);
-	if( cb != NULL ) cb(btlecIn, true, &fbb_payload);
+	if( cb != NULL ) cb(btlecIn, true, &fbb_payload, btlecIn->inFlightRequest.userVar);
 }
 
 
@@ -542,7 +554,7 @@ static void handleBgTimeout(void* userVarIn)
 	// reset paused _before_ we call our callback (so the callback can send a message if it desires)
 	cxa_blueGiga_btle_client_cb_onResponse_t cb = btlecIn->inFlightRequest.cb_onResponse;
 	cxa_softWatchDog_pause(&btlecIn->inFlightRequest.watchdog);
-	if( cb != NULL ) cb(btlecIn, false, NULL);
+	if( cb != NULL ) cb(btlecIn, false, NULL, btlecIn->inFlightRequest.userVar);
 }
 
 
@@ -578,7 +590,7 @@ static void protoParseCb_onPacketRx(cxa_fixedByteBuffer_t *const packetIn, void 
 }
 
 
-static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
@@ -602,11 +614,11 @@ static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, 
 	uint8_t params_raw[1];
 	cxa_fixedByteBuffer_initStd(&params, params_raw);
 	cxa_fixedByteBuffer_append_uint8(&params, 2);											// all devices
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_DISCOVER, &params, responseCb_discover);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_DISCOVER, &params, responseCb_discover, NULL);
 }
 
 
-static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
@@ -628,7 +640,7 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 }
 
 
-static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	// we only expect this when we're starting to scan...
 	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
@@ -646,7 +658,7 @@ static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, b
 }
 
 
-static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
@@ -676,7 +688,7 @@ static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, 
 }
 
 
-static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
@@ -697,7 +709,7 @@ static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn
 }
 
 
-static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
@@ -718,7 +730,7 @@ static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn
 }
 
 
-static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn)
+static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
@@ -744,7 +756,8 @@ static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool w
 {
 	cxa_assert(btlecIn);
 
-	if( wasSuccessfulIn ) cxa_logger_info(&btlecIn->logger, "gpios configured successfully");
+	if( wasSuccessfulIn ) cxa_logger_debug(&btlecIn->logger, "gpios configured successfully");
+	else cxa_logger_warn(&btlecIn->logger, "gpio configuration failed, restarting");
 	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, (wasSuccessfulIn ? CONNSTATE_IDLE : CONNSTATE_RESET));
 }
 
@@ -786,7 +799,7 @@ static void scm_stopScan(cxa_btle_client_t *const superIn)
 
 	// send our command to stop scanning
 	cxa_logger_debug(&btlecIn->logger, "stopping scan");
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, responseCb_endProcedure);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, responseCb_endProcedure, NULL);
 }
 
 
@@ -839,7 +852,7 @@ static void scm_stopConnection(cxa_btle_client_t *const superIn)
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
 
 	// no response callback since we'll get an event when the disconnect occurs
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_CONNECTION, CXA_BLUEGIGA_METHODID_CONNECTION_DISCONNECT, &params, NULL);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_CONNECTION, CXA_BLUEGIGA_METHODID_CONNECTION_DISCONNECT, &params, NULL, NULL);
 }
 
 
@@ -977,7 +990,7 @@ static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prev
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x004B);									// scan interval (default)
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x0032);									// scan window (default)
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->isActiveScan);
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_SETSCANPARAMS, &params, responseCb_setScanParams);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_SETSCANPARAMS, &params, responseCb_setScanParams, NULL);
 }
 
 
@@ -999,7 +1012,7 @@ static void stateCb_conn_connecting_enter(cxa_stateMachine_t *const smIn, int pr
 	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)(CONNECTION_INTERVAL_MAX_MS / 1.25));
 	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)(CONNECTION_TIMEOUT_MS / 10.0));
 	cxa_fixedByteBuffer_append_uint16LE(&params, (uint16_t)CONNECTION_LATENCY);
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_CONNECT_DIRECT, &params, responseCb_connectDirect);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_CONNECT_DIRECT, &params, responseCb_connectDirect, NULL);
 }
 
 
@@ -1096,7 +1109,7 @@ static void stateCb_currProc_resolveService_enter(cxa_stateMachine_t *const smIn
 
 	cxa_fixedByteBuffer_append_uint8(&params, 2);
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x2800);
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_READ_BY_GROUP_TYPE, &params, responseCb_findByGroupType);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_READ_BY_GROUP_TYPE, &params, responseCb_findByGroupType, NULL);
 
 	// reset our watchdog so we can eventually timeout if needed
 	cxa_softWatchDog_kick(&btlecIn->currProcedure.watchdog);
@@ -1120,7 +1133,7 @@ static void stateCb_currProc_resolveCharacteristic_enter(cxa_stateMachine_t *con
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currConnHandle);
 	cxa_fixedByteBuffer_append_uint16LE(&params, btlecIn->currProcedure.serviceHandle_start);
 	cxa_fixedByteBuffer_append_uint16LE(&params, btlecIn->currProcedure.serviceHandle_end);
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_FIND_INFO, &params, responseCb_findInformation);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_FIND_INFO, &params, responseCb_findInformation, NULL);
 
 	// reset our watchdog to give us more time
 	cxa_softWatchDog_kick(&btlecIn->currProcedure.watchdog);
@@ -1151,7 +1164,7 @@ static void stateCb_currProc_writeCharacteristic_enter(cxa_stateMachine_t *const
 
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->currProcedure.writeDataLength_bytes);
 	cxa_fixedByteBuffer_append(&params, btlecIn->currProcedure.writeData, btlecIn->currProcedure.writeDataLength_bytes);
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_ATTRIBUTE_WRITE, &params, responseCb_attributeWrite);
+	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_ATTR_CLIENT, CXA_BLUEGIGA_METHODID_ATTR_CLIENT_ATTRIBUTE_WRITE, &params, responseCb_attributeWrite, NULL);
 }
 
 

@@ -20,11 +20,13 @@
 
 // ******** includes ********
 #include <cxa_blueGiga_gpio.h>
+#include <cxa_blueGiga_i2cMaster.h>
 #include <cxa_blueGiga_types.h>
 #include <cxa_btle_client.h>
 #include <cxa_btle_uuid.h>
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_gpio.h>
+#include <cxa_i2cMaster.h>
 #include <cxa_ioStream.h>
 #include <cxa_logger_header.h>
 #include <cxa_protocolParser_bgapi.h>
@@ -61,7 +63,7 @@ typedef enum
 /**
  * @private
  */
-typedef void (*cxa_blueGiga_btle_client_cb_onResponse_t)(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn);
+typedef void (*cxa_blueGiga_btle_client_cb_onResponse_t)(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
 
 
 /**
@@ -88,6 +90,7 @@ struct cxa_blueGiga_btle_client
 		cxa_blueGiga_methodId_t methodId;
 
 		cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponse;
+		void* userVar;
 	}inFlightRequest;
 
 	bool isActiveScan;
@@ -116,6 +119,8 @@ struct cxa_blueGiga_btle_client
 	}currProcedure;
 
 	cxa_blueGiga_gpio_t gpios[CXA_BLUEGIGA_BTLE_MAX_NUM_GPIOS];
+	cxa_blueGiga_i2cMaster_t i2cMaster;
+
 
 	cxa_stateMachine_t stateMachine_conn;
 	cxa_stateMachine_t stateMachine_currProcedure;
@@ -129,8 +134,10 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 
 bool cxa_blueGiga_btle_client_sendCommand(cxa_blueGiga_btle_client_t *const btlecIn,
 										  cxa_blueGiga_classId_t classIdIn, cxa_blueGiga_methodId_t methodIdIn, cxa_fixedByteBuffer_t *const payloadIn,
-										  cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn);
+										  cxa_blueGiga_btle_client_cb_onResponse_t cb_onResponseIn, void* userVarIn);
 
 cxa_gpio_t* cxa_blueGiga_btle_client_getGpio(cxa_blueGiga_btle_client_t *const btlecIn, uint8_t portNumIn, uint8_t chanNumIn);
+
+cxa_i2cMaster_t* cxa_blueGiga_btle_client_getI2cMaster(cxa_blueGiga_btle_client_t *const btlecIn);
 
 #endif
