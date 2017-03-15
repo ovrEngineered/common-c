@@ -91,7 +91,7 @@
 #define cxa_fixedByteBuffer_append_uint32BE(fbbIn, uint32In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)) }, 4)
 #define cxa_fixedByteBuffer_append_float(fbbIn, floatIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)&(floatIn), 4)
 #define cxa_fixedByteBuffer_append_cString(fbbIn, strIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)(strIn), (strlen(strIn)+1))
-#define cxa_fixedByteBuffer_append_fbb(fbbIn, otherFbbIn)					cxa_fixedByteBuffer_append((fbbIn), cxa_fixedByteBuffer_get_pointerToIndex((otherFbbIn), 0), cxa_fixedByteBuffer_getSize_bytes((otherFbbIn)));
+#define cxa_fixedByteBuffer_append_fbb(fbbIn, otherFbbIn)					cxa_fixedByteBuffer_append((fbbIn), cxa_fixedByteBuffer_get_pointerToIndex((otherFbbIn), 0), cxa_fixedByteBuffer_getSize_bytes((otherFbbIn)))
 
 #define cxa_fixedByteBuffer_append_lengthPrefixedCString_uint16BE(fbbIn, strIn, includeNullTermIn)	\
 	cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE((fbbIn), (strIn), strlen(strIn) + ((includeNullTermIn) ? 1 : 0))
