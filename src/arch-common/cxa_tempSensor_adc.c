@@ -74,9 +74,5 @@ static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVolt
 	float temp_c = (readVoltageIn * tempSnsIn->onePointCal.knownTemp_c) / tempSnsIn->onePointCal.vAtKnowTemp;
 
 	// call our callback
-	if( tempSnsIn->super.cb_onTempUpdate != NULL ) tempSnsIn->super.cb_onTempUpdate(&tempSnsIn->super, temp_c, tempSnsIn->super.userVar);
-
-	// cleanup
-	tempSnsIn->super.cb_onTempUpdate = NULL;
-	tempSnsIn->super.userVar = NULL;
+	cxa_tempSensor_notify_updatedValue(&tempSnsIn->super, true, temp_c);
 }

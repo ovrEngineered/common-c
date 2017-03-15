@@ -17,6 +17,8 @@
 
 
 // ******** includes ********
+#include <math.h>
+
 #include <cxa_assert.h>
 
 
@@ -42,6 +44,8 @@ void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_re
 	tmpSnsIn->scm_requestNewValue = scm_requestNewValIn;
 	tmpSnsIn->cb_onTempUpdate = NULL;
 	tmpSnsIn->userVar = NULL;
+
+	tmpSnsIn->lastReading_degC = NAN;
 }
 
 
@@ -68,6 +72,26 @@ bool cxa_tempSensor_getValue_withCallback(cxa_tempSensor_t *const tmpSnsIn, cxa_
 	}
 
 	return retVal;
+}
+
+
+float cxa_tempSensor_getLastValue_degC(cxa_tempSensor_t *const tmpSnsIn)
+{
+	cxa_assert(tmpSnsIn);
+
+	return tmpSnsIn->lastReading_degC;
+}
+
+
+void cxa_tempSensor_notify_updatedValue(cxa_tempSensor_t *const tmpSnsIn, bool wasSuccessfulIn, float newTemp_degCIn)
+{
+	cxa_assert(tmpSnsIn);
+
+	tmpSnsIn->lastReading_degC = newTemp_degCIn;
+
+	if( tmpSnsIn->cb_onTempUpdate != NULL ) tmpSnsIn->cb_onTempUpdate(tmpSnsIn, wasSuccessfulIn, newTemp_degCIn, tmpSnsIn->userVar);
+	tmpSnsIn->cb_onTempUpdate = NULL;
+	tmpSnsIn->userVar = NULL;
 }
 
 

@@ -48,7 +48,7 @@ typedef struct cxa_tempSensor cxa_tempSensor_t;
 /**
  * @public
  */
-typedef void (*cxa_tempSensor_cb_updatedValue_t)(cxa_tempSensor_t *const tmpSnsIn, float newTemp_degCIn, void* userVarIn);
+typedef void (*cxa_tempSensor_cb_updatedValue_t)(cxa_tempSensor_t *const tmpSnsIn, bool wasSuccessfulIn, float newTemp_degCIn, void* userVarIn);
 
 
 /**
@@ -63,6 +63,8 @@ typedef bool (*cxa_tempSensor_scm_requestNewValue_t)(cxa_tempSensor_t *const sup
 struct cxa_tempSensor
 {
 	cxa_tempSensor_scm_requestNewValue_t scm_requestNewValue;
+
+	float lastReading_degC;
 
 	cxa_tempSensor_cb_updatedValue_t cb_onTempUpdate;
 	void* userVar;
@@ -81,5 +83,16 @@ void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_re
  */
 bool cxa_tempSensor_getValue_withCallback(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_cb_updatedValue_t cbIn, void* userVarIn);
 
+
+/**
+ * @public
+ */
+float cxa_tempSensor_getLastValue_degC(cxa_tempSensor_t *const tmpSnsIn);
+
+
+/**
+ * @protected
+ */
+void cxa_tempSensor_notify_updatedValue(cxa_tempSensor_t *const tmpSnsIn, bool wasSuccessfulIn, float newTemp_degCIn);
 
 #endif /* CXA_TEMPSENSOR_H_ */
