@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <cxa_fixedByteBuffer.h>
 #include <cxa_timeDiff.h>
 
 
@@ -32,18 +33,85 @@
 /**
  * @public
  */
-typedef struct
+typedef struct cxa_i2cMaster cxa_i2cMaster_t;
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_i2cMaster_cb_onReadComplete_t)(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_i2cMaster_cb_onWriteComplete_t)(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_i2cMaster_scm_readBytes_t)(cxa_i2cMaster_t *const superIn,
+											  uint8_t addressIn, uint8_t sendStopIn, size_t numBytesToReadIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_i2cMaster_scm_writeBytes_t)(cxa_i2cMaster_t *const superIn,
+											   uint8_t addressIn, uint8_t sendStopIn, cxa_fixedByteBuffer_t *const writeBytesIn);
+
+
+/**
+ * @private
+ */
+struct cxa_i2cMaster
 {
-	void* _placeHolder;
-}cxa_i2cMaster_t;
+	bool isBusy;
+
+	struct
+	{
+		cxa_i2cMaster_scm_readBytes_t readBytes;
+		cxa_i2cMaster_scm_writeBytes_t writeBytes;
+	}scms;
+
+	struct
+	{
+		cxa_i2cMaster_cb_onReadComplete_t readComplete;
+		cxa_i2cMaster_cb_onWriteComplete_t writeComplete;
+
+		void* userVar;
+	}cbs;
+};
 
 
 // ******** global function prototypes ********
-bool cxa_i2cMaster_writeBytes(cxa_i2cMaster_t *const i2cIn, uint8_t addressIn,
-							  uint8_t* ctrlBytesIn, size_t numCtrlBytesIn,
-							  uint8_t* dataBytesIn, size_t numDataBytesIn);
-bool cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const i2cIn, uint8_t addressIn,
-							 uint8_t* ctrlBytesIn, size_t numCtrlBytesIn,
-							 uint8_t* dataBytesOut, size_t numDataBytesIn);
+/**
+ * @protected
+ */
+void cxa_i2cMaster_init(cxa_i2cMaster_t *const i2cIn, cxa_i2cMaster_scm_readBytes_t scm_readIn, cxa_i2cMaster_scm_writeBytes_t scm_writeIn);
+
+
+/**
+ * @public
+ */
+void cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const i2cIn,
+							 uint8_t addressIn, uint8_t sendStopIn, size_t numBytesToReadIn,
+							 cxa_i2cMaster_cb_onReadComplete_t cbIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+void cxa_i2cMaster_writeBytes(cxa_i2cMaster_t *const i2cIn,
+							  uint8_t addressIn, uint8_t sendStopIn, cxa_fixedByteBuffer_t *const writeBytesIn,
+							  cxa_i2cMaster_cb_onWriteComplete_t cbIn, void* userVarIn);
+
+
+/**
+ * @protected
+ */
+void cxa_i2cMaster_notify_readComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn);
+void cxa_i2cMaster_notify_writeComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn);
 
 #endif // CXA_I2C_MASTER_H_
