@@ -74,6 +74,7 @@ bool cxa_stringUtils_contains(const char* targetStringIn, const char* elementIn)
 bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
 
 bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, size_t maxSizeTarget_bytesIn);
+bool cxa_stringUtils_concat_formattedString(char *targetStringIn, size_t maxSizeTarget_bytesIn, const char *fmtIn, ...);
 bool cxa_stringUtils_concat_withLengths(char *targetStringIn, size_t maxSizeTarget_bytesIn, const char *sourceStringIn, size_t sourceStringLen_bytesIn);
 
 bool cxa_stringUtils_copy(char *targetStringIn, const char* sourceStringIn, size_t sizeofTargetStringIn);

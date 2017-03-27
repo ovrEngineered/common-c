@@ -22,10 +22,12 @@
 
 
 // ******** includes ********
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 
@@ -126,7 +128,7 @@ bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, si
 
 	// get the current size of the target
 	size_t targetLen_bytes;
-	if( !cxa_stringUtils_strlen(targetStringIn, maxSizeTarget_bytesIn, &targetLen_bytes) ) targetLen_bytes = maxSizeTarget_bytesIn;
+	if( !cxa_stringUtils_strlen(targetStringIn, maxSizeTarget_bytesIn, &targetLen_bytes) ) return false;
 	// ensure that we have space for the null term
 	if( targetLen_bytes > (maxSizeTarget_bytesIn-1) ) return false;
 
@@ -143,6 +145,39 @@ bool cxa_stringUtils_concat(char *targetStringIn, const char *sourceStringIn, si
 
 	// null term
 	targetStringIn[targetLen_bytes+sourceLen_bytes] = 0;
+
+	return true;
+}
+
+
+bool cxa_stringUtils_concat_formattedString(char *targetStringIn, size_t maxSizeTarget_bytesIn, const char *fmtIn, ...)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(fmtIn);
+
+	// get the current size of the target
+	size_t targetLen_bytes;
+	if( !cxa_stringUtils_strlen(targetStringIn, maxSizeTarget_bytesIn, &targetLen_bytes) ) return false;
+
+	size_t maxFormattedStringLength_bytes = maxSizeTarget_bytesIn - targetLen_bytes;
+	char tmpBuffer[maxFormattedStringLength_bytes];
+
+	// create our formatted string
+	va_list varArgs;
+	va_start(varArgs, fmtIn);
+	int numCharsPrinted = vsnprintf(tmpBuffer, maxFormattedStringLength_bytes, fmtIn, varArgs);
+	if( numCharsPrinted >= maxFormattedStringLength_bytes ) return false;
+	tmpBuffer[maxFormattedStringLength_bytes-1] = 0;
+	va_end(varArgs);
+
+	// if we made it here, we apparently have room for the string...do the concatenation
+	for( size_t i = 0; i < numCharsPrinted; i++ )
+	{
+		targetStringIn[targetLen_bytes+i] = tmpBuffer[i];
+	}
+
+	// null term
+	targetStringIn[targetLen_bytes+numCharsPrinted] = 0;
 
 	return true;
 }
