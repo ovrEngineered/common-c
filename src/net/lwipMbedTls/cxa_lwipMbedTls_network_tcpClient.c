@@ -258,7 +258,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 		int tmpRet;
 		mbedtls_net_init(&netClientIn->tls.server_fd);
 
-		cxa_logger_info(&netClientIn->super.logger, "connecting to '%s:%d", netClientIn->targetHostName, netClientIn->targetPortNum);
+		cxa_logger_info(&netClientIn->super.logger, "connecting to '%s:%s", netClientIn->targetHostName, netClientIn->targetPortNum);
 		tmpRet = mbedtls_net_connect(&netClientIn->tls.server_fd, netClientIn->targetHostName, netClientIn->targetPortNum, MBEDTLS_NET_PROTO_TCP);
 		if( tmpRet < 0 )
 		{
