@@ -23,7 +23,7 @@
 #include <cxa_console.h>
 #include <cxa_delay.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
 
 
@@ -163,7 +163,7 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_stateMachine_init(&btlecIn->stateMachine_conn, "blueGiga_conn");
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_RESET, "reset", CONNSTATE_WAIT_BOOT, RESET_TIME_MS, stateCb_conn_reset_enter, NULL, stateCb_conn_reset_leave, (void*)btlecIn);
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_WAIT_BOOT, "waitBoot", CONNSTATE_RESET, WAIT_BOOT_TIME_MS, NULL, NULL, stateCb_conn_waitBoot_leave, (void*)btlecIn);
-	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONFIG_PERIPHS, "idle", stateCb_conn_configPeriphs_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONFIG_PERIPHS, "configPeriphs", stateCb_conn_configPeriphs_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_IDLE, "idle", stateCb_conn_idle_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_SCANNING, "scanning", stateCb_conn_scanning_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTING, "connecting", stateCb_conn_connecting_enter, NULL, NULL, (void*)btlecIn);
@@ -189,8 +189,11 @@ bool cxa_blueGiga_btle_client_sendCommand(cxa_blueGiga_btle_client_t *const btle
 {
 	cxa_assert(btlecIn);
 
-	// can ony send one message at a time
-	if( !cxa_softWatchDog_isPaused(&btlecIn->inFlightRequest.watchdog) ) return false;
+	// can only send one message at a time
+	if( !cxa_softWatchDog_isPaused(&btlecIn->inFlightRequest.watchdog) )
+	{
+		return false;
+	}
 
 	// setup our packet
 	cxa_fixedByteBuffer_clear(&btlecIn->fbb_tx);
@@ -284,6 +287,8 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 
 	cxa_blueGiga_classId_t classId = getClassId(packetIn);
 	cxa_blueGiga_methodId_t method = getMethod(packetIn);
+
+	cxa_logger_trace(&btlecIn->logger, "response  cid:%d  mtd:%d  %d bytes", classId, method, cxa_fixedByteBuffer_getSize_bytes(packetIn));
 
 	if( (classId == CXA_BLUEGIGA_CLASSID_SYSTEM) && (method == CXA_BLUEGIGA_EVENTID_SYSTEM_BOOT) )
 	{
@@ -518,7 +523,7 @@ static void handleBgResponse(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixe
 	}
 
 	// if we made it here, we were waiting for a response
-	cxa_logger_debug(&btlecIn->logger, "response  cid:%d  mtd:%d  %d bytes", classId, method, cxa_fixedByteBuffer_getSize_bytes(packetIn));
+	cxa_logger_trace(&btlecIn->logger, "response  cid:%d  mtd:%d  %d bytes", classId, method, cxa_fixedByteBuffer_getSize_bytes(packetIn));
 
 	// make sure it's the response we were looking for....
 	if( (btlecIn->inFlightRequest.classId != classId) || (btlecIn->inFlightRequest.methodId != method) )
@@ -951,6 +956,7 @@ static void stateCb_conn_configPeriphs_enter(cxa_stateMachine_t *const smIn, int
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
+	cxa_logger_debug(&btlecIn->logger, "configuring BG gpios");
 	cxa_blueGiga_configureGpiosForBlueGiga(btlecIn, gpioCb_onGpiosConfigured);
 }
 
@@ -990,7 +996,11 @@ static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prev
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x004B);									// scan interval (default)
 	cxa_fixedByteBuffer_append_uint16LE(&params, 0x0032);									// scan window (default)
 	cxa_fixedByteBuffer_append_uint8(&params, btlecIn->isActiveScan);
-	cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_SETSCANPARAMS, &params, responseCb_setScanParams, NULL);
+	if( !cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_SETSCANPARAMS, &params, responseCb_setScanParams, NULL) )
+	{
+		cxa_logger_warn(&btlecIn->logger, "failed to start scanning");
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+	}
 }
 
 
