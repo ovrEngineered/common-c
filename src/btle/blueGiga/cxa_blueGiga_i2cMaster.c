@@ -126,6 +126,7 @@ static void responseCb_i2cRead(cxa_blueGiga_btle_client_t *const btlecIn, bool w
 {
 	cxa_blueGiga_i2cMaster_t* i2cIn = (cxa_blueGiga_i2cMaster_t*)userVarIn;
 	cxa_assert(i2cIn);
+	cxa_assert(payloadIn);
 
 	// look for our response
 	uint16_t response;
@@ -155,10 +156,13 @@ static void responseCb_i2cWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 	cxa_assert(i2cIn);
 
 	// figure out how many bytes were written
-	uint8_t numBytesWritten;
-	if( !cxa_fixedByteBuffer_get_uint8(payloadIn, 0, numBytesWritten) || (numBytesWritten != i2cIn->expectedNumBytesToWrite) )
+	if( wasSuccessfulIn )
 	{
-		wasSuccessfulIn = false;
+		uint8_t numBytesWritten;
+		if( !cxa_fixedByteBuffer_get_uint8(payloadIn, 0, numBytesWritten) || (numBytesWritten != i2cIn->expectedNumBytesToWrite) )
+		{
+			wasSuccessfulIn = false;
+		}
 	}
 
 	cxa_i2cMaster_notify_writeComplete(&i2cIn->super, wasSuccessfulIn);
