@@ -218,6 +218,9 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 
 static void responseCb_ioPortDirConfig(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
+	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
+
 	// check our return value
 	uint16_t response;
 	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )
@@ -244,6 +247,9 @@ static void responseCb_ioPortDirConfig(cxa_blueGiga_btle_client_t *const btlecIn
 
 static void responseCb_ioPortWriteValue(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
+	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
+
 	// check our return value
 	uint16_t response;
 	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )

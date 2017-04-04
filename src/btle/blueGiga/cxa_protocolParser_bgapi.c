@@ -131,6 +131,8 @@ static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuf
 	cxa_protocolParser_bgapi_t* ppIn = (cxa_protocolParser_bgapi_t*)superIn;
 	cxa_assert(ppIn);
 
+	if( fbbIn == NULL ) return true;
+
 	if( !cxa_ioStream_writeByte(ppIn->super.ioStream, cxa_fixedByteBuffer_getSize_bytes(fbbIn)) ) return false;
 	return cxa_ioStream_writeFixedByteBuffer(ppIn->super.ioStream, fbbIn);
 }

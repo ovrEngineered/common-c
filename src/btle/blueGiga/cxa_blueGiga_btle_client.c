@@ -284,6 +284,7 @@ static cxa_blueGiga_methodId_t getMethod(cxa_fixedByteBuffer_t *const fbbIn)
 static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedByteBuffer_t *const packetIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(packetIn);
 
 	cxa_blueGiga_classId_t classId = getClassId(packetIn);
 	cxa_blueGiga_methodId_t method = getMethod(packetIn);
@@ -511,6 +512,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 static void handleBgResponse(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedByteBuffer_t *const packetIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(packetIn);
 
 	cxa_blueGiga_classId_t classId = getClassId(packetIn);
 	cxa_blueGiga_methodId_t method = getMethod(packetIn);
@@ -598,6 +600,7 @@ static void protoParseCb_onPacketRx(cxa_fixedByteBuffer_t *const packetIn, void 
 static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
 
 	// we only expect this when we're starting to scan...
 	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
@@ -626,6 +629,7 @@ static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, 
 static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
 
 	// we only expect this when we're starting to scan...
 	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
@@ -647,6 +651,9 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 
 static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
+	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
+
 	// we only expect this when we're starting to scan...
 	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_SCANNING ) return;
 
@@ -666,6 +673,7 @@ static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, b
 static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
 
 	// we only expect this when we're connecting...
 	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTING ) return;
@@ -696,6 +704,7 @@ static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, 
 static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
 
 	// we only expect this when we're connected...
 	if( (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTED) ||
@@ -717,6 +726,7 @@ static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn
 static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
 
 	// we only expect this when we're connected...
 	if( (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTED) ||
@@ -738,6 +748,7 @@ static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn
 static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(payloadIn);
 
 	// we only expect this when we're connected...
 	if( (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_CONNECTED) ||
