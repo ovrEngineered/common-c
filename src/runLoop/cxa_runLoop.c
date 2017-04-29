@@ -30,8 +30,12 @@
 #include <cxa_config.h>
 
 // ******** local macro definitions ********
+#ifndef CXA_RUNLOOP_MAXNUM_THREADS
+	#define CXA_RUNLOOP_MAXNUM_THREADS					3
+#endif
+
 #ifndef CXA_RUNLOOP_INFOPRINT_PERIOD_MS
-	#define CXARUNLOOP_INFOPRINT_PERIOD_MS				10000
+	#define CXA_RUNLOOP_INFOPRINT_PERIOD_MS				10000
 #endif
 
 #define CXA_RUNLOOP_INFOPRINT_AVGNUMITERS				100
@@ -40,6 +44,7 @@
 // ******** local type definitions ********
 typedef struct
 {
+	int threadId;
 	cxa_runLoop_cb_update_t cb;
 	void *userVar;
 }cxa_runLoop_entry_t;
@@ -64,17 +69,17 @@ static uint32_t averageIterPeriod_us = 0;
 
 
 // ******** global function implementations ********
-void cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
+void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
 	// create our new entry
-	cxa_runLoop_entry_t newEntry = {.cb=cbIn, .userVar=userVarIn};
+	cxa_runLoop_entry_t newEntry = {.threadId = threadIdIn, .cb=cbIn, .userVar=userVarIn};
 	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
 }
 
 
-void cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn)
+void cxa_runLoop_removeEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
@@ -84,7 +89,7 @@ void cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn)
 		cxa_runLoop_entry_t* currEntry = (cxa_runLoop_entry_t*)cxa_array_get(&cbs, i);
 		if( currEntry == NULL ) continue;
 
-		if( currEntry->cb == cbIn )
+		if( (currEntry->threadId == threadIdIn) && (currEntry->cb == cbIn) )
 		{
 			cxa_array_remove_atIndex(&cbs, i);
 			return;
@@ -100,7 +105,10 @@ void cxa_runLoop_clearAllEntries(void)
 }
 
 
-void cxa_runLoop_iterate(void)
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+void cxa_runLoop_iterate(int threadIdIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
@@ -110,7 +118,7 @@ void cxa_runLoop_iterate(void)
 
 	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
 	{
-		if( currEntry->cb != NULL) currEntry->cb(currEntry->userVar);
+		if( (currEntry->threadId == threadIdIn) && (currEntry->cb != NULL) ) currEntry->cb(currEntry->userVar);
 	}
 
 #if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
@@ -123,16 +131,19 @@ void cxa_runLoop_iterate(void)
 		cxa_logger_debug(&logger, "iteration  curr: %d ms  avg: %d ms", iter_time_us / 1000, averageIterPeriod_us / 1000);
 	}
 #endif
+
+	taskYIELD();
 }
 
 
-void cxa_runLoop_execute(void)
+void cxa_runLoop_execute(int threadIdIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
 	while(1)
 	{
-		cxa_runLoop_iterate();
+		cxa_runLoop_iterate(threadIdIn);
+
 	}
 }
 

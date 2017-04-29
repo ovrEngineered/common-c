@@ -21,6 +21,7 @@
 // ******** includes ********
 #include <stdbool.h>
 #include <stdint.h>
+#include <cxa_config.h>
 
 
 // ******** global macro definitions ********
@@ -34,8 +35,8 @@ typedef enum
 {
 	CXA_NETWORK_WIFISTATE_IDLE,
 	CXA_NETWORK_WIFISTATE_PROVISIONING,
-	CXA_NETWORK_WIFISTATE_CONNECTING,
-	CXA_NETWORK_WIFISTATE_CONNECTED,
+	CXA_NETWORK_WIFISTATE_ASSOCIATING,
+	CXA_NETWORK_WIFISTATE_ASSOCIATED,
 	CXA_NETWORK_WIFISTATE_MICROAP
 }cxa_network_wifiManager_state_t;
 
@@ -45,13 +46,13 @@ typedef void (*cxa_network_wifiManager_ssid_cb_t)(const char *const ssidIn, void
 
 
 // ******** global function prototypes ********
-void cxa_network_wifiManager_init(void);
+void cxa_network_wifiManager_init(int threadIdIn);
 void cxa_network_wifiManager_addListener(cxa_network_wifiManager_cb_t cb_idleEnterIn,
 										 cxa_network_wifiManager_cb_t cb_provisioningEnterIn,
-										 cxa_network_wifiManager_ssid_cb_t cb_connectingToSsidIn,
-										 cxa_network_wifiManager_ssid_cb_t cb_connectedToSsidIn,
-										 cxa_network_wifiManager_cb_t cb_disconnectedIn,
-										 cxa_network_wifiManager_ssid_cb_t cb_connectionToSsidFailedIn,
+										 cxa_network_wifiManager_ssid_cb_t cb_associatingWithSsidIn,
+										 cxa_network_wifiManager_ssid_cb_t cb_associatedWithSsidIn,
+										 cxa_network_wifiManager_cb_t cb_unassociatedIn,
+										 cxa_network_wifiManager_ssid_cb_t cb_associationWithSsidFailedIn,
 										 cxa_network_wifiManager_ssid_cb_t cb_microApEnterIn,
 										 void *userVarIn);
 

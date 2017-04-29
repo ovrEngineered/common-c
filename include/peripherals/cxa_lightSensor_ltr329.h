@@ -43,7 +43,7 @@ typedef struct
 
 
 // ******** global function prototypes ********
-void cxa_lightSensor_ltr329_init(cxa_lightSensor_ltr329_t *const lightSnsIn, cxa_i2cMaster_t *const i2cIn);
+void cxa_lightSensor_ltr329_init(cxa_lightSensor_ltr329_t *const lightSnsIn, cxa_i2cMaster_t *const i2cIn, int threadIdIn);
 
 
 #endif

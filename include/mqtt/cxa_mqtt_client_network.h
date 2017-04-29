@@ -46,7 +46,7 @@ struct cxa_mqtt_client_network
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, char *const clientIdIn);
+void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, char *const clientIdIn, int threadIdIn);
 
 bool cxa_mqtt_client_network_connectToHost(cxa_mqtt_client_network_t *const clientIn, char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
 										   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);

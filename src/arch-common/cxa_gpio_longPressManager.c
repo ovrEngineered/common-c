@@ -44,7 +44,7 @@ static void notifySegmentSelected(cxa_gpio_longPressManager_segment_t* segmentIn
 
 
 // ******** global function implementations ********
-void cxa_gpio_longPressManager_init(cxa_gpio_longPressManager_t *const lpmIn, cxa_gpio_t *const gpioIn)
+void cxa_gpio_longPressManager_init(cxa_gpio_longPressManager_t *const lpmIn, cxa_gpio_t *const gpioIn, int threadIdIn)
 {
 	cxa_assert(lpmIn);
 	cxa_assert(gpioIn);
@@ -57,7 +57,7 @@ void cxa_gpio_longPressManager_init(cxa_gpio_longPressManager_t *const lpmIn, cx
 	cxa_array_initStd(&lpmIn->segments, lpmIn->segments_raw);
 
 	// register for runLoop updates
-	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)lpmIn);
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)lpmIn);
 }
 
 

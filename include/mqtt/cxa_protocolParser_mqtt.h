@@ -38,7 +38,7 @@ typedef struct
 
 
 // ******** global function prototypes ********
-void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn);
+void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, int threadIdIn);
 
 
 #endif // CXA_PROTOCOLPARSER_MQTT_H_

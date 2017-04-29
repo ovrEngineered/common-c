@@ -49,6 +49,17 @@ typedef struct cxa_rgbLed cxa_rgbLed_t;
 
 
 /**
+ * @public
+ */
+typedef enum
+{
+	CXA_RGBLED_STATE_SOLID,
+	CXA_RGBLED_STATE_BLINK,
+	CXA_RGBLED_STATE_FLASHONCE
+}cxa_rgbLed_state_t;
+
+
+/**
  * @protected
  */
 typedef void (*cxa_rgbLed_scm_setRgb_t)(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn);
@@ -60,10 +71,23 @@ typedef void (*cxa_rgbLed_scm_setRgb_t)(cxa_rgbLed_t *const superIn, uint8_t rIn
 typedef void (*cxa_rgbLed_scm_blink_t)(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
 									   uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
 
+/**
+ * @protected
+ */
+typedef void (*cxa_rgbLed_scm_flashOnce_t)(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
+									   	   uint16_t period_msIn);
+
+/**
+ * @private
+ */
 struct cxa_rgbLed
 {
 	cxa_rgbLed_scm_setRgb_t scm_setRgb;
 	cxa_rgbLed_scm_blink_t scm_blink;
+	cxa_rgbLed_scm_flashOnce_t scm_flashOnce;
+
+	cxa_rgbLed_state_t prevState;
+	cxa_rgbLed_state_t currState;
 };
 
 
@@ -73,7 +97,8 @@ struct cxa_rgbLed
  */
 void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
 					 cxa_rgbLed_scm_setRgb_t scm_setRgbIn,
-					 cxa_rgbLed_scm_blink_t scm_blinkIn);
+					 cxa_rgbLed_scm_blink_t scm_blinkIn,
+					 cxa_rgbLed_scm_flashOnce_t scm_flashOnceIn);
 
 
 /**
@@ -88,5 +113,11 @@ void cxa_rgbLed_setRgb(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint
 void cxa_rgbLed_blink(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
 					  uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
 
+
+/**
+ * @public
+ */
+void cxa_rgbLed_flashOnce(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
+						  uint16_t period_msIn);
 
 #endif /* CXA_RGBLED_H_ */

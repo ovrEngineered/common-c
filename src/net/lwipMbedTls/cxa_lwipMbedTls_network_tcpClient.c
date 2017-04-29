@@ -26,7 +26,7 @@
 #include <cxa_stringUtils.h>
 #include <cxa_uniqueId.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
 
 #include <lwip/err.h>
@@ -73,7 +73,7 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn)
+void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn, int threadIdIn)
 {
 	cxa_assert(netClientIn);
 
@@ -86,7 +86,7 @@ void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t 
 	netClientIn->targetPortNum[0] = 0;
 	netClientIn->useClientCert = false;
 
-	cxa_stateMachine_init(&netClientIn->stateMachine, "tcpClient");
+	cxa_stateMachine_init(&netClientIn->stateMachine, "tcpClient", threadIdIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_IDLE, "idle", NULL, NULL, NULL, (void*)netClientIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_CONNECTING, "connecting", NULL, stateCb_connecting_state, NULL, (void*)netClientIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, stateCb_connected_leave, (void*)netClientIn);
@@ -114,7 +114,11 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	cxa_assert(netClientIn);
 
 	// make sure we are currently idle
-	if( cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) != STATE_IDLE ) return false;
+	if( cxa_stateMachine_getCurrentState(&netClientIn->stateMachine) != STATE_IDLE )
+	{
+		cxa_logger_trace(&netClientIn->super.logger, "not idle, cannot connect");
+		return false;
+	}
 
 	int tmpRet;
 	uint16_t tmpCrc;
@@ -236,6 +240,10 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 
 static void scm_disconnectFromHost(cxa_network_tcpClient_t *const superIn)
 {
+	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)superIn;
+	cxa_assert(netClientIn);
+
+	cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_IDLE);
 }
 
 
@@ -330,8 +338,11 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStat
 	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	// reset our ssl context
-	mbedtls_ssl_session_reset(&netClientIn->tls.sslContext);
+	// "Gracefully shutdown the connection and free associated data"
+	mbedtls_net_free(&netClientIn->tls.server_fd);
+
+	// Free referenced items in an SSL context and clear memory
+	mbedtls_ssl_free((&netClientIn->tls.sslContext));
 
 	// notify our listeners
 	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
@@ -346,6 +357,12 @@ static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, int prevSt
 {
 	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
+
+	// "Gracefully shutdown the connection and free associated data"
+	mbedtls_net_free(&netClientIn->tls.server_fd);
+
+	// Free referenced items in an SSL context and clear memory
+	mbedtls_ssl_free((&netClientIn->tls.sslContext));
 
 	// notify our listeners
 	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)

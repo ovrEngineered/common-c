@@ -43,6 +43,9 @@
 typedef struct cxa_led cxa_led_t;
 
 
+/**
+ * @public
+ */
 typedef enum
 {
 	CXA_LED_STATE_OFF,

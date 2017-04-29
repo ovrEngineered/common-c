@@ -31,6 +31,7 @@
 static void scm_turnOn(cxa_led_t *const superIn);
 static void scm_turnOff(cxa_led_t *const superIn);
 static void scm_blink(cxa_led_t *const superIn, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn);
+static void scm_setBrightness(cxa_led_t *const superIn, uint8_t brightnessIn);
 
 static void cb_onRunLoopUpdate(void* userVarIn);
 
@@ -39,23 +40,22 @@ static void cb_onRunLoopUpdate(void* userVarIn);
 
 
 // ******** global function implementations ********
-void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, bool driveOffStateIn)
+void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, int threadIdIn)
 {
 	cxa_assert(ledIn);
 	cxa_assert(gpioIn);
 
 	// save our references
 	ledIn->gpio = gpioIn;
-	ledIn->driveOffState = driveOffStateIn;
 
 	// setup our internal state
 	cxa_timeDiff_init(&ledIn->td_blink);
 
 	// initialize our super class (since it sets our initial value)
-	cxa_led_init(&ledIn->super, scm_turnOn, scm_turnOff, scm_blink, NULL);
+	cxa_led_init(&ledIn->super, scm_turnOn, scm_turnOff, scm_blink, scm_setBrightness);
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)ledIn);
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)ledIn);
 }
 
 
@@ -65,7 +65,6 @@ static void scm_turnOn(cxa_led_t *const superIn)
 	cxa_led_gpio_t* ledIn = (cxa_led_gpio_t*)superIn;
 	cxa_assert(ledIn);
 
-	if( !ledIn->driveOffState ) cxa_gpio_setDirection(ledIn->gpio, CXA_GPIO_DIR_OUTPUT);
 	cxa_gpio_setValue(ledIn->gpio, true);
 }
 
@@ -75,8 +74,7 @@ static void scm_turnOff(cxa_led_t *const superIn)
 	cxa_led_gpio_t* ledIn = (cxa_led_gpio_t*)superIn;
 	cxa_assert(ledIn);
 
-	if( ledIn->driveOffState ) cxa_gpio_setValue(ledIn->gpio, false);
-	else cxa_gpio_setDirection(ledIn->gpio, CXA_GPIO_DIR_INPUT);
+	cxa_gpio_setValue(ledIn->gpio, false);
 }
 
 
@@ -87,6 +85,16 @@ static void scm_blink(cxa_led_t *const superIn, uint32_t onPeriod_msIn, uint32_t
 
 	ledIn->onPeriod_ms = onPeriod_msIn;
 	ledIn->offPeriod_ms = offPeriod_msIn;
+}
+
+
+static void scm_setBrightness(cxa_led_t *const superIn, uint8_t brightnessIn)
+{
+	cxa_led_gpio_t* ledIn = (cxa_led_gpio_t*)superIn;
+	cxa_assert(ledIn);
+
+	if( brightnessIn > 0 ) scm_turnOn(superIn);
+	else scm_turnOff(superIn);
 }
 
 

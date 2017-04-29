@@ -45,19 +45,19 @@ static void cb_network_onDisconnect(cxa_network_tcpClient_t *const superIn, void
 
 
 // ******** global function implementations ********
-void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, char *const clientIdIn)
+void cxa_mqtt_client_network_init(cxa_mqtt_client_network_t *const clientIn, char *const clientIdIn, int threadIdIn)
 {
 	cxa_assert(clientIn);
 
 	// initialize our network client
-	clientIn->netClient = cxa_network_factory_reserveTcpClient();
+	clientIn->netClient = cxa_network_factory_reserveTcpClient(threadIdIn);
 	cxa_assert(clientIn->netClient);
 	cxa_network_tcpClient_addListener(clientIn->netClient,
 									  cb_network_onConnect, cb_network_onConnectFail, cb_network_onDisconnect,
 									  (void*)clientIn);
 
 	// initialize our super class
-	cxa_mqtt_client_init(&clientIn->super, cxa_network_tcpClient_getIoStream(clientIn->netClient), KEEPALIVE_TIMEOUT_S, clientIdIn);
+	cxa_mqtt_client_init(&clientIn->super, cxa_network_tcpClient_getIoStream(clientIn->netClient), KEEPALIVE_TIMEOUT_S, clientIdIn, threadIdIn);
 
 	// setup our overrides
 	clientIn->super.scm_onDisconnect = scm_onDisconnect;

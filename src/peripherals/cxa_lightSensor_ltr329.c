@@ -70,7 +70,7 @@ static void i2cCb_onWriteComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessf
 
 
 // ******** global function implementations ********
-void cxa_lightSensor_ltr329_init(cxa_lightSensor_ltr329_t *const lightSnsIn, cxa_i2cMaster_t *const i2cIn)
+void cxa_lightSensor_ltr329_init(cxa_lightSensor_ltr329_t *const lightSnsIn, cxa_i2cMaster_t *const i2cIn, int threadIdIn)
 {
 	cxa_assert(lightSnsIn);
 	cxa_assert(i2cIn);
@@ -78,7 +78,7 @@ void cxa_lightSensor_ltr329_init(cxa_lightSensor_ltr329_t *const lightSnsIn, cxa
 	// save our references
 	lightSnsIn->i2c = i2cIn;
 
-	cxa_stateMachine_init(&lightSnsIn->stateMachine, "ltr329");
+	cxa_stateMachine_init(&lightSnsIn->stateMachine, "ltr329", threadIdIn);
 	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_STANDBY, "standby", stateCb_standby_enter, NULL, NULL, (void*)lightSnsIn);
 	cxa_stateMachine_addState_timed(&lightSnsIn->stateMachine, STATE_STARTMEASURE, "start", STATE_WRITE_IR_BYTE0, STARTUP_TIME_MS, stateCb_startMeasure_enter, NULL, NULL, (void*)lightSnsIn);
 	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_WRITE_IR_BYTE0, "writeIr0", stateCb_writeIr_byte0_enter, NULL, NULL, (void*)lightSnsIn);

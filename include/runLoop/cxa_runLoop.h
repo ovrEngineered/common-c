@@ -35,6 +35,8 @@
 	#define CXA_RUNLOOP_MAXNUM_ENTRIES				10
 #endif
 
+#define CXA_RUNLOOP_THREADID_DEFAULT				0
+
 
 // ******** global type definitions *********
 /**
@@ -44,12 +46,12 @@ typedef void (*cxa_runLoop_cb_update_t)(void* userVarIn);
 
 
 // ******** global function prototypes ********
-void cxa_runLoop_addEntry(cxa_runLoop_cb_update_t cbIn, void *const userVarIn);
-void cxa_runLoop_removeEntry(cxa_runLoop_cb_update_t cbIn);
+void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn, void *const userVarIn);
+void cxa_runLoop_removeEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn);
 void cxa_runLoop_clearAllEntries(void);
 
-void cxa_runLoop_iterate(void);
-void cxa_runLoop_execute(void);
+void cxa_runLoop_iterate(int threadIdIn);
+void cxa_runLoop_execute(int threadIdIn);
 
 
 #endif // CXA_RUN_LOOP_H_

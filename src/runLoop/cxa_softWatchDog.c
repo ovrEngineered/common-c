@@ -17,7 +17,6 @@
 
 
 // ******** includes ********
-#include <cxa_array.h>
 #include <cxa_assert.h>
 #include <cxa_runLoop.h>
 
@@ -32,24 +31,18 @@
 
 
 // ******** local function prototypes ********
-static void cxa_softWatchDog_initSystem(void);
 static void cb_onRunLoopUpdate(void* userVarIn);
 
 
 // ********  local variable declarations *********
-static bool isInit = false;
-
-static cxa_array_t watchdogs;
-static cxa_softWatchDog_t* watchdogs_raw[CXA_SOFTWATCHDOG_MAXNUM_ENTRIES];
 
 
 // ******** global function implementations ********
-void cxa_softWatchDog_init(cxa_softWatchDog_t *const swdIn, uint32_t timeoutPeriod_msIn, cxa_softWatchDog_cb_t cbIn, void *const userVarIn)
+void cxa_softWatchDog_init(cxa_softWatchDog_t *const swdIn, uint32_t timeoutPeriod_msIn, int threadIdIn,
+						   cxa_softWatchDog_cb_t cbIn, void *const userVarIn)
 {
 	cxa_assert(swdIn);
 	cxa_assert(cbIn);
-
-	if( !isInit ) cxa_softWatchDog_initSystem();
 
 	// save our references
 	swdIn->isPaused = true;
@@ -58,8 +51,8 @@ void cxa_softWatchDog_init(cxa_softWatchDog_t *const swdIn, uint32_t timeoutPeri
 	swdIn->timeoutPeriod_ms = timeoutPeriod_msIn;
 	cxa_timeDiff_init(&swdIn->td_timeout);
 
-	// add to our watchdogs
-	cxa_assert(cxa_array_append(&watchdogs, (void*)&swdIn));
+	// register for our runloop
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)swdIn);
 }
 
 
@@ -89,27 +82,15 @@ bool cxa_softWatchDog_isPaused(cxa_softWatchDog_t *const swdIn)
 
 
 // ******** local function implementations ********
-static void cxa_softWatchDog_initSystem(void)
-{
-	cxa_array_initStd(&watchdogs, watchdogs_raw);
-
-	cxa_runLoop_addEntry(cb_onRunLoopUpdate, NULL);
-
-	isInit = true;
-}
-
-
 static void cb_onRunLoopUpdate(void* userVarIn)
 {
-	cxa_array_iterate(&watchdogs, currSwd, cxa_softWatchDog_t*)
-	{
-		if( currSwd == NULL ) continue;
+	cxa_softWatchDog_t* swdIn = (cxa_softWatchDog_t*)userVarIn;
+	cxa_assert(swdIn);
 
-		if( (!(*currSwd)->isPaused) && cxa_timeDiff_isElapsed_ms(&(*currSwd)->td_timeout, (*currSwd)->timeoutPeriod_ms) )
-		{
-			// watchdog expired...call our callback once and only once
-			if( (*currSwd)->cb != NULL ) (*currSwd)->cb((*currSwd)->userVar);
-			(*currSwd)->isPaused = true;
-		}
+	if( !swdIn->isPaused && cxa_timeDiff_isElapsed_ms(&swdIn->td_timeout, swdIn->timeoutPeriod_ms) )
+	{
+		// watchdog expired...call our callback once and only once
+		if( swdIn->cb != NULL) swdIn->cb(swdIn->userVar);
+		swdIn->isPaused = true;
 	}
 }

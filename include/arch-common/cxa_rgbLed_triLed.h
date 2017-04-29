@@ -29,15 +29,25 @@
 
 
 // ******** includes ********
-#include <cxa_rgbLed.h>
 #include <cxa_led.h>
+#include <cxa_rgbLed.h>
+#include <cxa_timeDiff.h>
 
 
 // ******** global macro definitions ********
 
 
 // ******** global type definitions *********
-typedef struct
+/**
+ * @public
+ */
+typedef struct cxa_rgbLed_triLed cxa_rgbLed_triLed_t;
+
+
+/**
+ * @private
+ */
+struct cxa_rgbLed_triLed
 {
 	cxa_rgbLed_t super;
 
@@ -45,12 +55,37 @@ typedef struct
 	cxa_led_t* led_g;
 	cxa_led_t* led_b;
 
-}cxa_rgbLed_triLed_t;
+	cxa_timeDiff_t td_gp;
+
+	struct
+	{
+		uint8_t r;
+		uint8_t g;
+		uint8_t b;
+	}lastSet;
+
+	struct
+	{
+		uint8_t r;
+		uint8_t g;
+		uint8_t b;
+		bool isOn;
+
+		uint32_t onPeriod_ms;
+		uint32_t offPeriod_ms;
+	}blink;
+
+	struct
+	{
+		uint32_t period_ms;
+	}flash;
+};
 
 
 // ******** global function prototypes ********
 void cxa_rgbLed_triLed_init(cxa_rgbLed_triLed_t *const ledIn,
-							cxa_led_t *const led_rIn, cxa_led_t *const led_gIn, cxa_led_t *const led_bIn);
+							cxa_led_t *const led_rIn, cxa_led_t *const led_gIn, cxa_led_t *const led_bIn,
+							int threadIdIn);
 
 
 #endif /* CXA_RGBLED_TRILED_H_ */

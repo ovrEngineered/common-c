@@ -122,7 +122,7 @@ struct cxa_stateMachine
 
 
 // ******** global function prototypes ********
-void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn);
+void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, int threadIdIn);
 
 void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,
 	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn,

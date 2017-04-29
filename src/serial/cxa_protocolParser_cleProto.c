@@ -63,7 +63,7 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevState
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePpIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn)
+void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePpIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, int threadIdIn)
 {
 	cxa_assert(clePpIn);
 	cxa_assert(ioStreamIn);
@@ -72,7 +72,7 @@ void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePp
 	cxa_protocolParser_init(&clePpIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
 
 	// setup our state machine
-	cxa_stateMachine_init(&clePpIn->stateMachine, "protocolParser");
+	cxa_stateMachine_init(&clePpIn->stateMachine, "protocolParser", threadIdIn);
 	cxa_stateMachine_addState(&clePpIn->stateMachine, RX_STATE_IDLE, "idle", rxState_cb_idle_enter, rxState_cb_idle_state, rxState_cb_idle_leave, (void*)clePpIn);
 	cxa_stateMachine_addState(&clePpIn->stateMachine, RX_STATE_WAIT_0x80, "wait_0x80", NULL, rxState_cb_wait0x80_state, NULL, (void*)clePpIn);
 	cxa_stateMachine_addState(&clePpIn->stateMachine, RX_STATE_WAIT_0x81, "wait_0x81", NULL, rxState_cb_wait0x81_state, NULL, (void*)clePpIn);

@@ -62,7 +62,7 @@ static void stateCb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdI
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_bgapi_init(cxa_protocolParser_bgapi_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn)
+void cxa_protocolParser_bgapi_init(cxa_protocolParser_bgapi_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, int threadIdIn)
 {
 	cxa_assert(ppIn);
 	cxa_assert(ioStreamIn);
@@ -71,7 +71,7 @@ void cxa_protocolParser_bgapi_init(cxa_protocolParser_bgapi_t *const ppIn, cxa_i
 	cxa_protocolParser_init(&ppIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
 
 	// setup our state machine
-	cxa_stateMachine_init(&ppIn->stateMachine, "bgapiPP");
+	cxa_stateMachine_init(&ppIn->stateMachine, "bgapiPP", threadIdIn);
 	cxa_stateMachine_addState(&ppIn->stateMachine, RX_STATE_IDLE, "idle", stateCb_idle_enter, stateCb_idle_state, stateCb_idle_leave, (void*)ppIn);
 	cxa_stateMachine_addState(&ppIn->stateMachine, RX_STATE_WAIT_PACKET_START, "waitStart", stateCb_waitPacketStart_enter, stateCb_waitPacketStart_state, NULL, (void*)ppIn);
 	cxa_stateMachine_addState(&ppIn->stateMachine, RX_STATE_WAIT_PACKETRX, "waitRx", stateCb_waitPacketRx_enter, stateCb_waitPacketRx_state, NULL, (void*)ppIn);

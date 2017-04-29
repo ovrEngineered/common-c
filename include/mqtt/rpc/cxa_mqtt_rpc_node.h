@@ -107,6 +107,11 @@ typedef bool (*cxa_mqtt_rpc_node_scm_handleMessage_downstream_t)(cxa_mqtt_rpc_no
 																 char *const remainingTopicIn, uint16_t remainingTopicLen_bytesIn,
 																 cxa_mqtt_message_t *const msgIn);
 
+/**
+ * @protected
+ */
+typedef cxa_mqtt_client_t* (*cxa_mqtt_rpc_node_scm_getClient_t)(cxa_mqtt_rpc_node_t *const superIn);
+
 
 /**
  * @private
@@ -154,6 +159,7 @@ struct cxa_mqtt_rpc_node
 
 	cxa_mqtt_rpc_node_scm_handleMessage_upstream_t scm_handleMessage_upstream;
 	cxa_mqtt_rpc_node_scm_handleMessage_downstream_t scm_handleMessage_downstream;
+	cxa_mqtt_rpc_node_scm_getClient_t scm_getClient;
 
 	cxa_logger_t logger;
 };
@@ -167,9 +173,13 @@ void cxa_mqtt_rpc_node_init_formattedString(cxa_mqtt_rpc_node_t *const nodeIn, c
 
 
 /**
- * @public
+ * @protected
  */
-void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, va_list varArgsIn);
+void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+							 cxa_mqtt_rpc_node_scm_handleMessage_upstream_t scm_handleMessage_upstreamIn,
+							 cxa_mqtt_rpc_node_scm_handleMessage_downstream_t scm_handleMessage_downstreamIn,
+							 cxa_mqtt_rpc_node_scm_getClient_t scm_getClientIn,
+							 const char *nameFmtIn, va_list varArgsIn);
 
 
 /**
@@ -190,6 +200,12 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
  * @public
  */
 bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn, void* dataIn, size_t dataSize_bytesIn);
+
+
+/**
+ * @public
+ */
+cxa_mqtt_client_t* cxa_mqtt_rpc_node_getClient(cxa_mqtt_rpc_node_t *const nodeIn);
 
 
 #endif // CXA_MQTT_RPC_NODE_H_

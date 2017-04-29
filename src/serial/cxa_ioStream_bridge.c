@@ -37,7 +37,8 @@ static void cb_onRunLoopUpdate(void* userVarIn);
 // ******** global function implementations ********
 void cxa_ioStream_bridge_init(cxa_ioStream_bridge_t *const bridgeIn,
 								cxa_ioStream_t *const stream1In,
-								cxa_ioStream_t *const stream2In)
+								cxa_ioStream_t *const stream2In,
+								int threadIdIn)
 {
 	cxa_assert(bridgeIn);
 	cxa_assert(stream1In);
@@ -48,7 +49,7 @@ void cxa_ioStream_bridge_init(cxa_ioStream_bridge_t *const bridgeIn,
 	bridgeIn->stream2 = stream2In;
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)bridgeIn);
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)bridgeIn);
 }
 
 

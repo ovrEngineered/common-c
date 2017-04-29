@@ -67,7 +67,7 @@ typedef void (*cxa_console_command_cb_t)(cxa_array_t *const argsIn, cxa_ioStream
 
 
 // ******** global function prototypes ********
-void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn);
+void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn, int threadIdIn);
 
 void cxa_console_addCommand(const char* commandIn, const char* descriptionIn,
 							cxa_console_argDescriptor_t* argDescsIn, size_t numArgsIn,

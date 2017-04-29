@@ -57,7 +57,7 @@ static tcpClient_entry_t tcpClientMap[CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS];
 
 
 // ******** global function implementations ********
-cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(void)
+cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(int threadIdIn)
 {
 	if( !isInit ) cxa_network_factory_init();
 
@@ -68,6 +68,7 @@ cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(void)
 		if( !tcpClientMap[i].isReserved )
 		{
 			tcpClientMap[i].isReserved = true;
+			cxa_lwipMbedTls_network_tcpClient_init(&tcpClientMap[i].client, threadIdIn);
 			retVal = &tcpClientMap[i].client.super;
 			break;
 		}
@@ -109,7 +110,6 @@ static void cxa_network_factory_init(void)
 	for( size_t i = 0; i < (sizeof(tcpClientMap)/sizeof(*tcpClientMap)); i++ )
 	{
 		tcpClientMap[i].isReserved = false;
-		cxa_lwipMbedTls_network_tcpClient_init(&tcpClientMap[i].client);
 	}
 #endif
 

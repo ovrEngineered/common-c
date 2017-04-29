@@ -26,7 +26,7 @@
 #include <cxa_mqtt_rpc_message.h>
 #include <cxa_stringUtils.h>
 
-#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
@@ -42,6 +42,7 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 									char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
 
 static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_mqtt_message_t *const msgIn);
+static cxa_mqtt_client_t* scm_getClient(cxa_mqtt_rpc_node_t *const superIn);
 
 static cxa_mqtt_rpc_methodRetVal_t rpcMethodCb_isAlive(cxa_mqtt_rpc_node_t *const superIn,
 													   cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const returnParamsOut,
@@ -67,11 +68,10 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	// initialize our super class
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
-	cxa_mqtt_rpc_node_vinit(&nodeIn->super, NULL, nameFmtIn, varArgs);
+	cxa_mqtt_rpc_node_vinit(&nodeIn->super, NULL,
+							scm_handleMessage_upstream, NULL, scm_getClient,
+							nameFmtIn, varArgs);
 	va_end(varArgs);
-
-	// setup our subclass methods / overrides
-	nodeIn->super.scm_handleMessage_upstream = scm_handleMessage_upstream;
 
 	// set our last-will-testament message (for status)
 	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
@@ -99,7 +99,7 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/#", sizeof(subscriptTopic)) );
 
 	// register for mqtt events
-	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, (void*)nodeIn);
+	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, NULL,  (void*)nodeIn);
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
 
 	cxa_mqtt_rpc_node_addMethod(&nodeIn->super, "isAlive", rpcMethodCb_isAlive, (void*)nodeIn);
@@ -172,6 +172,15 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	{
 		cxa_mqtt_client_publish_message(nodeIn->mqttClient, msgIn);
 	}
+}
+
+
+static cxa_mqtt_client_t* scm_getClient(cxa_mqtt_rpc_node_t *const superIn)
+{
+	cxa_mqtt_rpc_node_root_t* nodeIn = (cxa_mqtt_rpc_node_root_t*)superIn;
+	cxa_assert(nodeIn);
+
+	return nodeIn->mqttClient;
 }
 
 

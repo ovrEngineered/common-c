@@ -44,13 +44,15 @@
 // ******** global function prototypes ********
 void cxa_mqtt_connManager_init(cxa_led_t *const ledConnIn,
 							   char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
-							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);
+							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn,
+							   int threadIdIn);
 
 void cxa_mqtt_connManager_init_clientCert(cxa_led_t *const ledConnIn,
 										  char *const hostNameIn, uint16_t portNumIn,
 										  const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 										  const char* clientCertIn, size_t clientCertLen_bytesIn,
-										  const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn);
+										  const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+										  int threadIdIn);
 
 cxa_mqtt_client_t* cxa_mqtt_connManager_getMqttClient(void);
 

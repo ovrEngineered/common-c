@@ -28,7 +28,7 @@
 #include <cxa_runLoop.h>
 #include <cxa_stringUtils.h>
 
-#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL		CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
@@ -44,6 +44,7 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 										 char *const remainingTopicIn, uint16_t remainingTopicLen_bytesIn,
 										 cxa_mqtt_message_t *const msgIn);
+static cxa_mqtt_client_t* scm_getClient(cxa_mqtt_rpc_node_t *const superIn);
 
 static void cb_onRunLoopUpdate(void* userVarIn);
 
@@ -65,20 +66,27 @@ void cxa_mqtt_rpc_node_init_formattedString(cxa_mqtt_rpc_node_t *const nodeIn, c
 
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
-	cxa_mqtt_rpc_node_vinit(nodeIn, parentNodeIn, nameFmtIn, varArgs);
+	cxa_mqtt_rpc_node_vinit(nodeIn, parentNodeIn,
+							scm_handleMessage_upstream, scm_handleMessage_downstream, scm_getClient,
+							nameFmtIn, varArgs);
 	va_end(varArgs);
 }
 
 
-void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn, const char *nameFmtIn, va_list varArgsIn)
+void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+							 cxa_mqtt_rpc_node_scm_handleMessage_upstream_t scm_handleMessage_upstreamIn,
+							 cxa_mqtt_rpc_node_scm_handleMessage_downstream_t scm_handleMessage_downstreamIn,
+							 cxa_mqtt_rpc_node_scm_getClient_t scm_getClientIn,
+							 const char *nameFmtIn, va_list varArgsIn)
 {
 	cxa_assert(nodeIn);
 	cxa_assert(nameFmtIn);
 
 	// save our references and set some defaults
 	nodeIn->parentNode = parentNodeIn;
-	nodeIn->scm_handleMessage_upstream = scm_handleMessage_upstream;
-	nodeIn->scm_handleMessage_downstream = scm_handleMessage_downstream;
+	nodeIn->scm_handleMessage_upstream = (scm_handleMessage_upstreamIn != NULL) ? scm_handleMessage_upstreamIn : scm_handleMessage_upstream;
+	nodeIn->scm_handleMessage_downstream = (scm_handleMessage_downstreamIn != NULL) ? scm_handleMessage_downstreamIn : scm_handleMessage_downstream;
+	nodeIn->scm_getClient = (scm_getClientIn != NULL) ? scm_getClientIn : scm_getClient;
 
 	// assemble our name
 	cxa_assert(vsnprintf(nodeIn->name, CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES, nameFmtIn, varArgsIn) < CXA_MQTT_RPCNODE_MAXLEN_NAME_BYTES);
@@ -96,7 +104,9 @@ void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_nod
 	if( nodeIn->parentNode != NULL ) cxa_assert( cxa_array_append(&nodeIn->parentNode->subNodes, (void*)&nodeIn) );
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)nodeIn);
+	cxa_mqtt_client_t* mqttClient = cxa_mqtt_rpc_node_getClient(nodeIn);
+	cxa_assert(mqttClient);
+	cxa_runLoop_addEntry(cxa_mqtt_client_getThreadId(mqttClient), cb_onRunLoopUpdate, (void*)nodeIn);
 }
 
 
@@ -264,6 +274,15 @@ bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, ch
 }
 
 
+cxa_mqtt_client_t* cxa_mqtt_rpc_node_getClient(cxa_mqtt_rpc_node_t *const nodeIn)
+{
+	cxa_assert(nodeIn);
+	cxa_assert(nodeIn->scm_getClient != NULL);
+
+	return nodeIn->scm_getClient(nodeIn);
+}
+
+
 // ******** local function implementations ********
 static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_mqtt_message_t *const msgIn)
 {
@@ -427,6 +446,12 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	}
 
 	return false;
+}
+
+
+static cxa_mqtt_client_t* scm_getClient(cxa_mqtt_rpc_node_t *const superIn)
+{
+	return (superIn->parentNode != NULL) ? cxa_mqtt_rpc_node_getClient(superIn->parentNode) : NULL;
 }
 
 

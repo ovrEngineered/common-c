@@ -52,7 +52,7 @@ void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *c
 	ledIn->chanIndex_b = chanIndex_bIn;
 
 	// initialize our super class
-	cxa_rgbLed_init(&ledIn->super, scm_setRgb, scm_blink);
+	cxa_rgbLed_init(&ledIn->super, scm_setRgb, scm_blink, NULL);
 }
 
 

@@ -51,8 +51,10 @@ static void stateCb_pulseFadeOut_state(cxa_stateMachine_t *const smIn, void *use
 
 
 // ******** global function implementations ********
-void cxa_ws2812String_init(cxa_ws2812String_t *const ws2812In, cxa_ws2812String_pixelBuffer_t* pixelBuffersIn, size_t numPixelBuffersIn,
-						   cxa_ws2812String_scm_writeBytes_t scm_writeBytesIn)
+void cxa_ws2812String_init(cxa_ws2812String_t *const ws2812In,
+						   cxa_ws2812String_pixelBuffer_t* pixelBuffersIn, size_t numPixelBuffersIn,
+						   cxa_ws2812String_scm_writeBytes_t scm_writeBytesIn,
+						   int threadIdIn)
 {
 	cxa_assert(ws2812In);
 	cxa_assert(pixelBuffersIn != NULL);
@@ -71,7 +73,7 @@ void cxa_ws2812String_init(cxa_ws2812String_t *const ws2812In, cxa_ws2812String_
 	cxa_timeDiff_init(&ws2812In->td_fade);
 
 	// setup our state machine
-	cxa_stateMachine_init(&ws2812In->stateMachine, "ws2812");
+	cxa_stateMachine_init(&ws2812In->stateMachine, "ws2812", threadIdIn);
 	cxa_stateMachine_addState(&ws2812In->stateMachine, STATE_IDLE, "idle", NULL, NULL, NULL, (void*)ws2812In);
 	cxa_stateMachine_addState(&ws2812In->stateMachine, STATE_WRITE_INDIV_PIX, "writeIndivPix", stateCb_writeIndivPix_enter, NULL, NULL, (void*)ws2812In);
 	cxa_stateMachine_addState(&ws2812In->stateMachine, STATE_PULSE_FADEIN, "pulseFadeIn", stateCb_pulseFadeXXX_enter, stateCb_pulseFadeIn_state, NULL, (void*)ws2812In);

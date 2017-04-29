@@ -71,7 +71,7 @@ static bool doesTopicMatchFilter(char* topicIn, char* filterIn);
 
 
 // ******** global function implementations ********
-void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, char *const clientIdIn)
+void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, char *const clientIdIn, int threadIdIn)
 {
 	cxa_assert(clientIn);
 	cxa_assert(iosIn);
@@ -79,6 +79,7 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 
 	// save our references
 	clientIn->clientId = clientIdIn;
+	clientIn->threadId = threadIdIn;
 
 	// setup some initial values
 	clientIn->keepAliveTimeout_s = keepAliveTimeout_sIn;
@@ -92,7 +93,7 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	cxa_assert(msg);
 
 	// setup our protocol parser
-	cxa_protocolParser_mqtt_init(&clientIn->mpp, iosIn, msg->buffer);
+	cxa_protocolParser_mqtt_init(&clientIn->mpp, iosIn, msg->buffer, threadIdIn);
 	cxa_protocolParser_addProtocolListener(&clientIn->mpp.super, protoParseCb_onIoException, NULL, (void*)clientIn);
 	cxa_protocolParser_addPacketListener(&clientIn->mpp.super, protoParseCb_onPacketReceived, (void*)clientIn);
 
@@ -111,7 +112,7 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	clientIn->will.payloadLen_bytes = 0;
 
 	// setup our state machine
-	cxa_stateMachine_init(&clientIn->stateMachine, "mqttClient");
+	cxa_stateMachine_init(&clientIn->stateMachine, "mqttClient", threadIdIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_IDLE, "idle", stateCb_idle_enter, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTING_TRANSPORT, "connectingTransport", NULL, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, (void*)clientIn);
@@ -151,6 +152,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
 								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
+								 cxa_mqtt_client_cb_onPingRespRx_t cb_onPingRespRxIn,
 								 void *const userVarIn)
 {
 	cxa_assert(clientIn);
@@ -160,6 +162,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 		.cb_onConnect=cb_onConnectIn,
 		.cb_onConnectFail=cb_onConnectFailIn,
 		.cb_onDisconnect=cb_onDisconnectIn,
+		.cb_onPingRespRx=cb_onPingRespRxIn,
 		.userVar=userVarIn
 	};
 	cxa_assert_msg(cxa_array_append(&clientIn->listeners, &newEntry), "increase CXA_MQTT_CLIENT_MAXNUM_LISTENERS");
@@ -303,6 +306,14 @@ void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFil
 		if( msg != NULL ) cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 	}
 
+}
+
+
+int cxa_mqtt_client_getThreadId(cxa_mqtt_client_t *const clientIn)
+{
+	cxa_assert(clientIn);
+
+	return clientIn->threadId;
 }
 
 
@@ -567,6 +578,13 @@ static void handleMessage_pingResp(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 
 	cxa_logger_trace(&clientIn->logger, "got PINGRESP");
 	cxa_timeDiff_setStartTime_now(&clientIn->td_receiveKeepAlive);
+
+	// notify our listeners
+	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onPingRespRx != NULL ) currListener->cb_onPingRespRx(clientIn, currListener->userVar);
+	}
 }
 
 

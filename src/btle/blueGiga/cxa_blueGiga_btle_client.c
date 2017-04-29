@@ -123,7 +123,7 @@ static void stateCb_currProc_error_enter(cxa_stateMachine_t *const smIn, int pre
 
 
 // ******** global function implementations ********
-void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cxa_ioStream_t *const iosIn, cxa_gpio_t *const gpio_resetIn)
+void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cxa_ioStream_t *const iosIn, cxa_gpio_t *const gpio_resetIn, int threadIdIn)
 {
 	cxa_assert(btlecIn);
 	cxa_assert(iosIn);
@@ -131,8 +131,8 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 
 	// save our references and initialize our internal state
 	btlecIn->gpio_reset = gpio_resetIn;
-	cxa_softWatchDog_init(&btlecIn->inFlightRequest.watchdog, COMMAND_TIMEOUT_MS, handleBgTimeout, (void*)btlecIn);
-	cxa_softWatchDog_init(&btlecIn->currProcedure.watchdog, READWRITE_TIMEOUT_MS, handleReadWriteTimeout, (void*)btlecIn);
+	cxa_softWatchDog_init(&btlecIn->inFlightRequest.watchdog, COMMAND_TIMEOUT_MS, threadIdIn, handleBgTimeout, (void*)btlecIn);
+	cxa_softWatchDog_init(&btlecIn->currProcedure.watchdog, READWRITE_TIMEOUT_MS, threadIdIn, handleReadWriteTimeout, (void*)btlecIn);
 
 	// initialize our superclass
 	cxa_btle_client_init(&btlecIn->super, scm_isReady,
@@ -147,7 +147,7 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_fixedByteBuffer_initStd(&btlecIn->fbb_rx, btlecIn->fbb_rx_raw);
 
 	// our protocol parser
-	cxa_protocolParser_bgapi_init(&btlecIn->protoParse, iosIn, &btlecIn->fbb_rx);
+	cxa_protocolParser_bgapi_init(&btlecIn->protoParse, iosIn, &btlecIn->fbb_rx, threadIdIn);
 	cxa_protocolParser_addPacketListener(&btlecIn->protoParse.super, protoParseCb_onPacketRx, (void*)btlecIn);
 
 	// our gpios (unused at the moment)
@@ -160,7 +160,7 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_blueGiga_i2cMaster_init(&btlecIn->i2cMaster, btlecIn);
 
 	// and our connection state machine
-	cxa_stateMachine_init(&btlecIn->stateMachine_conn, "blueGiga_conn");
+	cxa_stateMachine_init(&btlecIn->stateMachine_conn, "blueGiga_conn", threadIdIn);
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_RESET, "reset", CONNSTATE_WAIT_BOOT, RESET_TIME_MS, stateCb_conn_reset_enter, NULL, stateCb_conn_reset_leave, (void*)btlecIn);
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_WAIT_BOOT, "waitBoot", CONNSTATE_RESET, WAIT_BOOT_TIME_MS, NULL, NULL, stateCb_conn_waitBoot_leave, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONFIG_PERIPHS, "configPeriphs", stateCb_conn_configPeriphs_enter, NULL, NULL, (void*)btlecIn);
@@ -171,7 +171,7 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_stateMachine_setInitialState(&btlecIn->stateMachine_conn, CONNSTATE_RESET);
 
 	// and our procedure state machine
-	cxa_stateMachine_init(&btlecIn->stateMachine_currProcedure, "blueGiga_proc");
+	cxa_stateMachine_init(&btlecIn->stateMachine_currProcedure, "blueGiga_proc", threadIdIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_NOT_READY, "notReady", NULL, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_IDLE, "idle", stateCb_currProc_idle_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_currProcedure, PROCSTATE_RESOLVE_SERVICE_HANDLE, "resServHan", stateCb_currProc_resolveService_enter, NULL, NULL, (void*)btlecIn);

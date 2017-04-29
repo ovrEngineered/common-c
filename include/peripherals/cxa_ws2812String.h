@@ -91,8 +91,10 @@ struct cxa_ws2812String
 /**
  * @protected
  */
-void cxa_ws2812String_init(cxa_ws2812String_t *const ws2812In, cxa_ws2812String_pixelBuffer_t* pixelBuffersIn, size_t numPixelBuffersIn,
-						   cxa_ws2812String_scm_writeBytes_t scm_writeBytesIn);
+void cxa_ws2812String_init(cxa_ws2812String_t *const ws2812In,
+						   cxa_ws2812String_pixelBuffer_t* pixelBuffersIn, size_t numPixelBuffersIn,
+						   cxa_ws2812String_scm_writeBytes_t scm_writeBytesIn,
+						   int threadIdIn);
 
 
 /**

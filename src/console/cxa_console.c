@@ -77,7 +77,7 @@ static bool isExecutingCommand = false;
 
 
 // ******** global function implementations ********
-void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn)
+void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn, int threadIdIn)
 {
 	cxa_assert(ioStreamIn);
 
@@ -91,7 +91,7 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 	cxa_console_addCommand("help", "prints available commands", NULL, 0, command_help, NULL);
 
 	// register for our runLoop
-	cxa_runLoop_addEntry(cb_onRunLoopUpdate, NULL);
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, NULL);
 
 	printBootHeader(deviceNameIn);
 	printCommandLine();

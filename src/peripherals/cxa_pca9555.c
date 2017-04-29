@@ -125,16 +125,19 @@ static bool readFromRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, 
 {
 	cxa_assert(pcaIn);
 
-	uint8_t ctrlBytes = registerIn;
-	return cxa_i2cMaster_readBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, valOut, 1);
+//	uint8_t ctrlBytes = registerIn;
+#warning fix this
+	return false;
+//	return cxa_i2cMaster_readBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, valOut, 1);
 }
 
 
 static bool writeToRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, uint8_t valIn)
 {
-	uint8_t ctrlBytes = registerIn;
-
-	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
+//	uint8_t ctrlBytes = registerIn;
+#warning fix this
+	return false;
+//	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
 }
 
 

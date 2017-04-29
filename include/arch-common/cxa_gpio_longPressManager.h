@@ -70,7 +70,7 @@ typedef struct
 
 
 // ******** global function prototypes ********
-void cxa_gpio_longPressManager_init(cxa_gpio_longPressManager_t *const lpmIn, cxa_gpio_t *const gpioIn);
+void cxa_gpio_longPressManager_init(cxa_gpio_longPressManager_t *const lpmIn, cxa_gpio_t *const gpioIn, int threadIdIn);
 
 bool cxa_gpio_longPressManager_addSegment(cxa_gpio_longPressManager_t *const lpmIn,
 										  uint16_t minHoldTime_msIn, uint16_t maxHoldTime_msIn,

@@ -65,7 +65,8 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 											char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn,
 											const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 											const char* clientCertIn, size_t clientCertLen_bytesIn,
-											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn);
+											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+											int threadIdIn);
 
 static void wifiManCb_onConnect(const char *const ssidIn, void* userVarIn);
 static void wifiManCb_onDisconnect(void* userVarIn);
@@ -111,12 +112,14 @@ static uint16_t mqtt_passwordLen_bytes;
 // ******** global function implementations ********
 void cxa_mqtt_connManager_init(cxa_led_t *const ledConnIn,
 							   char *const hostNameIn, uint16_t portNumIn, bool useTlsIn,
-							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn)
+							   char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn,
+							   int threadIdIn)
 {
 	cxa_mqtt_connManager_commonInit(ledConnIn,
 									hostNameIn, portNumIn, useTlsIn,
 									usernameIn, passwordIn, passwordLen_bytesIn,
-									NULL, 0, NULL, 0, NULL, 0);
+									NULL, 0, NULL, 0, NULL, 0,
+									threadIdIn);
 }
 
 
@@ -124,14 +127,16 @@ void cxa_mqtt_connManager_init_clientCert(cxa_led_t *const ledConnIn,
 										  char *const hostNameIn, uint16_t portNumIn,
 										  const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 										  const char* clientCertIn, size_t clientCertLen_bytesIn,
-										  const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn)
+										  const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+										  int threadIdIn)
 {
 	cxa_mqtt_connManager_commonInit(ledConnIn,
 									hostNameIn, portNumIn, true,
 									NULL, NULL, 0,
 									serverRootCertIn, serverRootCertLen_bytesIn,
 									clientCertIn, clientCertLen_bytesIn,
-									clientPrivateKeyIn, clientPrivateKeyLen_bytesIn);
+									clientPrivateKeyIn, clientPrivateKeyLen_bytesIn,
+									threadIdIn);
 }
 
 
@@ -147,7 +152,8 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 											char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn,
 											const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 											const char* clientCertIn, size_t clientCertLen_bytesIn,
-											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn)
+											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn,
+											int threadIdIn)
 {
 	// save our references
 	led_conn = ledConnIn;
@@ -175,7 +181,7 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 	cxa_logger_init(&logger, "connectionManager");
 
 	// setup our state machine
-	cxa_stateMachine_init(&stateMachine, "mqttConnMan");
+	cxa_stateMachine_init(&stateMachine, "mqttConnMan", threadIdIn);
 	cxa_stateMachine_addState(&stateMachine, STATE_ASSOCIATING, "assoc", stateCb_associating_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTING, "connecting", stateCb_connecting_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, NULL, NULL);
@@ -187,8 +193,8 @@ static void cxa_mqtt_connManager_commonInit(cxa_led_t *const ledConnIn,
 	cxa_network_wifiManager_addListener(NULL, NULL, NULL, wifiManCb_onConnect, wifiManCb_onDisconnect, NULL, NULL, NULL);
 
 	// and our mqtt client
-	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString());
-	cxa_mqtt_client_addListener(&mqttClient.super, mqttClientCb_onConnect, mqttClientCb_onConnectFail, mqttClientCb_onDisconnect, NULL);
+	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString(), threadIdIn);
+	cxa_mqtt_client_addListener(&mqttClient.super, mqttClientCb_onConnect, mqttClientCb_onConnectFail, mqttClientCb_onDisconnect, NULL, NULL);
 }
 
 

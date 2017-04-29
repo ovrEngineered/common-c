@@ -46,7 +46,7 @@ static cxa_stateMachine_state_t* getState_byId(cxa_stateMachine_t *const smIn, i
 
 
 // ******** global function implementations ********
-void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn)
+void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, int threadIdIn)
 {
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
@@ -71,7 +71,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn)
 	#endif
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(cb_onRunLoopUpdate, (void*)smIn);
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)smIn);
 }
 
 

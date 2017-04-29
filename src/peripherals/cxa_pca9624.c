@@ -203,8 +203,10 @@ static bool readFromRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, 
 {
 	cxa_assert(pcaIn);
 
-	uint8_t ctrlBytes = registerIn;
-	return cxa_i2cMaster_readBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, valOut, 1);
+//	uint8_t ctrlBytes = registerIn;
+#warning fix this
+	return false;
+//	return cxa_i2cMaster_readBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, valOut, 1);
 }
 
 
@@ -216,8 +218,11 @@ static bool syncRegisterIfChanged(cxa_pca9624_t *const pcaIn, register_t registe
 	if( pcaIn->currRegs[registerIn] == valIn ) return true;
 
 	// if we made it here, we need to do a write
-	uint8_t ctrlBytes = registerIn;
-	bool retVal = cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
+//	uint8_t ctrlBytes = registerIn;
+//	bool retVal = cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
+#warning fix this
+	return false;
+	bool retVal = false;
 
 	// if the write was successful, update our local copy
 	if( retVal ) pcaIn->currRegs[registerIn] = valIn;
@@ -230,8 +235,10 @@ static bool writeAllRegs(cxa_pca9624_t *const pcaIn)
 {
 	cxa_assert(pcaIn);
 
-	uint8_t ctrlBytes = 0x80;
-	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, pcaIn->currRegs, 18);
+//	uint8_t ctrlBytes = 0x80;
+//	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, pcaIn->currRegs, 18);
+#warning fix this
+	return false;
 }
 
 
@@ -263,6 +270,8 @@ static bool writeAllLedBrightnesses(cxa_pca9624_t *const pcaIn, uint8_t* brightn
 {
 	cxa_assert(pcaIn);
 
-	uint8_t ctrlBytes = 0xA0 | REG_PWM0;
-	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, brightnessesIn, CXA_PCA9624_NUM_CHANNELS);
+//	uint8_t ctrlBytes = 0xA0 | REG_PWM0;
+//	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, brightnessesIn, CXA_PCA9624_NUM_CHANNELS);
+#warning fix this
+	return false;
 }

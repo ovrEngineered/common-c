@@ -74,6 +74,7 @@ typedef enum
 typedef void (*cxa_mqtt_client_cb_onConnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 typedef void (*cxa_mqtt_client_cb_onConnectFailed_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
 typedef void (*cxa_mqtt_client_cb_onDisconnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
+typedef void (*cxa_mqtt_client_cb_onPingRespRx_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 
 typedef void (*cxa_mqtt_client_cb_onPublish_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 		char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
@@ -93,6 +94,7 @@ typedef struct
 	cxa_mqtt_client_cb_onConnect_t cb_onConnect;
 	cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnect;
 	cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFail;
+	cxa_mqtt_client_cb_onPingRespRx_t cb_onPingRespRx;
 
 	void* userVar;
 }cxa_mqtt_client_listenerEntry_t;
@@ -135,6 +137,8 @@ struct cxa_mqtt_client
 	cxa_array_t subscriptions;
 	cxa_mqtt_client_subscriptionEntry_t subscriptions_raw[CXA_MQTT_CLIENT_MAXNUM_SUBSCRIPTIONS];
 
+	int threadId;
+
 	cxa_stateMachine_t stateMachine;
 	cxa_timeDiff_t td_timeout;
 	cxa_timeDiff_t td_sendKeepAlive;
@@ -161,7 +165,7 @@ struct cxa_mqtt_client
 
 
 // ******** global function prototypes ********
-void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, char *const clientIdIn);
+void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *const iosIn, uint16_t keepAliveTimeout_sIn, char *const clientIdIn, int threadIdIn);
 
 bool cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLevel_t qosIn, bool retainIn,
 									char* topicNameIn, void *const payloadIn, size_t payloadLen_bytesIn);
@@ -170,6 +174,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
 								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
+								 cxa_mqtt_client_cb_onPingRespRx_t cb_onPingRespRxIn,
 								 void *const userVarIn);
 
 bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);
@@ -186,6 +191,7 @@ void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFil
 /**
  * @protected
  */
+int cxa_mqtt_client_getThreadId(cxa_mqtt_client_t *const clientIn);
 void cxa_mqtt_client_super_connectingTransport(cxa_mqtt_client_t *const clientIn);
 void cxa_mqtt_client_super_connectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn);
 void cxa_mqtt_client_super_disconnect(cxa_mqtt_client_t *const clientIn);

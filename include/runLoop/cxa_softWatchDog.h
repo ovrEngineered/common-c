@@ -25,9 +25,6 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_SOFTWATCHDOG_MAXNUM_ENTRIES
-	#define CXA_SOFTWATCHDOG_MAXNUM_ENTRIES				10
-#endif
 
 
 // ******** global type definitions *********
@@ -58,7 +55,8 @@ struct cxa_softWatchDog
 
 
 // ******** global function prototypes ********
-void cxa_softWatchDog_init(cxa_softWatchDog_t *const swdIn, uint32_t timeoutPeriod_msIn, cxa_softWatchDog_cb_t cbIn, void *const userVarIn);
+void cxa_softWatchDog_init(cxa_softWatchDog_t *const swdIn, uint32_t timeoutPeriod_msIn, int threadIdIn,
+						   cxa_softWatchDog_cb_t cbIn, void *const userVarIn);
 void cxa_softWatchDog_kick(cxa_softWatchDog_t *const swdIn);
 void cxa_softWatchDog_pause(cxa_softWatchDog_t *const swdIn);
 

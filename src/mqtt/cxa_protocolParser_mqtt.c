@@ -69,7 +69,7 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevState
 
 
 // ******** global function implementations ********
-void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn)
+void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, int threadIdIn)
 {
 	cxa_assert(mppIn);
 	cxa_assert(ioStreamIn);
@@ -81,7 +81,7 @@ void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_io
 	mppIn->remainingBytesToReceive = 0;
 
 	// setup our state machine
-	cxa_stateMachine_init(&mppIn->stateMachine, "mqttProtoParser");
+	cxa_stateMachine_init(&mppIn->stateMachine, "mqttProtoParser", threadIdIn);
 	cxa_stateMachine_addState(&mppIn->stateMachine, RX_STATE_IDLE, "idle", rxState_cb_idle_enter, rxState_cb_idle_state, rxState_cb_idle_leave, (void*)mppIn);
 	cxa_stateMachine_addState(&mppIn->stateMachine, RX_STATE_WAIT_FIXEDHEADER_1, "wait_fh1", NULL, rxStateCb_waitFixedHeader1_state, NULL, (void*)mppIn);
 	cxa_stateMachine_addState(&mppIn->stateMachine, RX_STATE_WAIT_REMAINING_LEN, "wait_remLen", NULL, rxStateCb_waitRemainingLen_state, NULL, (void*)mppIn);

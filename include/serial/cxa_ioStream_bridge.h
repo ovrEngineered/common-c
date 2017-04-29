@@ -36,7 +36,8 @@ typedef struct
 // ******** global function prototypes ********
 void cxa_ioStream_bridge_init(cxa_ioStream_bridge_t *const bridgeIn,
 								cxa_ioStream_t *const stream1In,
-								cxa_ioStream_t *const stream2In);
+								cxa_ioStream_t *const stream2In,
+								int threadIdIn);
 
 
 #endif
