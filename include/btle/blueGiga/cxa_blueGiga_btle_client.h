@@ -94,6 +94,7 @@ struct cxa_blueGiga_btle_client
 	}inFlightRequest;
 
 	bool isActiveScan;
+	cxa_softWatchDog_t scanningActivityWatchdog;
 
 	cxa_eui48_t connectAddr;
 	bool isConnectAddrRandom;
@@ -120,7 +121,6 @@ struct cxa_blueGiga_btle_client
 
 	cxa_blueGiga_gpio_t gpios[CXA_BLUEGIGA_BTLE_MAX_NUM_GPIOS];
 	cxa_blueGiga_i2cMaster_t i2cMaster;
-
 
 	cxa_stateMachine_t stateMachine_conn;
 	cxa_stateMachine_t stateMachine_currProcedure;
