@@ -226,6 +226,8 @@ bool cxa_mqtt_client_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_qosLeve
 	cxa_assert(clientIn);
 	cxa_assert(topicNameIn);
 
+	if( !cxa_mqtt_client_isConnected(clientIn) ) return false;
+
 	cxa_mqtt_message_t* msg = NULL;
 	if( ((msg = cxa_mqtt_messageFactory_getFreeMessage_empty()) == NULL) ||
 		!cxa_mqtt_message_publish_init(msg, false, qosIn, retainIn, topicNameIn, clientIn->currPacketId++, payloadIn, payloadLen_bytesIn) )
@@ -246,7 +248,7 @@ bool cxa_mqtt_client_publish_message(cxa_mqtt_client_t *const clientIn, cxa_mqtt
 	cxa_assert(clientIn);
 	cxa_assert(msgIn);
 
-	if( cxa_stateMachine_getCurrentState(&clientIn->stateMachine) != MQTT_STATE_CONNECTED ) return false;
+	if( !cxa_mqtt_client_isConnected(clientIn) ) return false;
 
 	char *topicName;
 	uint16_t topicNameLen_bytes;
