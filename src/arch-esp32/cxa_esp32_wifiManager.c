@@ -36,6 +36,7 @@
 
 // ******** local macro definitions ********
 #define CONNECTION_TIMEOUT_MS				10000
+#define MAXTIME_STOPPING_MS					5000
 
 
 // ******** local type definitions ********
@@ -48,15 +49,12 @@ typedef enum
 	STATE_ASSOCIATION_FAILED,
 	STATE_STA_STOPPING,
 	STATE_PROVISIONING,
-	STATE_MICROAP,
-	STATE_MICROAP_STOPPING
 }internalState_t;
 
 
 typedef enum
 {
 	INTTAR_MODE_DISABLED,
-	INTTAR_MODE_MICROAP,
 	INTTAR_MODE_NORMAL,
 	INTTAR_MODE_PROVISIONING
 }internalTargetMode_t;
@@ -70,15 +68,16 @@ typedef struct
 	cxa_network_wifiManager_ssid_cb_t cb_associatedWithSsid;
 	cxa_network_wifiManager_cb_t cb_unassociated;
 	cxa_network_wifiManager_ssid_cb_t cb_associationWithSsidFailed;
-	cxa_network_wifiManager_ssid_cb_t cb_microApEnter;
 	void *userVarIn;
 }listener_t;
 
 
 // ******** local function prototypes ********
 static bool isStaConfigSet(void);
+static void handleStartupComplete(void);
 
 static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void stateCb_startup_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
@@ -86,8 +85,6 @@ static void stateCb_associated_leave(cxa_stateMachine_t *const smIn, int nextSta
 static void stateCb_associationFailed_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_staStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_provisioning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_microAp_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_microApStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event);
 static void espCb_smartConfig(smartconfig_status_t status, void *pdata);
@@ -98,9 +95,7 @@ static void notify_associating(void);
 static void notify_associated(void);
 static void notify_unassociated(void);
 static void notify_associationFailed(void);
-static void notify_microAp(void);
 
-static void consoleCb_clear(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_restart(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
@@ -115,9 +110,6 @@ static cxa_stateMachine_t stateMachine;
 static cxa_logger_t logger;
 
 static ip4_addr_t myIp = {.addr = 0};
-
-//static char microAp_ssid[33] = "";
-//static char microAp_passphrase[65] = "";
 
 
 // ******** global function implementations ********
@@ -138,18 +130,15 @@ void cxa_network_wifiManager_init(int threadIdIn)
 
 	// setup our state machine
 	cxa_stateMachine_init(&stateMachine, "wifiMgr", threadIdIn);
-	cxa_stateMachine_addState(&stateMachine, STATE_IDLE, "idle", stateCb_idle_enter, NULL, NULL, NULL);
+	cxa_stateMachine_addState(&stateMachine, STATE_IDLE, "idle", stateCb_idle_enter, stateCb_idle_state, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_STARTUP, "startup", stateCb_startup_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState_timed(&stateMachine, STATE_ASSOCIATING, "associating", STATE_ASSOCIATION_FAILED, CONNECTION_TIMEOUT_MS, stateCb_associating_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_ASSOCIATED, "associated", stateCb_associated_enter, NULL, stateCb_associated_leave, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_ASSOCIATION_FAILED, "assocFail", stateCb_associationFailed_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_STA_STOPPING, "staStopping", stateCb_staStopping_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_PROVISIONING, "provisioning", stateCb_provisioning_enter, NULL, NULL, NULL);
-	cxa_stateMachine_addState(&stateMachine, STATE_MICROAP, "microAp", stateCb_microAp_enter, NULL, NULL, NULL);
-	cxa_stateMachine_addState(&stateMachine, STATE_MICROAP_STOPPING, "microApStopping", stateCb_microApStopping_enter, NULL, NULL, NULL);
 	cxa_stateMachine_setInitialState(&stateMachine, STATE_IDLE);
 
-	cxa_console_addCommand("wifi_clear", "clears stored config", NULL, 0, consoleCb_clear, NULL);
 	cxa_console_addCommand("wifi_getCfg", "prints current config", NULL, 0, consoleCb_getCfg, NULL);
 	cxa_console_addCommand("wifi_restart", "restarts the WiFi stateMachine", NULL, 0, consoleCb_restart, NULL);
 }
@@ -161,7 +150,6 @@ void cxa_network_wifiManager_addListener(cxa_network_wifiManager_cb_t cb_idleEnt
 										 cxa_network_wifiManager_ssid_cb_t cb_associatedWithSsidIn,
 										 cxa_network_wifiManager_cb_t cb_unassociatedIn,
 										 cxa_network_wifiManager_ssid_cb_t cb_associationWithSsidFailedIn,
-										 cxa_network_wifiManager_ssid_cb_t cb_microApEnterIn,
 										 void *userVarIn)
 {
 	listener_t newListener =
@@ -172,7 +160,6 @@ void cxa_network_wifiManager_addListener(cxa_network_wifiManager_cb_t cb_idleEnt
 			.cb_associatedWithSsid = cb_associatedWithSsidIn,
 			.cb_unassociated = cb_unassociatedIn,
 			.cb_associationWithSsidFailed = cb_associationWithSsidFailedIn,
-			.cb_microApEnter = cb_microApEnterIn,
 			.userVarIn = userVarIn
 	};
 
@@ -180,49 +167,33 @@ void cxa_network_wifiManager_addListener(cxa_network_wifiManager_cb_t cb_idleEnt
 }
 
 
-void cxa_network_wifiManager_startNormal(void)
+void cxa_network_wifiManager_start(void)
 {
 	if( cxa_stateMachine_getCurrentState(&stateMachine) != STATE_IDLE ) return;
 
 	targetWifiMode = INTTAR_MODE_NORMAL;
-
-	cxa_stateMachine_transition(&stateMachine, STATE_STARTUP);
-}
-
-
-void cxa_network_wifiManager_startMicroAp(void)
-{
-	if( cxa_stateMachine_getCurrentState(&stateMachine) != STATE_IDLE ) return;
-
-	targetWifiMode = INTTAR_MODE_MICROAP;
-
-	cxa_stateMachine_transition(&stateMachine, STATE_STARTUP);
 }
 
 
 void cxa_network_wifiManager_stop(void)
 {
-	internalState_t currState = cxa_stateMachine_getCurrentState(&stateMachine);
-	if( currState == STATE_IDLE ) return;
-
 	targetWifiMode = INTTAR_MODE_DISABLED;
-	switch( currState )
+
+	switch( cxa_stateMachine_getCurrentState(&stateMachine) )
 	{
 		case STATE_IDLE:
 		case STATE_STARTUP:
 		case STATE_STA_STOPPING:
-		case STATE_MICROAP_STOPPING:
 			break;
 
 		case STATE_ASSOCIATING:
 		case STATE_ASSOCIATION_FAILED:
 		case STATE_ASSOCIATED:
-		case STATE_PROVISIONING:
 			cxa_stateMachine_transition(&stateMachine, STATE_STA_STOPPING);
 			break;
 
-		case STATE_MICROAP:
-			cxa_stateMachine_transition(&stateMachine, STATE_MICROAP_STOPPING);
+		case STATE_PROVISIONING:
+			cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
 			break;
 	}
 }
@@ -237,7 +208,6 @@ cxa_network_wifiManager_state_t cxa_network_wifiManager_getState(void)
 		case STATE_IDLE:
 		case STATE_STARTUP:
 		case STATE_STA_STOPPING:
-		case STATE_MICROAP_STOPPING:
 			retVal = CXA_NETWORK_WIFISTATE_IDLE;
 			break;
 
@@ -253,10 +223,6 @@ cxa_network_wifiManager_state_t cxa_network_wifiManager_getState(void)
 		case STATE_PROVISIONING:
 			retVal = CXA_NETWORK_WIFISTATE_PROVISIONING;
 			break;
-
-		case STATE_MICROAP:
-			retVal = CXA_NETWORK_WIFISTATE_MICROAP;
-			break;
 	}
 	return retVal;
 }
@@ -264,15 +230,29 @@ cxa_network_wifiManager_state_t cxa_network_wifiManager_getState(void)
 
 void cxa_network_wifiManager_restart(void)
 {
-	if( cxa_stateMachine_getCurrentState(&stateMachine) == STATE_IDLE ) return;
+	switch( cxa_stateMachine_getCurrentState(&stateMachine) )
+	{
+		case STATE_IDLE:
+		case STATE_STARTUP:
+			break;
 
-	cxa_stateMachine_transition(&stateMachine, (targetWifiMode == INTTAR_MODE_MICROAP) ? STATE_MICROAP_STOPPING : STATE_STA_STOPPING);
+		case STATE_PROVISIONING:
+			cxa_stateMachine_transition(&stateMachine, STATE_STARTUP);
+			break;
+
+		default:
+			cxa_stateMachine_transition(&stateMachine, STATE_STA_STOPPING);
+			break;
+	}
 }
 
 
 bool cxa_network_wifiManager_enterProvision(void)
 {
 	internalState_t currState = cxa_stateMachine_getCurrentState(&stateMachine);
+	if( currState == STATE_IDLE ) return false;
+
+	targetWifiMode = INTTAR_MODE_PROVISIONING;
 
 	switch( currState )
 	{
@@ -282,40 +262,14 @@ bool cxa_network_wifiManager_enterProvision(void)
 
 		case STATE_STARTUP:
 		case STATE_STA_STOPPING:
-		case STATE_MICROAP_STOPPING:
-			targetWifiMode = INTTAR_MODE_PROVISIONING;
 			break;
 
 		case STATE_ASSOCIATING:
 		case STATE_ASSOCIATION_FAILED:
 		case STATE_ASSOCIATED:
-			targetWifiMode = INTTAR_MODE_PROVISIONING;
 			cxa_stateMachine_transition(&stateMachine, STATE_STA_STOPPING);
 			break;
-
-		case STATE_MICROAP:
-			targetWifiMode = INTTAR_MODE_PROVISIONING;
-			cxa_stateMachine_transition(&stateMachine, STATE_MICROAP_STOPPING);
-			break;
 	}
-
-	return true;
-}
-
-
-bool cxa_network_wifiManager_enterMicroAp(const char* ssidIn, const char* passphraseIn)
-{
-	internalState_t currState = cxa_stateMachine_getCurrentState(&stateMachine);
-	if( (currState == STATE_IDLE) ||
-		(currState == STATE_MICROAP) ) return false;
-
-	cxa_assert(ssidIn);
-	size_t passphraseLen_bytes = (passphraseIn != NULL) ? strlen(passphraseIn) : 0;
-	if( passphraseIn != NULL ) cxa_assert((8 < passphraseLen_bytes) && (passphraseLen_bytes <= 64));
-
-	targetWifiMode = INTTAR_MODE_MICROAP;
-
-	if( currState != STATE_MICROAP_STOPPING ) cxa_stateMachine_transition(&stateMachine, STATE_STA_STOPPING);
 
 	return true;
 }
@@ -331,6 +285,26 @@ static bool isStaConfigSet(void)
 }
 
 
+static void handleStartupComplete(void)
+{
+	if( cxa_stateMachine_getCurrentState(&stateMachine) != STATE_STARTUP ) return;
+
+	// we're starting up, decide whether to provision or try to associate
+	if( (targetWifiMode == INTTAR_MODE_NORMAL) && isStaConfigSet() )
+	{
+		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
+	}
+	else if( targetWifiMode == INTTAR_MODE_DISABLED )
+	{
+		cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
+	}
+	else
+	{
+		cxa_stateMachine_transition(&stateMachine, STATE_PROVISIONING);
+	}
+}
+
+
 static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_logger_info(&logger, "becoming idle");
@@ -338,6 +312,15 @@ static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn
 	esp_wifi_stop();
 
 	notify_idle();
+}
+
+
+static void stateCb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn)
+{
+	if( targetWifiMode != INTTAR_MODE_DISABLED )
+	{
+		cxa_stateMachine_transition(&stateMachine, STATE_STARTUP);
+	}
 }
 
 
@@ -351,8 +334,15 @@ static void stateCb_startup_enter(cxa_stateMachine_t *const smIn, int prevStateI
 		return;
 	}
 
-	esp_wifi_set_mode((targetWifiMode == INTTAR_MODE_MICROAP) ? WIFI_MODE_AP : WIFI_MODE_STA);
-	esp_wifi_start();
+	if( prevStateIdIn == STATE_IDLE )
+	{
+		esp_wifi_set_mode(WIFI_MODE_STA);
+		esp_wifi_start();
+	}
+	else
+	{
+		handleStartupComplete();
+	}
 }
 
 
@@ -396,12 +386,14 @@ static void stateCb_associationFailed_enter(cxa_stateMachine_t *const smIn, int 
 
 	notify_associationFailed();
 
-	cxa_stateMachine_transition(&stateMachine, STATE_STA_STOPPING);
+	cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
 }
 
 
 static void stateCb_staStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
+	cxa_logger_debug(&logger, "stopping");
+
 	esp_wifi_disconnect();
 	esp_wifi_stop();
 }
@@ -415,18 +407,6 @@ static void stateCb_provisioning_enter(cxa_stateMachine_t *const smIn, int prevS
 	esp_smartconfig_start(espCb_smartConfig);
 
 	notify_provisioning();
-}
-
-
-static void stateCb_microAp_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
-{
-	cxa_logger_warn(&logger, "not yet implemented");
-}
-
-
-static void stateCb_microApStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
-{
-	cxa_logger_warn(&logger, "not yet implemented");
 }
 
 
@@ -449,12 +429,14 @@ static void espCb_smartConfig(smartconfig_status_t status, void *pdata)
 
 			// restart to apply
 			targetWifiMode = INTTAR_MODE_NORMAL;
-			cxa_network_wifiManager_restart();
-
+			cxa_stateMachine_transition(&stateMachine, STATE_STARTUP);
 			break;
 		}
 
 		case SC_STATUS_LINK_OVER:
+			cxa_logger_debug(&logger, "provision confirmed");
+
+			// stop smart config
 			esp_smartconfig_stop();
 			break;
 
@@ -473,40 +455,24 @@ static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event)
 	switch( event->event_id )
 	{
 		case SYSTEM_EVENT_STA_START:
-			if( currState == STATE_STARTUP )
-			{
-				// we're starting up, decide whether to provision or try to associate
-				if( (targetWifiMode == INTTAR_MODE_NORMAL) && isStaConfigSet() )
-				{
-					cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
-				}
-				else if( targetWifiMode == INTTAR_MODE_PROVISIONING )
-				{
-					cxa_stateMachine_transition(&stateMachine, STATE_PROVISIONING);
-				}
-				else
-				{
-					cxa_logger_warn(&logger, "not yet implemented");
-				}
-			}
+			handleStartupComplete();
 			break;
 
 		case SYSTEM_EVENT_STA_STOP:
-			if( currState == STATE_STA_STOPPING )
-			{
-				// finished stopping...now see what we should do
-				cxa_stateMachine_transition(&stateMachine, (targetWifiMode == INTTAR_MODE_DISABLED) ? STATE_IDLE : STATE_STARTUP);
-			}
-			else
-			{
-				cxa_logger_warn(&logger, "unexpected STA stop...restarting WiFi");
-				cxa_network_wifiManager_restart();
-			}
+			cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
 			break;
 
 		case SYSTEM_EVENT_STA_DISCONNECTED:
-			cxa_logger_debug(&logger, "reason: %d", event->event_info.disconnected.reason);
-			cxa_stateMachine_transition(&stateMachine, (currState == STATE_ASSOCIATING) ? STATE_ASSOCIATION_FAILED : STATE_STA_STOPPING);
+			// components/esp32/include/esp_wifi_types.h -> WIFI_REASON_XXX
+			cxa_logger_debug(&logger, "disconnect reason: %d", event->event_info.disconnected.reason);
+			if( (currState == STATE_ASSOCIATING) && (targetWifiMode != INTTAR_MODE_PROVISIONING) )
+			{
+				cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATION_FAILED);
+			}
+			else if( (currState == STATE_ASSOCIATED) && (targetWifiMode != INTTAR_MODE_PROVISIONING) )
+			{
+				cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
+			}
 			break;
 
 		case SYSTEM_EVENT_STA_GOT_IP:
@@ -595,27 +561,6 @@ static void notify_associationFailed(void)
 
 		if( currListener->cb_associationWithSsidFailed != NULL ) currListener->cb_associationWithSsidFailed((char*)cfg.sta.ssid, currListener->userVarIn);
 	}
-}
-
-
-static void notify_microAp(void)
-{
-	wifi_config_t cfg;
-	esp_wifi_get_config(WIFI_IF_STA, &cfg);
-
-	cxa_array_iterate(&listeners, currListener, listener_t)
-	{
-		if( currListener == NULL ) continue;
-
-		if( currListener->cb_microApEnter != NULL ) currListener->cb_microApEnter((char*)cfg.sta.ssid, currListener->userVarIn);
-	}
-}
-
-
-static void consoleCb_clear(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
-{
-	esp_wifi_restore();
-	cxa_logger_info(&logger, "wifi credentials cleared");
 }
 
 

@@ -37,7 +37,6 @@ typedef enum
 	CXA_NETWORK_WIFISTATE_PROVISIONING,
 	CXA_NETWORK_WIFISTATE_ASSOCIATING,
 	CXA_NETWORK_WIFISTATE_ASSOCIATED,
-	CXA_NETWORK_WIFISTATE_MICROAP
 }cxa_network_wifiManager_state_t;
 
 
@@ -53,18 +52,15 @@ void cxa_network_wifiManager_addListener(cxa_network_wifiManager_cb_t cb_idleEnt
 										 cxa_network_wifiManager_ssid_cb_t cb_associatedWithSsidIn,
 										 cxa_network_wifiManager_cb_t cb_unassociatedIn,
 										 cxa_network_wifiManager_ssid_cb_t cb_associationWithSsidFailedIn,
-										 cxa_network_wifiManager_ssid_cb_t cb_microApEnterIn,
 										 void *userVarIn);
 
-void cxa_network_wifiManager_startNormal(void);
-void cxa_network_wifiManager_startMicroAp(void);
+void cxa_network_wifiManager_start(void);
 void cxa_network_wifiManager_stop(void);
 
 cxa_network_wifiManager_state_t cxa_network_wifiManager_getState(void);
 
 void cxa_network_wifiManager_restart(void);
 bool cxa_network_wifiManager_enterProvision(void);
-bool cxa_network_wifiManager_enterMicroAp(const char* ssidIn, const char* passphraseIn);
 
 
 #endif // CXA_NETWORK_WIFI_MANAGER_H_

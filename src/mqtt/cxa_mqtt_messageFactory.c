@@ -130,6 +130,7 @@ void cxa_mqtt_messageFactory_decrementMessageRefCount(cxa_mqtt_message_t *const 
 {
 	initIfNeeded();
 
+	if( msgIn == NULL ) return;
 	messageEntry_t* targetEntry = getMsgEntryFromMessage(msgIn);
 	cxa_assert(targetEntry);
 

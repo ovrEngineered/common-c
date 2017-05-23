@@ -58,7 +58,7 @@ static listenerEntry_t listeners_raw[CXA_SNTPCLIENT_MAXNUM_LISTENERS];
 void cxa_sntpClient_init(void)
 {
 	cxa_array_initStd(&listeners, listeners_raw);
-	cxa_network_wifiManager_addListener(NULL, NULL, NULL, wifiCb_onConnected, wifiCb_onDisconnected, NULL, NULL, NULL);
+	cxa_network_wifiManager_addListener(NULL, NULL, NULL, wifiCb_onConnected, wifiCb_onDisconnected, NULL, NULL);
 
 	isInit = true;
 }
