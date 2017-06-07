@@ -569,11 +569,11 @@ static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const io
 	wifi_config_t cfg;
 	esp_wifi_get_config(WIFI_IF_STA, &cfg);
 
-	cxa_logger_info(&logger, "ssid: '%s'  ip: %d.%d.%d.%d", cfg.sta.ssid,
-					((myIp.addr >> 0) & 0xFF),
-					((myIp.addr >> 8) & 0xFF),
-					((myIp.addr >> 16) & 0xFF),
-					((myIp.addr >> 24) & 0xFF));
+	cxa_ioStream_writeFormattedLine(ioStreamIn, "ssid: '%s'  ip: %d.%d.%d.%d", cfg.sta.ssid,
+												((myIp.addr >> 0) & 0xFF),
+												((myIp.addr >> 8) & 0xFF),
+												((myIp.addr >> 16) & 0xFF),
+												((myIp.addr >> 24) & 0xFF));
 }
 
 
