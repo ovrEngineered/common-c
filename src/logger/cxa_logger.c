@@ -126,6 +126,11 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 
 #ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
+	if( cxa_console_isExecutingCommand() )
+	{
+		cxa_criticalSection_exit();
+		return;
+	}
 #endif
 
 	// common header
@@ -165,6 +170,11 @@ void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t 
 
 #ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
+	if( cxa_console_isExecutingCommand() )
+	{
+		cxa_criticalSection_exit();
+		return;
+	}
 #endif
 
 	// common header

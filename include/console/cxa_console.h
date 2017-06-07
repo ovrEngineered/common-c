@@ -78,6 +78,7 @@ void cxa_console_printErrorToIoStream(cxa_ioStream_t *const ioStreamIn, const ch
 /**
  * @protected
  */
+bool cxa_console_isExecutingCommand(void);
 void cxa_console_prelog(void);
 void cxa_console_postlog(void);
 

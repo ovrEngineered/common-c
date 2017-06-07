@@ -131,6 +131,12 @@ void cxa_console_printErrorToIoStream(cxa_ioStream_t *const ioStreamIn, const ch
 }
 
 
+bool cxa_console_isExecutingCommand(void)
+{
+	return isExecutingCommand;
+}
+
+
 void cxa_console_prelog(void)
 {
 	if( ioStream == NULL ) return;
@@ -174,7 +180,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			{
 				if( currEntry == NULL) continue;
 
-				if( strcmp(cmd, currEntry->command) == 0 )
+				if( (cmd != NULL) && strcmp(cmd, currEntry->command) == 0 )
 				{
 					foundCommand = true;
 
