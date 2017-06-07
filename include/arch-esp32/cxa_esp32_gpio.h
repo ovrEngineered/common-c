@@ -93,4 +93,11 @@ void cxa_esp32_gpio_init_output(cxa_esp32_gpio_t *const gpioIn, const gpio_num_t
 void cxa_esp32_gpio_init_safe(cxa_esp32_gpio_t *const gpioIn, const gpio_num_t pinNumIn);
 
 
+/**
+ * @public
+ * @brief Sets the pullup/pull down mode of the pin
+ */
+void cxa_esp32_gpio_setPullMode(cxa_esp32_gpio_t *const gpioIn, gpio_pull_mode_t pullModeIn);
+
+
 #endif

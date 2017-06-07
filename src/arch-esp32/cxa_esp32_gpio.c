@@ -107,6 +107,14 @@ void cxa_esp32_gpio_init_safe(cxa_esp32_gpio_t *const gpioIn, const gpio_num_t p
 }
 
 
+void cxa_esp32_gpio_setPullMode(cxa_esp32_gpio_t *const gpioIn, gpio_pull_mode_t pullModeIn)
+{
+	cxa_assert(gpioIn);
+
+	gpio_set_pull_mode(gpioIn->pinNum, pullModeIn);
+}
+
+
 // ******** local function implementations ********
 static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
 {
