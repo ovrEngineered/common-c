@@ -156,7 +156,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	    tmpRet = mbedtls_x509_crt_parse(&netClientIn->tls.cert_server, (const unsigned char*)serverRootCertIn, serverRootCertLen_bytesIn);
 	    if( tmpRet < 0 )
 	    {
-	        cxa_logger_warn(&netClientIn->super.logger, "failed to parse server CA cert: %d", tmpRet);
+	        cxa_logger_warn(&netClientIn->super.logger, "failed to parse server CA cert: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 	        return false;
 	    }
 	    netClientIn->tls.initState.crc_serverRootCert = tmpCrc;
@@ -169,7 +169,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 		tmpRet = mbedtls_x509_crt_parse(&netClientIn->tls.cert_client, (const unsigned char*)clientCertIn, clientCertLen_bytesIn);
 		if( tmpRet < 0)
 		{
-			cxa_logger_warn(&netClientIn->super.logger, "failed to parse client cert: %d", tmpRet);
+			cxa_logger_warn(&netClientIn->super.logger, "failed to parse client cert: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 			return false;
 		}
 		netClientIn->tls.initState.crc_clientCert = tmpCrc;
@@ -182,7 +182,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 		tmpRet = mbedtls_pk_parse_key(&netClientIn->tls.client_key_private, (const unsigned char*)clientPrivateKeyIn, clientPrivateKeyLen_bytesIn, NULL, 0);
 		if( tmpRet != 0 )
 		{
-			cxa_logger_warn(&netClientIn->super.logger, "failed to parse client private key: %d", tmpRet);
+			cxa_logger_warn(&netClientIn->super.logger, "failed to parse client private key: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 			return false;
 		}
 		netClientIn->tls.initState.crc_clientPrivateKey = tmpCrc;
@@ -195,7 +195,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 		tmpRet = mbedtls_ssl_set_hostname(&netClientIn->tls.sslContext, hostNameIn);
 	    if( tmpRet < 0 )
 	    {
-	    	cxa_logger_warn(&netClientIn->super.logger, "failed to set tls hostname: %d", tmpRet);
+	    	cxa_logger_warn(&netClientIn->super.logger, "failed to set tls hostname: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 			return false;
 	    }
 	    strlcpy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
@@ -206,7 +206,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	tmpRet = mbedtls_ssl_config_defaults(&netClientIn->tls.conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
 	if( tmpRet < 0 )
 	{
-		cxa_logger_warn(&netClientIn->super.logger, "tls configuration failed: %d", tmpRet);
+		cxa_logger_warn(&netClientIn->super.logger, "tls configuration failed: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 		return false;
 	}
     mbedtls_ssl_conf_authmode(&netClientIn->tls.conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
@@ -222,7 +222,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	tmpRet = mbedtls_ssl_setup(&netClientIn->tls.sslContext, &netClientIn->tls.conf);
 	if( tmpRet < 0 )
 	{
-		cxa_logger_warn(&netClientIn->super.logger, "tls context configuration failed: %d", tmpRet);
+		cxa_logger_warn(&netClientIn->super.logger, "tls context configuration failed: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 		return false;
 	}
 
@@ -283,7 +283,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 		{
 			if( (tmpRet != MBEDTLS_ERR_SSL_WANT_READ) && (tmpRet != MBEDTLS_ERR_SSL_WANT_WRITE) )
 			{
-				cxa_logger_warn(&netClientIn->super.logger, "TLS handshake failed: %d", tmpRet);
+				cxa_logger_warn(&netClientIn->super.logger, "TLS handshake failed: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 				cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
 				return;
 			}
