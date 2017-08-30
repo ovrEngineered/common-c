@@ -53,7 +53,7 @@
 #define CXA_MQTT_RPCNODE_REQ_PREFIX							"->"
 #define CXA_MQTT_RPCNODE_RESP_PREFIX						"<-"
 #define CXA_MQTT_RPCNODE_NOTI_PREFIX						"^^"
-#define CXA_MQTT_RPCNODE_CONNSTATE_TOPIC					"connState"
+#define CXA_MQTT_RPCNODE_CONNSTATE_TOPIC					"upstreamConnState" "/" CXA_MQTT_RPCNODE_NOTI_PREFIX "onChange"
 
 
 // ******** global type definitions *********

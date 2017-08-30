@@ -34,7 +34,7 @@
 
 
 // ******** local macro definitions ********
-#define SET_CREDS_TIMEOUT_MS				10000
+#define SET_CREDS_TIMEOUT_MS					10000
 
 #define NVSKEY_SERVER_CERT					"serverCert"
 #define NVSKEY_CLIENT_CERT					"clientCert"
@@ -74,7 +74,7 @@ static void consoleCb_setServerRootCertificate(cxa_array_t *const argsIn, cxa_io
 static void consoleCb_setClientCertificate(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_setPrivateKey(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
-static bool receiveBinaryBlob(cxa_ioStream_t *const ioStreamIn, uint8_t *const targetBufferIn, size_t expectedNumBytesIn, const char *const nvsKeyIn);
+static bool receiveCString(cxa_ioStream_t *const ioStreamIn, uint8_t *const targetBufferIn, size_t expectedNumBytesIn, const char *const nvsKeyIn);
 
 
 // ********  local variable declarations *********
@@ -90,13 +90,13 @@ static char* mqtt_hostName;
 static uint16_t mqtt_portNum;
 
 static bool isSet_serverRootCert = false;
-static char serverRootCert[1220+1];				// +1 is null term
+static char serverRootCert[1221+1];				// +1 is null term
 
 static bool isSet_clientCert = false;
-static char clientCert[1220+1];					// +1 is null term
+static char clientCert[1225+1];					// +1 is null term
 
 static bool isSet_clientPrivateKey = false;
-static char clientPrivateKey[1679+1];			// +1 is null term
+static char clientPrivateKey[1676+1];			// +1 is null term
 
 
 // ******** global function implementations ********
@@ -334,23 +334,23 @@ static void consoleCb_clearCredentials(cxa_array_t *const argsIn, cxa_ioStream_t
 
 static void consoleCb_setServerRootCertificate(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
-	isSet_serverRootCert = receiveBinaryBlob(ioStreamIn, (uint8_t*)serverRootCert, sizeof(serverRootCert), NVSKEY_SERVER_CERT);
+	isSet_serverRootCert = receiveCString(ioStreamIn, (uint8_t*)serverRootCert, sizeof(serverRootCert), NVSKEY_SERVER_CERT);
 }
 
 
 static void consoleCb_setClientCertificate(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
-	isSet_clientCert = receiveBinaryBlob(ioStreamIn, (uint8_t*)clientCert, sizeof(clientCert), NVSKEY_CLIENT_CERT);
+	isSet_clientCert = receiveCString(ioStreamIn, (uint8_t*)clientCert, sizeof(clientCert), NVSKEY_CLIENT_CERT);
 }
 
 
 static void consoleCb_setPrivateKey(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
-	isSet_clientPrivateKey = receiveBinaryBlob(ioStreamIn, (uint8_t*)clientPrivateKey, sizeof(clientPrivateKey), NVSKEY_CLIENT_KEY);
+	isSet_clientPrivateKey = receiveCString(ioStreamIn, (uint8_t*)clientPrivateKey, sizeof(clientPrivateKey), NVSKEY_CLIENT_KEY);
 }
 
 
-static bool receiveBinaryBlob(cxa_ioStream_t *const ioStreamIn, uint8_t *const targetBufferIn, size_t expectedNumBytesIn, const char *const nvsKeyIn)
+static bool receiveCString(cxa_ioStream_t *const ioStreamIn, uint8_t *const targetBufferIn, size_t expectedNumBytesIn, const char *const nvsKeyIn)
 {
 	cxa_assert(ioStreamIn);
 	cxa_assert(targetBufferIn);
@@ -360,6 +360,7 @@ static bool receiveBinaryBlob(cxa_ioStream_t *const ioStreamIn, uint8_t *const t
 	cxa_timeDiff_init(&td_timeout);
 
 	uint8_t rxByte;
+	bool isStringNullTerminated = false;
 	while( numRxBytes < expectedNumBytesIn )
 	{
 		cxa_ioStream_readStatus_t rs = cxa_ioStream_readByte(ioStreamIn, &rxByte);
@@ -367,6 +368,15 @@ static bool receiveBinaryBlob(cxa_ioStream_t *const ioStreamIn, uint8_t *const t
 		{
 			// save the byte
 			targetBufferIn[numRxBytes++] = rxByte;
+
+			// if we get a null byte, we're done
+			if( rxByte == 0 )
+			{
+				isStringNullTerminated = true;
+				break;
+			}
+
+			// if we made it here, continue receiving bytes
 			cxa_timeDiff_setStartTime_now(&td_timeout);
 		}
 		else if( rs == CXA_IOSTREAM_READSTAT_ERROR )
@@ -383,7 +393,14 @@ static bool receiveBinaryBlob(cxa_ioStream_t *const ioStreamIn, uint8_t *const t
 		}
 	}
 
-	// if we made it here, we received the blob...now store it to NVS
+	// if we made it here, we need to make sure that the string was null-terminated
+	if( !isStringNullTerminated )
+	{
+		cxa_ioStream_writeLine(ioStreamIn, "NO");
+		return false;
+	}
+
+	// if we made it here, we received the null-terminated c string...now store it to NVS
 	if( !cxa_nvsManager_set_cString(nvsKeyIn, (char *const)targetBufferIn) )
 	{
 		cxa_ioStream_writeLine(ioStreamIn, "NO");

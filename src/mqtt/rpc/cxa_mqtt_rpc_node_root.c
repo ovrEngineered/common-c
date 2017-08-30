@@ -31,6 +31,8 @@
 
 
 // ******** local macro definitions ********
+#define CONN_STATE_PAYLOAD_CONN			"{\"value\":1}"
+#define CONN_STATE_PAYLOAD_DISCONN		"{\"value\":0}"
 
 
 // ******** local type definitions ********
@@ -77,20 +79,12 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
 	stateTopic[0] = 0;
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
-	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_NOTI_PREFIX CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
-	#ifdef CXA_MQTTSERVER_ISAWS
-		cxa_assert(cxa_mqtt_client_setWillMessage(nodeIn->mqttClient,
-												  CXA_MQTT_QOS_ATMOST_ONCE,
-												  false,
-												  stateTopic,
-												  "{\"state\":{\"reported\":{\"connState\":0}}}", 38));
-	#else
-		cxa_assert(cxa_mqtt_client_setWillMessage(nodeIn->mqttClient,
-												  CXA_MQTT_QOS_ATMOST_ONCE,
-												  true,
-												  stateTopic,
-												  ((uint8_t[]){0x00}), 1));
-	#endif
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
+	cxa_assert(cxa_mqtt_client_setWillMessage(nodeIn->mqttClient,
+											  CXA_MQTT_QOS_ATMOST_ONCE,
+											  false,
+											  stateTopic,
+											  CONN_STATE_PAYLOAD_DISCONN, strlen(CONN_STATE_PAYLOAD_DISCONN)));
 
 	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
 	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
@@ -118,20 +112,12 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
 	stateTopic[0] = 0;
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
-	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_NOTI_PREFIX CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
-	#ifdef CXA_MQTTSERVER_ISAWS
-		cxa_mqtt_client_publish(clientIn,
-								CXA_MQTT_QOS_ATMOST_ONCE,
-								false,
-								stateTopic,
-								"{\"state\":{\"reported\":{\"connState\":1}}}", 38);
-	#else
-		cxa_mqtt_client_publish(clientIn,
-								CXA_MQTT_QOS_ATMOST_ONCE,
-								true,
-								stateTopic,
-								((uint8_t[]){0x01}), 1);
-	#endif
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
+	cxa_mqtt_client_publish(clientIn,
+							CXA_MQTT_QOS_ATMOST_ONCE,
+							false,
+							stateTopic,
+							CONN_STATE_PAYLOAD_CONN, strlen(CONN_STATE_PAYLOAD_CONN));
 }
 
 
