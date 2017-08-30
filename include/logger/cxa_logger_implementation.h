@@ -24,8 +24,9 @@
 
 
 // ******** includes ********
-#include <stdio.h>
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <cxa_logger_header.h>
 #include <cxa_ioStream.h>
 
@@ -145,9 +146,15 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 
 
 /**
+ * @protected
+ */
+void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, va_list argsIn);
+
+
+/**
  * @private
  */
-void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...);
+void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, ...);
 
 
 /**

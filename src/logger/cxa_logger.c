@@ -151,7 +151,7 @@ void cxa_logger_log_untermString(cxa_logger_t *const loggerIn, const uint8_t lev
 }
 
 
-void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char *formatIn, ...)
+void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, va_list argsIn)
 {
 	cxa_assert(loggerIn);
 	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
@@ -181,10 +181,7 @@ void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t 
 	writeHeader(loggerIn, levelIn);
 
 	// now do our VARARGS
-	va_list varArgs;
-	va_start(varArgs, formatIn);
-	cxa_ioStream_vWriteString(ioStream, formatIn, varArgs, true, CXA_LOGGER_TRUNCATE_STRING);
-	va_end(varArgs);
+	cxa_ioStream_vWriteString(ioStream, formatIn, argsIn, true, CXA_LOGGER_TRUNCATE_STRING);
 
 	// print EOL
 	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
@@ -194,6 +191,15 @@ void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t 
 #endif
 
 	cxa_criticalSection_exit();
+}
+
+
+void cxa_logger_log_formattedString(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, ...)
+{
+	va_list varArgs;
+	va_start(varArgs, formatIn);
+	cxa_logger_log_varArgs(loggerIn, levelIn, formatIn, varArgs);
+	va_end(varArgs);
 }
 
 
