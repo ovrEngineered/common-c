@@ -215,8 +215,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	mbedtls_ssl_conf_own_cert(&netClientIn->tls.conf, &netClientIn->tls.cert_client, &netClientIn->tls.client_key_private);
 
 #ifdef MBEDTLS_DEBUG_C
-    mbedtls_debug_set_threshold(DEBUG_LEVEL);
-    mbedtls_ssl_conf_dbg(&netClientIn->tls.conf, netconn_tls_debug, (void*)netClientIn);
+    mbedtls_esp_enable_debug_log(&netClientIn->tls.conf, DEBUG_LEVEL);
 #endif
 
 	tmpRet = mbedtls_ssl_setup(&netClientIn->tls.sslContext, &netClientIn->tls.conf);
