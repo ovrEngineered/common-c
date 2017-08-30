@@ -87,9 +87,10 @@ void cxa_tempSensor_notify_updatedValue(cxa_tempSensor_t *const tmpSnsIn, bool w
 {
 	cxa_assert(tmpSnsIn);
 
+	bool valueDidChange = (tmpSnsIn->lastReading_degC != newTemp_degCIn);
 	tmpSnsIn->lastReading_degC = newTemp_degCIn;
 
-	if( tmpSnsIn->cb_onTempUpdate != NULL ) tmpSnsIn->cb_onTempUpdate(tmpSnsIn, wasSuccessfulIn, newTemp_degCIn, tmpSnsIn->userVar);
+	if( tmpSnsIn->cb_onTempUpdate != NULL ) tmpSnsIn->cb_onTempUpdate(tmpSnsIn, wasSuccessfulIn, valueDidChange, newTemp_degCIn, tmpSnsIn->userVar);
 	tmpSnsIn->cb_onTempUpdate = NULL;
 	tmpSnsIn->userVar = NULL;
 }

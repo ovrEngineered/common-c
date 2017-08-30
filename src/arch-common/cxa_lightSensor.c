@@ -87,9 +87,10 @@ void cxa_lightSensor_notify_updatedValue(cxa_lightSensor_t *const lightSnsIn, bo
 {
 	cxa_assert(lightSnsIn);
 
+	bool valueDidChange = (lightSnsIn->lastReading_255 != newLight_255In);
 	lightSnsIn->lastReading_255 = newLight_255In;
 
-	if( lightSnsIn->cb_onUpdate != NULL ) lightSnsIn->cb_onUpdate(lightSnsIn, wasSuccessfulIn, newLight_255In, lightSnsIn->userVar);
+	if( lightSnsIn->cb_onUpdate != NULL ) lightSnsIn->cb_onUpdate(lightSnsIn, wasSuccessfulIn, valueDidChange, newLight_255In, lightSnsIn->userVar);
 	lightSnsIn->cb_onUpdate = NULL;
 	lightSnsIn->userVar = NULL;
 }

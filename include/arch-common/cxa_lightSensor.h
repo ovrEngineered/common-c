@@ -46,7 +46,7 @@ typedef struct cxa_lightSensor cxa_lightSensor_t;
 /**
  * @public
  */
-typedef void (*cxa_lightSensor_cb_updatedValue_t)(cxa_lightSensor_t *const lightSnsIn, bool wasSuccessfulIn, uint8_t newLight_255In, void* userVarIn);
+typedef void (*cxa_lightSensor_cb_updatedValue_t)(cxa_lightSensor_t *const lightSnsIn, bool wasSuccessfulIn, bool valueDidChangeIn, uint8_t newLight_255In, void* userVarIn);
 
 
 /**

@@ -48,7 +48,7 @@ typedef struct cxa_tempSensor cxa_tempSensor_t;
 /**
  * @public
  */
-typedef void (*cxa_tempSensor_cb_updatedValue_t)(cxa_tempSensor_t *const tmpSnsIn, bool wasSuccessfulIn, float newTemp_degCIn, void* userVarIn);
+typedef void (*cxa_tempSensor_cb_updatedValue_t)(cxa_tempSensor_t *const tmpSnsIn, bool wasSuccessfulIn, bool valueDidChangeIn, float newTemp_degCIn, void* userVarIn);
 
 
 /**
