@@ -142,7 +142,7 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	uint16_t topicNameLen_bytes;
 	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return;
 
-	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
+//	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
 
 	if( cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)) )
 	{
