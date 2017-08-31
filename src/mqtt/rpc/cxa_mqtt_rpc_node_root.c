@@ -31,8 +31,8 @@
 
 
 // ******** local macro definitions ********
-#define CONN_STATE_PAYLOAD_CONN			"{\"value\":1}"
-#define CONN_STATE_PAYLOAD_DISCONN		"{\"value\":0}"
+#define CONN_STATE_PAYLOAD_CONN			"{\"value_num\":1}"
+#define CONN_STATE_PAYLOAD_DISCONN		"{\"value_num\":0}"
 
 
 // ******** local type definitions ********
