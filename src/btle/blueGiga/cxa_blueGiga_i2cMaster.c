@@ -13,18 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "cxa_blueGiga_i2cMaster.h"
-
-
-/**
- * @author Christopher Armenio
- */
-
-
-// ******** includes ********
 #include <stdio.h>
 #include <cxa_assert.h>
 #include <cxa_blueGiga_btle_client.h>
+#include "../../../include/arch-esp32/cxa_esp32_i2cMaster.h"
 
 
 #define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
@@ -59,7 +51,7 @@ void cxa_blueGiga_i2cMaster_init(cxa_blueGiga_i2cMaster_t *const i2cIn, cxa_blue
 	i2cIn->btlec = btlecIn;
 
 	// initialize our super class
-	cxa_i2cMaster_init(&i2cIn->super, scm_readBytes, scm_writeBytes);
+	cxa_i2cMaster_init(&i2cIn->super, scm_readBytes, NULL, scm_writeBytes, NULL);
 }
 
 

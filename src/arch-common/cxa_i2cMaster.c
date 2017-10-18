@@ -33,7 +33,11 @@
 
 
 // ******** global function implementations ********
-void cxa_i2cMaster_init(cxa_i2cMaster_t *const i2cIn, cxa_i2cMaster_scm_readBytes_t scm_readIn, cxa_i2cMaster_scm_writeBytes_t scm_writeIn)
+void cxa_i2cMaster_init(cxa_i2cMaster_t *const i2cIn,
+					    cxa_i2cMaster_scm_readBytes_t scm_readIn,
+						cxa_i2cMaster_scm_readBytesWithControlBytes_t scm_readWithControlBytesIn,
+						cxa_i2cMaster_scm_writeBytes_t scm_writeIn,
+						cxa_i2cMaster_scm_resetBus_t scm_resetBusIn)
 {
 	cxa_assert(i2cIn);
 	cxa_assert(scm_readIn);
@@ -41,9 +45,20 @@ void cxa_i2cMaster_init(cxa_i2cMaster_t *const i2cIn, cxa_i2cMaster_scm_readByte
 
 	// save our references
 	i2cIn->scms.readBytes = scm_readIn;
+	i2cIn->scms.readBytesWithControlBytes = scm_readWithControlBytesIn;
 	i2cIn->scms.writeBytes = scm_writeIn;
+	i2cIn->scms.resetBus = scm_resetBusIn;
 
 	i2cIn->isBusy = false;
+}
+
+
+void cxa_i2cMaster_resetBus(cxa_i2cMaster_t *const i2cIn)
+{
+	cxa_assert(i2cIn);
+
+	cxa_assert(i2cIn->scms.resetBus);
+	i2cIn->scms.resetBus(i2cIn);
 }
 
 
@@ -52,6 +67,7 @@ void cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const i2cIn,
 							 cxa_i2cMaster_cb_onReadComplete_t cbIn, void* userVarIn)
 {
 	cxa_assert(i2cIn);
+	cxa_assert(numBytesToReadIn > 0);
 
 	// don't do anything if we're still busy
 	if( i2cIn->isBusy )
@@ -71,11 +87,40 @@ void cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const i2cIn,
 }
 
 
+void cxa_i2cMaster_readBytes_withControlBytes(cxa_i2cMaster_t *const i2cIn,
+											 uint8_t addressIn, uint8_t sendStopIn,
+											 cxa_fixedByteBuffer_t *const controlBytesIn,
+											 size_t numBytesToReadIn,
+											 cxa_i2cMaster_cb_onReadComplete_t cbIn, void* userVarIn)
+{
+	cxa_assert(i2cIn);
+	cxa_assert(controlBytesIn && (cxa_fixedByteBuffer_getSize_bytes(controlBytesIn) > 0) );
+	cxa_assert(numBytesToReadIn > 0);
+
+	// don't do anything if we're still busy
+	if( i2cIn->isBusy )
+	{
+		if( cbIn != NULL ) cbIn(i2cIn, false, NULL, userVarIn);
+		return;
+	}
+
+	// if we made it here, we weren't busy...now we are
+	i2cIn->isBusy = true;
+	i2cIn->cbs.readComplete = cbIn;
+	i2cIn->cbs.userVar = userVarIn;
+
+	// call our subclass method
+	cxa_assert(i2cIn->scms.readBytesWithControlBytes);
+	i2cIn->scms.readBytesWithControlBytes(i2cIn, addressIn, sendStopIn, controlBytesIn, numBytesToReadIn);
+}
+
+
 void cxa_i2cMaster_writeBytes(cxa_i2cMaster_t *const i2cIn,
 							  uint8_t addressIn, uint8_t sendStopIn, cxa_fixedByteBuffer_t *const writeBytesIn,
 							  cxa_i2cMaster_cb_onWriteComplete_t cbIn, void* userVarIn)
 {
 	cxa_assert(i2cIn);
+	cxa_assert(writeBytesIn && (cxa_fixedByteBuffer_getSize_bytes(writeBytesIn) > 0) );
 
 	// don't do anything if we're still busy
 	if( i2cIn->isBusy )

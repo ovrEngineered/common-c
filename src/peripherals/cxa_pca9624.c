@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cxa_assert.h>
+#include <cxa_stateMachine.h>
 
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
@@ -35,6 +36,16 @@
 
 
 // ******** local type definitions ********
+typedef enum
+{
+	STATE_UNINIT,
+	STATE_VERIFY_COMMS,
+	STATE_INIT_CONFIG,
+	STATE_RUNNING,
+	STATE_ERROR
+}state_t;
+
+
 typedef enum
 {
 	REG_MODE1 = 0x00,
@@ -68,18 +79,23 @@ typedef enum
 
 
 // ******** local function prototypes ********
-static bool readFromRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t* valOut);
-static bool syncRegisterIfChanged(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t valIn);
-static bool writeAllRegs(cxa_pca9624_t *const pcaIn);
-static bool setAllChannelsToState(cxa_pca9624_t *const pcaIn, ledOut_state_t stateIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn);
-static bool writeAllLedBrightnesses(cxa_pca9624_t *const pcaIn, uint8_t* brightnessesIn);
+static void writeAllRegs(cxa_pca9624_t *const pcaIn);
+static void setChannelsToState(cxa_pca9624_t *const pcaIn, ledOut_state_t stateIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn);
+
+static void stateCb_verifyComms_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_initConfigure_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_running_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+
+static void i2cCb_onReadComplete_verifyComms(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
+static void i2cCb_onWriteComplete_allRegs(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
 
 
 // ******** global function implementations ********
-bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, uint8_t addressIn, cxa_gpio_t *const gpio_oeIn)
+void cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, uint8_t addressIn, cxa_gpio_t *const gpio_oeIn, int threadIdIn)
 {
 	cxa_assert(pcaIn);
 	cxa_assert(i2cIn);
@@ -89,17 +105,167 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 	pcaIn->address = addressIn;
 	pcaIn->i2c = i2cIn;
 	pcaIn->gpio_outputEnable = gpio_oeIn;
-	pcaIn->isInit = false;
+
+	// initialize our listeners
+	cxa_array_initStd(&pcaIn->listeners, pcaIn->listeners_raw);
+
+	// initialize our logger
+	cxa_logger_init(&pcaIn->logger, "pca9624");
+
+	// initialize our stateMachine
+	cxa_stateMachine_init(&pcaIn->stateMachine, "pca9624", threadIdIn);
+	cxa_stateMachine_addState(&pcaIn->stateMachine, STATE_UNINIT, "uninit", NULL, NULL, NULL, (void*)pcaIn);
+	cxa_stateMachine_addState(&pcaIn->stateMachine, STATE_VERIFY_COMMS, "verifyComms", stateCb_verifyComms_enter, NULL, NULL, (void*)pcaIn);
+	cxa_stateMachine_addState(&pcaIn->stateMachine, STATE_INIT_CONFIG, "initConfig", stateCb_initConfigure_enter, NULL, NULL, (void*)pcaIn);
+	cxa_stateMachine_addState(&pcaIn->stateMachine, STATE_RUNNING, "running", stateCb_running_enter, NULL, NULL, (void*)pcaIn);
+	cxa_stateMachine_addState(&pcaIn->stateMachine, STATE_ERROR, "error", stateCb_error_enter, NULL, NULL, (void*)pcaIn);
+	cxa_stateMachine_setInitialState(&pcaIn->stateMachine, STATE_UNINIT);
+}
+
+
+void cxa_pca9624_addListener(cxa_pca9624_t *const pcaIn, cxa_pca9624_cb_t cb_onBecomesReadyIn, cxa_pca9624_cb_t cb_onErrorIn, void *userVarIn)
+{
+	cxa_assert(pcaIn);
+
+	cxa_pca9624_listener_t newListener = {
+			.cb_onBecomesReady = cb_onBecomesReadyIn,
+			.cb_onError = cb_onErrorIn,
+			.userVar = userVarIn
+	};
+
+	cxa_assert(cxa_array_append(&pcaIn->listeners, &newListener));
+}
+
+
+void cxa_pca9624_start(cxa_pca9624_t *const pcaIn)
+{
+	cxa_assert(pcaIn);
+	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) != STATE_UNINIT ) return;
+
+	cxa_stateMachine_transition(&pcaIn->stateMachine, STATE_VERIFY_COMMS);
+}
+
+
+void cxa_pca9624_setGlobalBlinkRate(cxa_pca9624_t *const pcaIn, uint16_t onPeriod_msIn, uint16_t offPeriod_msIn)
+{
+//	cxa_assert(pcaIn);
+//	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) != STATE_RUNNING ) return;
+//
+//	// make sure we're blinking (not dimming)
+//	uint8_t newMode2 = pcaIn->currRegs[REG_MODE2] | (1 << 5);
+//	if( !syncRegisterIfChanged(pcaIn, REG_MODE2, newMode2) ) return;
+//
+//	// set our duty cycle
+//	float dutyCycle_pcnt = ((float)onPeriod_msIn) / (((float)onPeriod_msIn) + ((float)offPeriod_msIn));
+//	uint16_t newGrpPwm = dutyCycle_pcnt * 255.0;
+//	if( !syncRegisterIfChanged(pcaIn, REG_GRPPWM, newGrpPwm) ) return;
+//
+//	// and our frequency
+//	uint16_t newGrpFreq = (((((float)onPeriod_msIn) / 1000.0) + (((float)offPeriod_msIn) / 1000.0)) * 24.0) - 1;
+//	if( !syncRegisterIfChanged(pcaIn, REG_GRPFREQ, newGrpFreq) ) return;
+}
+
+
+void cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
+{
+	cxa_assert(pcaIn);
+	cxa_assert(chansEntriesIn);
+	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
+	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) != STATE_RUNNING ) return;
+	if( numChansIn ==  0 ) return;
+
+	// make sure the channels are no longer blinking
+	setChannelsToState(pcaIn, LEDOUT_PWM_INDIV, chansEntriesIn, numChansIn);
+
+	// set our new brightnesses
+	for( size_t i = 0; i < numChansIn; i++ )
+	{
+		cxa_pca9624_channelEntry_t* currEntry = &chansEntriesIn[i];
+		cxa_assert(currEntry->channelIndex < CXA_PCA9624_NUM_CHANNELS);
+
+		pcaIn->currRegs[REG_PWM0 + currEntry->channelIndex] = currEntry->brightness;
+	}
+
+	// now write to the controller
+	writeAllRegs(pcaIn);
+}
+
+
+void cxa_pca9624_blinkChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
+{
+//	cxa_assert(pcaIn);
+//	cxa_assert(chansEntriesIn);
+//	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
+//	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) != STATE_RUNNING ) return;
+//	if( numChansIn == 0 ) return;
+//
+//	// have to set our brightnesses first
+//	cxa_pca9624_setBrightnessForChannels(pcaIn, chansEntriesIn, numChansIn);
+//
+//	// now we need to tell the channels to blink
+//	setChannelsToState(pcaIn, LEDOUT_PWM_ALL, chansEntriesIn, numChansIn);
+}
+
+
+// ******** local function implementations ********
+static void writeAllRegs(cxa_pca9624_t *const pcaIn)
+{
+	cxa_fixedByteBuffer_t fbb_writeBytes;
+	uint8_t fbb_writeBytes_raw[sizeof(pcaIn->currRegs)+1];
+	cxa_fixedByteBuffer_initStd(&fbb_writeBytes, fbb_writeBytes_raw);
+	cxa_fixedByteBuffer_append_uint8(&fbb_writeBytes, 0x80);
+	cxa_fixedByteBuffer_append(&fbb_writeBytes, pcaIn->currRegs, sizeof(pcaIn->currRegs));
+
+	cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, true, &fbb_writeBytes, i2cCb_onWriteComplete_allRegs, (void*)pcaIn);
+}
+
+
+static void setChannelsToState(cxa_pca9624_t *const pcaIn, ledOut_state_t stateIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
+{
+	cxa_assert(pcaIn);
+	cxa_assert(chansEntriesIn);
+	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
+	if( numChansIn == 0 ) return;
+
+	// now we need to tell the channels to blink
+	uint8_t newLedOut0 = pcaIn->currRegs[REG_LEDOUT0];
+	uint8_t newLedOut1 = pcaIn->currRegs[REG_LEDOUT1];
+	for( size_t i = 0; i < numChansIn; i++ )
+	{
+		cxa_pca9624_channelEntry_t* currEntry = &chansEntriesIn[i];
+
+		uint8_t* targetLedOut = (currEntry->channelIndex < 4) ? &newLedOut0 : &newLedOut1;
+		uint8_t shiftAmount = (currEntry->channelIndex % 4) * 2;
+
+		*targetLedOut = (*targetLedOut & ~(0x03 << shiftAmount)) | (stateIn << shiftAmount);
+	}
+
+	pcaIn->currRegs[REG_LEDOUT0] = newLedOut0;
+	pcaIn->currRegs[REG_LEDOUT1] = newLedOut1;
+}
+
+
+static void stateCb_verifyComms_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_pca9624_t *const pcaIn = (cxa_pca9624_t *const)userVarIn;
+	cxa_assert(pcaIn);
 
 	// read MODE2 just to make sure the device is actually there
-	uint8_t mode2 = 0x00;
-	if( !readFromRegister(pcaIn, REG_MODE2, &mode2) ||
-			(((mode2 >> 7) & 0x01) != 0) ||
-			(((mode2 >> 6) & 0x01) != 0) ||
-			(((mode2 >> 4) & 0x01) != 0) ||
-			(((mode2 >> 2) & 0x01) != 1) ||
-			(((mode2 >> 1) & 0x01) != 0) ||
-			(((mode2 >> 0) & 0x01) != 1) ) return false;
+
+	// write the control register...follow-up read will be completed in callback
+	cxa_fixedByteBuffer_t fbb_writeBytes;
+	uint8_t fbb_writeBytes_raw[1];
+	cxa_fixedByteBuffer_initStd(&fbb_writeBytes, fbb_writeBytes_raw);
+	cxa_fixedByteBuffer_append_uint8(&fbb_writeBytes, (uint8_t)REG_MODE2);
+
+	cxa_i2cMaster_readBytes_withControlBytes(pcaIn->i2c, pcaIn->address, true, &fbb_writeBytes, 1, i2cCb_onReadComplete_verifyComms, (void*)pcaIn);
+}
+
+
+static void stateCb_initConfigure_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_pca9624_t *const pcaIn = (cxa_pca9624_t *const)userVarIn;
+	cxa_assert(pcaIn);
 
 	// if we made it here, it looks like we have a responding, valid device...configure it
 	pcaIn->currRegs[REG_MODE1] = 0x01;
@@ -120,158 +286,81 @@ bool cxa_pca9624_init(cxa_pca9624_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 	pcaIn->currRegs[REG_SUBADR2] = 0xE4;
 	pcaIn->currRegs[REG_SUBADR3] = 0xE8;
 	pcaIn->currRegs[REG_ALLCALLADR] = 0xE0;
-	if( !writeAllRegs(pcaIn) ) return false;
 
-	// enable our outputs
-	cxa_gpio_setValue(pcaIn->gpio_outputEnable, 1);
-	pcaIn->isInit = true;
-
-	return true;
+	// write the control register first...then everything else
+	writeAllRegs(pcaIn);
 }
 
 
-bool cxa_pca9624_setGlobalBlinkRate(cxa_pca9624_t *const pcaIn, uint16_t onPeriod_msIn, uint16_t offPeriod_msIn)
+static void stateCb_running_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
+	cxa_pca9624_t *const pcaIn = (cxa_pca9624_t *const)userVarIn;
 	cxa_assert(pcaIn);
 
-	// make sure we're blinking (not dimming)
-	uint8_t newMode2 = pcaIn->currRegs[REG_MODE2] | (1 << 5);
-	if( !syncRegisterIfChanged(pcaIn, REG_MODE2, newMode2) ) return false;
+	cxa_logger_info(&pcaIn->logger, "pca9624 ready");
 
-	// set our duty cycle
-	float dutyCycle_pcnt = ((float)onPeriod_msIn) / (((float)onPeriod_msIn) + ((float)offPeriod_msIn));
-	uint16_t newGrpPwm = dutyCycle_pcnt * 255.0;
-	if( !syncRegisterIfChanged(pcaIn, REG_GRPPWM, newGrpPwm) ) return false;
-
-	// and our frequency
-	uint16_t newGrpFreq = (((((float)onPeriod_msIn) / 1000.0) + (((float)offPeriod_msIn) / 1000.0)) * 24.0) - 1;
-	if( !syncRegisterIfChanged(pcaIn, REG_GRPFREQ, newGrpFreq) ) return false;
-
-	return true;
-}
-
-
-bool cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
-{
-	cxa_assert(pcaIn);
-	cxa_assert(chansEntriesIn);
-	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
-	if( numChansIn ==  0 ) return true;
-
-	// make sure the channels are no longer blinking
-	if( !setAllChannelsToState(pcaIn, LEDOUT_PWM_INDIV, chansEntriesIn, numChansIn) ) return false;
-
-	// create a local copy of our registers (in case we fail)
-	uint8_t newBrightness[CXA_PCA9624_NUM_CHANNELS];
-	memcpy(newBrightness, &pcaIn->currRegs[REG_PWM0], sizeof(newBrightness));
-
-	// set our new brightnesses
-	for( size_t i = 0; i < numChansIn; i++ )
+	cxa_array_iterate(&pcaIn->listeners, currListener, cxa_pca9624_listener_t)
 	{
-		cxa_pca9624_channelEntry_t* currEntry = &chansEntriesIn[i];
-		cxa_assert(currEntry->channelIndex < CXA_PCA9624_NUM_CHANNELS);
+		if( (currListener != NULL) && (currListener->cb_onBecomesReady != NULL) ) currListener->cb_onBecomesReady(currListener->userVar);
+	}
+}
 
-		newBrightness[currEntry->channelIndex] = currEntry->brightness;
+
+static void stateCb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_pca9624_t *const pcaIn = (cxa_pca9624_t *const)userVarIn;
+	cxa_assert(pcaIn);
+
+	cxa_array_iterate(&pcaIn->listeners, currListener, cxa_pca9624_listener_t)
+	{
+		if( (currListener != NULL) && (currListener->cb_onError != NULL) ) currListener->cb_onError(currListener->userVar);
+	}
+}
+
+
+static void i2cCb_onReadComplete_verifyComms(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn)
+{
+	cxa_pca9624_t *const pcaIn = (cxa_pca9624_t *const)userVarIn;
+	cxa_assert(pcaIn);
+	cxa_assert( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) == STATE_VERIFY_COMMS );
+
+	uint8_t mode2;
+	if( !wasSuccessfulIn || (cxa_fixedByteBuffer_getSize_bytes(readBytesIn) != 1) ||
+		!cxa_fixedByteBuffer_get_uint8(readBytesIn, 0, mode2) ||
+		(((mode2 >> 7) & 0x01) != 0) ||
+		(((mode2 >> 6) & 0x01) != 0) ||
+		(((mode2 >> 4) & 0x01) != 0) ||
+		(((mode2 >> 2) & 0x01) != 1) ||
+		(((mode2 >> 1) & 0x01) != 0) ||
+		(((mode2 >> 0) & 0x01) != 1) )
+	{
+		cxa_logger_error(&pcaIn->logger, "error verifying pca9624");
+		cxa_stateMachine_transition(&pcaIn->stateMachine, STATE_ERROR);
+		return;
 	}
 
-	// now write to the controller
-	if( !writeAllLedBrightnesses(pcaIn, newBrightness) ) return false;
-
-	// if we made it here, the write was successful...store our new values
-	memcpy(&pcaIn->currRegs[REG_PWM0], newBrightness, sizeof(newBrightness));
-	return true;
+	// if we made it here, we read the byte successfully...start initialization
+	cxa_stateMachine_transition(&pcaIn->stateMachine, STATE_INIT_CONFIG);
 }
 
 
-bool cxa_pca9624_blinkChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
+static void i2cCb_onWriteComplete_allRegs(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn)
 {
-	cxa_assert(pcaIn);
-	cxa_assert(chansEntriesIn);
-	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
-	if( numChansIn == 0 ) return true;
-
-	// have to set our brightnesses first
-	if( !cxa_pca9624_setBrightnessForChannels(pcaIn, chansEntriesIn, numChansIn) ) return false;
-
-	// now we need to tell the channels to blink
-	return setAllChannelsToState(pcaIn, LEDOUT_PWM_ALL, chansEntriesIn, numChansIn);
-}
-
-
-// ******** local function implementations ********
-static bool readFromRegister(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t* valOut)
-{
+	cxa_pca9624_t *const pcaIn = (cxa_pca9624_t *const)userVarIn;
 	cxa_assert(pcaIn);
 
-//	uint8_t ctrlBytes = registerIn;
-#warning fix this
-	return false;
-//	return cxa_i2cMaster_readBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, valOut, 1);
-}
-
-
-static bool syncRegisterIfChanged(cxa_pca9624_t *const pcaIn, register_t registerIn, uint8_t valIn)
-{
-	cxa_assert(pcaIn);
-
-	// see if we're already at the target value
-	if( pcaIn->currRegs[registerIn] == valIn ) return true;
-
-	// if we made it here, we need to do a write
-//	uint8_t ctrlBytes = registerIn;
-//	bool retVal = cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
-#warning fix this
-	return false;
-	bool retVal = false;
-
-	// if the write was successful, update our local copy
-	if( retVal ) pcaIn->currRegs[registerIn] = valIn;
-
-	return retVal;
-}
-
-
-static bool writeAllRegs(cxa_pca9624_t *const pcaIn)
-{
-	cxa_assert(pcaIn);
-
-//	uint8_t ctrlBytes = 0x80;
-//	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, pcaIn->currRegs, 18);
-#warning fix this
-	return false;
-}
-
-
-static bool setAllChannelsToState(cxa_pca9624_t *const pcaIn, ledOut_state_t stateIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
-{
-	cxa_assert(pcaIn);
-	cxa_assert(chansEntriesIn);
-	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
-	if( numChansIn == 0 ) return true;
-
-	// now we need to tell the channels to blink
-	uint8_t newLedOut0 = pcaIn->currRegs[REG_LEDOUT0];
-	uint8_t newLedOut1 = pcaIn->currRegs[REG_LEDOUT1];
-	for( size_t i = 0; i < numChansIn; i++ )
+	if( !wasSuccessfulIn )
 	{
-		cxa_pca9624_channelEntry_t* currEntry = &chansEntriesIn[i];
-
-		uint8_t* targetLedOut = (currEntry->channelIndex < 4) ? &newLedOut0 : &newLedOut1;
-		uint8_t shiftAmount = (currEntry->channelIndex % 4) * 2;
-
-		*targetLedOut = (*targetLedOut & ~(0x03 << shiftAmount)) | (stateIn << shiftAmount);
+		cxa_logger_error(&pcaIn->logger, "error writing pca9624 registers");
+		cxa_stateMachine_transition(&pcaIn->stateMachine, STATE_ERROR);
+		return;
 	}
 
-	return syncRegisterIfChanged(pcaIn, REG_LEDOUT0, newLedOut0) && syncRegisterIfChanged(pcaIn, REG_LEDOUT1, newLedOut1);
-}
-
-
-static bool writeAllLedBrightnesses(cxa_pca9624_t *const pcaIn, uint8_t* brightnessesIn)
-{
-	cxa_assert(pcaIn);
-
-//	uint8_t ctrlBytes = 0xA0 | REG_PWM0;
-//	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, brightnessesIn, CXA_PCA9624_NUM_CHANNELS);
-#warning fix this
-	return false;
+	// if we made it here, write was successful
+	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) == STATE_INIT_CONFIG )
+	{
+		// if we made it here, we configured successfully...enable our outputs
+		cxa_gpio_setValue(pcaIn->gpio_outputEnable, 1);
+		cxa_stateMachine_transition(&pcaIn->stateMachine, STATE_RUNNING);
+	}
 }

@@ -84,7 +84,7 @@ static void scm_blink(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uin
 	cxa_assert(ledIn);
 
 	// set our global blink rate
-	if( !cxa_pca9624_setGlobalBlinkRate(ledIn->pca, onPeriod_msIn, offPeriod_msIn) ) return;
+	cxa_pca9624_setGlobalBlinkRate(ledIn->pca, onPeriod_msIn, offPeriod_msIn);
 
 	// adjust for our max brightness
 	rIn = (((float)rIn) / 255.0) * ledIn->maxBrightness;

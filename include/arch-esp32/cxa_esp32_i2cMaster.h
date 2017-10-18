@@ -14,29 +14,47 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_TEMPSENSOR_SI7050_H_
-#define CXA_TEMPSENSOR_SI7050_H_
+#ifndef CXA_ESP32_I2C_MASTER_H_
+#define CXA_ESP32_I2C_MASTER_H_
 
 
 // ******** includes ********
 #include <cxa_i2cMaster.h>
-#include <cxa_tempSensor.h>
+
+#include "driver/i2c.h"
 
 
 // ******** global macro definitions ********
 
 
 // ******** global type definitions *********
-typedef struct
-{
-	cxa_tempSensor_t super;
+/**
+ * @public
+ * @brief "Forward" declaration of the cxa_esp32_i2cMaster_t object
+ */
+typedef struct cxa_esp32_i2cMaster cxa_esp32_i2cMaster_t;
 
-	cxa_i2cMaster_t* i2c;
-}cxa_tempSensor_si7050_t;
+
+/**
+ * @private
+ */
+struct cxa_esp32_i2cMaster
+{
+	cxa_i2cMaster_t super;
+
+	i2c_port_t i2cPort;
+
+	i2c_config_t conf;
+};
 
 
 // ******** global function prototypes ********
-void cxa_tempSensor_si7050_init(cxa_tempSensor_si7050_t *const siIn, cxa_i2cMaster_t *const i2cIn);
+/**
+ * @protected
+ */
+void cxa_esp32_i2cMaster_init(cxa_esp32_i2cMaster_t *const i2cIn, const i2c_port_t i2cPortIn,
+							 const gpio_num_t pinNum_sdaIn, const gpio_num_t pinNum_sclIn,
+							 const bool enablePullUpsIn, uint32_t busFreq_hzIn);
 
 
-#endif
+#endif // CXA_BLUEGIGA_I2C_H_

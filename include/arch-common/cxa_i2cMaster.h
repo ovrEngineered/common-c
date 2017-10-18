@@ -52,7 +52,16 @@ typedef void (*cxa_i2cMaster_cb_onWriteComplete_t)(cxa_i2cMaster_t *const i2cIn,
  * @private
  */
 typedef void (*cxa_i2cMaster_scm_readBytes_t)(cxa_i2cMaster_t *const superIn,
-											  uint8_t addressIn, uint8_t sendStopIn, size_t numBytesToReadIn);
+											 uint8_t addressIn, uint8_t sendStopIn, size_t numBytesToReadIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_i2cMaster_scm_readBytesWithControlBytes_t)(cxa_i2cMaster_t *const superIn,
+															 uint8_t addressIn, uint8_t sendStopIn,
+															 cxa_fixedByteBuffer_t *const controlBytesIn,
+															 size_t numBytesToReadIn);
 
 
 /**
@@ -65,6 +74,12 @@ typedef void (*cxa_i2cMaster_scm_writeBytes_t)(cxa_i2cMaster_t *const superIn,
 /**
  * @private
  */
+typedef void (*cxa_i2cMaster_scm_resetBus_t)(cxa_i2cMaster_t *const superIn);
+
+
+/**
+ * @private
+ */
 struct cxa_i2cMaster
 {
 	bool isBusy;
@@ -72,7 +87,9 @@ struct cxa_i2cMaster
 	struct
 	{
 		cxa_i2cMaster_scm_readBytes_t readBytes;
+		cxa_i2cMaster_scm_readBytesWithControlBytes_t readBytesWithControlBytes;
 		cxa_i2cMaster_scm_writeBytes_t writeBytes;
+		cxa_i2cMaster_scm_resetBus_t resetBus;
 	}scms;
 
 	struct
@@ -89,8 +106,16 @@ struct cxa_i2cMaster
 /**
  * @protected
  */
-void cxa_i2cMaster_init(cxa_i2cMaster_t *const i2cIn, cxa_i2cMaster_scm_readBytes_t scm_readIn, cxa_i2cMaster_scm_writeBytes_t scm_writeIn);
+void cxa_i2cMaster_init(cxa_i2cMaster_t *const i2cIn,
+					    cxa_i2cMaster_scm_readBytes_t scm_readIn,
+						cxa_i2cMaster_scm_readBytesWithControlBytes_t scm_readWithControlBytesIn,
+						cxa_i2cMaster_scm_writeBytes_t scm_writeIn,
+						cxa_i2cMaster_scm_resetBus_t scm_resetBusIn);
 
+/**
+ * @public
+ */
+void cxa_i2cMaster_resetBus(cxa_i2cMaster_t *const i2cIn);
 
 /**
  * @public
@@ -98,6 +123,15 @@ void cxa_i2cMaster_init(cxa_i2cMaster_t *const i2cIn, cxa_i2cMaster_scm_readByte
 void cxa_i2cMaster_readBytes(cxa_i2cMaster_t *const i2cIn,
 							 uint8_t addressIn, uint8_t sendStopIn, size_t numBytesToReadIn,
 							 cxa_i2cMaster_cb_onReadComplete_t cbIn, void* userVarIn);
+
+/**
+ * @public
+ */
+void cxa_i2cMaster_readBytes_withControlBytes(cxa_i2cMaster_t *const i2cIn,
+											 uint8_t addressIn, uint8_t sendStopIn,
+											 cxa_fixedByteBuffer_t *const controlBytesIn,
+											 size_t numBytesToReadIn,
+											 cxa_i2cMaster_cb_onReadComplete_t cbIn, void* userVarIn);
 
 
 /**
