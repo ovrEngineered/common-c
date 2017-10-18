@@ -27,6 +27,7 @@
 
 #include <cxa_assert.h>
 #include <cxa_console.h>
+#include <cxa_esp32_eventManager.h>
 #include <cxa_stateMachine.h>
 
 
@@ -74,7 +75,11 @@ typedef struct
 
 // ******** local function prototypes ********
 static bool isStaConfigSet(void);
-static void handleStartupComplete(void);
+
+static void sysEventCb_sta_start(system_event_t *eventIn, void *const userVarIn);
+static void sysEventCb_sta_stop(system_event_t *eventIn, void *const userVarIn);
+static void sysEventCb_sta_disconnected(system_event_t *eventIn, void *const userVarIn);
+static void sysEventCb_sta_gotIp(system_event_t *eventIn, void *const userVarIn);
 
 static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn);
@@ -86,7 +91,6 @@ static void stateCb_associationFailed_enter(cxa_stateMachine_t *const smIn, int 
 static void stateCb_staStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_provisioning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
-static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event);
 static void espCb_smartConfig(smartconfig_status_t status, void *pdata);
 
 static void notify_idle(void);
@@ -122,11 +126,10 @@ void cxa_network_wifiManager_init(int threadIdIn)
 
 	// setup our wifi sub-system
 	tcpip_adapter_init();
-	ESP_ERROR_CHECK( esp_event_loop_init(espCb_eventHandler, NULL) );
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-	ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_FLASH) );
-	ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+	cxa_assert( esp_wifi_init(&cfg) == ESP_OK );
+	cxa_assert( esp_wifi_set_storage(WIFI_STORAGE_FLASH) == ESP_OK );
+	cxa_assert( esp_wifi_set_mode(WIFI_MODE_STA) == ESP_OK );
 
 	// setup our state machine
 	cxa_stateMachine_init(&stateMachine, "wifiMgr", threadIdIn);
@@ -139,6 +142,20 @@ void cxa_network_wifiManager_init(int threadIdIn)
 	cxa_stateMachine_addState(&stateMachine, STATE_PROVISIONING, "provisioning", stateCb_provisioning_enter, NULL, NULL, NULL);
 	cxa_stateMachine_setInitialState(&stateMachine, STATE_IDLE);
 
+	// subscribe to system events
+	cxa_esp32_eventManager_addListener(sysEventCb_sta_start,
+									  sysEventCb_sta_stop,
+									  NULL,
+									  sysEventCb_sta_disconnected,
+									  sysEventCb_sta_gotIp,
+									  NULL,
+									  NULL,
+									  NULL,
+									  NULL,
+									  NULL,
+									  NULL);
+
+	// add our console commands
 	cxa_console_addCommand("wifi_getCfg", "prints current config", NULL, 0, consoleCb_getCfg, NULL);
 	cxa_console_addCommand("wifi_restart", "restarts the WiFi stateMachine", NULL, 0, consoleCb_restart, NULL);
 }
@@ -285,7 +302,7 @@ static bool isStaConfigSet(void)
 }
 
 
-static void handleStartupComplete(void)
+static void sysEventCb_sta_start(system_event_t *eventIn, void *const userVarIn)
 {
 	if( cxa_stateMachine_getCurrentState(&stateMachine) != STATE_STARTUP ) return;
 
@@ -302,6 +319,37 @@ static void handleStartupComplete(void)
 	{
 		cxa_stateMachine_transition(&stateMachine, STATE_PROVISIONING);
 	}
+}
+
+
+static void sysEventCb_sta_stop(system_event_t *eventIn, void *const userVarIn)
+{
+	cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
+}
+
+
+static void sysEventCb_sta_disconnected(system_event_t *eventIn, void *const userVarIn)
+{
+	internalState_t currState = cxa_stateMachine_getCurrentState(&stateMachine);
+
+	// components/esp32/include/esp_wifi_types.h -> WIFI_REASON_XXX
+	cxa_logger_debug(&logger, "disconnect reason: %d", eventIn->event_info.disconnected.reason);
+	if( (currState == STATE_ASSOCIATING) && (targetWifiMode != INTTAR_MODE_PROVISIONING) )
+	{
+		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATION_FAILED);
+	}
+	else if( (currState == STATE_ASSOCIATED) && (targetWifiMode != INTTAR_MODE_PROVISIONING) )
+	{
+		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
+	}
+}
+
+
+static void sysEventCb_sta_gotIp(system_event_t *eventIn, void *const userVarIn)
+{
+	// we're associated!!
+	myIp.addr = eventIn->event_info.got_ip.ip_info.ip.addr;
+	cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATED);
 }
 
 
@@ -341,7 +389,7 @@ static void stateCb_startup_enter(cxa_stateMachine_t *const smIn, int prevStateI
 	}
 	else
 	{
-		handleStartupComplete();
+		sysEventCb_sta_start(NULL, NULL);
 	}
 }
 
@@ -446,49 +494,6 @@ static void espCb_smartConfig(smartconfig_status_t status, void *pdata)
 }
 
 
-static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event)
-{
-	cxa_logger_trace(&logger, "evHandler: %d", event->event_id);
-
-	internalState_t currState = cxa_stateMachine_getCurrentState(&stateMachine);
-
-	switch( event->event_id )
-	{
-		case SYSTEM_EVENT_STA_START:
-			handleStartupComplete();
-			break;
-
-		case SYSTEM_EVENT_STA_STOP:
-			cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
-			break;
-
-		case SYSTEM_EVENT_STA_DISCONNECTED:
-			// components/esp32/include/esp_wifi_types.h -> WIFI_REASON_XXX
-			cxa_logger_debug(&logger, "disconnect reason: %d", event->event_info.disconnected.reason);
-			if( (currState == STATE_ASSOCIATING) && (targetWifiMode != INTTAR_MODE_PROVISIONING) )
-			{
-				cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATION_FAILED);
-			}
-			else if( (currState == STATE_ASSOCIATED) && (targetWifiMode != INTTAR_MODE_PROVISIONING) )
-			{
-				cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
-			}
-			break;
-
-		case SYSTEM_EVENT_STA_GOT_IP:
-			// we're associated!!
-			myIp.addr = event->event_info.got_ip.ip_info.ip.addr;
-			cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATED);
-			break;
-
-		default:
-			break;
-	}
-
-	return ESP_OK;
-}
-
-
 static void notify_idle(void)
 {
 	cxa_array_iterate(&listeners, currListener, listener_t)
@@ -569,11 +574,17 @@ static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const io
 	wifi_config_t cfg;
 	esp_wifi_get_config(WIFI_IF_STA, &cfg);
 
-	cxa_ioStream_writeFormattedLine(ioStreamIn, "ssid: '%s'  ip: %d.%d.%d.%d", cfg.sta.ssid,
-												((myIp.addr >> 0) & 0xFF),
-												((myIp.addr >> 8) & 0xFF),
-												((myIp.addr >> 16) & 0xFF),
-												((myIp.addr >> 24) & 0xFF));
+	tcpip_adapter_ip_info_t ip;
+	if( tcpip_adapter_get_ip_info(ESP_IF_WIFI_STA, &ip) != 0 )
+	{
+		cxa_ioStream_writeLine(ioStreamIn, "fail");
+		return;
+	}
+
+	cxa_ioStream_writeFormattedLine(ioStreamIn, "ssid: %s", cfg.sta.ssid);
+	cxa_ioStream_writeFormattedLine(ioStreamIn, "ip:   " IPSTR, IP2STR(&ip.ip));
+	cxa_ioStream_writeFormattedLine(ioStreamIn, "sn:   " IPSTR, IP2STR(&ip.netmask));
+	cxa_ioStream_writeFormattedLine(ioStreamIn, "gw:   " IPSTR, IP2STR(&ip.gw));
 }
 
 
