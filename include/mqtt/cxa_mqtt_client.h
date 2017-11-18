@@ -70,7 +70,7 @@ typedef enum
 typedef void (*cxa_mqtt_client_cb_onConnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 typedef void (*cxa_mqtt_client_cb_onConnectFailed_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
 typedef void (*cxa_mqtt_client_cb_onDisconnect_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
-typedef void (*cxa_mqtt_client_cb_onPingRespRx_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
+typedef void (*cxa_mqtt_client_cb_onActivity_t)(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 
 typedef void (*cxa_mqtt_client_cb_onPublish_t)(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn,
 		char* topicNameIn, size_t topicNameLen_bytesIn, void* payloadIn, size_t payloadLen_bytesIn, void* userVarIn);
@@ -90,7 +90,7 @@ typedef struct
 	cxa_mqtt_client_cb_onConnect_t cb_onConnect;
 	cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnect;
 	cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFail;
-	cxa_mqtt_client_cb_onPingRespRx_t cb_onPingRespRx;
+	cxa_mqtt_client_cb_onActivity_t cb_onActivity;
 
 	void* userVar;
 }cxa_mqtt_client_listenerEntry_t;
@@ -170,7 +170,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
 								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
-								 cxa_mqtt_client_cb_onPingRespRx_t cb_onPingRespRxIn,
+								 cxa_mqtt_client_cb_onActivity_t cb_onActivityIn,
 								 void *const userVarIn);
 
 bool cxa_mqtt_client_connect(cxa_mqtt_client_t *const clientIn, char *const usernameIn, uint8_t *const passwordIn, uint16_t passwordLen_bytesIn);

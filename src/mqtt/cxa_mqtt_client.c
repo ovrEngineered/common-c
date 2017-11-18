@@ -65,6 +65,7 @@ static void handleMessage_subAck(cxa_mqtt_client_t *const clientIn, cxa_mqtt_mes
 static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_message_t *const msgIn);
 
 static bool doesTopicMatchFilter(char* topicIn, char* filterIn);
+static void notify_activity(cxa_mqtt_client_t *const clientIn);
 
 
 // ********  local variable declarations *********
@@ -152,7 +153,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 								 cxa_mqtt_client_cb_onConnect_t cb_onConnectIn,
 								 cxa_mqtt_client_cb_onConnectFailed_t cb_onConnectFailIn,
 								 cxa_mqtt_client_cb_onDisconnect_t cb_onDisconnectIn,
-								 cxa_mqtt_client_cb_onPingRespRx_t cb_onPingRespRxIn,
+								 cxa_mqtt_client_cb_onActivity_t cb_onActivityIn,
 								 void *const userVarIn)
 {
 	cxa_assert(clientIn);
@@ -162,7 +163,7 @@ void cxa_mqtt_client_addListener(cxa_mqtt_client_t *const clientIn,
 		.cb_onConnect=cb_onConnectIn,
 		.cb_onConnectFail=cb_onConnectFailIn,
 		.cb_onDisconnect=cb_onDisconnectIn,
-		.cb_onPingRespRx=cb_onPingRespRxIn,
+		.cb_onActivity=cb_onActivityIn,
 		.userVar=userVarIn
 	};
 	cxa_assert_msg(cxa_array_append(&clientIn->listeners, &newEntry), "increase CXA_MQTT_CLIENT_MAXNUM_LISTENERS");
@@ -582,11 +583,7 @@ static void handleMessage_pingResp(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 	cxa_timeDiff_setStartTime_now(&clientIn->td_receiveKeepAlive);
 
 	// notify our listeners
-	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
-	{
-		if( currListener == NULL ) continue;
-		if( currListener->cb_onPingRespRx != NULL ) currListener->cb_onPingRespRx(clientIn, currListener->userVar);
-	}
+	notify_activity(clientIn);
 }
 
 
@@ -659,6 +656,9 @@ static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 				currSubscription->cb_onPublish(clientIn, msgIn, topicName, topicNameLen_bytes, payload, payloadSize_bytes, currSubscription->userVar);
 			}
 		}
+
+		// notify our listeners
+		notify_activity(clientIn);
 	} else cxa_logger_warn(&clientIn->logger, "malformed PUBLISH");
 }
 
@@ -700,4 +700,16 @@ static bool doesTopicMatchFilter(char* topicIn, char* filterIn)
     if( *curf == '#' ) curf++;
 
     return (curn == curn_end) && (*curf == '\0');
+}
+
+
+static void notify_activity(cxa_mqtt_client_t *const clientIn)
+{
+	cxa_assert(clientIn);
+
+	cxa_array_iterate(&clientIn->listeners, currListener, cxa_mqtt_client_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onActivity != NULL ) currListener->cb_onActivity(clientIn, currListener->userVar);
+	}
 }
