@@ -27,42 +27,47 @@
 
 
 // ******** local macro definitions ********
-#define I2C_ADDR					0x52
-#define STARTUP_TIME_MS				2000
+#define I2C_ADDR_7BIT				0x29
+#define STARTUP_TIME_MS				500
+#define WAKEUP_TIME_MS				500
+
+#define TARGET_GAIN					GAIN_8X
 
 
 // ******** local type definitions ********
 typedef enum
 {
 	STATE_STANDBY,
-	STATE_STARTMEASURE,
-	STATE_WRITE_IR_BYTE0,
-	STATE_READ_IR_BYTE0,
-	STATE_WRITE_IR_BYTE1,
-	STATE_READ_IR_BYTE1,
-	STATE_WRITE_VIS_BYTE0,
-	STATE_READ_VIS_BYTE0,
-	STATE_WRITE_VIS_BYTE1,
-	STATE_READ_VIS_BYTE1,
-	STATE_GOTO_STANDBY
+	STATE_START_ACTIVE,
+	STATE_WAIT_WAKEUP,
+	STATE_ACTIVE_IDLE,
+	STATE_ACTIVE_READ
 }state_t;
+
+
+typedef enum
+{
+	GAIN_1X = 0,
+	GAIN_2X = 1,
+	GAIN_4X = 2,
+	GAIN_8X = 3,
+	GAIN_48X = 6,
+	GAIN_96X = 7
+}gain_t;
 
 
 // ******** local function prototypes ********
 static bool scm_requestNewValue(cxa_lightSensor_t *const superIn);
 
-static void stateCb_standby_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_startMeasure_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_writeIr_byte0_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_writeIr_byte1_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_writeVis_byte0_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_writeVis_byte1_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_readByte_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_gotoStandby_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_startActive_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_activeRead_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
+static void i2cCb_onWriteComplete_startup(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn);
 
-static void i2cCb_onReadComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
-static void i2cCb_onWriteComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn);
+static void i2cCb_onReadComplete_ir0(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
+static void i2cCb_onReadComplete_ir1(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
+static void i2cCb_onReadComplete_vis0(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
+static void i2cCb_onReadComplete_vis1(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
 
 
 
@@ -79,17 +84,11 @@ void cxa_lightSensor_ltr329_init(cxa_lightSensor_ltr329_t *const lightSnsIn, cxa
 	lightSnsIn->i2c = i2cIn;
 
 	cxa_stateMachine_init(&lightSnsIn->stateMachine, "ltr329", threadIdIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_STANDBY, "standby", stateCb_standby_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState_timed(&lightSnsIn->stateMachine, STATE_STARTMEASURE, "start", STATE_WRITE_IR_BYTE0, STARTUP_TIME_MS, stateCb_startMeasure_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_WRITE_IR_BYTE0, "writeIr0", stateCb_writeIr_byte0_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_READ_IR_BYTE0, "readIr0", stateCb_readByte_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_WRITE_IR_BYTE1, "writeIr1", stateCb_writeIr_byte1_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_READ_IR_BYTE1, "readIr1", stateCb_readByte_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_WRITE_VIS_BYTE0, "writeVis0", stateCb_writeVis_byte0_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_READ_VIS_BYTE0, "readVis0", stateCb_readByte_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_WRITE_VIS_BYTE1, "writeVis1", stateCb_writeVis_byte1_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_READ_VIS_BYTE1, "readVis1", stateCb_readByte_enter, NULL, NULL, (void*)lightSnsIn);
-	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_GOTO_STANDBY, "gotoStandby", stateCb_gotoStandby_enter, NULL, NULL, (void*)lightSnsIn);
+	cxa_stateMachine_addState_timed(&lightSnsIn->stateMachine, STATE_STANDBY, "standby", STATE_START_ACTIVE, STARTUP_TIME_MS, NULL, NULL, NULL, (void*)lightSnsIn);
+	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_START_ACTIVE, "startActive", stateCb_startActive_enter, NULL, NULL, (void*)lightSnsIn);
+	cxa_stateMachine_addState_timed(&lightSnsIn->stateMachine, STATE_WAIT_WAKEUP, "wakeup", STATE_ACTIVE_IDLE, WAKEUP_TIME_MS, NULL, NULL, NULL, (void*)lightSnsIn);
+	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_ACTIVE_IDLE, "activeIde", NULL, NULL, NULL, (void*)lightSnsIn);
+	cxa_stateMachine_addState(&lightSnsIn->stateMachine, STATE_ACTIVE_READ, "activeRead", stateCb_activeRead_enter, NULL, NULL, (void*)lightSnsIn);
 	cxa_stateMachine_setInitialState(&lightSnsIn->stateMachine, STATE_STANDBY);
 
 	// initialize our superclass
@@ -103,218 +102,148 @@ static bool scm_requestNewValue(cxa_lightSensor_t *const superIn)
 	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)superIn;
 	cxa_assert(lightSnsIn);
 
-	if( cxa_stateMachine_getCurrentState(&lightSnsIn->stateMachine) != STATE_STANDBY ) return false;
+	if( cxa_stateMachine_getCurrentState(&lightSnsIn->stateMachine) != STATE_ACTIVE_IDLE ) return false;
 
-	lightSnsIn->hasNewVal = false;
-	cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_STARTMEASURE);
+	cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_ACTIVE_READ);
 	return true;
 }
 
 
-static void stateCb_standby_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_startActive_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
 	cxa_assert(lightSnsIn);
 
-	if( lightSnsIn->hasNewVal )
+	cxa_fixedByteBuffer_t fbb_payload;
+	uint8_t fbb_payload_raw[2];
+	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
+	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x80);
+	cxa_fixedByteBuffer_append_uint8(&fbb_payload, (TARGET_GAIN << 2) | 1);
+
+	cxa_i2cMaster_writeBytes(lightSnsIn->i2c, I2C_ADDR_7BIT, true, &fbb_payload, i2cCb_onWriteComplete_startup, (void*)lightSnsIn);
+}
+
+
+static void stateCb_activeRead_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
+	cxa_assert(lightSnsIn);
+
+	cxa_fixedByteBuffer_t fbb_control;
+	uint8_t fbb_control_raw[1];
+	cxa_fixedByteBuffer_initStd(&fbb_control, fbb_control_raw);
+	cxa_fixedByteBuffer_append_uint8(&fbb_control, 0x88);
+	cxa_i2cMaster_readBytes_withControlBytes(lightSnsIn->i2c, I2C_ADDR_7BIT, true, &fbb_control, 1, i2cCb_onReadComplete_ir0, (void*)lightSnsIn);
+}
+
+
+static void i2cCb_onWriteComplete_startup(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn)
+{
+	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
+	cxa_assert(lightSnsIn);
+
+
+	if( !wasSuccessfulIn )
 	{
-		lightSnsIn->hasNewVal = false;
-		cxa_lightSensor_notify_updatedValue(&lightSnsIn->super, true, lightSnsIn->readVal >> 8);
-	}
-	else if( lightSnsIn->encounteredError )
-	{
-		lightSnsIn->encounteredError = false;
+		cxa_stateMachine_transitionNow(&lightSnsIn->stateMachine, STATE_STANDBY);
 		cxa_lightSensor_notify_updatedValue(&lightSnsIn->super, false, 0);
+		return;
 	}
+
+	// if we made it here we were successful
+	cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_WAIT_WAKEUP);
 }
 
 
-static void stateCb_startMeasure_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+
+static void i2cCb_onReadComplete_ir0(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn)
 {
 	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
 	cxa_assert(lightSnsIn);
 
-	// BGScript command:
-	// call hardware_i2c_write($52, 1, 2, "\x80\x0D")
+	if( !wasSuccessfulIn )
+	{
+		cxa_stateMachine_transitionNow(&lightSnsIn->stateMachine, STATE_STANDBY);
+		cxa_lightSensor_notify_updatedValue(&lightSnsIn->super, false, 0);
+		return;
+	}
 
-	cxa_fixedByteBuffer_t fbb_payload;
-	uint8_t fbb_payload_raw[2];
-	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x80);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x0D);				// 8X gain
-
-	cxa_i2cMaster_writeBytes(lightSnsIn->i2c, I2C_ADDR, true, &fbb_payload, i2cCb_onWriteComplete, (void*)lightSnsIn);
+	// don't really care about ir...continue...
+	cxa_fixedByteBuffer_t fbb_control;
+	uint8_t fbb_control_raw[1];
+	cxa_fixedByteBuffer_initStd(&fbb_control, fbb_control_raw);
+	cxa_fixedByteBuffer_append_uint8(&fbb_control, 0x89);
+	cxa_i2cMaster_readBytes_withControlBytes(lightSnsIn->i2c, I2C_ADDR_7BIT, true, &fbb_control, 1, i2cCb_onReadComplete_ir1, (void*)lightSnsIn);
 }
 
 
-static void stateCb_writeIr_byte0_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void i2cCb_onReadComplete_ir1(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn)
 {
 	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
 	cxa_assert(lightSnsIn);
 
-	// BGScript command:
-	// call hardware_i2c_write($52, 0, 1, "\x88")
+	if( !wasSuccessfulIn )
+	{
+		cxa_stateMachine_transitionNow(&lightSnsIn->stateMachine, STATE_STANDBY);
+		cxa_lightSensor_notify_updatedValue(&lightSnsIn->super, false, 0);
+		return;
+	}
 
-	cxa_fixedByteBuffer_t fbb_payload;
-	uint8_t fbb_payload_raw[1];
-	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x88);
-
-	cxa_i2cMaster_writeBytes(lightSnsIn->i2c, I2C_ADDR, false, &fbb_payload, i2cCb_onWriteComplete, (void*)lightSnsIn);
+	// don't really care about ir...continue...
+	cxa_fixedByteBuffer_t fbb_control;
+	uint8_t fbb_control_raw[1];
+	cxa_fixedByteBuffer_initStd(&fbb_control, fbb_control_raw);
+	cxa_fixedByteBuffer_append_uint8(&fbb_control, 0x8A);
+	cxa_i2cMaster_readBytes_withControlBytes(lightSnsIn->i2c, I2C_ADDR_7BIT, true, &fbb_control, 1, i2cCb_onReadComplete_vis0, (void*)lightSnsIn);
 }
 
 
-static void stateCb_writeIr_byte1_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void i2cCb_onReadComplete_vis0(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn)
 {
 	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
 	cxa_assert(lightSnsIn);
 
-	// BGScript command:
-	// call hardware_i2c_write($52, 0, 1, "\x89")
+	if( !wasSuccessfulIn )
+	{
+		cxa_stateMachine_transitionNow(&lightSnsIn->stateMachine, STATE_STANDBY);
+		cxa_lightSensor_notify_updatedValue(&lightSnsIn->super, false, 0);
+		return;
+	}
 
-	cxa_fixedByteBuffer_t fbb_payload;
-	uint8_t fbb_payload_raw[1];
-	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x89);
+	// this is the MSB of the visible spectrum...record it
+	uint8_t readVal;
+	cxa_fixedByteBuffer_get_uint8(readBytesIn, 0, readVal);
+	lightSnsIn->readVal = (((uint16_t)readVal) << 8);
 
-	cxa_i2cMaster_writeBytes(lightSnsIn->i2c, I2C_ADDR, false, &fbb_payload, i2cCb_onWriteComplete, (void*)lightSnsIn);
+	// get the last byte of visible data
+	cxa_fixedByteBuffer_t fbb_control;
+	uint8_t fbb_control_raw[1];
+	cxa_fixedByteBuffer_initStd(&fbb_control, fbb_control_raw);
+	cxa_fixedByteBuffer_append_uint8(&fbb_control, 0x8B);
+	cxa_i2cMaster_readBytes_withControlBytes(lightSnsIn->i2c, I2C_ADDR_7BIT, true, &fbb_control, 1, i2cCb_onReadComplete_vis1, (void*)lightSnsIn);
 }
 
 
-static void stateCb_writeVis_byte0_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void i2cCb_onReadComplete_vis1(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn)
 {
 	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
 	cxa_assert(lightSnsIn);
 
-	// BGScript command:
-	// call hardware_i2c_write($52, 0, 1, "\x8A")
-
-	cxa_fixedByteBuffer_t fbb_payload;
-	uint8_t fbb_payload_raw[1];
-	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x8A);
-
-	cxa_i2cMaster_writeBytes(lightSnsIn->i2c, I2C_ADDR, false, &fbb_payload, i2cCb_onWriteComplete, (void*)lightSnsIn);
-}
-
-
-static void stateCb_writeVis_byte1_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
-{
-	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
-	cxa_assert(lightSnsIn);
-
-	// BGScript command:
-	// call hardware_i2c_write($52, 0, 1, "\x8B")
-
-	cxa_fixedByteBuffer_t fbb_payload;
-	uint8_t fbb_payload_raw[1];
-	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x8B);
-
-	cxa_i2cMaster_writeBytes(lightSnsIn->i2c, I2C_ADDR, false, &fbb_payload, i2cCb_onWriteComplete, (void*)lightSnsIn);
-}
-
-
-static void stateCb_readByte_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
-{
-	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
-	cxa_assert(lightSnsIn);
-
-	cxa_i2cMaster_readBytes(lightSnsIn->i2c, I2C_ADDR, true, 1, i2cCb_onReadComplete, (void*)lightSnsIn);
-}
-
-
-static void stateCb_gotoStandby_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
-{
-	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
-	cxa_assert(lightSnsIn);
-
-	// BGScript command:
-	// call hardware_i2c_write($52, 1, 2, "\x80\x00")
-
-	cxa_fixedByteBuffer_t fbb_payload;
-	uint8_t fbb_payload_raw[2];
-	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x80);
-	cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0x00);
-
-	cxa_i2cMaster_writeBytes(lightSnsIn->i2c, I2C_ADDR, 0, &fbb_payload, i2cCb_onWriteComplete, (void*)lightSnsIn);
-}
-
-
-static void i2cCb_onReadComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn)
-{
-	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
-	cxa_assert(lightSnsIn);
-
-	uint8_t currByte;
-	if( !cxa_fixedByteBuffer_get_uint8(readBytesIn, 0, currByte) ) wasSuccessfulIn = false;
-
-	if( !wasSuccessfulIn ) lightSnsIn->encounteredError = true;
-
-	// depends on our state
-	state_t currState = cxa_stateMachine_getCurrentState(&lightSnsIn->stateMachine);
-	if( wasSuccessfulIn && (currState == STATE_READ_IR_BYTE0 ) )
+	if( !wasSuccessfulIn )
 	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_WRITE_IR_BYTE1);
+		cxa_stateMachine_transitionNow(&lightSnsIn->stateMachine, STATE_STANDBY);
+		cxa_lightSensor_notify_updatedValue(&lightSnsIn->super, false, 0);
+		return;
 	}
-	else if( wasSuccessfulIn && (currState == STATE_READ_IR_BYTE1 ) )
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_WRITE_VIS_BYTE0);
-	}
-	else if( wasSuccessfulIn && (currState == STATE_READ_VIS_BYTE0 ) )
-	{
-		lightSnsIn->readVal = (lightSnsIn->readVal & 0x00FF) | (currByte << 8);
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_WRITE_VIS_BYTE1);
-	}
-	else if( wasSuccessfulIn && (currState == STATE_READ_VIS_BYTE1 ) )
-	{
-		lightSnsIn->readVal = (lightSnsIn->readVal & 0xFF00) | currByte;
-		lightSnsIn->hasNewVal = true;
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_GOTO_STANDBY);
-	}
-	else
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_GOTO_STANDBY);
-	}
-}
 
+	// this is the LSB of the visible spectrum...record it
+	uint8_t readVal;
+	cxa_fixedByteBuffer_get_uint8(readBytesIn, 0, readVal);
+	lightSnsIn->readVal |= (((uint16_t)readVal) << 0);
 
-static void i2cCb_onWriteComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn)
-{
-	cxa_lightSensor_ltr329_t* lightSnsIn = (cxa_lightSensor_ltr329_t*)userVarIn;
-	cxa_assert(lightSnsIn);
+	// transition our state in case anyone wants to read again
+	cxa_stateMachine_transitionNow(&lightSnsIn->stateMachine, STATE_ACTIVE_IDLE);
 
-	if( !wasSuccessfulIn ) lightSnsIn->encounteredError = true;
-
-	// depends on our state
-	state_t currState = cxa_stateMachine_getCurrentState(&lightSnsIn->stateMachine);
-	if( wasSuccessfulIn && (currState == STATE_STARTMEASURE ) )
-	{
-		// nothing to do here
-	}
-	else if( wasSuccessfulIn && (currState == STATE_WRITE_IR_BYTE0 ) )
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_READ_IR_BYTE0);
-	}
-	else if( wasSuccessfulIn && (currState == STATE_WRITE_IR_BYTE1 ) )
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_READ_IR_BYTE1);
-	}
-	else if( wasSuccessfulIn && (currState == STATE_WRITE_VIS_BYTE0 ) )
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_READ_VIS_BYTE0);
-	}
-	else if( wasSuccessfulIn && (currState == STATE_WRITE_VIS_BYTE1 ) )
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_READ_VIS_BYTE1);
-	}
-	else if( currState == STATE_GOTO_STANDBY )
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_STANDBY);
-	}
-	else
-	{
-		cxa_stateMachine_transition(&lightSnsIn->stateMachine, STATE_GOTO_STANDBY);
-	}
+	// notify with the MSB
+	cxa_lightSensor_notify_updatedValue(&lightSnsIn->super, true, (lightSnsIn->readVal >> 8));
 }

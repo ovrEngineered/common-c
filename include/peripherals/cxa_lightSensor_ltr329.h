@@ -34,8 +34,6 @@ typedef struct
 
 	cxa_i2cMaster_t* i2c;
 
-	bool hasNewVal;
-	bool encounteredError;
 	uint16_t readVal;
 
 	cxa_stateMachine_t stateMachine;
