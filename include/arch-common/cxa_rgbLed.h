@@ -34,7 +34,7 @@
 
 // ******** global macro definitions ********
 #define CXA_RGBLED_RED				0xFF, 0x00, 0x00
-#define CXA_RGBLED_GREEN			0x00, 0xFF, 0x00
+#define CXA_RGBLED_GREEN				0x00, 0xFF, 0x00
 #define CXA_RGBLED_BLUE				0x00, 0x00, 0xFF
 #define CXA_RGBLED_ORANGE			0xFF, 0x80, 0x00
 #define CXA_RGBLED_CYAN				0x00, 0xFF, 0xFF
@@ -55,6 +55,7 @@ typedef enum
 {
 	CXA_RGBLED_STATE_SOLID,
 	CXA_RGBLED_STATE_BLINK,
+	CXA_RGBLED_STATE_ALTERNATE_COLORS,
 	CXA_RGBLED_STATE_FLASHONCE
 }cxa_rgbLed_state_t;
 
@@ -74,6 +75,15 @@ typedef void (*cxa_rgbLed_scm_blink_t)(cxa_rgbLed_t *const superIn, uint8_t rIn,
 /**
  * @protected
  */
+typedef void (*cxa_rgbLed_scm_alternateColors_t)(cxa_rgbLed_t *const superIn,
+												uint8_t r1In, uint8_t g1In, uint8_t b1In,
+												uint16_t color1Period_msIn,
+												uint8_t r2In, uint8_t g2In, uint8_t b2In,
+												uint16_t color2Period_msIn);
+
+/**
+ * @protected
+ */
 typedef void (*cxa_rgbLed_scm_flashOnce_t)(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
 									   	   uint16_t period_msIn);
 
@@ -84,6 +94,7 @@ struct cxa_rgbLed
 {
 	cxa_rgbLed_scm_setRgb_t scm_setRgb;
 	cxa_rgbLed_scm_blink_t scm_blink;
+	cxa_rgbLed_scm_alternateColors_t scm_alternateColors;
 	cxa_rgbLed_scm_flashOnce_t scm_flashOnce;
 
 	cxa_rgbLed_state_t prevState;
@@ -98,6 +109,7 @@ struct cxa_rgbLed
 void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
 					 cxa_rgbLed_scm_setRgb_t scm_setRgbIn,
 					 cxa_rgbLed_scm_blink_t scm_blinkIn,
+					 cxa_rgbLed_scm_alternateColors_t scm_alternateColorsIn,
 					 cxa_rgbLed_scm_flashOnce_t scm_flashOnceIn);
 
 
@@ -112,6 +124,16 @@ void cxa_rgbLed_setRgb(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint
  */
 void cxa_rgbLed_blink(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
 					  uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
+
+
+/**
+ * @public
+ */
+void cxa_rgbLed_alternateColors(cxa_rgbLed_t *const superIn,
+							   uint8_t r1In, uint8_t g1In, uint8_t b1In,
+							   uint16_t color1Period_msIn,
+							   uint8_t r2In, uint8_t g2In, uint8_t b2In,
+							   uint16_t color2Period_msIn);
 
 
 /**

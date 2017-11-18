@@ -63,7 +63,7 @@ void cxa_rgbLed_triLed_init(cxa_rgbLed_triLed_t *const ledIn,
 	ledIn->blink.isOn = false;
 
 	// initialize our super class
-	cxa_rgbLed_init(&ledIn->super, scm_setRgb, scm_blink, scm_flashOnce);
+	cxa_rgbLed_init(&ledIn->super, scm_setRgb, scm_blink, NULL, scm_flashOnce);
 
 	// register for run loop execution
 	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)ledIn);
@@ -163,6 +163,9 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			break;
 
 		case CXA_RGBLED_STATE_SOLID:
+			break;
+
+		case CXA_RGBLED_STATE_ALTERNATE_COLORS:
 			break;
 	}
 }

@@ -30,6 +30,7 @@
 
 // ******** includes ********
 #include <cxa_rgbLed.h>
+#include <cxa_oneShotTimer.h>
 #include <cxa_pca9624.h>
 
 
@@ -41,6 +42,7 @@ typedef struct
 {
 	cxa_rgbLed_t super;
 
+	int threadId;
 	cxa_pca9624_t* pca;
 
 	uint8_t maxBrightness;
@@ -48,11 +50,50 @@ typedef struct
 	uint8_t chanIndex_r;
 	uint8_t chanIndex_g;
 	uint8_t chanIndex_b;
+
+	cxa_oneShotTimer_t ost;
+
+	struct
+	{
+		uint8_t r;
+		uint8_t g;
+		uint8_t b;
+	}currColor;
+
+	struct
+	{
+		uint16_t onPeriod_msIn;
+		uint16_t offPeriod_msIn;
+		uint8_t r;
+		uint8_t g;
+		uint8_t b;
+	}blink;
+
+	struct
+	{
+		uint16_t color1Period_msIn;
+		uint8_t r1;
+		uint8_t g1;
+		uint8_t b1;
+
+		uint16_t color2Period_msIn;
+		uint8_t r2;
+		uint8_t g2;
+		uint8_t b2;
+	}alternate;
+
+	struct
+	{
+		uint8_t prevR;
+		uint8_t prevG;
+		uint8_t prevB;
+	}flashOnce;
 }cxa_rgbLed_pca9624_t;
 
 
 // ******** global function prototypes ********
-void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, cxa_pca9624_t *const pcaIn, uint8_t maxBrightnessIn,
+void cxa_rgbLed_pca9624_init(cxa_rgbLed_pca9624_t *const ledIn, int threadIdIn,
+							cxa_pca9624_t *const pcaIn, uint8_t maxBrightnessIn,
 							uint8_t chanIndex_rIn, uint8_t chanIndex_gIn, uint8_t chanIndex_bIn);
 
 
