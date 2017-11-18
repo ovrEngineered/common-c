@@ -57,6 +57,9 @@ void cxa_network_wifiManager_addListener(cxa_network_wifiManager_cb_t cb_idleEnt
 void cxa_network_wifiManager_start(void);
 void cxa_network_wifiManager_stop(void);
 
+bool cxa_network_wifiManager_hasStoredCredentials(void);
+
+bool cxa_network_wifiManager_didLastAssociationAttemptFail(void);
 cxa_network_wifiManager_state_t cxa_network_wifiManager_getState(void);
 
 void cxa_network_wifiManager_restart(void);

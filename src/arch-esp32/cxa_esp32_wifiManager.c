@@ -101,6 +101,7 @@ static void notify_unassociated(void);
 static void notify_associationFailed(void);
 
 static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void consoleCb_clearCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_restart(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
 
@@ -110,6 +111,8 @@ static listener_t listeners_raw[CXA_NETWORK_WIFIMGR_MAXNUM_LISTENERS];
 
 static internalTargetMode_t targetWifiMode = INTTAR_MODE_DISABLED;
 static cxa_stateMachine_t stateMachine;
+
+static bool didLastAssociationAttemptFail = false;
 
 static cxa_logger_t logger;
 
@@ -157,6 +160,7 @@ void cxa_network_wifiManager_init(int threadIdIn)
 
 	// add our console commands
 	cxa_console_addCommand("wifi_getCfg", "prints current config", NULL, 0, consoleCb_getCfg, NULL);
+	cxa_console_addCommand("wifi_clearCfg", "clears current config", NULL, 0, consoleCb_clearCfg, NULL);
 	cxa_console_addCommand("wifi_restart", "restarts the WiFi stateMachine", NULL, 0, consoleCb_restart, NULL);
 }
 
@@ -213,6 +217,18 @@ void cxa_network_wifiManager_stop(void)
 			cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
 			break;
 	}
+}
+
+
+bool cxa_network_wifiManager_hasStoredCredentials(void)
+{
+	return isStaConfigSet();
+}
+
+
+bool cxa_network_wifiManager_didLastAssociationAttemptFail(void)
+{
+	return didLastAssociationAttemptFail;
 }
 
 
@@ -412,6 +428,7 @@ static void stateCb_associated_enter(cxa_stateMachine_t *const smIn, int prevSta
 	esp_wifi_get_config(WIFI_IF_STA, &wifiConfig);
 	cxa_logger_info(&logger, "associated with '%s'", wifiConfig.sta.ssid);
 
+	didLastAssociationAttemptFail = false;
 	notify_associated();
 }
 
@@ -432,6 +449,7 @@ static void stateCb_associationFailed_enter(cxa_stateMachine_t *const smIn, int 
 	esp_wifi_get_config(WIFI_IF_STA, &wifiConfig);
 	cxa_logger_info(&logger, "association with '%s' failed...retrying", wifiConfig.sta.ssid);
 
+	didLastAssociationAttemptFail = true;
 	notify_associationFailed();
 
 	cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
@@ -585,6 +603,18 @@ static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const io
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "ip:   " IPSTR, IP2STR(&ip.ip));
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "sn:   " IPSTR, IP2STR(&ip.netmask));
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "gw:   " IPSTR, IP2STR(&ip.gw));
+}
+
+
+static void consoleCb_clearCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+{
+	wifi_config_t cfg;
+	cfg.sta.ssid[0] = 0;
+	cfg.sta.password[0] = 0;
+	cfg.sta.channel = 0;
+	cfg.sta.bssid_set = 0;
+	cfg.sta.bssid[0] = 0;
+	cxa_ioStream_writeFormattedLine(ioStreamIn, "setCfg: %d", esp_wifi_set_config(WIFI_IF_STA, &cfg));
 }
 
 
