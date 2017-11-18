@@ -43,12 +43,10 @@
 // ******** global function prototypes ********
 void cxa_mqtt_connManager_init(char *const hostNameIn, uint16_t portNumIn, int threadIdIn);
 
-
-void cxa_mqtt_connManager_setTlsCredentials(const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
-		  	  	  	  	  	  	  	  	    const char* clientCertIn, size_t clientCertLen_bytesIn,
-											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn);
-
 bool cxa_mqtt_connManager_areCredentialsSet(void);
+
+bool cxa_mqtt_connManager_start(void);
+void cxa_mqtt_connManager_stop(void);
 
 cxa_mqtt_client_t* cxa_mqtt_connManager_getMqttClient(void);
 

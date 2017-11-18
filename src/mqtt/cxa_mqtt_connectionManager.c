@@ -44,8 +44,7 @@
 // ******** local type definitions ********
 typedef enum
 {
-	STATE_WAIT_CREDS,
-	STATE_ASSOCIATING,
+	STATE_IDLE,
 	STATE_CONNECTING,
 	STATE_CONNECTED,
 	STATE_CONNECT_STANDOFF,
@@ -53,16 +52,10 @@ typedef enum
 
 
 // ******** local function prototypes ********
-static void wifiManCb_onAssociated(const char *const ssidIn, void* userVarIn);
-static void wifiManCb_onUnassociated(void* userVarIn);
-
 static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 static void mqttClientCb_onConnectFail(cxa_mqtt_client_t *const clientIn, cxa_mqtt_client_connectFailureReason_t reasonIn, void* userVarIn);
 static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* userVarIn);
 
-static void stateCb_waitCredentials_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
-static void stateCb_waitCredentials_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
@@ -96,7 +89,7 @@ static bool isSet_clientCert = false;
 static char clientCert[1225+1];					// +1 is null term
 
 static bool isSet_clientPrivateKey = false;
-static char clientPrivateKey[1676+1];			// +1 is null term
+static char clientPrivateKey[1700+1];			// +1 is null term
 
 
 // ******** global function implementations ********
@@ -115,15 +108,11 @@ void cxa_mqtt_connManager_init(char *const hostNameIn, uint16_t portNumIn, int t
 
 	// setup our state machine
 	cxa_stateMachine_init(&stateMachine, "mqttConnMan", threadIdIn);
-	cxa_stateMachine_addState(&stateMachine, STATE_ASSOCIATING, "assoc", stateCb_associating_enter, NULL, NULL, NULL);
-	cxa_stateMachine_addState(&stateMachine, STATE_WAIT_CREDS, "waitForCreds", stateCb_waitCredentials_enter, stateCb_waitCredentials_state, NULL, NULL);
+	cxa_stateMachine_addState(&stateMachine, STATE_IDLE, "idle", NULL, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTING, "connecting", stateCb_connecting_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, NULL, NULL);
 	cxa_stateMachine_addState(&stateMachine, STATE_CONNECT_STANDOFF, "standOff", stateCb_connectStandOff_enter, stateCb_connectStandOff_state, NULL, NULL);
-	cxa_stateMachine_setInitialState(&stateMachine, STATE_ASSOCIATING);
-
-	// setup our WiFi
-	cxa_network_wifiManager_addListener(NULL, NULL, NULL, wifiManCb_onAssociated, wifiManCb_onUnassociated, NULL, NULL);
+	cxa_stateMachine_setInitialState(&stateMachine, STATE_IDLE);
 
 	// and our mqtt client
 	cxa_mqtt_client_network_init(&mqttClient, cxa_uniqueId_getHexString(), threadIdIn);
@@ -143,39 +132,38 @@ void cxa_mqtt_connManager_init(char *const hostNameIn, uint16_t portNumIn, int t
 }
 
 
-void cxa_mqtt_connManager_setTlsCredentials(const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
-		  	  	  	  	  	  	  	  	    const char* clientCertIn, size_t clientCertLen_bytesIn,
-											const char* clientPrivateKeyIn, size_t clientPrivateKeyLen_bytesIn)
-{
-	cxa_assert(serverRootCertIn);
-	cxa_assert(clientCertIn);
-	cxa_assert(clientPrivateKeyIn);
-
-	cxa_assert(serverRootCertLen_bytesIn == sizeof(serverRootCert));
-	cxa_assert(clientCertLen_bytesIn == sizeof(clientCert));
-	cxa_assert(clientPrivateKeyLen_bytesIn == sizeof(clientPrivateKey));
-
-	// store our references
-	memcpy(serverRootCert, serverRootCertIn, serverRootCertLen_bytesIn);
-	memcpy(clientCert, clientCertIn, clientCertLen_bytesIn);
-	memcpy(clientPrivateKey, clientPrivateKeyIn, clientPrivateKeyLen_bytesIn);
-
-	isSet_serverRootCert = true;
-	isSet_clientCert = true;
-	isSet_clientPrivateKey = true;
-
-	// if we're waiting for credentials, we're already associated...start connecting
-	if( cxa_stateMachine_getCurrentState(&stateMachine) == STATE_WAIT_CREDS )
-	{
-		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
-		return;
-	}
-}
-
-
 bool cxa_mqtt_connManager_areCredentialsSet(void)
 {
 	return (isSet_clientCert && isSet_clientPrivateKey && isSet_serverRootCert);
+}
+
+
+bool cxa_mqtt_connManager_start(void)
+{
+	// if we're already running, we're good
+	if( (cxa_stateMachine_getCurrentState(&stateMachine) != STATE_IDLE) ) return true;
+
+	// we must not be running...make sure we have credentials
+	if( ! cxa_mqtt_connManager_areCredentialsSet() ) return false;
+
+	cxa_logger_debug(&logger, "start requested");
+
+	// we have credentials...start our connection process
+	cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+
+	return true;
+}
+
+
+void cxa_mqtt_connManager_stop(void)
+{
+	if( cxa_stateMachine_getCurrentState(&stateMachine) != STATE_IDLE )
+	{
+		cxa_logger_debug(&logger, "stop requested");
+
+		cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
+		return;
+	}
 }
 
 
@@ -186,24 +174,6 @@ cxa_mqtt_client_t* cxa_mqtt_connManager_getMqttClient(void)
 
 
 // ******** local function implementations ********
-static void wifiManCb_onAssociated(const char *const ssidIn, void* userVarIn)
-{
-	cxa_logger_info(&logger, "wifi associated");
-	cxa_stateMachine_transition(&stateMachine, (cxa_mqtt_connManager_areCredentialsSet()) ? STATE_CONNECTING : STATE_WAIT_CREDS);
-}
-
-
-static void wifiManCb_onUnassociated(void* userVarIn)
-{
-	cxa_logger_warn(&logger, "wifi unassociated");
-
-	// ensure we are disconnected regardless
-	cxa_mqtt_client_disconnect(&mqttClient.super);
-
-	cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
-}
-
-
 static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* userVarIn)
 {
 	cxa_stateMachine_transition(&stateMachine, STATE_CONNECTED);
@@ -230,44 +200,11 @@ static void mqttClientCb_onDisconnect(cxa_mqtt_client_t *const clientIn, void* u
 }
 
 
-static void stateCb_waitCredentials_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
-{
-	cxa_logger_info(&logger, "waiting for credentials");
-}
-
-
-static void stateCb_waitCredentials_state(cxa_stateMachine_t *const smIn, void *userVarIn)
-{
-	if( cxa_mqtt_connManager_areCredentialsSet() )
-	{
-		// make sure our credentials are committed before we transition
-		cxa_logger_info(&logger, "credentials set, committing");
-		cxa_nvsManager_commit();
-
-		cxa_stateMachine_transition(&stateMachine, STATE_ASSOCIATING);
-	}
-}
-
-
-static void stateCb_associating_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
-{
-	cxa_logger_info(&logger, "associating");
-	if( cxa_network_wifiManager_getState() == CXA_NETWORK_WIFISTATE_ASSOCIATED ) cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
-}
-
-
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_logger_info(&logger, "connecting");
 
-	// make _sure_we have credentials
-	if( !cxa_mqtt_connManager_areCredentialsSet() )
-	{
-		cxa_stateMachine_transition(&stateMachine, STATE_WAIT_CREDS);
-		return;
-	}
-
-	// if we made it here, we have the proper credentials...try to connect
+	// try to connect (we should have credentials already)
 	if( !cxa_mqtt_client_network_connectToHost_clientCert(&mqttClient, mqtt_hostName, mqtt_portNum,
 														  serverRootCert, sizeof(serverRootCert),
 														  clientCert, sizeof(clientCert),
@@ -305,13 +242,13 @@ static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *
 
 static void consoleCb_areCredentialsSet(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
-	if( cxa_stateMachine_getCurrentState(&stateMachine) == STATE_WAIT_CREDS )
+	if( cxa_mqtt_connManager_areCredentialsSet() )
 	{
-		cxa_ioStream_writeLine(ioStreamIn, "NO");
+		cxa_ioStream_writeLine(ioStreamIn, "YES");
 	}
 	else
 	{
-		cxa_ioStream_writeLine(ioStreamIn, "YES");
+		cxa_ioStream_writeLine(ioStreamIn, "NO");
 	}
 }
 
