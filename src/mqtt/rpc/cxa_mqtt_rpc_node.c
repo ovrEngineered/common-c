@@ -233,6 +233,15 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
 bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn, void* dataIn, size_t dataSize_bytesIn)
 {
 	cxa_assert(nodeIn);
+	return cxa_mqtt_rpc_node_publishNotification_appendSubTopic(nodeIn, NULL, notiNameIn, qosIn, dataIn, dataSize_bytesIn);
+}
+
+
+bool cxa_mqtt_rpc_node_publishNotification_appendSubTopic(cxa_mqtt_rpc_node_t *const nodeIn,
+														 char *const subTopicIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn,
+														 void* dataIn, size_t dataSize_bytesIn)
+{
+	cxa_assert(nodeIn);
 	cxa_assert(notiNameIn);
 
 	// first, we need to form our message
@@ -245,15 +254,29 @@ bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, ch
 		return false;
 	}
 
-	// now we need to get our topic/path in order
+	// now we need to get our topic/path in order...start with the notification info
 	if( !cxa_mqtt_message_publish_topicName_prependCString(msg, notiNameIn) ||
 		!cxa_mqtt_message_publish_topicName_prependCString(msg, CXA_MQTT_RPCNODE_NOTI_PREFIX) ||
-		!cxa_mqtt_message_publish_topicName_prependCString(msg, "/") ||
-		!addNodePathToTopic(nodeIn, msg) )
+		!cxa_mqtt_message_publish_topicName_prependCString(msg, "/") )
 	{
 		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 		return false;
 	}
+	// now add the subTopic if desired
+	if( (subTopicIn != NULL) &&
+		(!cxa_mqtt_message_publish_topicName_prependCString(msg, subTopicIn) ||
+		 !cxa_mqtt_message_publish_topicName_prependCString(msg, "/") ) )
+	{
+		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+		return false;
+	}
+	// and the rest of our path
+	if( !addNodePathToTopic(nodeIn, msg) )
+	{
+		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+		return false;
+	}
+
 
 	// make sure we can get the topic name for the message before we go further
 	char* remainingTopic;

@@ -200,6 +200,9 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
  * @public
  */
 bool cxa_mqtt_rpc_node_publishNotification(cxa_mqtt_rpc_node_t *const nodeIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn, void* dataIn, size_t dataSize_bytesIn);
+bool cxa_mqtt_rpc_node_publishNotification_appendSubTopic(cxa_mqtt_rpc_node_t *const nodeIn,
+														 char *const subTopicIn, char *const notiNameIn, cxa_mqtt_qosLevel_t qosIn,
+														 void* dataIn, size_t dataSize_bytesIn);
 
 
 /**
