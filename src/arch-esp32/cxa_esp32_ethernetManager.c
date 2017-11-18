@@ -267,6 +267,8 @@ static bool hasAutoIpAddr(void)
 static void sysEventCb_eth_start(system_event_t *eventIn, void *const userVarIn)
 {
 	if( cxa_stateMachine_getCurrentState(&stateMachine) != STATE_STARTUP ) return;
+
+	cxa_stateMachine_transition(&stateMachine, STATE_WAIT_FOR_LINK);
 }
 
 
@@ -373,31 +375,46 @@ static void stateCb_stopping_enter(cxa_stateMachine_t *const smIn, int prevState
 
 static void notifyListeners_idle(void)
 {
-
+	cxa_array_iterate(&listeners, currListener, listener_t)
+	{
+		if( (currListener != NULL) && (currListener->cb_idleEnter != NULL) ) currListener->cb_idleEnter(currListener->userVarIn);
+	}
 }
 
 
 static void notifyListeners_waitLink(void)
 {
-
+	cxa_array_iterate(&listeners, currListener, listener_t)
+	{
+		if( (currListener != NULL) && (currListener->cb_waitLink != NULL) ) currListener->cb_waitLink(currListener->userVarIn);
+	}
 }
 
 
 static void notifyListeners_waitDhcp(void)
 {
-
+	cxa_array_iterate(&listeners, currListener, listener_t)
+	{
+		if( (currListener != NULL) && (currListener->cb_waitDhcp != NULL) ) currListener->cb_waitDhcp(currListener->userVarIn);
+	}
 }
 
 
 static void notifyListeners_hasAddress_dhcp(void)
 {
-
+	cxa_array_iterate(&listeners, currListener, listener_t)
+	{
+		if( (currListener != NULL) && (currListener->cb_hasAddress_dhcp != NULL) ) currListener->cb_hasAddress_dhcp(currListener->userVarIn);
+	}
 }
 
 
 static void notifyListeners_hasAddress_autoIp(void)
 {
-
+	cxa_array_iterate(&listeners, currListener, listener_t)
+	{
+		if( (currListener != NULL) && (currListener->cb_hasAddress_autoIp != NULL) ) currListener->cb_hasAddress_autoIp(currListener->userVarIn);
+	}
 }
 
 
