@@ -30,10 +30,6 @@
 #include <cxa_config.h>
 
 // ******** local macro definitions ********
-#ifndef CXA_RUNLOOP_MAXNUM_THREADS
-	#define CXA_RUNLOOP_MAXNUM_THREADS					3
-#endif
-
 #ifndef CXA_RUNLOOP_INFOPRINT_PERIOD_MS
 	#define CXA_RUNLOOP_INFOPRINT_PERIOD_MS				10000
 #endif
