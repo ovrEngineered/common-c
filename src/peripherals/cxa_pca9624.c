@@ -146,23 +146,9 @@ void cxa_pca9624_start(cxa_pca9624_t *const pcaIn)
 }
 
 
-void cxa_pca9624_setGlobalBlinkRate(cxa_pca9624_t *const pcaIn, uint16_t onPeriod_msIn, uint16_t offPeriod_msIn)
+bool cxa_pca9624_hasStartedSuccessfully(cxa_pca9624_t *const pcaIn)
 {
-//	cxa_assert(pcaIn);
-//	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) != STATE_RUNNING ) return;
-//
-//	// make sure we're blinking (not dimming)
-//	uint8_t newMode2 = pcaIn->currRegs[REG_MODE2] | (1 << 5);
-//	if( !syncRegisterIfChanged(pcaIn, REG_MODE2, newMode2) ) return;
-//
-//	// set our duty cycle
-//	float dutyCycle_pcnt = ((float)onPeriod_msIn) / (((float)onPeriod_msIn) + ((float)offPeriod_msIn));
-//	uint16_t newGrpPwm = dutyCycle_pcnt * 255.0;
-//	if( !syncRegisterIfChanged(pcaIn, REG_GRPPWM, newGrpPwm) ) return;
-//
-//	// and our frequency
-//	uint16_t newGrpFreq = (((((float)onPeriod_msIn) / 1000.0) + (((float)offPeriod_msIn) / 1000.0)) * 24.0) - 1;
-//	if( !syncRegisterIfChanged(pcaIn, REG_GRPFREQ, newGrpFreq) ) return;
+	return (cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) == STATE_RUNNING);
 }
 
 
@@ -193,17 +179,17 @@ void cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca962
 
 void cxa_pca9624_blinkChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn)
 {
-//	cxa_assert(pcaIn);
-//	cxa_assert(chansEntriesIn);
-//	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
-//	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) != STATE_RUNNING ) return;
-//	if( numChansIn == 0 ) return;
-//
-//	// have to set our brightnesses first
-//	cxa_pca9624_setBrightnessForChannels(pcaIn, chansEntriesIn, numChansIn);
-//
-//	// now we need to tell the channels to blink
-//	setChannelsToState(pcaIn, LEDOUT_PWM_ALL, chansEntriesIn, numChansIn);
+	cxa_assert(pcaIn);
+	cxa_assert(chansEntriesIn);
+	cxa_assert(numChansIn <= CXA_PCA9624_NUM_CHANNELS);
+	if( cxa_stateMachine_getCurrentState(&pcaIn->stateMachine) != STATE_RUNNING ) return;
+	if( numChansIn == 0 ) return;
+
+	// have to set our brightnesses first
+	cxa_pca9624_setBrightnessForChannels(pcaIn, chansEntriesIn, numChansIn);
+
+	// now we need to tell the channels to blink
+	setChannelsToState(pcaIn, LEDOUT_PWM_ALL, chansEntriesIn, numChansIn);
 }
 
 

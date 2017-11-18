@@ -95,6 +95,8 @@ void cxa_pca9624_addListener(cxa_pca9624_t *const pcaIn, cxa_pca9624_cb_t cb_onB
 
 void cxa_pca9624_start(cxa_pca9624_t *const pcaIn);
 
+bool cxa_pca9624_hasStartedSuccessfully(cxa_pca9624_t *const pcaIn);
+
 void cxa_pca9624_setGlobalBlinkRate(cxa_pca9624_t *const pcaIn, uint16_t onPeriod_msIn, uint16_t offPeriod_msIn);
 
 void cxa_pca9624_setBrightnessForChannels(cxa_pca9624_t *const pcaIn, cxa_pca9624_channelEntry_t* chansEntriesIn, size_t numChansIn);
