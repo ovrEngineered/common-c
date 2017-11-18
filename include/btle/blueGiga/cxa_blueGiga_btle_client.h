@@ -93,6 +93,7 @@ struct cxa_blueGiga_btle_client
 		void* userVar;
 	}inFlightRequest;
 
+	bool hasBootFailed;
 	bool isActiveScan;
 	cxa_softWatchDog_t scanningActivityWatchdog;
 

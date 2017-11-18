@@ -56,6 +56,20 @@ typedef enum
 /**
  * @public
  */
+typedef enum
+{
+	CXA_BTLE_CLIENT_STATE_STARTUP,
+	CXA_BTLE_CLIENT_STATE_STARTUPFAILED,
+	CXA_BTLE_CLIENT_STATE_READY,
+	CXA_BTLE_CLIENT_STATE_SCANNING,
+	CXA_BTLE_CLIENT_STATE_CONNECTING,
+	CXA_BTLE_CLIENT_STATE_CONNECTED
+}cxa_btle_client_state_t;
+
+
+/**
+ * @public
+ */
 typedef struct
 {
 	uint8_t length;
@@ -154,7 +168,7 @@ typedef void (*cxa_btle_client_cb_onWriteComplete_t)(cxa_btle_uuid_t *const uuid
 /**
  * @private
  */
-typedef bool (*cxa_btle_client_scm_isReady_t)(cxa_btle_client_t *const superIn);
+typedef cxa_btle_client_state_t (*cxa_btle_client_scm_getState_t)(cxa_btle_client_t *const superIn);
 
 
 /**
@@ -167,12 +181,6 @@ typedef void (*cxa_btle_client_scm_startScan_t)(cxa_btle_client_t *const superIn
  * @private
  */
 typedef void (*cxa_btle_client_scm_stopScan_t)(cxa_btle_client_t *const superIn);
-
-
-/**
- * @private
- */
-typedef bool (*cxa_btle_client_scm_isScanning_t)(cxa_btle_client_t *const superIn);
 
 
 /**
@@ -221,6 +229,8 @@ struct cxa_btle_client
 	cxa_array_t listeners;
 	cxa_btle_client_listener_entry_t listeners_raw[CXA_BTLE_CLIENT_MAXNUM_LISTENERS];
 
+	bool hasActivityAvailable;
+
 	struct
 	{
 		struct
@@ -248,11 +258,10 @@ struct cxa_btle_client
 
 	struct
 	{
-		cxa_btle_client_scm_isReady_t isReady;
+		cxa_btle_client_scm_getState_t getState;
 
 		cxa_btle_client_scm_startScan_t startScan;
 		cxa_btle_client_scm_stopScan_t stopScan;
-		cxa_btle_client_scm_isScanning_t isScanning;
 
 		cxa_btle_client_scm_startConnection_t startConnection;
 		cxa_btle_client_scm_stopConnection_t stopConnection;
@@ -268,10 +277,9 @@ struct cxa_btle_client
  * @protected
  */
 void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
-						  cxa_btle_client_scm_isReady_t scm_isReadyIn,
+						  cxa_btle_client_scm_getState_t scm_getState,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
 						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
-						  cxa_btle_client_scm_isScanning_t scm_isScanningIn,
 						  cxa_btle_client_scm_startConnection_t scm_startConnectionIn,
 						  cxa_btle_client_scm_stopConnection_t scm_stopConnectionIn,
 						  cxa_btle_client_scm_isConnected_t scm_isConnectedIn,
@@ -317,13 +325,13 @@ void cxa_btle_client_stopScan(cxa_btle_client_t *const btlecIn,
 /**
  * @public
  */
-bool cxa_btle_client_isReady(cxa_btle_client_t *const btlecIn);
+cxa_btle_client_state_t cxa_btle_client_getState(cxa_btle_client_t *const btlecIn);
 
 
 /**
  * @public
  */
-bool cxa_btle_client_isScanning(cxa_btle_client_t *const btlecIn);
+bool cxa_btle_client_hasActivityAvailable(cxa_btle_client_t *const btlecIn);
 
 
 /**
@@ -341,12 +349,6 @@ void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48
 void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
 									cxa_btle_client_cb_onConnectionClosed_t cb_connectionClosedIn,
 									void *userVarIn);
-
-
-/**
- * @public
- */
-bool cxa_btle_client_isConnected(cxa_btle_client_t *const btlecIn);
 
 
 /**

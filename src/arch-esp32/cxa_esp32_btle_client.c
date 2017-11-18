@@ -14,6 +14,7 @@
  * @author Christopher Armenio
  */
 #include "cxa_esp32_btle_client.h"
+#ifdef CONFIG_BT_ENABLED
 
 
 // ******** includes ********
@@ -25,7 +26,7 @@
 #include <cxa_assert.h>
 #include <cxa_console.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
@@ -101,7 +102,7 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 {
 	esp_ble_gap_cb_param_t* scanResult = (esp_ble_gap_cb_param_t *)param;
 
-	cxa_logger_stepDebug_msg("bleEvt: %d  %d", event, scanResult->scan_rst.search_evt);
+//	cxa_logger_stepDebug_msg("bleEvt: %d  %d", event, scanResult->scan_rst.search_evt);
 	if( (event == ESP_GAP_BLE_SCAN_RESULT_EVT) && (scanResult->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_RES_EVT) )
 	{
 		// advertisement received
@@ -194,3 +195,5 @@ static void consoleCb_stopScan(cxa_array_t *const argsIn, cxa_ioStream_t *const 
 {
 	scm_stopScan(&singleton);
 }
+
+#endif

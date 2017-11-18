@@ -154,7 +154,7 @@ static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction
 	// save our direction
 	gpioIn->lastDirection = dirIn;
 
-	if( cxa_btle_client_isReady(&gpioIn->btlec->super) ) sendDirRegForPort(gpioIn->btlec, gpioIn->portNum);
+	if( cxa_btle_client_getState(&gpioIn->btlec->super) == CXA_BTLE_CLIENT_STATE_READY ) sendDirRegForPort(gpioIn->btlec, gpioIn->portNum);
 }
 
 
@@ -192,7 +192,7 @@ static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	uint8_t polVal = (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn;
 	gpioIn->lastOutputVal = valIn;
 
-	if( cxa_btle_client_isReady(&gpioIn->btlec->super) )
+	if( cxa_btle_client_getState(&gpioIn->btlec->super) == CXA_BTLE_CLIENT_STATE_READY )
 	{
 		// get our message ready to send
 		cxa_fixedByteBuffer_t fbb_params;

@@ -23,7 +23,7 @@
 #include <cxa_console.h>
 #include <cxa_delay.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
@@ -50,7 +50,7 @@ typedef enum
 	CONNSTATE_RESET,
 	CONNSTATE_WAIT_BOOT,
 	CONNSTATE_CONFIG_PERIPHS,
-	CONNSTATE_IDLE,
+	CONNSTATE_READY,
 	CONNSTATE_SCANNING,
 	CONNSTATE_CONNECTING,
 	CONNSTATE_CONNECTED
@@ -93,10 +93,9 @@ static void responseCb_hello(cxa_blueGiga_btle_client_t *const btlecIn, bool was
 
 static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool wasSuccessfulIn);
 
-static bool scm_isReady(cxa_btle_client_t *const superIn);
+static cxa_btle_client_state_t scm_getState(cxa_btle_client_t *const superIn);
 static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn);
 static void scm_stopScan(cxa_btle_client_t *const superIn);
-static bool scm_isScanning(cxa_btle_client_t *const superIn);
 static void scm_startConnection(cxa_btle_client_t *const superIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn);
 static void scm_stopConnection(cxa_btle_client_t *const superIn);
 static bool scm_isConnected(cxa_btle_client_t *const superIn);
@@ -109,7 +108,7 @@ static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevSta
 static void stateCb_conn_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_conn_waitBoot_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_conn_configPeriphs_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_conn_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_conn_ready_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_conn_scanning_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_conn_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
@@ -136,13 +135,14 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 
 	// save our references and initialize our internal state
 	btlecIn->gpio_reset = gpio_resetIn;
+	btlecIn->hasBootFailed = false;
 	cxa_softWatchDog_init(&btlecIn->inFlightRequest.watchdog, COMMAND_TIMEOUT_MS, threadIdIn, handleBgTimeout, (void*)btlecIn);
 	cxa_softWatchDog_init(&btlecIn->currProcedure.watchdog, READWRITE_TIMEOUT_MS, threadIdIn, handleReadWriteTimeout, (void*)btlecIn);
 	cxa_softWatchDog_init(&btlecIn->scanningActivityWatchdog, SCANNING_ACTIVITY_TIMEOUT_MS, threadIdIn, handleScanningActivityTimeout, (void*)btlecIn);
 
 	// initialize our superclass
-	cxa_btle_client_init(&btlecIn->super, scm_isReady,
-						 scm_startScan, scm_stopScan, scm_isScanning,
+	cxa_btle_client_init(&btlecIn->super, scm_getState,
+						 scm_startScan, scm_stopScan,
 						 scm_startConnection, scm_stopConnection, scm_isConnected, scm_writeToCharacteristic);
 
 	// and our logger
@@ -170,7 +170,7 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_RESET, "reset", CONNSTATE_WAIT_BOOT, RESET_TIME_MS, stateCb_conn_reset_enter, NULL, stateCb_conn_reset_leave, (void*)btlecIn);
 	cxa_stateMachine_addState_timed(&btlecIn->stateMachine_conn, CONNSTATE_WAIT_BOOT, "waitBoot", CONNSTATE_RESET, WAIT_BOOT_TIME_MS, NULL, NULL, stateCb_conn_waitBoot_leave, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONFIG_PERIPHS, "configPeriphs", stateCb_conn_configPeriphs_enter, NULL, NULL, (void*)btlecIn);
-	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_IDLE, "idle", stateCb_conn_idle_enter, NULL, NULL, (void*)btlecIn);
+	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_READY, "ready", stateCb_conn_ready_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_SCANNING, "scanning", stateCb_conn_scanning_enter, NULL, stateCb_conn_scanning_leave, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTING, "connecting", stateCb_conn_connecting_enter, NULL, NULL, (void*)btlecIn);
 	cxa_stateMachine_addState(&btlecIn->stateMachine_conn, CONNSTATE_CONNECTED, "connected", stateCb_conn_connected_enter, NULL, stateCb_conn_connected_leave, (void*)btlecIn);
@@ -367,6 +367,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 						cxa_fixedByteBuffer_getSize_bytes(packetIn));
 
 		// notify our listeners
+		btlecIn->super.hasActivityAvailable = true;
 		cxa_btle_client_notify_advertRx(&btlecIn->super, &rxPacket);
 	}
 	else if( (classId == CXA_BLUEGIGA_CLASSID_SYSTEM) && (method == CXA_BLUEGIGA_EVENTID_SYSTEM_PROTOCOLERROR) )
@@ -384,7 +385,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 			if( cb != NULL ) cb(btlecIn, false, NULL, btlecIn->inFlightRequest.userVar);
 		}
 
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 	}
 	else if( (classId == CXA_BLUEGIGA_CLASSID_CONNECTION) && (method == CXA_BLUEGIGA_EVENTID_CONNECTION_STATUS) )
 	{
@@ -414,7 +415,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 		cxa_logger_debug(&btlecIn->logger, "disconnect reported");
 		if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) == CONNSTATE_CONNECTED )
 		{
-			cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+			cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		}
 	}
 	else if( (classId == CXA_BLUEGIGA_CLASSID_ATTR_CLIENT) && (method == CXA_BLUEGIGA_EVENTID_ATTR_CLIENT_PROCEDURE_COMPLETE) )
@@ -594,7 +595,7 @@ static void handleScanningActivityTimeout(void* userVarIn)
 	if( !cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_SYSTEM, CXA_BLUEGIGA_EVENTID_SYSTEM_HELLO, NULL, responseCb_hello, NULL) )
 	{
 		cxa_logger_warn(&btlecIn->logger, "failed to send 'hello' to radio");
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
 }
@@ -635,7 +636,7 @@ static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, 
 	{
 		cxa_logger_warn(&btlecIn->logger, "error setting scan params 0x%04X, aborting scan", response);
 		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
 
@@ -663,7 +664,7 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 	{
 		cxa_logger_warn(&btlecIn->logger, "error starting scan 0x%04X, aborting", response);
 		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
 
@@ -689,7 +690,7 @@ static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, b
 	}
 
 	cxa_logger_info(&btlecIn->logger, "scan stopped");
-	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 }
 
 
@@ -706,7 +707,7 @@ static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, 
 	{
 		cxa_logger_warn(&btlecIn->logger, "error starting connection 0x%04X, aborting", response);
 		cxa_btle_client_notify_connectionStarted(&btlecIn->super, false);
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
 
@@ -715,7 +716,7 @@ static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, 
 	{
 		cxa_logger_warn(&btlecIn->logger, "error parsing conn response, aborting", response);
 		cxa_btle_client_notify_connectionStarted(&btlecIn->super, false);
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
 
@@ -772,14 +773,14 @@ static void responseCb_hello(cxa_blueGiga_btle_client_t *const btlecIn, bool was
 	if( wasSuccessfulIn )
 	{
 		// got a response to the hello...radio is still responsive
-		cxa_logger_debug(&btlecIn->logger, "got 'hello' repsonse");
+		cxa_logger_debug(&btlecIn->logger, "got 'hello' response");
 		cxa_softWatchDog_kick(&btlecIn->scanningActivityWatchdog);
 	}
 	else
 	{
 		// no response to the hello...radio is not responsive
 		cxa_logger_warn(&btlecIn->logger, "failed to receive 'hello' response");
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
 }
@@ -813,17 +814,41 @@ static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool w
 
 	if( wasSuccessfulIn ) cxa_logger_debug(&btlecIn->logger, "gpios configured successfully");
 	else cxa_logger_warn(&btlecIn->logger, "gpio configuration failed, restarting");
-	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, (wasSuccessfulIn ? CONNSTATE_IDLE : CONNSTATE_RESET));
+	cxa_stateMachine_transition(&btlecIn->stateMachine_conn, (wasSuccessfulIn ? CONNSTATE_READY : CONNSTATE_RESET));
 }
 
 
-static bool scm_isReady(cxa_btle_client_t *const superIn)
+static cxa_btle_client_state_t scm_getState(cxa_btle_client_t *const superIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
 	cxa_assert(btlecIn);
 
-	connState_t currState = cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn);
-	return (currState == CONNSTATE_IDLE) || (currState == CONNSTATE_SCANNING);
+	cxa_btle_client_state_t retVal = CXA_BTLE_CLIENT_STATE_STARTUP;
+	switch( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) )
+	{
+		case CONNSTATE_RESET:
+		case CONNSTATE_WAIT_BOOT:
+		case CONNSTATE_CONFIG_PERIPHS:
+			retVal = btlecIn->hasBootFailed ? CXA_BTLE_CLIENT_STATE_STARTUPFAILED : CXA_BTLE_CLIENT_STATE_STARTUP;
+			break;
+
+		case CONNSTATE_READY:
+			retVal = CXA_BTLE_CLIENT_STATE_READY;
+			break;
+
+		case CONNSTATE_SCANNING:
+			retVal = CXA_BTLE_CLIENT_STATE_SCANNING;
+			break;
+
+		case CONNSTATE_CONNECTING:
+			retVal = CXA_BTLE_CLIENT_STATE_CONNECTING;
+			break;
+
+		case CONNSTATE_CONNECTED:
+			retVal = CXA_BTLE_CLIENT_STATE_CONNECTED;
+			break;
+	}
+	return retVal;
 }
 
 
@@ -833,7 +858,7 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 	cxa_assert(btlecIn);
 
 	// make sure we're in the proper state
-	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_IDLE )
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_READY )
 	{
 		cxa_logger_warn(&btlecIn->logger, "not ready to start scan");
 		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
@@ -858,14 +883,6 @@ static void scm_stopScan(cxa_btle_client_t *const superIn)
 }
 
 
-static bool scm_isScanning(cxa_btle_client_t *const superIn)
-{
-	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
-	cxa_assert(btlecIn);
-
-	return (cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) == CONNSTATE_SCANNING);
-}
-
 
 static void scm_startConnection(cxa_btle_client_t *const superIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn)
 {
@@ -873,7 +890,7 @@ static void scm_startConnection(cxa_btle_client_t *const superIn, cxa_eui48_t *c
 	cxa_assert(btlecIn);
 
 	// make sure we're in the proper state
-	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_IDLE )
+	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_READY )
 	{
 		cxa_logger_warn(&btlecIn->logger, "not ready to connect");
 		cxa_btle_client_notify_connectionStarted(&btlecIn->super, false);
@@ -996,7 +1013,13 @@ static void stateCb_conn_waitBoot_leave(cxa_stateMachine_t *const smIn, int next
 	// failed to receive our boot message
 	if( nextStateIdIn == CONNSTATE_RESET )
 	{
+		btlecIn->hasBootFailed = true;
 		cxa_btle_client_notify_onFailedInit(&btlecIn->super, true);
+	}
+	else
+	{
+		// booted successfully
+		btlecIn->hasBootFailed = false;
 	}
 }
 
@@ -1011,7 +1034,7 @@ static void stateCb_conn_configPeriphs_enter(cxa_stateMachine_t *const smIn, int
 }
 
 
-static void stateCb_conn_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_conn_ready_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
@@ -1049,7 +1072,7 @@ static void stateCb_conn_scanning_enter(cxa_stateMachine_t *const smIn, int prev
 	if( !cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_SETSCANPARAMS, &params, responseCb_setScanParams, NULL) )
 	{
 		cxa_logger_warn(&btlecIn->logger, "failed to start scanning");
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_IDLE);
+		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 	}
 }
 

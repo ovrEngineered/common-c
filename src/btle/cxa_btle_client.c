@@ -22,7 +22,7 @@
 #include <cxa_assert.h>
 
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
 
 
@@ -41,29 +41,28 @@ static void parseAdvField(cxa_btle_advField_t *advFieldIn, uint8_t* bytesIn);
 
 // ******** global function implementations ********
 void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
-						  cxa_btle_client_scm_isReady_t scm_isReadyIn,
+						  cxa_btle_client_scm_getState_t scm_getStateIn,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
 						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
-						  cxa_btle_client_scm_isScanning_t scm_isScanningIn,
 						  cxa_btle_client_scm_startConnection_t scm_startConnectionIn,
 						  cxa_btle_client_scm_stopConnection_t scm_stopConnectionIn,
 						  cxa_btle_client_scm_isConnected_t scm_isConnectedIn,
 						  cxa_btle_client_scm_writeToCharacteristic_t scm_writeToCharIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(scm_getStateIn);
 	cxa_assert(scm_startScanIn);
 	cxa_assert(scm_stopScanIn);
-	cxa_assert(scm_isScanningIn);
 
 	// save our references
-	btlecIn->scms.isReady = scm_isReadyIn;
+	btlecIn->scms.getState = scm_getStateIn;
 	btlecIn->scms.startScan = scm_startScanIn;
 	btlecIn->scms.stopScan = scm_stopScanIn;
-	btlecIn->scms.isScanning = scm_isScanningIn;
 	btlecIn->scms.startConnection = scm_startConnectionIn;
 	btlecIn->scms.stopConnection = scm_stopConnectionIn;
 	btlecIn->scms.isConnected = scm_isConnectedIn;
 	btlecIn->scms.writeToCharacteristic = scm_writeToCharIn;
+	btlecIn->hasActivityAvailable = false;
 
 	// clear our callbacks
 	memset((void*)&btlecIn->cbs, 0, sizeof(btlecIn->cbs));
@@ -142,20 +141,21 @@ void cxa_btle_client_stopScan(cxa_btle_client_t *const btlecIn,
 }
 
 
-bool cxa_btle_client_isReady(cxa_btle_client_t *const btlecIn)
+cxa_btle_client_state_t cxa_btle_client_getState(cxa_btle_client_t *const btlecIn)
 {
 	cxa_assert(btlecIn);
 
-	return (btlecIn->scms.isReady != NULL) ? btlecIn->scms.isReady(btlecIn) : true;
+	return (btlecIn->scms.getState != NULL) ? btlecIn->scms.getState(btlecIn) : true;
 }
 
 
-bool cxa_btle_client_isScanning(cxa_btle_client_t *const btlecIn)
+bool cxa_btle_client_hasActivityAvailable(cxa_btle_client_t *const btlecIn)
 {
 	cxa_assert(btlecIn);
 
-	cxa_assert(btlecIn->scms.isScanning != NULL);
-	return btlecIn->scms.isScanning(btlecIn);
+	bool retVal = btlecIn->hasActivityAvailable;
+	btlecIn->hasActivityAvailable = false;
+	return retVal;
 }
 
 
@@ -188,14 +188,6 @@ void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
 
 	cxa_assert(btlecIn->scms.stopConnection != NULL);
 	btlecIn->scms.stopConnection(btlecIn);
-}
-
-
-bool cxa_btle_client_isConnected(cxa_btle_client_t *const btlecIn)
-{
-	cxa_assert(btlecIn);
-
-	return (btlecIn->scms.isConnected != NULL) ? btlecIn->scms.isConnected(btlecIn) : false;
 }
 
 
