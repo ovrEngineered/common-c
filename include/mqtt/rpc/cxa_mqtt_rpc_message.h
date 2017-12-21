@@ -34,13 +34,13 @@
 
 
 // ******** global macro definitions ********
+#define CXA_MQTT_RPC_MESSAGE_VERSION				"v1"
 
 
 // ******** global type definitions *********
 
 
 // ******** global function prototypes ********
-bool cxa_mqtt_rpc_message_isActionableRequest(cxa_mqtt_message_t *const msgIn, char** methodNameOut, size_t* methodNameLen_bytesOut, char** idOut, size_t* idLen_bytesOut);
 bool cxa_mqtt_rpc_message_isActionableResponse(cxa_mqtt_message_t *const msgIn, char** methodNameOut, size_t* methodNameLen_bytesOut, char** idOut, size_t* idLen_bytesOut);
 
 #endif /* CXA_MQTT_RPC_MESSAGE_H_ */

@@ -154,7 +154,7 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return;
 
 	// this _may_ be our client state message...if so, we don't need to do anything
-	if( cxa_stringUtils_endsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_CONNSTATE_TOPIC) ) return;
+	if( cxa_stringUtils_endsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_CONNSTATE_STREAM_NAME) ) return;
 
 	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
 
@@ -213,87 +213,87 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	size_t methodNameLen_bytes, idLen_bytes;
 
 	// depends what type of message it is...
-	if( cxa_mqtt_rpc_message_isActionableRequest(msgIn, NULL, NULL, NULL, NULL) )
-	{
-		// this is a request
-
-		char* currTopic = remainingTopicIn;
-		size_t currTopicLen_bytes = remainingTopicLen_bytesIn;
-
-		size_t nodeNameLen_bytes = strlen(superIn->name);
-		if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) )
-		{
-			// topic begins with our name...remove ourselves from the topic
-			currTopic += nodeNameLen_bytes;
-			currTopicLen_bytes -= nodeNameLen_bytes;
-
-			// if there is a remaining separator, remove it
-			if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, "/", 1) )
-			{
-				currTopic++;
-				currTopicLen_bytes--;
-			}
-		}
-		else if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, CXA_MQTT_RPCNODE_REQ_PREFIX, strlen(CXA_MQTT_RPCNODE_REQ_PREFIX)) )
-		{
-			// starts with a request prefix...this is a request directly for our attached node
-		}
-		else return false;
-
-		// now make sure we have an authenticated client
-		if( !nodeIn->hasClientAuthed )
-		{
-			cxa_logger_warn(&nodeIn->super.super.logger, "client not yet auth'd, dropping");
-			return false;
-		}
-
-		// go ahead and forward
-		cxa_logger_trace(&nodeIn->super.super.logger, "forwarding to single: '%s'", nodeIn->clientId);
-
-		if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, currTopic) ||
-			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
-			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, nodeIn->clientId) )
-		{
-			cxa_logger_warn(&nodeIn->super.super.logger, "error remapping topic name, dropping");
-			return true;		// return true because we _should_ have handled this
-		}
-
-		// send the message
-		if( !cxa_protocolParser_writePacket(&nodeIn->super.mpp->super, cxa_mqtt_message_getBuffer(msgIn)) )
-		{
-			cxa_logger_warn(&nodeIn->super.super.logger, "error forwarding message");
-		}
-		return true;
-	}
-	else if( cxa_mqtt_rpc_message_isActionableResponse(msgIn, &methodName, &methodNameLen_bytes, &id, &idLen_bytes) )
-	{
-		// this is a response...first, we should check to see if we were waiting for this...
-		cxa_array_iterate(&superIn->outstandingRequests, currRequest, cxa_mqtt_rpc_node_outstandingRequest_t)
-		{
-			if( currRequest == NULL ) continue;
-
-			if( cxa_stringUtils_equals_withLengths(currRequest->name, strlen(currRequest->name), methodName, methodNameLen_bytes) &&
-				cxa_stringUtils_equals_withLengths(currRequest->id, strlen(currRequest->id), id, idLen_bytes) )
-			{
-				// we were expecting this response...get the return value (and remove leaving only parameters)
-				cxa_linkedField_t* lf_payload;
-				uint8_t retVal_raw;
-				if( !cxa_mqtt_message_publish_getPayload(msgIn, &lf_payload) ||
-					!cxa_linkedField_get_uint8(lf_payload, 0, retVal_raw) ||
-					!cxa_linkedField_remove(lf_payload, 0, 1) )
-				{
-					cxa_logger_warn(&superIn->logger, "no return value found in response");
-					return true;
-				}
-
-				if( currRequest->cb != NULL ) currRequest->cb(superIn, (cxa_mqtt_rpc_methodRetVal_t)retVal_raw, lf_payload, currRequest->userVar);
-
-				// we're done with this request...remove it (so it doesn't timeout)
-				cxa_array_remove(&superIn->outstandingRequests, currRequest);
-				return true;
-			}
-		}
-	}
+//	if( cxa_mqtt_rpc_message_isActionableRequest(msgIn, NULL, NULL, NULL, NULL) )
+//	{
+//		// this is a request
+//
+//		char* currTopic = remainingTopicIn;
+//		size_t currTopicLen_bytes = remainingTopicLen_bytesIn;
+//
+//		size_t nodeNameLen_bytes = strlen(superIn->name);
+//		if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) )
+//		{
+//			// topic begins with our name...remove ourselves from the topic
+//			currTopic += nodeNameLen_bytes;
+//			currTopicLen_bytes -= nodeNameLen_bytes;
+//
+//			// if there is a remaining separator, remove it
+//			if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, "/", 1) )
+//			{
+//				currTopic++;
+//				currTopicLen_bytes--;
+//			}
+//		}
+//		else if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, CXA_MQTT_RPCNODE_REQ_PREFIX, strlen(CXA_MQTT_RPCNODE_REQ_PREFIX)) )
+//		{
+//			// starts with a request prefix...this is a request directly for our attached node
+//		}
+//		else return false;
+//
+//		// now make sure we have an authenticated client
+//		if( !nodeIn->hasClientAuthed )
+//		{
+//			cxa_logger_warn(&nodeIn->super.super.logger, "client not yet auth'd, dropping");
+//			return false;
+//		}
+//
+//		// go ahead and forward
+//		cxa_logger_trace(&nodeIn->super.super.logger, "forwarding to single: '%s'", nodeIn->clientId);
+//
+//		if( !cxa_mqtt_message_publish_topicName_trimToPointer(msgIn, currTopic) ||
+//			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, "/") ||
+//			!cxa_mqtt_message_publish_topicName_prependCString(msgIn, nodeIn->clientId) )
+//		{
+//			cxa_logger_warn(&nodeIn->super.super.logger, "error remapping topic name, dropping");
+//			return true;		// return true because we _should_ have handled this
+//		}
+//
+//		// send the message
+//		if( !cxa_protocolParser_writePacket(&nodeIn->super.mpp->super, cxa_mqtt_message_getBuffer(msgIn)) )
+//		{
+//			cxa_logger_warn(&nodeIn->super.super.logger, "error forwarding message");
+//		}
+//		return true;
+//	}
+//	else if( cxa_mqtt_rpc_message_isActionableResponse(msgIn, &methodName, &methodNameLen_bytes, &id, &idLen_bytes) )
+//	{
+//		// this is a response...first, we should check to see if we were waiting for this...
+//		cxa_array_iterate(&superIn->outstandingRequests, currRequest, cxa_mqtt_rpc_node_outstandingRequest_t)
+//		{
+//			if( currRequest == NULL ) continue;
+//
+//			if( cxa_stringUtils_equals_withLengths(currRequest->name, strlen(currRequest->name), methodName, methodNameLen_bytes) &&
+//				cxa_stringUtils_equals_withLengths(currRequest->id, strlen(currRequest->id), id, idLen_bytes) )
+//			{
+//				// we were expecting this response...get the return value (and remove leaving only parameters)
+//				cxa_linkedField_t* lf_payload;
+//				uint8_t retVal_raw;
+//				if( !cxa_mqtt_message_publish_getPayload(msgIn, &lf_payload) ||
+//					!cxa_linkedField_get_uint8(lf_payload, 0, retVal_raw) ||
+//					!cxa_linkedField_remove(lf_payload, 0, 1) )
+//				{
+//					cxa_logger_warn(&superIn->logger, "no return value found in response");
+//					return true;
+//				}
+//
+//				if( currRequest->cb != NULL ) currRequest->cb(superIn, (cxa_mqtt_rpc_methodRetVal_t)retVal_raw, lf_payload, currRequest->userVar);
+//
+//				// we're done with this request...remove it (so it doesn't timeout)
+//				cxa_array_remove(&superIn->outstandingRequests, currRequest);
+//				return true;
+//			}
+//		}
+//	}
 
 	return false;
 }

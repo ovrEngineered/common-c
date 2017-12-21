@@ -41,7 +41,7 @@
 
 // ******** local function prototypes ********
 static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_mqtt_message_t *const msgIn);
-static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
+static bool scm_handleRequest_downstream(cxa_mqtt_rpc_node_t *const superIn,
 										 char *const remainingTopicIn, uint16_t remainingTopicLen_bytesIn,
 										 cxa_mqtt_message_t *const msgIn);
 static cxa_mqtt_client_t* scm_getClient(cxa_mqtt_rpc_node_t *const superIn);
@@ -67,7 +67,7 @@ void cxa_mqtt_rpc_node_init_formattedString(cxa_mqtt_rpc_node_t *const nodeIn, c
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
 	cxa_mqtt_rpc_node_vinit(nodeIn, parentNodeIn,
-							scm_handleMessage_upstream, scm_handleMessage_downstream, scm_getClient,
+							scm_handleMessage_upstream, scm_handleRequest_downstream, scm_getClient,
 							nameFmtIn, varArgs);
 	va_end(varArgs);
 }
@@ -85,7 +85,7 @@ void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_nod
 	// save our references and set some defaults
 	nodeIn->parentNode = parentNodeIn;
 	nodeIn->scm_handleMessage_upstream = (scm_handleMessage_upstreamIn != NULL) ? scm_handleMessage_upstreamIn : scm_handleMessage_upstream;
-	nodeIn->scm_handleMessage_downstream = (scm_handleMessage_downstreamIn != NULL) ? scm_handleMessage_downstreamIn : scm_handleMessage_downstream;
+	nodeIn->scm_handleMessage_downstream = (scm_handleMessage_downstreamIn != NULL) ? scm_handleMessage_downstreamIn : scm_handleRequest_downstream;
 	nodeIn->scm_getClient = (scm_getClientIn != NULL) ? scm_getClientIn : scm_getClient;
 
 	// assemble our name
@@ -256,7 +256,6 @@ bool cxa_mqtt_rpc_node_publishNotification_appendSubTopic(cxa_mqtt_rpc_node_t *c
 
 	// now we need to get our topic/path in order...start with the notification info
 	if( !cxa_mqtt_message_publish_topicName_prependCString(msg, notiNameIn) ||
-		!cxa_mqtt_message_publish_topicName_prependCString(msg, CXA_MQTT_RPCNODE_NOTI_PREFIX) ||
 		!cxa_mqtt_message_publish_topicName_prependCString(msg, "/") )
 	{
 		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
@@ -272,6 +271,15 @@ bool cxa_mqtt_rpc_node_publishNotification_appendSubTopic(cxa_mqtt_rpc_node_t *c
 	}
 	// and the rest of our path
 	if( !addNodePathToTopic(nodeIn, msg) )
+	{
+		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
+		return false;
+	}
+	// and the message type and version
+	if( !cxa_mqtt_message_publish_topicName_prependCString(msg, "/") ||
+		!cxa_mqtt_message_publish_topicName_prependCString(msg, CXA_MQTT_RPCNODE_NOTI_PREFIX) ||
+		!cxa_mqtt_message_publish_topicName_prependCString(msg, "/") ||
+		!cxa_mqtt_message_publish_topicName_prependCString(msg, "v1") )
 	{
 		cxa_mqtt_messageFactory_decrementMessageRefCount(msg);
 		return false;
@@ -332,7 +340,7 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 }
 
 
-static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
+static bool scm_handleRequest_downstream(cxa_mqtt_rpc_node_t *const superIn,
 										 char *const remainingTopicIn, uint16_t remainingTopicLen_bytesIn,
 										 cxa_mqtt_message_t *const msgIn)
 {
@@ -340,135 +348,86 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	cxa_assert(remainingTopicIn);
 	cxa_assert(msgIn);
 
-//	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
+	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
 
 	char *methodName, *id;
 	size_t methodNameLen_bytes, idLen_bytes;
 
-	// depends what type of message it is...
-	if( cxa_mqtt_rpc_message_isActionableRequest(msgIn, NULL, NULL, NULL, NULL) )
+	// make sure that the topic starts with our name (handle the special "localroot" case)
+	size_t nodeNameLen_bytes = strlen(superIn->name);
+	if( superIn->parentNode != NULL )
 	{
-		// this is a request
-
-		// make sure that the topic starts with our name (handle the special "localroot" case)
-		size_t nodeNameLen_bytes = strlen(superIn->name);
-		if( superIn->parentNode != NULL )
-		{
-			// not the local root node
-			if( !cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) ) return false;
-		}
-		else
-		{
-			// we are the local root node...check for name variants
-			if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)) )
-			{
-				nodeNameLen_bytes = strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX);
-			}
-			else if( !cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) ) return false;
-		}
-
-		// so far so good...remove ourselves from the topic
-		char* currTopic = remainingTopicIn + nodeNameLen_bytes;
-		size_t currTopicLen_bytes = remainingTopicLen_bytesIn - nodeNameLen_bytes;
-
-		// if there is a remaining separator, remove it
-		if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, "/", 1) )
-		{
-			currTopic++;
-			currTopicLen_bytes--;
-		}
-
-		// we already know it's a request...but at this point, we want to make sure that we have the request prefix
-		if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, CXA_MQTT_RPCNODE_REQ_PREFIX, strlen(CXA_MQTT_RPCNODE_REQ_PREFIX)) )
-		{
-			// move the current topic forward (to discard the prefix)
-			currTopic += strlen(CXA_MQTT_RPCNODE_REQ_PREFIX);
-			currTopicLen_bytes -= strlen(CXA_MQTT_RPCNODE_REQ_PREFIX);
-
-			// start looking for a method
-			cxa_array_iterate(&superIn->methods, currMethodEntry, cxa_mqtt_rpc_node_methodEntry_t)
-			{
-				if( currMethodEntry == NULL ) continue;
-
-				if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, currMethodEntry->name, strlen(currMethodEntry->name)) )
-				{
-					cxa_logger_trace(&superIn->logger, "found method '%s'", currMethodEntry->name);
-
-					// if we made it here we'll be sending a response
-					cxa_linkedField_t *lf_payload, *lf_retPayload;
-					cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
-					if( respMsg == NULL ) return true;
-
-					cxa_mqtt_rpc_methodRetVal_t retVal = CXA_MQTT_RPC_METHODRETVAL_SUCCESS;
-					if( currMethodEntry->cb_method != NULL ) retVal = currMethodEntry->cb_method(superIn, lf_payload, lf_retPayload, currMethodEntry->userVar);
-					sendResponse(superIn, retVal, respMsg);
-
-					return true;
-				}
-			}
-
-			// if we made it here, it is bound for a unknown method
-			cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_WARN, "unknown method: '", currTopic, currTopicLen_bytes, "'");
-			cxa_linkedField_t *lf_payload, *lf_retPayload;
-			cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
-			if( respMsg != NULL ) sendResponse(superIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, respMsg);
-
-			return true;
-		}
-
-		// if we made it here...this must be destined for a subnode
-		cxa_array_iterate(&superIn->subNodes, currSubNode, cxa_mqtt_rpc_node_t*)
-		{
-			if( currSubNode == NULL ) continue;
-			if( ((*currSubNode)->scm_handleMessage_downstream != NULL) && (*currSubNode)->scm_handleMessage_downstream(*currSubNode, currTopic, currTopicLen_bytes, msgIn) ) return true;
-		}
-
-		// if we made it here, it is bound for an unknown subnode
-		cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_WARN, "unknown subNode: '", currTopic, currTopicLen_bytes, "'");
-		cxa_linkedField_t *lf_payload, *lf_retPayload;
-		cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
-		if( respMsg != NULL ) sendResponse(superIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_NODE_DNE, respMsg);
-		return true;
+		// not the local root node
+		if( !cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) ) return false;
 	}
-	else if( cxa_mqtt_rpc_message_isActionableResponse(msgIn, &methodName, &methodNameLen_bytes, &id, &idLen_bytes) )
+	else
 	{
-		// this is a response...first, we should check to see if we were waiting for this...
-		cxa_array_iterate(&superIn->outstandingRequests, currRequest, cxa_mqtt_rpc_node_outstandingRequest_t)
+		// we are the local root node...check for name variants
+		if( cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)) )
 		{
-			if( currRequest == NULL ) continue;
+			nodeNameLen_bytes = strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX);
+		}
+		else if( !cxa_stringUtils_startsWith_withLengths(remainingTopicIn, remainingTopicLen_bytesIn, superIn->name, nodeNameLen_bytes) ) return false;
+	}
 
-			if( cxa_stringUtils_equals_withLengths(currRequest->name, strlen(currRequest->name), methodName, methodNameLen_bytes) &&
-				cxa_stringUtils_equals_withLengths(currRequest->id, strlen(currRequest->id), id, idLen_bytes) )
+	// so far so good...remove ourselves from the topic
+	char* currTopic = remainingTopicIn + nodeNameLen_bytes;
+	size_t currTopicLen_bytes = remainingTopicLen_bytesIn - nodeNameLen_bytes;
+
+	// if there is a remaining separator, remove it
+	if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, "/", 1) )
+	{
+		currTopic++;
+		currTopicLen_bytes--;
+	}
+
+	// count our remaining separators to tell us if the message is bound for one of our methods
+	if( cxa_stringUtils_countOccurences(currTopic, "/") == 0 )
+	{
+		// no more separators...start looking for a method
+		cxa_array_iterate(&superIn->methods, currMethodEntry, cxa_mqtt_rpc_node_methodEntry_t)
+		{
+			if( currMethodEntry == NULL ) continue;
+
+			if( cxa_stringUtils_startsWith_withLengths(currTopic, currTopicLen_bytes, currMethodEntry->name, strlen(currMethodEntry->name)) )
 			{
-				// we were expecting this response...get the return value (and remove leaving only parameters)
-				cxa_linkedField_t* lf_payload;
-				uint8_t retVal_raw;
-				if( !cxa_mqtt_message_publish_getPayload(msgIn, &lf_payload) ||
-					!cxa_linkedField_get_uint8(lf_payload, 0, retVal_raw) ||
-					!cxa_linkedField_remove(lf_payload, 0, 1) )
-				{
-					cxa_logger_warn(&superIn->logger, "no return value found in response");
-					return true;
-				}
+				cxa_logger_trace(&superIn->logger, "found method '%s'", currMethodEntry->name);
 
-				if( currRequest->cb != NULL ) currRequest->cb(superIn, (cxa_mqtt_rpc_methodRetVal_t)retVal_raw, lf_payload, currRequest->userVar);
+				// if we made it here we'll be sending a response
+				cxa_linkedField_t *lf_payload, *lf_retPayload;
+				cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
+				if( respMsg == NULL ) return true;
 
-				// we're done with this request...remove it (so it doesn't timeout)
-				cxa_array_remove(&superIn->outstandingRequests, currRequest);
+				cxa_mqtt_rpc_methodRetVal_t retVal = CXA_MQTT_RPC_METHODRETVAL_SUCCESS;
+				if( currMethodEntry->cb_method != NULL ) retVal = currMethodEntry->cb_method(superIn, lf_payload, lf_retPayload, currMethodEntry->userVar);
+				sendResponse(superIn, retVal, respMsg);
+
 				return true;
 			}
 		}
 
-		// if we made it here, we need to pass to all subnodes so they can
-		// individually decide if this was a message for which they were waiting
-		cxa_array_iterate(&superIn->subNodes, currSubNode, cxa_mqtt_rpc_node_t*)
-		{
-			if( currSubNode == NULL ) continue;
-			if( ((*currSubNode)->scm_handleMessage_downstream != NULL) && (*currSubNode)->scm_handleMessage_downstream(*currSubNode, remainingTopicIn, remainingTopicLen_bytesIn, msgIn) ) return true;
-		}
+		// if we made it here, it is bound for a unknown method
+		cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_WARN, "unknown method: '", currTopic, currTopicLen_bytes, "'");
+		cxa_linkedField_t *lf_payload, *lf_retPayload;
+		cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
+		if( respMsg != NULL ) sendResponse(superIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, respMsg);
+
+		return true;
 	}
 
-	return false;
+	// if we made it here...this must be destined for a subnode
+	cxa_array_iterate(&superIn->subNodes, currSubNode, cxa_mqtt_rpc_node_t*)
+	{
+		if( currSubNode == NULL ) continue;
+		if( ((*currSubNode)->scm_handleMessage_downstream != NULL) && (*currSubNode)->scm_handleMessage_downstream(*currSubNode, currTopic, currTopicLen_bytes, msgIn) ) return true;
+	}
+
+	// if we made it here, it is bound for an unknown subnode
+	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_WARN, "unknown subNode: '", currTopic, currTopicLen_bytes, "'");
+	cxa_linkedField_t *lf_payload, *lf_retPayload;
+	cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
+	if( respMsg != NULL ) sendResponse(superIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_NODE_DNE, respMsg);
+	return true;
 }
 
 
@@ -520,7 +479,7 @@ static cxa_mqtt_message_t* prepForResponse(cxa_mqtt_rpc_node_t *const nodeIn, cx
 		!cxa_mqtt_message_publish_getTopicName(reqMsgIn, &reqTopicName, &reqTopicNameLen_bytes) ||											// setup the response topic
 		!cxa_mqtt_message_publish_topicName_prependString_withLength(respMsg, reqTopicName, reqTopicNameLen_bytes) ||
 		!cxa_mqtt_message_publish_getTopicName(respMsg, &respTopicName, &respTopicNameLen_bytes) ||
-		!cxa_stringUtils_replaceFirstOccurance_withLengths(respTopicName, respTopicNameLen_bytes,
+		!cxa_stringUtils_replaceFirstOccurence_withLengths(respTopicName, respTopicNameLen_bytes,
 														   CXA_MQTT_RPCNODE_REQ_PREFIX, strlen(CXA_MQTT_RPCNODE_REQ_PREFIX),
 														   CXA_MQTT_RPCNODE_RESP_PREFIX, strlen(CXA_MQTT_RPCNODE_RESP_PREFIX)) ||
 		!cxa_mqtt_message_publish_getPayload(reqMsgIn, lf_payloadIn) || !cxa_mqtt_message_publish_getPayload(respMsg, lf_retPayloadIn) )	// setup payloads

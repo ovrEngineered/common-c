@@ -255,13 +255,15 @@ bool cxa_mqtt_client_publish_message(cxa_mqtt_client_t *const clientIn, cxa_mqtt
 	uint16_t topicNameLen_bytes;
 	if( !cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) ) return false;
 
-	cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_INFO, "publish '", topicName, topicNameLen_bytes, "'");
+//	cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_INFO, "publish '", topicName, topicNameLen_bytes, "'");
 	bool retVal = true;
 	if( !cxa_protocolParser_writePacket(&clientIn->mpp.super, cxa_mqtt_message_getBuffer(msgIn)) )
 	{
 		cxa_logger_warn(&clientIn->logger, "publish send failed, dropped");
 		retVal = false;
 	}
+
+	if( retVal ) notify_activity(clientIn);
 
 	return retVal;
 }

@@ -76,10 +76,12 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	va_end(varArgs);
 
 	// set our last-will-testament message (for status)
+	// v1/^^/30:AE:A4:01:74:90/streams/amb_temp_ddc/onStreamUpdate
 	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
 	stateTopic[0] = 0;
+	cxa_assert( cxa_stringUtils_concat(stateTopic, CXA_MQTT_RPC_MESSAGE_VERSION "/^^/", sizeof(stateTopic)) );
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
-	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/streams/" CXA_MQTT_RPCNODE_CONNSTATE_STREAM_NAME "/onStreamUpdate", sizeof(stateTopic)) );
 	cxa_assert(cxa_mqtt_client_setWillMessage(nodeIn->mqttClient,
 											  CXA_MQTT_QOS_ATMOST_ONCE,
 											  false,
@@ -89,12 +91,13 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	// we can subscribe immediately because the mqtt client will cache subscribes if we're offline
 	char subscriptTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
 	subscriptTopic[0] = 0;
+	cxa_assert( cxa_stringUtils_concat(subscriptTopic, CXA_MQTT_RPC_MESSAGE_VERSION "/->/", sizeof(subscriptTopic)) );
 	cxa_assert( cxa_stringUtils_concat(subscriptTopic, nodeIn->super.name, sizeof(subscriptTopic)) );
 	cxa_assert( cxa_stringUtils_concat(subscriptTopic, "/#", sizeof(subscriptTopic)) );
-
-	// register for mqtt events
-	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, NULL,  (void*)nodeIn);
 	cxa_mqtt_client_subscribe(nodeIn->mqttClient, subscriptTopic, CXA_MQTT_QOS_ATMOST_ONCE, mqttClientCb_onPublish, (void*)nodeIn);
+
+	// register for MQTT events
+	cxa_mqtt_client_addListener(nodeIn->mqttClient, mqttClientCb_onConnect, NULL, NULL, NULL,  (void*)nodeIn);
 
 	cxa_mqtt_rpc_node_addMethod(&nodeIn->super, "isAlive", rpcMethodCb_isAlive, (void*)nodeIn);
 }
@@ -108,11 +111,13 @@ static void mqttClientCb_onConnect(cxa_mqtt_client_t *const clientIn, void* user
 
 	if( !nodeIn->shouldReportState ) return;
 
-	// publish our state
+	// publish our connection state
+	// v1/^^/30:AE:A4:01:74:90/streams/amb_temp_ddc/onStreamUpdate
 	char stateTopic[CXA_MQTT_CLIENT_MAXLEN_TOPICFILTER_BYTES];
 	stateTopic[0] = 0;
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "v1/^^/", sizeof(stateTopic)) );
 	cxa_assert( cxa_stringUtils_concat(stateTopic, nodeIn->super.name, sizeof(stateTopic)) );
-	cxa_assert( cxa_stringUtils_concat(stateTopic, "/" CXA_MQTT_RPCNODE_CONNSTATE_TOPIC, sizeof(stateTopic)) );
+	cxa_assert( cxa_stringUtils_concat(stateTopic, "/streams/" CXA_MQTT_RPCNODE_CONNSTATE_STREAM_NAME "/onStreamUpdate", sizeof(stateTopic)) );
 	cxa_mqtt_client_publish(clientIn,
 							CXA_MQTT_QOS_ATMOST_ONCE,
 							false,
@@ -127,6 +132,12 @@ static void mqttClientCb_onPublish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_m
 	cxa_assert(topicNameIn);
 	cxa_mqtt_rpc_node_root_t* nodeIn = (cxa_mqtt_rpc_node_root_t*)userVarIn;
 	cxa_assert(nodeIn);
+
+	// remove the version and type information
+	size_t minMessageLen = strlen(CXA_MQTT_RPC_MESSAGE_VERSION "/" CXA_MQTT_RPCNODE_REQ_PREFIX "/");
+	if( topicNameLen_bytesIn < minMessageLen ) return;
+	topicNameIn += minMessageLen;
+	topicNameLen_bytesIn -= minMessageLen;
 
 	// insert it into our message handling pipeline
 	nodeIn->super.scm_handleMessage_downstream(&nodeIn->super, topicNameIn, topicNameLen_bytesIn, msgIn);
