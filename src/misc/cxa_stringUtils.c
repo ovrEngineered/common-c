@@ -117,7 +117,7 @@ bool cxa_stringUtils_contains_withLengths(const char* targetStringIn, size_t tar
 {
 	if( (targetStringIn == NULL) || (elementIn == NULL) ) return false;
 
-	return (cxa_stringUtils_indexOf_withLengths(targetStringIn, targetStringLen_bytesIn, elementIn, elementLen_bytesIn) >= 0);
+	return (cxa_stringUtils_indexOfFirstOccurence_withLengths(targetStringIn, targetStringLen_bytesIn, elementIn, elementLen_bytesIn) >= 0);
 }
 
 
@@ -292,7 +292,24 @@ bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In)
 }
 
 
-ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn)
+size_t cxa_stringUtils_countOccurences(const char* targetStringIn, const char* elementIn)
+{
+	size_t strLength_target_bytes = strlen(targetStringIn);
+	size_t strLength_element_bytes = strlen(elementIn);
+
+	if( strLength_element_bytes > strLength_target_bytes ) return 0;
+
+	size_t retVal = 0;
+	for( size_t i = 0; i < strLength_target_bytes - strLength_element_bytes; i++ )
+	{
+		if( cxa_stringUtils_equals_withLengths(&targetStringIn[i], strLength_target_bytes-i, elementIn, strLength_target_bytes) ) retVal++;
+	}
+
+	return retVal;
+}
+
+
+ssize_t cxa_stringUtils_indexOfFirstOccurence_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn)
 {
 	if( (targetStringIn == NULL) || (elementIn == NULL) ) return -2;
 
@@ -318,7 +335,7 @@ char* cxa_stringUtils_getLastCharacters(const char* targetStringIn, size_t numCh
 }
 
 
-bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn)
+bool cxa_stringUtils_replaceFirstOccurence(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn)
 {
 	cxa_assert(targetStringIn);
 	cxa_assert(stringToReplaceIn);
@@ -328,13 +345,13 @@ bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const cha
 	size_t stringToReplaceLen_bytes = strlen(stringToReplaceIn);
 	size_t replacementStringLen_bytes = strlen(replacementStringIn);
 
-	return cxa_stringUtils_replaceFirstOccurance_withLengths(targetStringIn, targetStringLen_bytes,
+	return cxa_stringUtils_replaceFirstOccurence_withLengths(targetStringIn, targetStringLen_bytes,
 															 stringToReplaceIn, stringToReplaceLen_bytes,
 															 replacementStringIn, replacementStringLen_bytes);
 }
 
 
-bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
+bool cxa_stringUtils_replaceFirstOccurence_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
 													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
 													   const char *replacementStringIn, size_t replacementStringLen_bytesIn)
 {
@@ -348,7 +365,7 @@ bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringI
 		(replacementStringLen_bytesIn > stringToReplaceLen_bytesIn) ) return false;
 
 	// find the first occurrence
-	ssize_t indexOfFirstOccurence = cxa_stringUtils_indexOf_withLengths(targetStringIn, targetStringLen_bytesIn, stringToReplaceIn, stringToReplaceLen_bytesIn);
+	ssize_t indexOfFirstOccurence = cxa_stringUtils_indexOfFirstOccurence_withLengths(targetStringIn, targetStringLen_bytesIn, stringToReplaceIn, stringToReplaceLen_bytesIn);
 	if( indexOfFirstOccurence < 0 ) return false;
 	char* firstOccurrence = (char*)&(targetStringIn[indexOfFirstOccurence]);
 

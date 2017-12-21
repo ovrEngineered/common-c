@@ -92,12 +92,13 @@ bool cxa_stringUtils_equals(const char* str1In, const char* str2In);
 bool cxa_stringUtils_equals_withLengths(const char* str1In, size_t str1Len_bytes, const char* str2In, size_t str2Len_bytes);
 bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
 
-ssize_t cxa_stringUtils_indexOf_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
+size_t cxa_stringUtils_countOccurences(const char* targetStringIn, const char* elementIn);
+ssize_t cxa_stringUtils_indexOfFirstOccurence_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
 
 char* cxa_stringUtils_getLastCharacters(const char* targetStringIn, size_t numCharsIn);
 
-bool cxa_stringUtils_replaceFirstOccurance(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn);
-bool cxa_stringUtils_replaceFirstOccurance_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
+bool cxa_stringUtils_replaceFirstOccurence(const char *targetStringIn, const char *stringToReplaceIn, const char *replacementStringIn);
+bool cxa_stringUtils_replaceFirstOccurence_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
 													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
 													   const char *replacementStringIn, size_t replacementStringLen_bytesIn);
 
