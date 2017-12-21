@@ -226,6 +226,18 @@ bool cxa_network_wifiManager_hasStoredCredentials(void)
 }
 
 
+void cxa_network_wifiManager_clearCredentials(void)
+{
+	wifi_config_t cfg;
+	cfg.sta.ssid[0] = 0;
+	cfg.sta.password[0] = 0;
+	cfg.sta.channel = 0;
+	cfg.sta.bssid_set = 0;
+	cfg.sta.bssid[0] = 0;
+	esp_wifi_set_config(WIFI_IF_STA, &cfg);
+}
+
+
 bool cxa_network_wifiManager_didLastAssociationAttemptFail(void)
 {
 	return didLastAssociationAttemptFail;
@@ -283,7 +295,6 @@ void cxa_network_wifiManager_restart(void)
 bool cxa_network_wifiManager_enterProvision(void)
 {
 	internalState_t currState = cxa_stateMachine_getCurrentState(&stateMachine);
-	if( currState == STATE_IDLE ) return false;
 
 	targetWifiMode = INTTAR_MODE_PROVISIONING;
 
@@ -608,13 +619,7 @@ static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const io
 
 static void consoleCb_clearCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
-	wifi_config_t cfg;
-	cfg.sta.ssid[0] = 0;
-	cfg.sta.password[0] = 0;
-	cfg.sta.channel = 0;
-	cfg.sta.bssid_set = 0;
-	cfg.sta.bssid[0] = 0;
-	cxa_ioStream_writeFormattedLine(ioStreamIn, "setCfg: %d", esp_wifi_set_config(WIFI_IF_STA, &cfg));
+	cxa_network_wifiManager_clearCredentials();
 }
 
 
