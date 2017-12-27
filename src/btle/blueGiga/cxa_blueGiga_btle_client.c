@@ -33,7 +33,7 @@
 
 #define COMMAND_TIMEOUT_MS				1500
 
-#define READWRITE_TIMEOUT_MS			2000
+#define READWRITE_TIMEOUT_MS				2000
 
 #define CONNECTION_INTERVAL_MIN_MS		50			// must be intervals of 1.25ms
 #define CONNECTION_INTERVAL_MAX_MS		500			// must be intervals of 1.25ms
@@ -663,6 +663,11 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )
 	{
 		cxa_logger_warn(&btlecIn->logger, "error starting scan 0x%04X, aborting", response);
+
+		// make sure we stop the scan in case it started and we missed it
+		cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, NULL, NULL);
+
+		// notify our clients and transition back to ready
 		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
 		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
