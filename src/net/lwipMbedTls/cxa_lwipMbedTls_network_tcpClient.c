@@ -52,6 +52,8 @@ typedef enum
 
 
 // ******** local function prototypes ********
+static void cleanupConnectionResources(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn);
+
 static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn,
 																	 const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 																	 const char* clientCertIn, size_t clientCertLen_bytesIn,
@@ -99,6 +101,22 @@ void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t 
 
 
 // ******** local function implementations ********
+static void cleanupConnectionResources(cxa_lwipMbedTls_network_tcpClient_t *const netClientIn)
+{
+	cxa_assert(netClientIn);
+
+	cxa_logger_debug(&netClientIn->super.logger, "cleanupConnectionResources");
+
+	// "Gracefully shutdown the connection and free associated data"
+	mbedtls_ssl_close_notify(&netClientIn->tls.sslContext);
+	mbedtls_ssl_session_reset(&netClientIn->tls.sslContext);
+	mbedtls_net_free(&netClientIn->tls.server_fd);
+
+	// Free referenced items in an SSL context and clear memory
+	mbedtls_ssl_free(&netClientIn->tls.sslContext);
+}
+
+
 static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn, char *const hostNameIn, uint16_t portNumIn,
 																	 const char* serverRootCertIn, size_t serverRootCertLen_bytesIn,
 																	 const char* clientCertIn, size_t clientCertLen_bytesIn,
@@ -337,11 +355,7 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStat
 	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	// "Gracefully shutdown the connection and free associated data"
-	mbedtls_net_free(&netClientIn->tls.server_fd);
-
-	// Free referenced items in an SSL context and clear memory
-	mbedtls_ssl_free((&netClientIn->tls.sslContext));
+	cleanupConnectionResources(netClientIn);
 
 	// notify our listeners
 	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
@@ -357,11 +371,7 @@ static void stateCb_connectFail_enter(cxa_stateMachine_t *const smIn, int prevSt
 	cxa_lwipMbedTls_network_tcpClient_t* netClientIn = (cxa_lwipMbedTls_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
 
-	// "Gracefully shutdown the connection and free associated data"
-	mbedtls_net_free(&netClientIn->tls.server_fd);
-
-	// Free referenced items in an SSL context and clear memory
-	mbedtls_ssl_free((&netClientIn->tls.sslContext));
+	cleanupConnectionResources(netClientIn);
 
 	// notify our listeners
 	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
