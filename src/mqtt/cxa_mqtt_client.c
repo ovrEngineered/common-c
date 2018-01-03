@@ -480,8 +480,6 @@ static void stateCb_connected_state(cxa_stateMachine_t *const smIn, void *userVa
 
 		// let our lower-level connection know that we're disconnecting
 		if( clientIn->scm_onDisconnect != NULL ) clientIn->scm_onDisconnect(clientIn);
-
-		cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
 		return;
 	}
 }
