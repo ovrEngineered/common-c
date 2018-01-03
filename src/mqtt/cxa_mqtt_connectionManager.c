@@ -40,6 +40,9 @@
 #define NVSKEY_CLIENT_CERT					"clientCert"
 #define NVSKEY_CLIENT_KEY					"clientKey"
 
+#define STANDOFF_MAX_MS						10000
+#define STANDOFF_MIN_MS						5000
+
 
 // ******** local type definitions ********
 typedef enum
@@ -76,6 +79,12 @@ static cxa_mqtt_client_network_t mqttClient;
 static cxa_timeDiff_t td_connStandoff;
 static uint32_t connStandoff_ms;
 
+static cxa_mqtt_connManager_enteringStandoffCb_t cb_enteringStandoff = NULL;
+static cxa_mqtt_connManager_canLeaveStandoffCb_t cb_canLeaveStandoffCb = NULL;
+static void* userVar = NULL;
+
+static uint32_t numFailedConnects;
+
 static cxa_stateMachine_t stateMachine;
 static cxa_logger_t logger;
 
@@ -104,7 +113,7 @@ void cxa_mqtt_connManager_init(char *const hostNameIn, uint16_t portNumIn, int t
 	srand(cxa_timeBase_getCount_us());
 
 	// setup our logger
-	cxa_logger_init(&logger, "connectionManager");
+	cxa_logger_init(&logger, "mqttConnManager");
 
 	// setup our state machine
 	cxa_stateMachine_init(&stateMachine, "mqttConnMan", threadIdIn);
@@ -132,6 +141,16 @@ void cxa_mqtt_connManager_init(char *const hostNameIn, uint16_t portNumIn, int t
 }
 
 
+void cxa_mqtt_connManager_setStandoffManagementCbs(cxa_mqtt_connManager_enteringStandoffCb_t cb_enteringStandoffIn,
+												  cxa_mqtt_connManager_canLeaveStandoffCb_t cb_canLeaveStandoffCbIn,
+												  void *const userVarIn)
+{
+	cb_enteringStandoff = cb_enteringStandoffIn;
+	cb_canLeaveStandoffCb = cb_canLeaveStandoffCbIn;
+	userVar = userVarIn;
+}
+
+
 bool cxa_mqtt_connManager_areCredentialsSet(void)
 {
 	return (isSet_clientCert && isSet_clientPrivateKey && isSet_serverRootCert);
@@ -147,6 +166,7 @@ bool cxa_mqtt_connManager_start(void)
 	if( ! cxa_mqtt_connManager_areCredentialsSet() ) return false;
 
 	cxa_logger_debug(&logger, "start requested");
+	numFailedConnects = 0;
 
 	// we have credentials...start our connection process
 	cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
@@ -164,6 +184,12 @@ void cxa_mqtt_connManager_stop(void)
 		cxa_stateMachine_transition(&stateMachine, STATE_IDLE);
 		return;
 	}
+}
+
+
+uint32_t cxa_mqtt_connManager_getNumFailedConnects(void)
+{
+	return numFailedConnects;
 }
 
 
@@ -185,6 +211,7 @@ static void mqttClientCb_onConnectFail(cxa_mqtt_client_t *const clientIn, cxa_mq
 	if( cxa_stateMachine_getCurrentState(&stateMachine) == STATE_CONNECTING )
 	{
 		cxa_logger_warn(&logger, "connection failed: %d", reasonIn);
+		numFailedConnects++;
 		cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
 	}
 }
@@ -211,6 +238,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextSta
 														  clientPrivateKey, sizeof(clientPrivateKey)) )
 	{
 		cxa_logger_warn(&logger, "failed to start network connection");
+		numFailedConnects++;
 		cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
 		return;
 	}
@@ -220,13 +248,15 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int nextSta
 static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_logger_info(&logger, "connected");
+	numFailedConnects = 0;
 }
 
 
 static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
-	connStandoff_ms = rand() % 1000 + 500;
+	connStandoff_ms = rand() % (STANDOFF_MAX_MS - STANDOFF_MIN_MS) + STANDOFF_MIN_MS;
 	cxa_logger_info(&logger, "retry connection after %d ms", connStandoff_ms);
+	if( cb_enteringStandoff != NULL ) cb_enteringStandoff(userVar);
 	cxa_timeDiff_setStartTime_now(&td_connStandoff);
 }
 
@@ -235,7 +265,16 @@ static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *
 {
 	if( cxa_timeDiff_isElapsed_ms(&td_connStandoff, connStandoff_ms) )
 	{
-		cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+		// see if we need to ask permission to try again
+		bool canLeaveStandoff = (cb_canLeaveStandoffCb != NULL) ? cb_canLeaveStandoffCb(userVar) : true;
+		if( canLeaveStandoff )
+		{
+			cxa_stateMachine_transition(&stateMachine, STATE_CONNECTING);
+		}
+		else
+		{
+			cxa_stateMachine_transition(&stateMachine, STATE_CONNECT_STANDOFF);
+		}
 	}
 }
 
