@@ -39,6 +39,7 @@
 
 // ******** local macro definitions ********
 #define DEBUG_LEVEL 4
+#define WRITE_TIMEOUT_MS					20000
 
 
 // ******** local type definitions ********
@@ -87,6 +88,8 @@ void cxa_lwipMbedTls_network_tcpClient_init(cxa_lwipMbedTls_network_tcpClient_t 
 	netClientIn->targetHostName[0] = 0;
 	netClientIn->targetPortNum[0] = 0;
 	netClientIn->useClientCert = false;
+
+	cxa_timeDiff_init(&netClientIn->td_writeTimeout);
 
 	cxa_stateMachine_init(&netClientIn->stateMachine, "tcpClient", threadIdIn);
 	cxa_stateMachine_addState(&netClientIn->stateMachine, STATE_IDLE, "idle", NULL, NULL, NULL, (void*)netClientIn);
@@ -413,6 +416,9 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 	// make sure we are connected
 	if( !cxa_network_tcpClient_isConnected(&netClientIn->super) ) return false;
 
+	// reset our timeout
+	cxa_timeDiff_setStartTime_now(&netClientIn->td_writeTimeout);
+
 	int tmpRet;
 	unsigned char* buf = buffIn;
 	do
@@ -422,13 +428,27 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 		{
 			buf += tmpRet;
 			bufferSize_bytesIn -= tmpRet;
+
+			// we made progress...reset our timeout
+			cxa_timeDiff_setStartTime_now(&netClientIn->td_writeTimeout);
 		}
-		else if( (tmpRet != MBEDTLS_ERR_SSL_WANT_WRITE) && (tmpRet != MBEDTLS_ERR_SSL_WANT_READ) )
+		else if( (tmpRet == MBEDTLS_ERR_SSL_WANT_WRITE) || (tmpRet == MBEDTLS_ERR_SSL_WANT_READ) )
+		{
+			// still asking for a write...make sure we don't take too long
+			if( cxa_timeDiff_isElapsed_ms(&netClientIn->td_writeTimeout, WRITE_TIMEOUT_MS) )
+			{
+				cxa_logger_warn(&netClientIn->super.logger, "timeout during write");
+				cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_IDLE);
+				return false;
+			}
+		}
+		else
 		{
 			cxa_logger_warn(&netClientIn->super.logger, "error during write: %d", tmpRet);
 			cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_IDLE);
 			return false;
 		}
+
 	} while( bufferSize_bytesIn > 0 );
 
 	return true;

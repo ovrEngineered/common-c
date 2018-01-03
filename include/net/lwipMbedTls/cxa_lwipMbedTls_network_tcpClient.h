@@ -22,6 +22,7 @@
 #include <cxa_network_tcpClient.h>
 
 #include <cxa_stateMachine.h>
+#include <cxa_timeDiff.h>
 
 #include <lwip/api.h>
 
@@ -63,6 +64,7 @@ struct cxa_lwipMbedTls_network_tcpClient
 	ip_addr_t targetIp;
 	char targetPortNum[CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES+1];
 
+	cxa_timeDiff_t td_writeTimeout;
 	cxa_stateMachine_t stateMachine;
 
 	bool useClientCert;
