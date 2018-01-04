@@ -101,6 +101,7 @@ static void notify_unassociated(void);
 static void notify_associationFailed(void);
 
 static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
+static void consoleCb_setCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_clearCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_restart(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
@@ -160,6 +161,13 @@ void cxa_network_wifiManager_init(int threadIdIn)
 
 	// add our console commands
 	cxa_console_addCommand("wifi_getCfg", "prints current config", NULL, 0, consoleCb_getCfg, NULL);
+
+	cxa_console_argDescriptor_t args[2] = {
+			{.dataType = CXA_STRINGUTILS_DATATYPE_STRING, .description = "ssid"},
+			{.dataType = CXA_STRINGUTILS_DATATYPE_STRING, .description = "passphrase (- for open network)"}
+	};
+	cxa_console_addCommand("wifi_setCfg", "sets wifi config", args, 2, consoleCb_setCfg, NULL);
+
 	cxa_console_addCommand("wifi_clearCfg", "clears current config", NULL, 0, consoleCb_clearCfg, NULL);
 	cxa_console_addCommand("wifi_restart", "restarts the WiFi stateMachine", NULL, 0, consoleCb_restart, NULL);
 }
@@ -614,6 +622,25 @@ static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const io
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "ip:   " IPSTR, IP2STR(&ip.ip));
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "sn:   " IPSTR, IP2STR(&ip.netmask));
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "gw:   " IPSTR, IP2STR(&ip.gw));
+}
+
+
+static void consoleCb_setCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
+{
+	cxa_stringUtils_parseResult_t* ssid = cxa_array_get(argsIn, 0);
+	cxa_stringUtils_parseResult_t* passphrase = cxa_array_get(argsIn, 1);
+	if( (ssid == NULL) || (passphrase == NULL) )
+	{
+		cxa_ioStream_writeString(ioStreamIn, "error reading parameters");
+		return;
+	}
+
+	bool hasPassword = !cxa_stringUtils_equals(passphrase->val_string, "-");
+
+	wifi_config_t cfg;
+	cxa_stringUtils_copy((char*)cfg.sta.ssid, ssid->val_string, sizeof(cfg.sta.ssid));
+	cxa_stringUtils_copy((char*)cfg.sta.password, (hasPassword) ? passphrase->val_string : "", sizeof(cfg.sta.password));
+	esp_wifi_set_config(WIFI_IF_STA, &cfg);
 }
 
 
