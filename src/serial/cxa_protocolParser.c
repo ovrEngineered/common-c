@@ -98,6 +98,14 @@ void cxa_protocolParser_addPacketListener(cxa_protocolParser_t *const ppIn,
 }
 
 
+void cxa_protocolParser_reset(cxa_protocolParser_t *const ppIn)
+{
+	cxa_assert(ppIn);
+
+	ppIn->scm_gotoIdle(ppIn);
+}
+
+
 void cxa_protocolParser_setBuffer(cxa_protocolParser_t *const ppIn, cxa_fixedByteBuffer_t* buffIn)
 {
 	cxa_assert(ppIn);

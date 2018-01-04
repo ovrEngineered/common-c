@@ -209,6 +209,15 @@ void cxa_protocolParser_addPacketListener(cxa_protocolParser_t *const ppIn,
 
 /**
  * @public
+ * @brief Resets the protocol parser and discards any previously
+ * 		received data from the buffer
+ *
+ * @param[in] ppIn pointer to the pre-initialized protocolParser
+ */
+void cxa_protocolParser_reset(cxa_protocolParser_t *const ppIn);
+
+/**
+ * @public
  * @brief Sets the buffer which should be used to receive packets.
  *
  * This function is safe to be called at any time, however, is
