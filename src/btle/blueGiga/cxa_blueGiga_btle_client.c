@@ -28,7 +28,7 @@
 
 
 // ******** local macro definitions ********
-#define RESET_TIME_MS					2000
+#define RESET_TIME_MS					5000
 #define WAIT_BOOT_TIME_MS				4000
 
 #define COMMAND_TIMEOUT_MS				1500
@@ -955,6 +955,9 @@ static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevSta
 	cxa_assert(btlecIn);
 
 	cxa_gpio_setValue(btlecIn->gpio_reset, 1);
+	uint8_t resetBytes[] = { 0x00, 0x01, 0x00, 0x00, 0x00 };
+	cxa_protocolParser_writePacket_bytes(&btlecIn->protoParse.super, resetBytes, sizeof(resetBytes));
+	cxa_protocolParser_reset(&btlecIn->protoParse.super);
 }
 
 
