@@ -95,7 +95,6 @@ struct cxa_blueGiga_btle_client
 
 	bool hasBootFailed;
 	bool isActiveScan;
-	cxa_softWatchDog_t scanningActivityWatchdog;
 
 	cxa_eui48_t connectAddr;
 	bool isConnectAddrRandom;

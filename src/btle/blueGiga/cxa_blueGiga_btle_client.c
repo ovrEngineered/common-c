@@ -41,7 +41,7 @@
 // per BTLE spec
 #define CONNECTION_TIMEOUT_MS			((1 + CONNECTION_LATENCY) * CONNECTION_INTERVAL_MAX_MS * 2)
 
-#define SCANNING_ACTIVITY_TIMEOUT_MS	10000
+#define SCANNING_ACTIVITY_TIMEOUT_MS		10000
 
 
 // ******** local type definitions ********
@@ -78,7 +78,6 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 static void handleBgResponse(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedByteBuffer_t *const packetIn);
 static void handleBgTimeout(void* userVarIn);
 static void handleReadWriteTimeout(void* userVarIn);
-static void handleScanningActivityTimeout(void* userVarIn);
 
 static void protoParseCb_onPacketRx(cxa_fixedByteBuffer_t *const packetIn, void *const userVarIn);
 
@@ -89,7 +88,6 @@ static void responseCb_connectDirect(cxa_blueGiga_btle_client_t *const btlecIn, 
 static void responseCb_findByGroupType(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
 static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
 static void responseCb_attributeWrite(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
-static void responseCb_hello(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn);
 
 static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool wasSuccessfulIn);
 
@@ -138,7 +136,6 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	btlecIn->hasBootFailed = false;
 	cxa_softWatchDog_init(&btlecIn->inFlightRequest.watchdog, COMMAND_TIMEOUT_MS, threadIdIn, handleBgTimeout, (void*)btlecIn);
 	cxa_softWatchDog_init(&btlecIn->currProcedure.watchdog, READWRITE_TIMEOUT_MS, threadIdIn, handleReadWriteTimeout, (void*)btlecIn);
-	cxa_softWatchDog_init(&btlecIn->scanningActivityWatchdog, SCANNING_ACTIVITY_TIMEOUT_MS, threadIdIn, handleScanningActivityTimeout, (void*)btlecIn);
 
 	// initialize our superclass
 	cxa_btle_client_init(&btlecIn->super, scm_getState,
@@ -296,7 +293,6 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 	cxa_blueGiga_methodId_t method = getMethod(packetIn);
 
 	cxa_logger_trace(&btlecIn->logger, "response  cid:%d  mtd:%d  %d bytes", classId, method, cxa_fixedByteBuffer_getSize_bytes(packetIn));
-	cxa_softWatchDog_kick(&btlecIn->scanningActivityWatchdog);
 
 	if( (classId == CXA_BLUEGIGA_CLASSID_SYSTEM) && (method == CXA_BLUEGIGA_EVENTID_SYSTEM_BOOT) )
 	{
@@ -534,7 +530,6 @@ static void handleBgResponse(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixe
 
 	// if we made it here, we were waiting for a response
 	cxa_logger_trace(&btlecIn->logger, "response  cid:%d  mtd:%d  %d bytes", classId, method, cxa_fixedByteBuffer_getSize_bytes(packetIn));
-	cxa_softWatchDog_kick(&btlecIn->scanningActivityWatchdog);
 
 	// make sure it's the response we were looking for....
 	if( (btlecIn->inFlightRequest.classId != classId) || (btlecIn->inFlightRequest.methodId != method) )
@@ -581,23 +576,6 @@ static void handleReadWriteTimeout(void* userVarIn)
 
 	cxa_logger_warn(&btlecIn->logger, "read/write timeout");
 	cxa_stateMachine_transition(&btlecIn->stateMachine_currProcedure, PROCSTATE_ERROR);
-}
-
-
-static void handleScanningActivityTimeout(void* userVarIn)
-{
-	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
-	cxa_assert(btlecIn);
-
-	// we're scanning but we haven't heard anything in a while...make sure
-	// our radio is still alive...
-	cxa_logger_debug(&btlecIn->logger, "sending 'hello' to radio");
-	if( !cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_SYSTEM, CXA_BLUEGIGA_EVENTID_SYSTEM_HELLO, NULL, responseCb_hello, NULL) )
-	{
-		cxa_logger_warn(&btlecIn->logger, "failed to send 'hello' to radio");
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
-		return;
-	}
 }
 
 
@@ -674,7 +652,6 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 	}
 
 	cxa_logger_info(&btlecIn->logger, "scan started");
-	cxa_softWatchDog_kick(&btlecIn->scanningActivityWatchdog);
 	cxa_btle_client_notify_scanStart(&btlecIn->super, true);
 }
 
@@ -768,26 +745,6 @@ static void responseCb_findInformation(cxa_blueGiga_btle_client_t *const btlecIn
 	}
 
 	cxa_logger_debug(&btlecIn->logger, "find info started successfully");
-}
-
-
-static void responseCb_hello(cxa_blueGiga_btle_client_t *const btlecIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const payloadIn, void* userVarIn)
-{
-	cxa_assert(btlecIn);
-
-	if( wasSuccessfulIn )
-	{
-		// got a response to the hello...radio is still responsive
-		cxa_logger_debug(&btlecIn->logger, "got 'hello' response");
-		cxa_softWatchDog_kick(&btlecIn->scanningActivityWatchdog);
-	}
-	else
-	{
-		// no response to the hello...radio is not responsive
-		cxa_logger_warn(&btlecIn->logger, "failed to receive 'hello' response");
-		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
-		return;
-	}
 }
 
 
@@ -1086,8 +1043,6 @@ static void stateCb_conn_scanning_leave(cxa_stateMachine_t *const smIn, int next
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
-
-	cxa_softWatchDog_pause(&btlecIn->scanningActivityWatchdog);
 }
 
 
