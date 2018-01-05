@@ -954,10 +954,12 @@ static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevSta
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
-	cxa_gpio_setValue(btlecIn->gpio_reset, 1);
 	uint8_t resetBytes[] = { 0x00, 0x01, 0x00, 0x00, 0x00 };
 	cxa_protocolParser_writePacket_bytes(&btlecIn->protoParse.super, resetBytes, sizeof(resetBytes));
 	cxa_protocolParser_reset(&btlecIn->protoParse.super);
+
+	cxa_delay_ms(100);
+	cxa_gpio_setValue(btlecIn->gpio_reset, 1);
 }
 
 
