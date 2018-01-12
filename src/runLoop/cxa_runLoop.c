@@ -57,11 +57,6 @@ static cxa_array_t cbs;
 static cxa_runLoop_entry_t cbs_raw[CXA_RUNLOOP_MAXNUM_ENTRIES];
 
 static cxa_logger_t logger;
-static cxa_timeDiff_t td_printInfo;
-
-#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
-static uint32_t averageIterPeriod_us = 0;
-#endif
 
 
 // ******** global function implementations ********
@@ -104,31 +99,20 @@ void cxa_runLoop_clearAllEntries(void)
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-void cxa_runLoop_iterate(int threadIdIn)
+uint32_t cxa_runLoop_iterate(int threadIdIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
-#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
 	uint32_t iter_startTime_us = cxa_timeBase_getCount_us();
-#endif
 
 	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
 	{
 		if( (currEntry->threadId == threadIdIn) && (currEntry->cb != NULL) ) currEntry->cb(currEntry->userVar);
 	}
 
-#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
-	uint32_t iter_time_us = cxa_timeBase_getCount_us() - iter_startTime_us;
-	averageIterPeriod_us -= averageIterPeriod_us / CXA_RUNLOOP_INFOPRINT_AVGNUMITERS;
-	averageIterPeriod_us += iter_time_us;
-
-	if( cxa_timeDiff_isElapsed_recurring_ms(&td_printInfo, CXA_RUNLOOP_INFOPRINT_PERIOD_MS) )
-	{
-		cxa_logger_debug(&logger, "iteration  curr: %d ms  avg: %d ms", iter_time_us / 1000, averageIterPeriod_us / 1000);
-	}
-#endif
-
 	taskYIELD();
+
+	return cxa_timeBase_getCount_us() - iter_startTime_us;
 }
 
 
@@ -136,10 +120,25 @@ void cxa_runLoop_execute(int threadIdIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
+	// setup our info printing stuff
+	uint32_t averageIterPeriod_us = 0;
+	cxa_timeDiff_t td_printInfo;
+	cxa_timeDiff_init(&td_printInfo);
+
+	// start the iterations
 	while(1)
 	{
-		cxa_runLoop_iterate(threadIdIn);
+		uint32_t lastIterPeriod_ms = cxa_runLoop_iterate(threadIdIn);
 
+#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
+		averageIterPeriod_us -= averageIterPeriod_us / CXA_RUNLOOP_INFOPRINT_AVGNUMITERS;
+		averageIterPeriod_us += lastIterPeriod_ms;
+
+		if( cxa_timeDiff_isElapsed_recurring_ms(&td_printInfo, CXA_RUNLOOP_INFOPRINT_PERIOD_MS) )
+		{
+			cxa_logger_debug(&logger, "threadId: %d  avgIterPeriod: %d ms", threadIdIn, averageIterPeriod_us / 1000);
+		}
+#endif
 	}
 }
 
@@ -151,7 +150,6 @@ static void cxa_runLoop_init(void)
 
 	cxa_array_initStd(&cbs, cbs_raw);
 	cxa_logger_init(&logger, "runLoop");
-	cxa_timeDiff_init(&td_printInfo);
 
 	isInit = true;
 }

@@ -26,6 +26,7 @@
 
 // ******** includes ********
 #include <stdbool.h>
+#include <stdint.h>
 #include <cxa_array.h>
 #include <cxa_config.h>
 
@@ -50,7 +51,7 @@ void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn, void *co
 void cxa_runLoop_removeEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn);
 void cxa_runLoop_clearAllEntries(void);
 
-void cxa_runLoop_iterate(int threadIdIn);
+uint32_t cxa_runLoop_iterate(int threadIdIn);
 void cxa_runLoop_execute(int threadIdIn);
 
 
