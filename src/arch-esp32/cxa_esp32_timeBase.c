@@ -17,9 +17,7 @@
  */
 #include <cxa_esp32_timeBase.h>
 
-#include <math.h>
-#include <stddef.h>
-#include <sys/time.h>
+#include <esp_timer.h>
 
 #include <cxa_assert.h>
 
@@ -34,34 +32,17 @@
 
 
 // ********  local variable declarations *********
-static struct timeval initVal = {0, 0};
 
 
 // ******** global function implementations ********
 void cxa_esp32_timeBase_init(void)
 {
-	gettimeofday(&initVal, NULL);
 }
 
 
 uint32_t cxa_timeBase_getCount_us(void)
 {
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-
-	// now subtract to compare
-	struct timeval diff;
-
-	if( initVal.tv_usec > tv.tv_usec )
-	{
-		tv.tv_sec--;
-		tv.tv_usec += 1E6;
-	}
-
-	diff.tv_sec = tv.tv_sec - initVal.tv_sec;
-	diff.tv_usec = tv.tv_usec - initVal.tv_usec;
-
-	return fmod((diff.tv_sec * 1E6 + diff.tv_usec), UINT32_MAX);
+	return esp_timer_get_time() % UINT32_MAX;
 }
 
 
@@ -72,8 +53,3 @@ uint32_t cxa_timeBase_getMaxCount_us(void)
 
 
 // ******** local function implementations ********
-// missing from the current ESP-IDF
-double __ieee754_remainder(double x, double y)
-{
-	return x - y * floor(x/y);
-}
