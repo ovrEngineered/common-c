@@ -45,6 +45,7 @@ static uint16_t getExpectedPayloadLength_bytes(cxa_fixedByteBuffer_t *const fbbI
 static bool scm_isInErrorState(cxa_protocolParser_t *const superIn);
 static bool scm_canSetBuffer(cxa_protocolParser_t *const superIn);
 static void scm_gotoIdle(cxa_protocolParser_t *const superIn);
+static void scm_reset(cxa_protocolParser_t *const superIn);
 static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuffer_t *const fbbIn);
 
 static void stateCb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
@@ -68,7 +69,7 @@ void cxa_protocolParser_bgapi_init(cxa_protocolParser_bgapi_t *const ppIn, cxa_i
 	cxa_assert(ioStreamIn);
 
 	// initialize our super class
-	cxa_protocolParser_init(&ppIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
+	cxa_protocolParser_init(&ppIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_reset, scm_writeBytes);
 
 	// setup our state machine
 	cxa_stateMachine_init(&ppIn->stateMachine, "bgapiPP", threadIdIn);
@@ -123,6 +124,19 @@ static void scm_gotoIdle(cxa_protocolParser_t *const superIn)
 
 	cxa_stateMachine_transitionNow(&ppIn->stateMachine, RX_STATE_IDLE);
 	cxa_assert( cxa_stateMachine_getCurrentState(&ppIn->stateMachine) == RX_STATE_IDLE );
+}
+
+
+static void scm_reset(cxa_protocolParser_t *const superIn)
+{
+	cxa_protocolParser_bgapi_t* ppIn = (cxa_protocolParser_bgapi_t*)superIn;
+	cxa_assert(ppIn);
+
+	rxState_t currState = (rxState_t)cxa_stateMachine_getCurrentState(&ppIn->stateMachine);
+	if( (currState != RX_STATE_IDLE) && (currState != RX_STATE_ERROR) )
+	{
+		cxa_stateMachine_transitionNow(&ppIn->stateMachine, RX_STATE_WAIT_PACKET_START);
+	}
 }
 
 

@@ -118,6 +118,12 @@ typedef bool (*cxa_protocolParser_scm_writeBytes_t)(cxa_protocolParser_t *const 
 /**
  * @private
  */
+typedef void (*cxa_protocolParser_scm_reset_t)(cxa_protocolParser_t *const superIn);
+
+
+/**
+ * @private
+ */
 typedef struct
 {
 	cxa_protocolParser_cb_ioExceptionOccurred_t cb_exception;
@@ -161,6 +167,7 @@ struct cxa_protocolParser
 	cxa_protocolParser_scm_canSetBuffer_t scm_canSetBuffer;
 	cxa_protocolParser_scm_gotoIdle_t scm_gotoIdle;
 	cxa_protocolParser_scm_writeBytes_t scm_writeBytes;
+	cxa_protocolParser_scm_reset_t scm_reset;
 };
 
 
@@ -170,7 +177,8 @@ struct cxa_protocolParser
  */
 void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn,
 							 cxa_protocolParser_scm_isInErrorState_t scm_isInErrorIn, cxa_protocolParser_scm_canSetBuffer_t scm_canSetBufferIn,
-							 cxa_protocolParser_scm_gotoIdle_t scm_gotoIdleIn, cxa_protocolParser_scm_writeBytes_t scm_writeBytesIn);
+							 cxa_protocolParser_scm_gotoIdle_t scm_gotoIdleIn, cxa_protocolParser_scm_reset_t scm_resetIn,
+							 cxa_protocolParser_scm_writeBytes_t scm_writeBytesIn);
 
 /**
  * @public

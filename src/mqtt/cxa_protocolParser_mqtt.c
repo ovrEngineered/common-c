@@ -53,6 +53,7 @@ typedef enum
 static bool scm_isInErrorState(cxa_protocolParser_t *const superIn);
 static bool scm_canSetBuffer(cxa_protocolParser_t *const superIn);
 static void scm_gotoIdle(cxa_protocolParser_t *const superIn);
+static void scm_reset(cxa_protocolParser_t *const superIn);
 static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuffer_t *const fbbIn);
 
 static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
@@ -75,7 +76,7 @@ void cxa_protocolParser_mqtt_init(cxa_protocolParser_mqtt_t *const mppIn, cxa_io
 	cxa_assert(ioStreamIn);
 
 	// initialize our super class
-	cxa_protocolParser_init(&mppIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
+	cxa_protocolParser_init(&mppIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_reset, scm_writeBytes);
 
 	// set some default values
 	mppIn->remainingBytesToReceive = 0;
@@ -118,6 +119,19 @@ static void scm_gotoIdle(cxa_protocolParser_t *const superIn)
 	cxa_assert(mppIn);
 
 	cxa_stateMachine_transitionNow(&mppIn->stateMachine, RX_STATE_IDLE);
+}
+
+
+static void scm_reset(cxa_protocolParser_t *const superIn)
+{
+	cxa_protocolParser_mqtt_t* mppIn = (cxa_protocolParser_mqtt_t*)superIn;
+	cxa_assert(mppIn);
+
+	rxState_t currState = cxa_stateMachine_getCurrentState(&mppIn->stateMachine);
+	if( (currState != RX_STATE_IDLE) && (currState != RX_STATE_ERROR) )
+	{
+		cxa_stateMachine_transitionNow(&mppIn->stateMachine, RX_STATE_WAIT_FIXEDHEADER_1);
+	}
 }
 
 

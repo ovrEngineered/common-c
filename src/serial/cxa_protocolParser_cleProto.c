@@ -45,6 +45,7 @@ typedef enum
 static bool scm_isInErrorState(cxa_protocolParser_t *const superIn);
 static bool scm_canSetBuffer(cxa_protocolParser_t *const superIn);
 static void scm_gotoIdle(cxa_protocolParser_t *const superIn);
+static void scm_reset(cxa_protocolParser_t *const superIn);
 static bool scm_writeBytes(cxa_protocolParser_t *const superIn, cxa_fixedByteBuffer_t *const fbbIn);
 
 
@@ -69,7 +70,7 @@ void cxa_protocolParser_cleProto_init(cxa_protocolParser_cleProto_t *const clePp
 	cxa_assert(ioStreamIn);
 
 	// initialize our super class
-	cxa_protocolParser_init(&clePpIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_writeBytes);
+	cxa_protocolParser_init(&clePpIn->super, ioStreamIn, buffIn, scm_isInErrorState, scm_canSetBuffer, scm_gotoIdle, scm_reset, scm_writeBytes);
 
 	// setup our state machine
 	cxa_stateMachine_init(&clePpIn->stateMachine, "protocolParser", threadIdIn);
@@ -111,6 +112,19 @@ static void scm_gotoIdle(cxa_protocolParser_t *const superIn)
 
 	cxa_stateMachine_transitionNow(&clePpIn->stateMachine, RX_STATE_IDLE);
 	cxa_assert( cxa_stateMachine_getCurrentState(&clePpIn->stateMachine) == RX_STATE_IDLE );
+}
+
+
+static void scm_reset(cxa_protocolParser_t *const superIn)
+{
+	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)superIn;
+	cxa_assert(clePpIn);
+
+	rxState_t currState = (rxState_t)cxa_stateMachine_getCurrentState(&clePpIn->stateMachine);
+	if( (currState != RX_STATE_IDLE) && (currState != RX_STATE_ERROR) )
+	{
+		cxa_stateMachine_transitionNow(&clePpIn->stateMachine, RX_STATE_WAIT_0x80);
+	}
 }
 
 

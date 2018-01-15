@@ -44,13 +44,15 @@
 // ******** global function implementations ********
 void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn,
 							 cxa_protocolParser_scm_isInErrorState_t scm_isInErrorIn, cxa_protocolParser_scm_canSetBuffer_t scm_canSetBufferIn,
-							 cxa_protocolParser_scm_gotoIdle_t scm_gotoIdleIn, cxa_protocolParser_scm_writeBytes_t scm_writeBytesIn)
+							 cxa_protocolParser_scm_gotoIdle_t scm_gotoIdleIn, cxa_protocolParser_scm_reset_t scm_resetIn,
+							 cxa_protocolParser_scm_writeBytes_t scm_writeBytesIn)
 {
 	cxa_assert(ppIn);
 	cxa_assert(ioStreamIn);
 	cxa_assert(scm_isInErrorIn);
 	cxa_assert(scm_canSetBufferIn);
 	cxa_assert(scm_gotoIdleIn);
+	cxa_assert(scm_resetIn);
 	cxa_assert(scm_writeBytesIn);
 	
 	// save our references
@@ -59,6 +61,7 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *c
 	ppIn->scm_canSetBuffer = scm_canSetBufferIn;
 	ppIn->scm_gotoIdle = scm_gotoIdleIn;
 	ppIn->scm_isInError = scm_isInErrorIn;
+	ppIn->scm_reset = scm_resetIn;
 	ppIn->scm_writeBytes = scm_writeBytesIn;
 
 	// setup our timediff
@@ -102,7 +105,7 @@ void cxa_protocolParser_reset(cxa_protocolParser_t *const ppIn)
 {
 	cxa_assert(ppIn);
 
-	ppIn->scm_gotoIdle(ppIn);
+	ppIn->scm_reset(ppIn);
 }
 
 
