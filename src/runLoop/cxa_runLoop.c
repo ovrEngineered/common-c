@@ -99,6 +99,7 @@ void cxa_runLoop_clearAllEntries(void)
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <esp_task_wdt.h>
 uint32_t cxa_runLoop_iterate(int threadIdIn)
 {
 	if( !isInit ) cxa_runLoop_init();
@@ -110,6 +111,7 @@ uint32_t cxa_runLoop_iterate(int threadIdIn)
 		if( (currEntry->threadId == threadIdIn) && (currEntry->cb != NULL) ) currEntry->cb(currEntry->userVar);
 	}
 
+	esp_task_wdt_feed();
 	taskYIELD();
 
 	return cxa_timeBase_getCount_us() - iter_startTime_us;
