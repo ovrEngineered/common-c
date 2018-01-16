@@ -955,6 +955,7 @@ static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevSta
 	cxa_assert(btlecIn);
 
 	// assert reset line
+	cxa_logger_trace(&btlecIn->logger, "asserting reset");
 	cxa_gpio_setValue(btlecIn->gpio_reset, 1);
 }
 
@@ -968,6 +969,7 @@ static void stateCb_conn_reset_leave(cxa_stateMachine_t *const smIn, int nextSta
 	cxa_protocolParser_reset(&btlecIn->protoParse.super);
 
 	// de-assert reset line
+	cxa_logger_trace(&btlecIn->logger, "de-asserting reset");
 	cxa_gpio_setValue(btlecIn->gpio_reset, 0);
 }
 
