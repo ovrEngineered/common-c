@@ -19,13 +19,14 @@
 // ******** includes ********
 #include <cxa_assert.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_INFO
 #include <cxa_logger_implementation.h>
 
 
 // ******** local macro definitions ********
 #define MAX_NUM_RX_BYTES_PER_UPDATE		32
-#define RECEPTION_TIMEOUT_MS			5000
+#define RECEPTION_TIMEOUT_MS				5000
+#define MAX_PAYLOAD_LENGTH_BYTES			64				// Bluegiga Specs
 
 
 // ******** local type definitions ********
@@ -135,6 +136,7 @@ static void scm_reset(cxa_protocolParser_t *const superIn)
 	rxState_t currState = (rxState_t)cxa_stateMachine_getCurrentState(&ppIn->stateMachine);
 	if( (currState != RX_STATE_IDLE) && (currState != RX_STATE_ERROR) )
 	{
+		cxa_ioStream_clearReadBuffer(ppIn->super.ioStream);
 		cxa_stateMachine_transitionNow(&ppIn->stateMachine, RX_STATE_WAIT_PACKET_START);
 	}
 }
@@ -212,7 +214,7 @@ static void stateCb_waitPacketStart_state(cxa_stateMachine_t *const smIn, void *
 		else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 		{
 			// make sure the first byte makes sense
-			if( ((rxByte >> 3) & 0xF) == 0 )
+			if( (rxByte == 0x80) || (rxByte == 0x00) )
 			{
 				// got a valid byte
 				cxa_fixedByteBuffer_append_uint8(ppIn->super.currBuffer, rxByte);
@@ -244,14 +246,6 @@ static void stateCb_waitPacketRx_state(cxa_stateMachine_t *const smIn, void *use
 	cxa_protocolParser_bgapi_t* ppIn = (cxa_protocolParser_bgapi_t*)userVarIn;
 	cxa_assert(ppIn);
 
-	// check our reception timeout
-	if( cxa_timeDiff_isElapsed_ms(&ppIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
-	{
-		cxa_protocolParser_notify_receptionTimeout(&ppIn->super);
-		cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_PACKET_START);
-		return;
-	}
-
 	// try to receive a byte
 	uint8_t rxByte;
 	for( uint8_t i = 0; i < MAX_NUM_RX_BYTES_PER_UPDATE; i++ )
@@ -271,10 +265,17 @@ static void stateCb_waitPacketRx_state(cxa_stateMachine_t *const smIn, void *use
 			// now see if we have a complete packet
 			size_t fbbSize_bytes = cxa_fixedByteBuffer_getSize_bytes(ppIn->super.currBuffer);
 			size_t expectedPacketSize_bytes = getExpectedPayloadLength_bytes(ppIn->super.currBuffer) + 4;
+			if( expectedPacketSize_bytes > MAX_PAYLOAD_LENGTH_BYTES )
+			{
+				cxa_logger_debug(&ppIn->super.logger, "message too big, dropping");
+				// reset and wait for more data
+				cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_PACKET_START);
+			}
 
 			if( fbbSize_bytes >= expectedPacketSize_bytes )
 			{
 				// we have enough bytes...process the message
+//				cxa_logger_stepDebug_memDump("got message ", cxa_fixedByteBuffer_get_pointerToIndex(ppIn->super.currBuffer, 0), cxa_fixedByteBuffer_getSize_bytes(ppIn->super.currBuffer));
 				cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_PROCESS_PACKET);
 				return;
 			}
@@ -284,6 +285,16 @@ static void stateCb_waitPacketRx_state(cxa_stateMachine_t *const smIn, void *use
 			// no data to receive...leave our loop (to keep runLoop running nicely)
 			break;
 		}
+	}
+
+
+	// check our reception timeout
+	if( cxa_timeDiff_isElapsed_ms(&ppIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
+	{
+//		cxa_logger_stepDebug_memDump("timeout ", cxa_fixedByteBuffer_get_pointerToIndex(ppIn->super.currBuffer, 0), cxa_fixedByteBuffer_getSize_bytes(ppIn->super.currBuffer));
+		cxa_protocolParser_notify_receptionTimeout(&ppIn->super);
+		cxa_stateMachine_transition(&ppIn->stateMachine, RX_STATE_WAIT_PACKET_START);
+		return;
 	}
 }
 
