@@ -957,6 +957,9 @@ static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevSta
 	// assert reset line
 	cxa_logger_trace(&btlecIn->logger, "asserting reset");
 	cxa_gpio_setValue(btlecIn->gpio_reset, 1);
+
+	// reset our protocol parser once
+	cxa_protocolParser_reset(&btlecIn->protoParse.super);
 }
 
 
@@ -965,7 +968,7 @@ static void stateCb_conn_reset_leave(cxa_stateMachine_t *const smIn, int nextSta
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)userVarIn;
 	cxa_assert(btlecIn);
 
-	// reset our protocol parser
+	// reset our protocol parser again
 	cxa_protocolParser_reset(&btlecIn->protoParse.super);
 
 	// de-assert reset line
