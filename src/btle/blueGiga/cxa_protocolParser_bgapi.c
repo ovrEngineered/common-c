@@ -133,10 +133,11 @@ static void scm_reset(cxa_protocolParser_t *const superIn)
 	cxa_protocolParser_bgapi_t* ppIn = (cxa_protocolParser_bgapi_t*)superIn;
 	cxa_assert(ppIn);
 
+	cxa_ioStream_clearReadBuffer(ppIn->super.ioStream);
+
 	rxState_t currState = (rxState_t)cxa_stateMachine_getCurrentState(&ppIn->stateMachine);
 	if( (currState != RX_STATE_IDLE) && (currState != RX_STATE_ERROR) )
 	{
-		cxa_ioStream_clearReadBuffer(ppIn->super.ioStream);
 		cxa_stateMachine_transitionNow(&ppIn->stateMachine, RX_STATE_WAIT_PACKET_START);
 	}
 }
