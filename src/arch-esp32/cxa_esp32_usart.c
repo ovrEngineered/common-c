@@ -86,14 +86,17 @@ static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, vo
 	cxa_esp32_usart_t* usartIn = (cxa_esp32_usart_t*)userVarIn;
 	cxa_assert(usartIn);
 	
+	uint8_t tmpBuff;
+
 	cxa_ioStream_readStatus_t retVal = CXA_IOSTREAM_READSTAT_ERROR;
-	switch( uart_read_bytes(usartIn->uartId, byteOut, 1, 0) )
+	switch( uart_read_bytes(usartIn->uartId, &tmpBuff, 1, 0) )
 	{
 		case 0:
 			retVal = CXA_IOSTREAM_READSTAT_NODATA;
 			break;
 
 		case 1:
+			if( byteOut != NULL ) *byteOut = tmpBuff;
 			retVal = CXA_IOSTREAM_READSTAT_GOTDATA;
 			break;
 
