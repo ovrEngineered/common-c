@@ -83,6 +83,14 @@ void cxa_protocolParser_bgapi_init(cxa_protocolParser_bgapi_t *const ppIn, cxa_i
 }
 
 
+size_t cxa_protocolParser_bgapi_getRxByteCounter(cxa_protocolParser_bgapi_t *const ppIn)
+{
+	cxa_assert(ppIn);
+
+	return ppIn->rxByteCounter;
+}
+
+
 // ******** local function implementations ********
 static uint16_t getExpectedPayloadLength_bytes(cxa_fixedByteBuffer_t *const fbbIn)
 {
@@ -214,6 +222,8 @@ static void stateCb_waitPacketStart_state(cxa_stateMachine_t *const smIn, void *
 		}
 		else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 		{
+			ppIn->rxByteCounter++;
+
 			// make sure the first byte makes sense
 			if( (rxByte == 0x80) || (rxByte == 0x00) )
 			{
@@ -259,6 +269,8 @@ static void stateCb_waitPacketRx_state(cxa_stateMachine_t *const smIn, void *use
 		}
 		else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 		{
+			ppIn->rxByteCounter++;
+
 			// add our byte and reset our reception timeout
 			cxa_fixedByteBuffer_append_uint8(ppIn->super.currBuffer, rxByte);
 			cxa_timeDiff_setStartTime_now(&ppIn->super.td_timeout);

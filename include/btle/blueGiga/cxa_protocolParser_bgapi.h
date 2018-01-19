@@ -34,11 +34,14 @@ typedef struct
 	cxa_protocolParser_t super;
 
 	cxa_stateMachine_t stateMachine;
+
+	size_t rxByteCounter;
 }cxa_protocolParser_bgapi_t;
 
 
 // ******** global function prototypes ********
 void cxa_protocolParser_bgapi_init(cxa_protocolParser_bgapi_t *const ppIn, cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const buffIn, int threadIdIn);
 
+size_t cxa_protocolParser_bgapi_getRxByteCounter(cxa_protocolParser_bgapi_t *const ppIn);
 
 #endif
