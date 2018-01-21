@@ -45,7 +45,7 @@ void cxa_array_init(cxa_array_t *const arrIn, const size_t datatypeSize_bytesIn,
 {
 	cxa_assert(arrIn);
 	cxa_assert(datatypeSize_bytesIn > 0);
-	cxa_assert(bufferMaxSize_bytesIn >= datatypeSize_bytesIn);
+	if( bufferMaxSize_bytesIn > 0 ) cxa_assert(bufferMaxSize_bytesIn >= datatypeSize_bytesIn);
 
 	// save our references
 	arrIn->bufferLoc = bufferLocIn;
