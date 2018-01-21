@@ -73,6 +73,8 @@ void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn
 	cxa_assert(uart_driver_install(usartIn->uartId, RX_RING_BUFFER_SIZE_BYTES, 0, 10, NULL, 0) == ESP_OK);
 	cxa_assert(uart_set_pin(usartIn->uartId, txPinIn, rxPinIn, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) == ESP_OK);
 
+	// flush the uart
+	uart_flush(usartIn->uartId);
 
 	// setup our ioStream (last once everything is setup)
 	cxa_ioStream_init(&usartIn->super.ioStream);
