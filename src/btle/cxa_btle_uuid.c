@@ -50,7 +50,7 @@ bool cxa_btle_uuid_initFromBuffer(cxa_btle_uuid_t *const uuidIn, cxa_fixedByteBu
 	else if( numBytesIn == 16 )
 	{
 		uuidIn->type = CXA_BTLE_UUID_TYPE_128BIT;
-		retVal = cxa_uuid128_initFromBuffer(&uuidIn->as128Bit, fbbIn, indexIn);
+		retVal = cxa_uuid128_initFromBuffer(&uuidIn->as128Bit, fbbIn, indexIn, false);
 	}
 	return retVal;
 }

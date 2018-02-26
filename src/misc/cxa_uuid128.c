@@ -47,12 +47,12 @@ void cxa_uuid128_init(cxa_uuid128_t *const uuidIn, uint8_t *const bytesIn)
 }
 
 
-bool cxa_uuid128_initFromBuffer(cxa_uuid128_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn)
+bool cxa_uuid128_initFromBuffer(cxa_uuid128_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn, bool transposeBytesIn)
 {
 	cxa_assert(uuidIn);
 	cxa_assert(fbbIn);
 
-	return cxa_fixedByteBuffer_get(fbbIn, indexIn, true, uuidIn->bytes, sizeof(uuidIn->bytes));
+	return cxa_fixedByteBuffer_get(fbbIn, indexIn, transposeBytesIn, uuidIn->bytes, sizeof(uuidIn->bytes));
 }
 
 
@@ -97,6 +97,15 @@ void cxa_uuid128_initRandom(cxa_uuid128_t *const uuidIn)
 		// generates [0-255]
 		uuidIn->bytes[i] = rand() % (255 + 1 - 0) + 0;
 	}
+}
+
+
+void cxa_uuid128_initFromUuid128(cxa_uuid128_t *const targetIn, cxa_uuid128_t *const sourceIn)
+{
+	cxa_assert(targetIn);
+	cxa_assert(sourceIn);
+
+	memcpy(targetIn->bytes, sourceIn->bytes, sizeof(targetIn->bytes));
 }
 
 
