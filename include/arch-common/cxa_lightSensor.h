@@ -62,6 +62,7 @@ struct cxa_lightSensor
 {
 	cxa_lightSensor_scm_requestNewValue_t scm_requestNewValue;
 
+	bool wasLastReadSuccessful;
 	uint8_t lastReading_255;
 
 	cxa_lightSensor_cb_updatedValue_t cb_onUpdate;
@@ -80,6 +81,12 @@ void cxa_lightSensor_init(cxa_lightSensor_t *const lightSnsIn, cxa_lightSensor_s
  * @public
  */
 bool cxa_lightSensor_getValue_withCallback(cxa_lightSensor_t *const lightSnsIn, cxa_lightSensor_cb_updatedValue_t cbIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+bool cxa_lightSensor_wasLastReadSuccessful(cxa_lightSensor_t *const lightSnsIn);
 
 
 /**

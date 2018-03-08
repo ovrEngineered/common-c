@@ -46,6 +46,7 @@ void cxa_lightSensor_init(cxa_lightSensor_t *const lightSnsIn, cxa_lightSensor_s
 	lightSnsIn->userVar = NULL;
 
 	lightSnsIn->lastReading_255 = 0;
+	lightSnsIn->wasLastReadSuccessful = false;
 }
 
 
@@ -75,6 +76,14 @@ bool cxa_lightSensor_getValue_withCallback(cxa_lightSensor_t *const lightSnsIn, 
 }
 
 
+bool cxa_lightSensor_wasLastReadSuccessful(cxa_lightSensor_t *const lightSnsIn)
+{
+	cxa_assert(lightSnsIn);
+
+	return lightSnsIn->wasLastReadSuccessful;
+}
+
+
 uint8_t cxa_lightSensor_getLastValue_255(cxa_lightSensor_t *const lightSnsIn)
 {
 	cxa_assert(lightSnsIn);
@@ -88,6 +97,7 @@ void cxa_lightSensor_notify_updatedValue(cxa_lightSensor_t *const lightSnsIn, bo
 	cxa_assert(lightSnsIn);
 
 	bool valueDidChange = (lightSnsIn->lastReading_255 != newLight_255In);
+	lightSnsIn->wasLastReadSuccessful = wasSuccessfulIn;
 	lightSnsIn->lastReading_255 = newLight_255In;
 
 	if( lightSnsIn->cb_onUpdate != NULL ) lightSnsIn->cb_onUpdate(lightSnsIn, wasSuccessfulIn, valueDidChange, newLight_255In, lightSnsIn->userVar);
