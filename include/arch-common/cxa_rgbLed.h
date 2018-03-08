@@ -33,6 +33,7 @@
 
 
 // ******** global macro definitions ********
+#define CXA_RGBLED_OFF				0x00, 0x00, 0x00
 #define CXA_RGBLED_RED				0xFF, 0x00, 0x00
 #define CXA_RGBLED_GREEN				0x00, 0xFF, 0x00
 #define CXA_RGBLED_BLUE				0x00, 0x00, 0xFF
