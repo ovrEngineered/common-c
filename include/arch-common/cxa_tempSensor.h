@@ -64,6 +64,7 @@ struct cxa_tempSensor
 {
 	cxa_tempSensor_scm_requestNewValue_t scm_requestNewValue;
 
+	bool wasLastReadSuccessful;
 	float lastReading_degC;
 
 	cxa_tempSensor_cb_updatedValue_t cb_onTempUpdate;
@@ -82,6 +83,12 @@ void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_re
  * @public
  */
 bool cxa_tempSensor_getValue_withCallback(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_cb_updatedValue_t cbIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+bool cxa_tempSensor_wasLastReadSuccessful(cxa_tempSensor_t *const tmpSnsIn);
 
 
 /**

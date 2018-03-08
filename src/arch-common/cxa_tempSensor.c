@@ -45,6 +45,7 @@ void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_re
 	tmpSnsIn->cb_onTempUpdate = NULL;
 	tmpSnsIn->userVar = NULL;
 
+	tmpSnsIn->wasLastReadSuccessful = false;
 	tmpSnsIn->lastReading_degC = NAN;
 }
 
@@ -75,6 +76,14 @@ bool cxa_tempSensor_getValue_withCallback(cxa_tempSensor_t *const tmpSnsIn, cxa_
 }
 
 
+bool cxa_tempSensor_wasLastReadSuccessful(cxa_tempSensor_t *const tmpSnsIn)
+{
+	cxa_assert(tmpSnsIn);
+
+	return tmpSnsIn->wasLastReadSuccessful;
+}
+
+
 float cxa_tempSensor_getLastValue_degC(cxa_tempSensor_t *const tmpSnsIn)
 {
 	cxa_assert(tmpSnsIn);
@@ -88,6 +97,7 @@ void cxa_tempSensor_notify_updatedValue(cxa_tempSensor_t *const tmpSnsIn, bool w
 	cxa_assert(tmpSnsIn);
 
 	bool valueDidChange = (tmpSnsIn->lastReading_degC != newTemp_degCIn);
+	tmpSnsIn->wasLastReadSuccessful = wasSuccessfulIn;
 	tmpSnsIn->lastReading_degC = newTemp_degCIn;
 
 	if( tmpSnsIn->cb_onTempUpdate != NULL ) tmpSnsIn->cb_onTempUpdate(tmpSnsIn, wasSuccessfulIn, valueDidChange, newTemp_degCIn, tmpSnsIn->userVar);
