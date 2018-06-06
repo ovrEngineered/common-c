@@ -91,6 +91,15 @@ extern "C" {
 	 * @param[in] msgIn the message that should be displayed
 	 */
 	#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl((msgIn), __FILE__, __LINE__);
+
+    /**
+     * @public
+     * @brief Immediately asserts and prints a message with same format
+     *      as @ref cxa_assert_msg
+     * 
+     * @param[in] msgIn the message that should be displayed
+     */
+    #define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl((msgIn), __FILE__, __LINE__);
 #else
 	/**
 	 * @public
@@ -116,6 +125,15 @@ extern "C" {
 	 * @param[in] msgIn the message that should be displayed
 	 */
 	#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl((msgIn), NULL, 0);
+
+    /**
+     * @public
+     * @brief Immediately asserts and prints a message with same format
+     *      as @ref cxa_assert_msg
+     * 
+     * @param[in] msgIn the message that should be displayed
+     */
+    #define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl((msgIn), __FILE__, __LINE__);
 #endif
 
 
