@@ -44,7 +44,9 @@ typedef struct
 
 
 // ******** local function prototypes ********
-double strtod (const char* str, char** endptr);
+#ifndef __XC
+double strtod (const char* str, char** endptr);     // disable for pic32
+#endif
 
 
 // ********  local variable declarations *********
