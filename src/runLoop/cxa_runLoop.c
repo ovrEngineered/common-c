@@ -25,6 +25,18 @@
 #include <cxa_assert.h>
 #include <cxa_timeDiff.h>
 
+// include for our target build system
+#ifdef __XC
+    // microchip
+    #include "system_definitions.h"
+#else
+    // esp32
+    #include "freertos/FreeRTOS.h"
+    #include "freertos/task.h"
+    #include <esp_task_wdt.h>
+#endif
+
+
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
 #include <cxa_config.h>
@@ -96,10 +108,6 @@ void cxa_runLoop_clearAllEntries(void)
 }
 
 
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include <esp_task_wdt.h>
 uint32_t cxa_runLoop_iterate(int threadIdIn)
 {
 	if( !isInit ) cxa_runLoop_init();
@@ -111,7 +119,10 @@ uint32_t cxa_runLoop_iterate(int threadIdIn)
 		if( (currEntry->threadId == threadIdIn) && (currEntry->cb != NULL) ) currEntry->cb(currEntry->userVar);
 	}
 
-	esp_task_wdt_feed();
+#ifndef __XC
+    esp_task_wdt_feed();        // esp32 only
+#endif
+    
 	taskYIELD();
 
 	return cxa_timeBase_getCount_us() - iter_startTime_us;
