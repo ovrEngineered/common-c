@@ -25,6 +25,10 @@
 #include <cxa_stringUtils.h>
 #include <string.h>
 
+#ifdef __XC
+#include <strtok.h>
+#endif
+
 
 #include <cxa_logger_implementation.h>
 
@@ -74,6 +78,7 @@ static commandEntry_t commandEntries_raw[CXA_CONSOLE_MAXNUM_COMMANDS+2];
 // add one for 'clear' and 'help' command
 
 static bool isExecutingCommand = false;
+static bool isPaused = false;
 
 
 // ******** global function implementations ********
@@ -131,6 +136,27 @@ void cxa_console_printErrorToIoStream(cxa_ioStream_t *const ioStreamIn, const ch
 }
 
 
+bool cxa_console_isPaused(void)
+{
+    return isPaused;
+}
+
+
+void cxa_console_pause(void)
+{
+    isPaused = true;
+}
+
+
+void cxa_console_resume(void)
+{
+    isPaused = false;
+    
+    clearBuffer();
+    printCommandLine();
+}
+
+
 bool cxa_console_isExecutingCommand(void)
 {
 	return isExecutingCommand;
@@ -161,6 +187,9 @@ void cxa_console_postlog(void)
 // ******** local function implementations ********
 static void cb_onRunLoopUpdate(void* userVarIn)
 {
+    // don't do anything if we're paused
+    if( isPaused ) return;
+    
 	uint8_t rxByte;
 	if( cxa_ioStream_readByte(ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{

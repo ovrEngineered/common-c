@@ -75,6 +75,11 @@ void cxa_console_addCommand(const char* commandIn, const char* descriptionIn,
 
 void cxa_console_printErrorToIoStream(cxa_ioStream_t *const ioStreamIn, const char *const errorIn);
 
+bool cxa_console_isPaused(void);
+void cxa_console_pause(void);
+void cxa_console_resume(void);
+
+
 /**
  * @protected
  */
