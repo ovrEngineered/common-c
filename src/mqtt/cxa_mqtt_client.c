@@ -141,7 +141,7 @@ bool cxa_mqtt_client_setWillMessage(cxa_mqtt_client_t *const clientIn, cxa_mqtt_
 	// if we made it here, we are setting a new will
 	clientIn->will.qos = qosIn;
 	clientIn->will.retain = retainIn;
-	cxa_assert( strlcpy(clientIn->will.topic, topicNameIn, sizeof(clientIn->will.topic)) < sizeof(clientIn->will.topic) );
+    cxa_assert(cxa_stringUtils_copy(clientIn->will.topic, topicNameIn, sizeof(clientIn->will.topic)));
 	if( payloadIn != NULL ) memcpy(clientIn->will.payload, payloadIn, payloadLen_bytesIn);
 	clientIn->will.payloadLen_bytes = payloadLen_bytesIn;
 
@@ -295,7 +295,7 @@ void cxa_mqtt_client_subscribe(cxa_mqtt_client_t *const clientIn, char *topicFil
 			.cb_onPublish=cb_onPublishIn,
 			.userVar=userVarIn
 	};
-	strlcpy(newEntry.topicFilter, topicFilterIn, sizeof(newEntry.topicFilter));
+	cxa_assert(cxa_stringUtils_copy(newEntry.topicFilter, topicFilterIn, sizeof(newEntry.topicFilter)));
 	cxa_assert( cxa_array_append(&clientIn->subscriptions, &newEntry) );
 
 	// try to actually send our subscribe (if we're connected)
