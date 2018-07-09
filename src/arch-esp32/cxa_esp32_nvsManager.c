@@ -61,6 +61,21 @@ void cxa_nvsManager_init(void)
 }
 
 
+bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
+{
+	uint8_t tmpStr;
+	size_t tmpSize = sizeof(tmpStr);
+	esp_err_t retVal = nvs_get_str(handle, keyIn, (char*)&tmpStr, &tmpSize);
+	if( retVal != ESP_ERR_NVS_NOT_FOUND ) return true;
+
+	uint32_t tmpUint32;
+	retVal = nvs_get_u32(handle, keyIn, &tmpUint32);
+	if( retVal != ESP_ERR_NVS_NOT_FOUND ) return true;
+
+	return false;
+}
+
+
 bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes)
 {
 	if( !isInit ) cxa_nvsManager_init();
@@ -77,6 +92,27 @@ bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 	if( !isInit ) cxa_nvsManager_init();
 
 	esp_err_t retVal = nvs_set_str(handle, keyIn, valueIn);
+	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+	return (retVal == ESP_OK);
+}
+
+
+bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut)
+{
+	if( !isInit ) cxa_nvsManager_init();
+
+	// first, determine the size of the stored string
+	esp_err_t retVal = nvs_get_u32(handle, keyIn, valueOut);
+	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
+	return (retVal == ESP_OK);
+}
+
+
+bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
+{
+	if( !isInit ) cxa_nvsManager_init();
+
+	esp_err_t retVal = nvs_set_u32(handle, keyIn, valueIn);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
 	return (retVal == ESP_OK);
 }
