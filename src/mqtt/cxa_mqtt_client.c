@@ -35,7 +35,10 @@
 
 
 // ******** local macro definitions ********
-#define CONNACK_TIMEOUT_MS				5000
+#ifndef CXA_MQTT_CONNACK_TIMEOUT_MS
+#define CXA_MQTT_CONNACK_TIMEOUT_MS				5000
+#endif
+
 #define SUBACK_TIMEOUT_MS				5000
 
 
@@ -398,7 +401,7 @@ static void stateCb_connecting_state(cxa_stateMachine_t *const smIn, void *userV
 	cxa_mqtt_client_t *clientIn = (cxa_mqtt_client_t*) userVarIn;
 	cxa_assert(clientIn);
 
-	if( cxa_timeDiff_isElapsed_ms(&clientIn->td_timeout, CONNACK_TIMEOUT_MS) )
+	if( cxa_timeDiff_isElapsed_ms(&clientIn->td_timeout, CXA_MQTT_CONNACK_TIMEOUT_MS) )
 	{
 		cxa_logger_warn(&clientIn->logger, "failed to receive CONNACK packet");
 

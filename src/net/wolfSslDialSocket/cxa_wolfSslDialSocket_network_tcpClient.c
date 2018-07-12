@@ -288,6 +288,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 	cxa_assert(netClientIn);
 
 	// make sure our socket is non-blocking now
+    cxa_logger_trace(&netClientIn->super.logger, "connected");
 
 	// bind our ioStream
 	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
@@ -341,7 +342,10 @@ static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, vo
 	cxa_assert(netClientIn);
 
     int tmpRet = wolfSSL_read(netClientIn->tls.ssl, byteOut, 1);
-    return  (tmpRet == SSL_ERROR_WANT_READ) ? 
+    
+    cxa_logger_trace(&netClientIn->super. logger, "read retVal: %d", tmpRet);
+    
+    return  ((tmpRet == SSL_ERROR_WANT_READ) || (tmpRet == 0)) ? 
             CXA_IOSTREAM_READSTAT_NODATA :
             ((tmpRet == 1) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_ERROR);
 }
@@ -357,7 +361,11 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 	else { return true; }
 
 	// make sure we are connected
-	if( !cxa_network_tcpClient_isConnected(&netClientIn->super) ) return false;
+	if( !cxa_network_tcpClient_isConnected(&netClientIn->super) )
+    {
+        cxa_logger_stepDebug();
+        return false;
+    }
 
     return (wolfSSL_write(netClientIn->tls.ssl, buffIn, bufferSize_bytesIn) == bufferSize_bytesIn);
 }
@@ -384,7 +392,7 @@ static int wolfSsl_ioRx(WOLFSSL *ssl, char *buf, int sz, void *ctx)
         }
         else
         {
-            if( cxa_timeDiff_isElapsed_ms(&td_timeout, 1000) ) break;
+//            if( cxa_timeDiff_isElapsed_ms(&td_timeout, 1000) ) break;
         }
     }
     
@@ -399,9 +407,13 @@ static int wolfSsl_ioTx(WOLFSSL *ssl, char *buf, int sz, void *ctx)
     cxa_wolfSslDialSocket_network_tcpClient_t* netClientIn = (cxa_wolfSslDialSocket_network_tcpClient_t*)ctx;
 	cxa_assert(netClientIn);
     
-    cxa_logger_trace(&netClientIn->super.logger, "wants to write %d bytes", sz);
+    if( !cxa_ioStream_writeBytes(netClientIn->modemIoStream, buf, sz) )
+    {
+        cxa_logger_warn(&netClientIn->super.logger, "write to ioStream failed", sz);
+        return WOLFSSL_CBIO_ERR_GENERAL;
+    }
     
-    cxa_ioStream_writeBytes(netClientIn->modemIoStream, buf, sz);
+    cxa_logger_trace(&netClientIn->super.logger, "wrote %d bytes", sz);
     
     return sz;
 }
@@ -442,6 +454,8 @@ static void cb_modem_onSocketConnected(cxa_ioStream_t *const socketIoStreamIn, v
             cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
             return;
         }
+        
+        cxa_logger_trace(&netClientIn->super.logger, "tls handshake successful");
 	}
 	else cxa_assert(false);
 
