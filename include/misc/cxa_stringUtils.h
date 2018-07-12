@@ -105,6 +105,8 @@ bool cxa_stringUtils_replaceFirstOccurence_withLengths(const char *targetStringI
 bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, bool transposeIn, char* hexStringOut, size_t maxLenHexString_bytesIn);
 bool cxa_stringUtils_hexStringToBytes(const char *const hexStringIn, size_t numBytesIn, bool transposeIn, uint8_t* bytesOut);
 
+bool cxa_stringUtils_ipStringToUint32(const char *const ipStringIn, uint32_t *const ipBytesOut);
+
 bool cxa_stringUtils_parseString(char *const strIn, cxa_stringUtils_parseResult_t* parseResultOut);
 const char* cxa_stringUtils_getStringForDataType(cxa_stringUtils_dataType_t dataTypeIn);
 

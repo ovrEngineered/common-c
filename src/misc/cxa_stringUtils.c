@@ -457,6 +457,44 @@ bool cxa_stringUtils_hexStringToBytes(const char *const hexStringIn, size_t numB
 }
 
 
+bool cxa_stringUtils_ipStringToUint32(const char *const ipStringIn, uint32_t *const ipBytesOut)
+{
+	if( ipStringIn == NULL ) return false;
+
+	cxa_stringUtils_parseResult_t parseResult;
+	char* tokSavePtr;
+	char* targetStr;
+
+	if( ((targetStr = strtok_r((char*)ipStringIn, ".", &tokSavePtr)) == NULL) ||
+		!cxa_stringUtils_parseString(targetStr, &parseResult) ||
+		(parseResult.dataType != CXA_STRINGUTILS_DATATYPE_INTEGER) ||
+		(parseResult.val_uint > 255) ) return false;
+	uint8_t byte0 = parseResult.val_uint;
+
+	if( ((targetStr = strtok_r(NULL, ".", &tokSavePtr)) == NULL) ||
+		!cxa_stringUtils_parseString(targetStr, &parseResult) ||
+		(parseResult.dataType != CXA_STRINGUTILS_DATATYPE_INTEGER) ||
+		(parseResult.val_uint > 255) ) return false;
+	uint8_t byte1 = parseResult.val_uint;
+
+	if( ((targetStr = strtok_r(NULL, ".", &tokSavePtr)) == NULL) ||
+		!cxa_stringUtils_parseString(targetStr, &parseResult) ||
+		(parseResult.dataType != CXA_STRINGUTILS_DATATYPE_INTEGER) ||
+		(parseResult.val_uint > 255) ) return false;
+	uint8_t byte2 = parseResult.val_uint;
+
+	if( ((targetStr = strtok_r(NULL, ".", &tokSavePtr)) == NULL) ||
+		!cxa_stringUtils_parseString(targetStr, &parseResult) ||
+		(parseResult.dataType != CXA_STRINGUTILS_DATATYPE_INTEGER) ||
+		(parseResult.val_uint > 255) ) return false;
+	uint8_t byte3 = parseResult.val_uint;
+
+	if( ipBytesOut != NULL ) *ipBytesOut = (byte3 << 24) | (byte2 << 16) | (byte1 << 8) | (byte0 << 0);
+
+	return true;
+}
+
+
 bool cxa_stringUtils_parseString(char *const strIn, cxa_stringUtils_parseResult_t* parseResultOut)
 {
 	if( strIn == NULL ) return false;

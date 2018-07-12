@@ -40,6 +40,10 @@ a * Copyright 2016 opencxa.org
 
 
 // ******** local function prototypes ********
+static void commonInit(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn,
+						bool useHardwareHandshakingIn,
+						const gpio_num_t txPinIn, const gpio_num_t rxPinIn,
+						const gpio_num_t rtsPinIn, const gpio_num_t ctsPinIn);
 static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn);
 static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
 
@@ -48,8 +52,26 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 // ******** global function implementations ********
-void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn,
-						  const gpio_num_t txPinIn, const gpio_num_t rxPinIn, bool useHardwareHandshakingIn)
+void cxa_esp32_usart_init_noHH(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn,
+						  const gpio_num_t txPinIn, const gpio_num_t rxPinIn)
+{
+	commonInit(usartIn, uartIdIn, baudRate_bpsIn, false, txPinIn, rxPinIn, 0, 0);
+}
+
+
+void cxa_esp32_usart_init_HH(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn,
+							const gpio_num_t txPinIn, const gpio_num_t rxPinIn,
+							const gpio_num_t rtsPinIn, const gpio_num_t ctsPinIn)
+{
+	commonInit(usartIn, uartIdIn, baudRate_bpsIn, true, txPinIn, rxPinIn, rtsPinIn, ctsPinIn);
+}
+
+
+// ******** local function implementations ********
+static void commonInit(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn, const uint32_t baudRate_bpsIn,
+						bool useHardwareHandshakingIn,
+						const gpio_num_t txPinIn, const gpio_num_t rxPinIn,
+						const gpio_num_t rtsPinIn, const gpio_num_t ctsPinIn)
 {
 	cxa_assert(usartIn);
 	cxa_assert( (uartIdIn == UART_NUM_0) ||
@@ -71,7 +93,10 @@ void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn
 	uart_param_config(usartIn->uartId, &uart_config);
 
 	cxa_assert(uart_driver_install(usartIn->uartId, RX_RING_BUFFER_SIZE_BYTES, 0, 10, NULL, 0) == ESP_OK);
-	cxa_assert(uart_set_pin(usartIn->uartId, txPinIn, rxPinIn, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) == ESP_OK);
+	cxa_assert(uart_set_pin(usartIn->uartId,
+			txPinIn, rxPinIn,
+			(useHardwareHandshakingIn ? rtsPinIn : UART_PIN_NO_CHANGE),
+			(useHardwareHandshakingIn ? ctsPinIn : UART_PIN_NO_CHANGE) ) == ESP_OK);
 
 	// flush the uart
 	uart_flush(usartIn->uartId);
@@ -82,7 +107,6 @@ void cxa_esp32_usart_init(cxa_esp32_usart_t *const usartIn, uart_port_t uartIdIn
 }
 
 
-// ******** local function implementations ********
 static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, void *const userVarIn)
 {
 	cxa_esp32_usart_t* usartIn = (cxa_esp32_usart_t*)userVarIn;

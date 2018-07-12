@@ -618,10 +618,18 @@ static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const io
 		return;
 	}
 
+	tcpip_adapter_dns_info_t dnsInfo;
+	if( tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &dnsInfo) != ESP_OK )
+	{
+		cxa_ioStream_writeLine(ioStreamIn, "fail");
+		return;
+	}
+
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "ssid: %s", cfg.sta.ssid);
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "ip:   " IPSTR, IP2STR(&ip.ip));
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "sn:   " IPSTR, IP2STR(&ip.netmask));
 	cxa_ioStream_writeFormattedLine(ioStreamIn, "gw:   " IPSTR, IP2STR(&ip.gw));
+	cxa_ioStream_writeFormattedLine(ioStreamIn, "dns:  " IPSTR, IP2STR(&dnsInfo.ip.u_addr.ip4));
 }
 
 

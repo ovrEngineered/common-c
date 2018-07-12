@@ -51,6 +51,7 @@ void cxa_network_ethernetManager_addListener(cxa_network_ethernetManager_cb_t cb
 											cxa_network_ethernetManager_cb_t cb_waitDhcpIn,
 											cxa_network_ethernetManager_cb_t cb_hasAddress_dhcpIn,
 											cxa_network_ethernetManager_cb_t cb_hasAddress_autoIpIn,
+											cxa_network_ethernetManager_cb_t cb_hasAddress_staticIpIn,
 											void *userVarIn);
 
 void cxa_network_ethernetManager_start(void);
