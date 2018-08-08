@@ -44,9 +44,18 @@ typedef struct
 
 	cxa_gpio_t* gpio;
 
-	cxa_timeDiff_t td_blink;
-	uint32_t onPeriod_ms;
-	uint32_t offPeriod_ms;
+	cxa_timeDiff_t td_gp;
+
+	struct
+	{
+		uint32_t onPeriod_ms;
+		uint32_t offPeriod_ms;
+	}blink;
+
+	struct
+	{
+		uint32_t period_ms;
+	}flash;
 }cxa_led_gpio_t;
 
 
