@@ -17,6 +17,7 @@
  */
 #include <cxa_network_tcpServer.h>
 
+
 // ******** includes ********
 #include <cxa_assert.h>
 
@@ -38,41 +39,32 @@
 
 // ******** global function implementations ********
 void cxa_network_tcpServer_init(cxa_network_tcpServer_t *const tcpServerIn,
-								cxa_network_tcpServer_cb_listen_t cb_listenIn,
-								cxa_network_tcpServer_cb_disconnectFromClient_t cb_disconnectFromClientIn,
-								cxa_network_tcpServer_cb_isConnected_t cb_isConnected)
+								cxa_network_tcpServer_scm_listen_t scm_listenIn,
+								cxa_network_tcpServer_scm_stopListening_t scm_stopListeningIn)
 {
 	cxa_assert(tcpServerIn);
-	cxa_assert(cb_listenIn);
-	cxa_assert(cb_disconnectFromClientIn);
-	cxa_assert(cb_isConnected);
+	cxa_assert(scm_listenIn);
 
 	// save our references
-	tcpServerIn->cb_listen = cb_listenIn;
-	tcpServerIn->cb_disconnectFromClient = cb_disconnectFromClientIn;
-	tcpServerIn->cb_isConnected = cb_isConnected;
+	tcpServerIn->scm_listen = scm_listenIn;
+	tcpServerIn->scm_stopListening = scm_stopListeningIn;
 
 	// setup our logger
-	cxa_logger_init(&tcpServerIn->logger, "netClient");
+	cxa_logger_init(&tcpServerIn->logger, "netServer");
 
 	// setup our listener array
 	cxa_array_initStd(&tcpServerIn->listeners, tcpServerIn->listeners_raw);
-
-	// setup our ioStream (but the actual server is responsible for binding it)
-	cxa_ioStream_init(&tcpServerIn->ioStream);
 }
 
 
 void cxa_network_tcpServer_addListener(cxa_network_tcpServer_t *const tcpServerIn,
 									   cxa_network_tcpServer_cb_onConnect_t cb_onConnectIn,
-									   cxa_network_tcpServer_cb_onDisconnect_t cb_onDisconnectIn,
 									   void* userVarIn)
 {
 	cxa_assert(tcpServerIn);
 
 	cxa_network_tcpServer_listenerEntry_t newEntry = {
 			.cb_onConnect=cb_onConnectIn,
-			.cb_onDisconnect=cb_onDisconnectIn,
 			.userVar=userVarIn
 	};
 	cxa_assert( cxa_array_append(&tcpServerIn->listeners, &newEntry) );
@@ -83,31 +75,28 @@ bool cxa_network_tcpServer_listen(cxa_network_tcpServer_t *const tcpServerIn, ui
 {
 	cxa_assert(tcpServerIn);
 
-	return tcpServerIn->cb_listen(tcpServerIn, portNumIn);
+	return tcpServerIn->scm_listen(tcpServerIn, portNumIn);
 }
 
 
-void cxa_network_tcpServer_disconnect(cxa_network_tcpServer_t *const tcpServerIn)
+void cxa_network_tcpServer_stopListening(cxa_network_tcpServer_t *const tcpServerIn)
 {
 	cxa_assert(tcpServerIn);
 
-	return tcpServerIn->cb_disconnectFromClient(tcpServerIn);
+	return tcpServerIn->scm_stopListening(tcpServerIn);
 }
 
 
-bool cxa_network_tcpServer_isConnected(cxa_network_tcpServer_t *const tcpServerIn)
+void cxa_network_tcpServer_notifyConnect(cxa_network_tcpServer_t *const tcpServerIn, cxa_network_tcpServer_connectedClient_t* clientIn)
 {
 	cxa_assert(tcpServerIn);
 
-	return tcpServerIn->cb_isConnected(tcpServerIn);
-}
+	cxa_array_iterate(&tcpServerIn->listeners, currListener, cxa_network_tcpServer_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
 
-
-cxa_ioStream_t* cxa_network_tcpServer_getIoStream(cxa_network_tcpServer_t *const tcpServerIn)
-{
-	cxa_assert(tcpServerIn);
-
-	return &tcpServerIn->ioStream;
+		if( currListener->cb_onConnect != NULL ) currListener->cb_onConnect(tcpServerIn, clientIn, currListener->userVar);
+	}
 }
 
 

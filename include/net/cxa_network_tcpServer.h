@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <cxa_array.h>
 #include <cxa_ioStream.h>
+#include <cxa_network_tcpServer_connectedClient.h>
 #include <cxa_timeDiff.h>
 #include <cxa_logger_header.h>
 #include <cxa_config.h>
@@ -45,40 +46,29 @@ typedef struct cxa_network_tcpServer cxa_network_tcpServer_t;
 /**
  * @public
  */
-typedef void (*cxa_network_tcpServer_cb_onConnect_t)(cxa_network_tcpServer_t *const serverIn, void* userVarIn);
+typedef void (*cxa_network_tcpServer_cb_onConnect_t)(cxa_network_tcpServer_t *const serverIn, cxa_network_tcpServer_connectedClient_t* clientIn, void* userVarIn);
 
 
 /**
- * @public
+ * @protected
+ * Used for subclasses
  */
-typedef void (*cxa_network_tcpServer_cb_onDisconnect_t)(cxa_network_tcpServer_t *const serverIn, void* userVarIn);
+typedef bool (*cxa_network_tcpServer_scm_listen_t)(cxa_network_tcpServer_t *const superIn, uint16_t portNumIn);
+
+
+/**
+ * @protected
+ * Used for subclasses
+ */
+typedef void (*cxa_network_tcpServer_scm_stopListening_t)(cxa_network_tcpServer_t *const superIn);
 
 
 /**
  * @private
- * Used for subclasses
  */
-typedef bool (*cxa_network_tcpServer_cb_listen_t)(cxa_network_tcpServer_t *const superIn, uint16_t portNumIn);
-
-
-/**
- * @private
- * Used for subclasses
- */
-typedef void (*cxa_network_tcpServer_cb_disconnectFromClient_t)(cxa_network_tcpServer_t *const superIn);
-
-
-/**
- * @private
- * Used for subclasses
- */
-typedef bool (*cxa_network_tcpServer_cb_isConnected_t)(cxa_network_tcpServer_t *const superIn);
-
-
 typedef struct
 {
 	cxa_network_tcpServer_cb_onConnect_t cb_onConnect;
-	cxa_network_tcpServer_cb_onDisconnect_t cb_onDisconnect;
 
 	void* userVar;
 }cxa_network_tcpServer_listenerEntry_t;
@@ -89,12 +79,9 @@ typedef struct
  */
 struct cxa_network_tcpServer
 {
-	cxa_ioStream_t ioStream;
-
 	// subclass methods
-	cxa_network_tcpServer_cb_listen_t cb_listen;
-	cxa_network_tcpServer_cb_disconnectFromClient_t cb_disconnectFromClient;
-	cxa_network_tcpServer_cb_isConnected_t cb_isConnected;
+	cxa_network_tcpServer_scm_listen_t scm_listen;
+	cxa_network_tcpServer_scm_stopListening_t scm_stopListening;
 
 	cxa_array_t listeners;
 	cxa_network_tcpServer_listenerEntry_t listeners_raw[CXA_NETWORK_TCPSERVER_MAXNUM_LISTENERS];
@@ -108,16 +95,14 @@ struct cxa_network_tcpServer
  * @private
  */
 void cxa_network_tcpServer_init(cxa_network_tcpServer_t *const tcpServerIn,
-								cxa_network_tcpServer_cb_listen_t cb_listenIn,
-								cxa_network_tcpServer_cb_disconnectFromClient_t cb_disconnectFromClientIn,
-								cxa_network_tcpServer_cb_isConnected_t cb_isConnected);
+								cxa_network_tcpServer_scm_listen_t scm_listenIn,
+								cxa_network_tcpServer_scm_stopListening_t scm_stopListeningIn);
 
 /**
  * @public
  */
 void cxa_network_tcpServer_addListener(cxa_network_tcpServer_t *const tcpServerIn,
 									   cxa_network_tcpServer_cb_onConnect_t cb_onConnectIn,
-									   cxa_network_tcpServer_cb_onDisconnect_t cb_onDisconnectIn,
 									   void* userVarIn);
 
 
@@ -130,19 +115,13 @@ bool cxa_network_tcpServer_listen(cxa_network_tcpServer_t *const tcpServerIn, ui
 /**
  * @public
  */
-void cxa_network_tcpServer_disconnect(cxa_network_tcpServer_t *const tcpServerIn);
+void cxa_network_tcpServer_stopListening(cxa_network_tcpServer_t *const tcpServerIn);
 
 
 /**
- * @public
+ * @protected
  */
-bool cxa_network_tcpServer_isConnected(cxa_network_tcpServer_t *const tcpServerIn);
-
-
-/**
- * @public
- */
-cxa_ioStream_t* cxa_network_tcpServer_getIoStream(cxa_network_tcpServer_t *const tcpServerIn);
+void cxa_network_tcpServer_notifyConnect(cxa_network_tcpServer_t *const tcpServerIn, cxa_network_tcpServer_connectedClient_t* clientIn);
 
 
 #endif // CXA_NETWORK_TCPSERVER_H_

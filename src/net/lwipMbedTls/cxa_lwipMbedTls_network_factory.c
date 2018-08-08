@@ -20,6 +20,7 @@
 #include <stdbool.h>
 
 #include <cxa_lwipMbedTls_network_tcpClient.h>
+#include <cxa_lwipMbedTls_network_tcpServer.h>
 
 #include <cxa_config.h>
 
@@ -29,10 +30,8 @@
 	#define CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS		1
 #endif
 
-#ifndef CXA_LWIPMBDEDTLS_MAXNUM_TCP_SERVERS
-	#define CXA_LWIPMBDEDTLS_MAXNUM_TCP_SERVERS	0
-#else
-	#error "TCP server support not available"
+#ifndef CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS
+	#define CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS		1
 #endif
 
 
@@ -42,6 +41,13 @@ typedef struct
 	cxa_lwipMbedTls_network_tcpClient_t client;
 	bool isReserved;
 }tcpClient_entry_t;
+
+
+typedef struct
+{
+	cxa_lwipMbedTls_network_tcpServer_t server;
+	bool isReserved;
+}tcpServer_entry_t;
 
 
 // ******** local function prototypes ********
@@ -55,6 +61,10 @@ static bool isInit = false;
 static tcpClient_entry_t tcpClientMap[CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS];
 #endif
 
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS > 0
+static tcpServer_entry_t tcpServerMap[CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS];
+#endif
+
 
 // ******** global function implementations ********
 cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(int threadIdIn)
@@ -63,6 +73,7 @@ cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(int threadIdIn)
 
 	cxa_network_tcpClient_t* retVal = NULL;
 
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS > 0
 	for( size_t i = 0; i < (sizeof(tcpClientMap)/sizeof(*tcpClientMap)); i++ )
 	{
 		if( !tcpClientMap[i].isReserved )
@@ -73,6 +84,7 @@ cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(int threadIdIn)
 			break;
 		}
 	}
+#endif
 
 	return retVal;
 }
@@ -80,6 +92,7 @@ cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(int threadIdIn)
 
 void cxa_network_factory_freeTcpClient(cxa_network_tcpClient_t *const clientIn)
 {
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS > 0
 	for( size_t i = 0; i < (sizeof(tcpClientMap)/sizeof(*tcpClientMap)); i++ )
 	{
 		if( &tcpClientMap[i].client.super == clientIn )
@@ -88,18 +101,45 @@ void cxa_network_factory_freeTcpClient(cxa_network_tcpClient_t *const clientIn)
 			break;
 		}
 	}
+#endif
 }
 
 
-cxa_network_tcpServer_t* cxa_network_factory_reserveTcpServer(void)
+cxa_network_tcpServer_t* cxa_network_factory_reserveTcpServer(int threadIdIn)
 {
-	return NULL;
+	if( !isInit ) cxa_network_factory_init();
+
+	cxa_network_tcpServer_t* retVal = NULL;
+
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS > 0
+	for( size_t i = 0; i < (sizeof(tcpServerMap)/sizeof(*tcpServerMap)); i++ )
+	{
+		if( !tcpServerMap[i].isReserved )
+		{
+			tcpServerMap[i].isReserved = true;
+			cxa_lwipMbedTls_network_tcpServer_init(&tcpServerMap[i].server, threadIdIn);
+			retVal = &tcpServerMap[i].server.super;
+			break;
+		}
+	}
+#endif
+
+	return retVal;
 }
 
 
 void cxa_network_factory_freeTcpServer(cxa_network_tcpServer_t *const serverIn)
 {
-
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS > 0
+	for( size_t i = 0; i < (sizeof(tcpServerMap)/sizeof(*tcpServerMap)); i++ )
+	{
+		if( &tcpServerMap[i].server.super == serverIn )
+		{
+			tcpServerMap[i].isReserved = false;
+			break;
+		}
+	}
+#endif
 }
 
 
@@ -110,6 +150,13 @@ static void cxa_network_factory_init(void)
 	for( size_t i = 0; i < (sizeof(tcpClientMap)/sizeof(*tcpClientMap)); i++ )
 	{
 		tcpClientMap[i].isReserved = false;
+	}
+#endif
+
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS > 0
+	for( size_t i = 0; i < (sizeof(tcpServerMap)/sizeof(*tcpServerMap)); i++ )
+	{
+		tcpServerMap[i].isReserved = false;
 	}
 #endif
 

@@ -34,7 +34,7 @@
 cxa_network_tcpClient_t* cxa_network_factory_reserveTcpClient(int threadIdIn);
 void cxa_network_factory_freeTcpClient(cxa_network_tcpClient_t *const clientIn);
 
-cxa_network_tcpServer_t* cxa_network_factory_reserveTcpServer(void);
+cxa_network_tcpServer_t* cxa_network_factory_reserveTcpServer(int threadIdIn);
 void cxa_network_factory_freeTcpServer(cxa_network_tcpServer_t *const serverIn);
 
 #endif // CXA_NETWORK_FACTORY_H_
