@@ -31,6 +31,11 @@
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 
+#ifdef __XC
+    // microchip
+    #include <strtok.h>
+#endif
+
 
 // ******** local macro definitions ********
 
