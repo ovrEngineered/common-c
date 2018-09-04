@@ -138,7 +138,7 @@ uint32_t cxa_atmega_timer8_getOverflowPeriod_us(cxa_atmega_timer8_t *const t8In)
 {
 	cxa_assert(t8In);
 
-	return (UINT8_MAX * 1000UL * getPrescalerValueFromPrescaler(t8In->prescaler)) / (F_CPU / 1000UL);
+	return ((uint32_t)UINT8_MAX * 1000UL * (uint32_t)getPrescalerValueFromPrescaler(t8In->prescaler)) / (F_CPU / 1000UL);
 }
 
 
