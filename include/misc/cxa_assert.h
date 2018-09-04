@@ -90,7 +90,11 @@ extern "C" {
 	 * @param[in] condIn the assertion condition (should be true)
 	 * @param[in] msgIn the message that should be displayed
 	 */
-	#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl((msgIn), __FILE__, __LINE__);
+	#ifdef CXA_ASSERT_MSG_ENABLE
+		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl((msgIn), __FILE__, __LINE__);
+	#else
+		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl(NULL, __FILE__, __LINE__);
+	#endif
 
     /**
      * @public
@@ -99,7 +103,11 @@ extern "C" {
      * 
      * @param[in] msgIn the message that should be displayed
      */
-    #define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl((msgIn), __FILE__, __LINE__);
+	#ifdef CXA_ASSERT_MSG_ENABLE
+    	#define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl((msgIn), __FILE__, __LINE__);
+	#else
+		#define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl(NULL, __FILE__, __LINE__);
+	#endif
 #else
 	/**
 	 * @public
@@ -124,7 +132,11 @@ extern "C" {
 	 * @param[in] condIn the assertion condition (should be true)
 	 * @param[in] msgIn the message that should be displayed
 	 */
-	#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl((msgIn), NULL, 0);
+	#ifdef CXA_ASSERT_MSG_ENABLE
+		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl((msgIn), NULL, 0);
+	#else
+		#define cxa_assert_msg(condIn, msgIn)		if( !(condIn) ) cxa_assert_impl(NULL, NULL, 0);
+	#endif
 
     /**
      * @public
@@ -133,7 +145,11 @@ extern "C" {
      * 
      * @param[in] msgIn the message that should be displayed
      */
-    #define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl((msgIn), __FILE__, __LINE__);
+	#ifdef CXA_ASSERT_MSG_ENABLE
+    	#define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl((msgIn), NULL, 0);
+	#else
+		#define cxa_assert_failWithMsg(msgIn)       cxa_assert_impl(NULL, NULL, 0);
+	#endif
 #endif
 
 
