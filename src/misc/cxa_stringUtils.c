@@ -494,7 +494,7 @@ bool cxa_stringUtils_ipStringToUint32(const char *const ipStringIn, uint32_t *co
 		(parseResult.val_uint > 255) ) return false;
 	uint8_t byte3 = parseResult.val_uint;
 
-	if( ipBytesOut != NULL ) *ipBytesOut = (byte3 << 24) | (byte2 << 16) | (byte1 << 8) | (byte0 << 0);
+	if( ipBytesOut != NULL ) *ipBytesOut = ((uint32_t)byte3 << 24) | ((uint32_t)byte2 << 16) | ((uint32_t)byte1 << 8) | ((uint32_t)byte0 << 0);
 
 	return true;
 }
