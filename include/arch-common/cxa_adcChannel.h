@@ -112,4 +112,10 @@ void cxa_adcChannel_addListener(cxa_adcChannel_t *const adcChanIn,
 bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn);
 
 
+/**
+ * @protected
+ */
+void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, float voltageIn, const uint8_t* rawValIn, size_t rawValLenIn);
+
+
 #endif /* CXA_ADCCHAN_H_ */

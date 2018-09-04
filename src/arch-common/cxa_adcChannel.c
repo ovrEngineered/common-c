@@ -73,4 +73,18 @@ bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn
 }
 
 
+void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, float voltageIn, const uint8_t* rawValIn, size_t rawValLenIn)
+{
+	cxa_assert(adcChanIn);
+
+	cxa_array_iterate(&adcChanIn->listeners, currListener, cxa_adcChannel_listener_t)
+	{
+		if( currListener == NULL ) continue;
+
+		if( currListener->cb_convComp != NULL ) currListener->cb_convComp(adcChanIn, voltageIn, currListener->userVar);
+		if( currListener->cb_convComp_raw != NULL ) currListener->cb_convComp_raw(adcChanIn, rawValIn, rawValLenIn, currListener->userVar);
+	}
+}
+
+
 // ******** local function implementations ********
