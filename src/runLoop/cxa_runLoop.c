@@ -29,7 +29,7 @@
 #ifdef __XC
     // microchip
     #include "system_definitions.h"
-#else
+#elif defined ESP32
     // esp32
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
@@ -119,11 +119,13 @@ uint32_t cxa_runLoop_iterate(int threadIdIn)
 		if( (currEntry->threadId == threadIdIn) && (currEntry->cb != NULL) ) currEntry->cb(currEntry->userVar);
 	}
 
-#ifndef __XC
+#ifdef ESP32
     esp_task_wdt_feed();        // esp32 only
 #endif
     
+#ifdef INC_FREERTOS_H
 	taskYIELD();
+#endif
 
 	return cxa_timeBase_getCount_us() - iter_startTime_us;
 }
