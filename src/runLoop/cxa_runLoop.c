@@ -42,18 +42,19 @@
 #include <cxa_config.h>
 
 // ******** local macro definitions ********
-#ifndef CXA_RUNLOOP_INFOPRINT_PERIOD_MS
-	#define CXA_RUNLOOP_INFOPRINT_PERIOD_MS				10000
-#endif
-
-#define CXA_RUNLOOP_INFOPRINT_AVGNUMITERS				100
 
 
 // ******** local type definitions ********
 typedef struct
 {
 	int threadId;
-	cxa_runLoop_cb_update_t cb;
+	bool hasBeenStarted;
+
+	uint32_t execPeriod_ms;
+	cxa_timeDiff_t td_exec;
+
+	cxa_runLoop_cb_t startupCb;
+	cxa_runLoop_cb_t updateCb;
 	void *userVar;
 }cxa_runLoop_entry_t;
 
@@ -72,32 +73,24 @@ static cxa_logger_t logger;
 
 
 // ******** global function implementations ********
-void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn, void *const userVarIn)
+void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
 	// create our new entry
-	cxa_runLoop_entry_t newEntry = {.threadId = threadIdIn, .cb=cbIn, .userVar=userVarIn};
+	cxa_runLoop_entry_t newEntry = {.threadId = threadIdIn, .hasBeenStarted=false, .execPeriod_ms=0, .startupCb=startupCbIn, .updateCb=updateCbIn, .userVar=userVarIn};
 	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
 }
 
 
-void cxa_runLoop_removeEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn)
+void cxa_runLoop_addTimedEntry(int threadIdIn, uint32_t execPeriod_msIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
-	// can't use cxa_array_iterate because we need an index
-	for( size_t i = 0; i < cxa_array_getSize_elems(&cbs); i++ )
-	{
-		cxa_runLoop_entry_t* currEntry = (cxa_runLoop_entry_t*)cxa_array_get(&cbs, i);
-		if( currEntry == NULL ) continue;
-
-		if( (currEntry->threadId == threadIdIn) && (currEntry->cb == cbIn) )
-		{
-			cxa_array_remove_atIndex(&cbs, i);
-			return;
-		}
-	}
+	// create our new entry
+	cxa_runLoop_entry_t newEntry = {.threadId = threadIdIn, .hasBeenStarted=false, .execPeriod_ms=execPeriod_msIn, .startupCb=startupCbIn, .updateCb=updateCbIn, .userVar=userVarIn};
+	cxa_timeDiff_init(&newEntry.td_exec);
+	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
 }
 
 
@@ -114,9 +107,32 @@ uint32_t cxa_runLoop_iterate(int threadIdIn)
 
 	uint32_t iter_startTime_us = cxa_timeBase_getCount_us();
 
+	// iterate first and make sure all of our entries have been started
 	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
 	{
-		if( (currEntry->threadId == threadIdIn) && (currEntry->cb != NULL) ) currEntry->cb(currEntry->userVar);
+		if( (currEntry != NULL) && (currEntry->threadId == threadIdIn) &&
+			!currEntry->hasBeenStarted && (currEntry->startupCb != NULL) )
+		{
+			currEntry->hasBeenStarted = true;
+			currEntry->startupCb(currEntry->userVar);
+		}
+	}
+
+	// now iterate again and call our update functions
+	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
+	{
+		if( (currEntry != NULL) && (currEntry->threadId == threadIdIn) &&
+			(currEntry->updateCb != NULL) )
+		{
+			// we know this is valid callback for this thread...
+			// if it's timed, make sure we're calling it at the right pace
+
+			if( (currEntry->execPeriod_ms == 0) ||
+				 cxa_timeDiff_isElapsed_recurring_ms(&currEntry->td_exec, currEntry->execPeriod_ms) )
+			{
+				currEntry->updateCb(currEntry->userVar);
+			}
+		}
 	}
 
 #ifdef ESP32
@@ -135,25 +151,10 @@ void cxa_runLoop_execute(int threadIdIn)
 {
 	if( !isInit ) cxa_runLoop_init();
 
-	// setup our info printing stuff
-	uint32_t averageIterPeriod_us = 0;
-	cxa_timeDiff_t td_printInfo;
-	cxa_timeDiff_init(&td_printInfo);
-
 	// start the iterations
 	while(1)
 	{
-		uint32_t lastIterPeriod_ms = cxa_runLoop_iterate(threadIdIn);
-
-#if CXA_RUNLOOP_INFOPRINT_PERIOD_MS > 0
-		averageIterPeriod_us -= averageIterPeriod_us / CXA_RUNLOOP_INFOPRINT_AVGNUMITERS;
-		averageIterPeriod_us += lastIterPeriod_ms;
-
-		if( cxa_timeDiff_isElapsed_recurring_ms(&td_printInfo, CXA_RUNLOOP_INFOPRINT_PERIOD_MS) )
-		{
-			cxa_logger_debug(&logger, "threadId: %d  avgIterPeriod: %d ms", threadIdIn, averageIterPeriod_us / 1000);
-		}
-#endif
+		cxa_runLoop_iterate(threadIdIn);
 	}
 }
 

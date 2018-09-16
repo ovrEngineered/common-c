@@ -71,7 +71,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, i
 	#endif
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)smIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)smIn);
 }
 
 

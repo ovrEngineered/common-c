@@ -44,7 +44,7 @@ void cxa_oneShotTimer_init(cxa_oneShotTimer_t *const ostIn, int threadIdIn)
 	cxa_timeDiff_init(&ostIn->timeDiff);
 
 	// register for runLoop updates
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)ostIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)ostIn);
 }
 
 

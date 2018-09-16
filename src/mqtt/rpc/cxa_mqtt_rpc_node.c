@@ -106,7 +106,7 @@ void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_nod
 	// register for run loop execution
 	cxa_mqtt_client_t* mqttClient = cxa_mqtt_rpc_node_getClient(nodeIn);
 	cxa_assert(mqttClient);
-	cxa_runLoop_addEntry(cxa_mqtt_client_getThreadId(mqttClient), cb_onRunLoopUpdate, (void*)nodeIn);
+	cxa_runLoop_addEntry(cxa_mqtt_client_getThreadId(mqttClient), NULL, cb_onRunLoopUpdate, (void*)nodeIn);
 }
 
 

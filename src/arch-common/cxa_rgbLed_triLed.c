@@ -66,7 +66,7 @@ void cxa_rgbLed_triLed_init(cxa_rgbLed_triLed_t *const ledIn,
 	cxa_rgbLed_init(&ledIn->super, scm_setRgb, scm_blink, NULL, scm_flashOnce);
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)ledIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)ledIn);
 }
 
 

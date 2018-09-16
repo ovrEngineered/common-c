@@ -61,7 +61,7 @@ void cxa_gpio_debouncer_init(cxa_gpio_debouncer_t *const debounceIn, cxa_gpio_t 
 	cxa_array_initStd(&debounceIn->listeners, debounceIn->listeners_raw);
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)debounceIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)debounceIn);
 }
 
 

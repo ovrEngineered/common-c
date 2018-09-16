@@ -57,7 +57,7 @@ void cxa_gpio_longPressManager_init(cxa_gpio_longPressManager_t *const lpmIn, cx
 	cxa_array_initStd(&lpmIn->segments, lpmIn->segments_raw);
 
 	// register for runLoop updates
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)lpmIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)lpmIn);
 }
 
 

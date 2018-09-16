@@ -43,12 +43,12 @@
 /**
  * @public
  */
-typedef void (*cxa_runLoop_cb_update_t)(void* userVarIn);
+typedef void (*cxa_runLoop_cb_t)(void* userVarIn);
 
 
 // ******** global function prototypes ********
-void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn, void *const userVarIn);
-void cxa_runLoop_removeEntry(int threadIdIn, cxa_runLoop_cb_update_t cbIn);
+void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn);
+void cxa_runLoop_addTimedEntry(int threadIdIn, uint32_t execPeriod_msIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn);
 void cxa_runLoop_clearAllEntries(void);
 
 uint32_t cxa_runLoop_iterate(int threadIdIn);

@@ -96,7 +96,7 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 	cxa_console_addCommand("help", "prints available commands", NULL, 0, command_help, NULL);
 
 	// register for our runLoop
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, NULL);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, NULL);
 
 	printBootHeader(deviceNameIn);
 	printCommandLine();

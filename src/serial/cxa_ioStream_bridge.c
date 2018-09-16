@@ -49,7 +49,7 @@ void cxa_ioStream_bridge_init(cxa_ioStream_bridge_t *const bridgeIn,
 	bridgeIn->stream2 = stream2In;
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)bridgeIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)bridgeIn);
 }
 
 

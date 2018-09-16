@@ -52,7 +52,7 @@ void cxa_softWatchDog_init(cxa_softWatchDog_t *const swdIn, uint32_t timeoutPeri
 	cxa_timeDiff_init(&swdIn->td_timeout);
 
 	// register for our runloop
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)swdIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)swdIn);
 }
 
 

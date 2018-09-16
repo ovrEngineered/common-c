@@ -56,7 +56,7 @@ void cxa_led_gpio_init(cxa_led_gpio_t *const ledIn, cxa_gpio_t *const gpioIn, in
 	cxa_led_init(&ledIn->super, scm_turnOn, scm_turnOff, scm_blink, scm_setBrightness, scm_flashOnce);
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopUpdate, (void*)ledIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)ledIn);
 }
 
 
