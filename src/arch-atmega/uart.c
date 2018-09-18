@@ -243,14 +243,14 @@ Date        Description
 	#define UART0_CONTROL  UCSRB
 	#define UART0_DATA     UDR
 	#define UART0_UDRIE    UDRIE
-#elif defined(__AVR_ATmega48__) ||defined(__AVR_ATmega88__) || defined(__AVR_ATmega168__) || \
+#elif defined(__AVR_ATmega48__) || defined(__AVR_ATmega88__) || defined(__AVR_ATmega168__) || \
       defined(__AVR_ATmega48P__) ||defined(__AVR_ATmega88P__) || defined(__AVR_ATmega168P__) || \
-      defined(__AVR_ATmega328P__) 
+      defined(__AVR_ATmega328P__) || defined(__AVR_ATmega328PB__)
 	/* TLS-Added 48P/88P/168P/328P */
 	/* ATmega with one USART */
 	#define ATMEGA_USART0
-	#define UART0_RECEIVE_INTERRUPT   USART_RX_vect
-	#define UART0_TRANSMIT_INTERRUPT  USART_UDRE_vect
+	#define UART0_RECEIVE_INTERRUPT   USART0_RX_vect
+	#define UART0_TRANSMIT_INTERRUPT  USART0_UDRE_vect
 	#define UART0_STATUS   UCSR0A
 	#define UART0_CONTROL  UCSR0B
 	#define UART0_DATA     UDR0
