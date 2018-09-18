@@ -269,7 +269,7 @@ static void handleOverflowInterruptWithTimer(cxa_atmega_timer8_t *const t8In)
 {
 	if( t8In == NULL ) return;
 
-	cxa_array_iterate(&timer0->listeners, currListener, cxa_atmega_timer8_listenerEntry_t)
+	cxa_array_iterate(&t8In->listeners, currListener, cxa_atmega_timer8_listenerEntry_t)
 	{
 		if( (currListener != NULL) && (currListener->cb_onOverflow != NULL) ) currListener->cb_onOverflow(t8In, currListener->userVar);
 	}
