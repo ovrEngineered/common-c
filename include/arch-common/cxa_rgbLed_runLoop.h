@@ -24,8 +24,8 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_RGBLED_RUNLOOPTRILED_H_
-#define CXA_RGBLED_RUNLOOPTRILED_H_
+#ifndef CXA_RGBLED_RUNLOOP_H_
+#define CXA_RGBLED_RUNLOOP_H_
 
 
 // ******** includes ********
@@ -41,7 +41,13 @@
 /**
  * @public
  */
-typedef struct cxa_rgbLed_runLoopTriLed cxa_rgbLed_runLoopTriLed_t;
+typedef struct cxa_rgbLed_runLoop cxa_rgbLed_runLoop_t;
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_rgbLed_runLoop_scm_setRgb_t)(cxa_rgbLed_runLoop_t *const superIn, const uint8_t r_255In, const uint8_t g_255In, const uint8_t b_255In);
 
 
 /**
@@ -54,25 +60,21 @@ typedef struct
 	uint8_t bOn_255;
 
 	uint32_t period_ms;
-}cxa_rgbLed_runLoopTriLed_altColorEntry_t;
+}cxa_rgbLed_runLoop_altColorEntry_t;
 
 
 /**
  * @private
  */
-struct cxa_rgbLed_runLoopTriLed
+struct cxa_rgbLed_runLoop
 {
 	cxa_rgbLed_t super;
-
-	cxa_led_t* led_r;
-	cxa_led_t* led_g;
-	cxa_led_t* led_b;
 
 	cxa_timeDiff_t td_gp;
 
 	struct
 	{
-		cxa_rgbLed_runLoopTriLed_altColorEntry_t colors[2];
+		cxa_rgbLed_runLoop_altColorEntry_t colors[2];
 		uint8_t lastColorIndex;
 	}alternate;
 
@@ -87,13 +89,18 @@ struct cxa_rgbLed_runLoopTriLed
 		uint8_t lastBrightnessG_255;
 		uint8_t lastBrightnessB_255;
 	}solid;
+
+	struct
+	{
+		cxa_rgbLed_runLoop_scm_setRgb_t setRgb;
+	}scms;
 };
 
 
 // ******** global function prototypes ********
-void cxa_rgbLed_runLoopTriLed_init(cxa_rgbLed_runLoopTriLed_t *const ledIn,
-								   cxa_led_t *const led_rIn, cxa_led_t *const led_gIn, cxa_led_t *const led_bIn,
-								   int threadIdIn);
+void cxa_rgbLed_runLoop_init(cxa_rgbLed_runLoop_t *const ledIn,
+							 cxa_rgbLed_runLoop_scm_setRgb_t scm_setRgbIn,
+							 int threadIdIn);
 
 
-#endif /* CXA_RGBLED_RUNLOOPTRILED_H_ */
+#endif /* CXA_RGBLED_RUNLOOP_H_ */

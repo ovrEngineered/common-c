@@ -13,7 +13,7 @@
  *
  * @author Christopher Armenio
  */
-#include <cxa_rgbLed_runLoopTriLed.h>
+#include "cxa_rgbLed_runLoop.h"
 
 
 // ******** includes ********
@@ -44,19 +44,15 @@ static void cb_onRunLoopUpdate(void* userVarIn);
 
 
 // ******** global function implementations ********
-void cxa_rgbLed_runLoopTriLed_init(cxa_rgbLed_runLoopTriLed_t *const ledIn,
-								   cxa_led_t *const led_rIn, cxa_led_t *const led_gIn, cxa_led_t *const led_bIn,
-								   int threadIdIn)
+void cxa_rgbLed_runLoop_init(cxa_rgbLed_runLoop_t *const ledIn,
+							 cxa_rgbLed_runLoop_scm_setRgb_t scm_setRgbIn,
+							 int threadIdIn)
 {
 	cxa_assert(ledIn);
-	cxa_assert(led_rIn);
-	cxa_assert(led_gIn);
-	cxa_assert(led_bIn);
+	cxa_assert(scm_setRgbIn);
 
 	// save our references
-	ledIn->led_r = led_rIn;
-	ledIn->led_g = led_gIn;
-	ledIn->led_b = led_bIn;
+	ledIn->scms.setRgb = scm_setRgbIn;
 
 	// setup our internal state
 	cxa_timeDiff_init(&ledIn->td_gp);
@@ -72,7 +68,7 @@ void cxa_rgbLed_runLoopTriLed_init(cxa_rgbLed_runLoopTriLed_t *const ledIn,
 // ******** local function implementations ********
 static void scm_setRgb(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn)
 {
-	cxa_rgbLed_runLoopTriLed_t* ledIn = (cxa_rgbLed_runLoopTriLed_t*)superIn;
+	cxa_rgbLed_runLoop_t* ledIn = (cxa_rgbLed_runLoop_t*)superIn;
 	cxa_assert(ledIn);
 
 	ledIn->solid.lastBrightnessR_255 = rIn;
@@ -80,9 +76,7 @@ static void scm_setRgb(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, ui
 	ledIn->solid.lastBrightnessB_255 = bIn;
 
 	// set our individual brightnesses
-	cxa_led_setSolid(ledIn->led_r, ledIn->solid.lastBrightnessR_255);
-	cxa_led_setSolid(ledIn->led_g, ledIn->solid.lastBrightnessG_255);
-	cxa_led_setSolid(ledIn->led_b, ledIn->solid.lastBrightnessB_255);
+	ledIn->scms.setRgb(ledIn, ledIn->solid.lastBrightnessR_255, ledIn->solid.lastBrightnessG_255, ledIn->solid.lastBrightnessB_255);
 }
 
 
@@ -92,7 +86,7 @@ static void scm_alternateColors(cxa_rgbLed_t *const superIn,
 								uint8_t r2In, uint8_t g2In, uint8_t b2In,
 								uint16_t color2Period_msIn)
 {
-	cxa_rgbLed_runLoopTriLed_t* ledIn = (cxa_rgbLed_runLoopTriLed_t*)superIn;
+	cxa_rgbLed_runLoop_t* ledIn = (cxa_rgbLed_runLoop_t*)superIn;
 	cxa_assert(ledIn);
 
 	ledIn->alternate.colors[0].rOn_255 = r1In;
@@ -108,31 +102,27 @@ static void scm_alternateColors(cxa_rgbLed_t *const superIn,
 	ledIn->alternate.lastColorIndex = 0;
 
 	// set our individual brightnesses
-	cxa_led_setSolid(ledIn->led_r, r1In);
-	cxa_led_setSolid(ledIn->led_g, g1In);
-	cxa_led_setSolid(ledIn->led_b, b1In);
+	ledIn->scms.setRgb(ledIn, r1In, g1In, b1In);
 }
 
 
 static void scm_flashOnce(cxa_rgbLed_t *const superIn, uint8_t rIn, uint8_t gIn, uint8_t bIn,
 	   	   	   	   	   	  uint16_t period_msIn)
 {
-	cxa_rgbLed_runLoopTriLed_t* ledIn = (cxa_rgbLed_runLoopTriLed_t*)superIn;
+	cxa_rgbLed_runLoop_t* ledIn = (cxa_rgbLed_runLoop_t*)superIn;
 	cxa_assert(ledIn);
 
 	ledIn->flash.period_ms = period_msIn;
 	cxa_timeDiff_setStartTime_now(&ledIn->td_gp);
 
 	// set our individual brightnesses
-	cxa_led_setSolid(ledIn->led_r, rIn);
-	cxa_led_setSolid(ledIn->led_g, gIn);
-	cxa_led_setSolid(ledIn->led_b, bIn);
+	ledIn->scms.setRgb(ledIn, rIn, gIn, bIn);
 }
 
 
 static void cb_onRunLoopUpdate(void* userVarIn)
 {
-	cxa_rgbLed_runLoopTriLed_t *ledIn = (cxa_rgbLed_runLoopTriLed_t*)userVarIn;
+	cxa_rgbLed_runLoop_t *ledIn = (cxa_rgbLed_runLoop_t*)userVarIn;
 	cxa_assert(ledIn);
 
 
@@ -145,9 +135,10 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 				else ledIn->alternate.lastColorIndex = 0;
 
 				// set our individual brightnesses
-				cxa_led_setSolid(ledIn->led_r, ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
-				cxa_led_setSolid(ledIn->led_g, ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
-				cxa_led_setSolid(ledIn->led_b, ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
+				ledIn->scms.setRgb(ledIn,
+								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
+								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
+								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
 			}
 			break;
 
@@ -157,17 +148,16 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 				if( ledIn->super.prevState == CXA_RGBLED_STATE_ALTERNATE_COLORS )
 				{
 					// set our individual brightnesses
-					cxa_led_setSolid(ledIn->led_r, ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
-					cxa_led_setSolid(ledIn->led_g, ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
-					cxa_led_setSolid(ledIn->led_b, ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
+					ledIn->scms.setRgb(ledIn,
+									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
+									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
+									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
 					cxa_timeDiff_setStartTime_now(&ledIn->td_gp);
 				}
 				else if( ledIn->super.prevState == CXA_RGBLED_STATE_SOLID )
 				{
 					// set our individual brightnesses
-					cxa_led_setSolid(ledIn->led_r, ledIn->solid.lastBrightnessR_255);
-					cxa_led_setSolid(ledIn->led_g, ledIn->solid.lastBrightnessG_255);
-					cxa_led_setSolid(ledIn->led_b, ledIn->solid.lastBrightnessB_255);
+					ledIn->scms.setRgb(ledIn, ledIn->solid.lastBrightnessR_255, ledIn->solid.lastBrightnessG_255, ledIn->solid.lastBrightnessB_255);
 				}
 			}
 			break;
