@@ -26,8 +26,7 @@
 
 
 // ******** includes ********
-#include <cxa_led.h>
-#include <cxa_timeDiff.h>
+#include <cxa_led_runLoop.h>
 #include <cxa_atmega_timer8_ocr.h>
 
 
@@ -37,22 +36,9 @@
 // ******** global type definitions *********
 typedef struct
 {
-	cxa_led_t super;
+	cxa_led_runLoop_t super;
 
 	cxa_atmega_timer8_ocr_t* ocr;
-
-	cxa_timeDiff_t td_gp;
-
-	struct
-	{
-		uint32_t onPeriod_ms;
-		uint32_t offPeriod_ms;
-	}blink;
-
-	struct
-	{
-		uint32_t period_ms;
-	}flash;
 }cxa_atmega_led_pwm8_t;
 
 

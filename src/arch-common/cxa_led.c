@@ -34,59 +34,35 @@
 
 // ******** global function implementations ********
 void cxa_led_init(cxa_led_t *const ledIn,
-				  cxa_led_scm_turnOn_t scm_turnOnIn,
-				  cxa_led_scm_turnOff_t scm_turnOffIn,
+				  cxa_led_scm_setSolid_t scm_setSolidIn,
 				  cxa_led_scm_blink_t scm_blinkIn,
-				  cxa_led_scm_setBrightness_t scm_setBrightnessIn,
 				  cxa_led_scm_flashOnce_t scm_flashOnceIn)
 {
 	cxa_assert(ledIn);
-	cxa_assert(scm_turnOnIn);
-	cxa_assert(scm_turnOffIn);
+	cxa_assert(scm_setSolidIn);
 
 	// save our references
-	ledIn->scm_turnOn = scm_turnOnIn;
-	ledIn->scm_turnOff = scm_turnOffIn;
+	ledIn->scm_setSolid = scm_setSolidIn;
 	ledIn->scm_blink = scm_blinkIn;
-	ledIn->scm_setBrightness = scm_setBrightnessIn;
 	ledIn->scm_flashOnce = scm_flashOnceIn;
 
 	// make sure we're initially off
-	cxa_led_turnOff(ledIn);
+	cxa_led_setSolid(ledIn, 0);
 }
 
 
-void cxa_led_turnOn(cxa_led_t *const ledIn)
-{
-	cxa_assert(ledIn);
-	cxa_assert(ledIn->scm_turnOn);
-	ledIn->prevState = ledIn->currState;
-	ledIn->currState = CXA_LED_STATE_ON;
-	ledIn->scm_turnOn(ledIn);
-}
-
-
-void cxa_led_turnOff(cxa_led_t *const ledIn)
-{
-	cxa_assert(ledIn);
-	cxa_assert(ledIn->scm_turnOff);
-	ledIn->prevState = ledIn->currState;
-	ledIn->currState = CXA_LED_STATE_OFF;
-	ledIn->scm_turnOff(ledIn);
-}
-
-
-void cxa_led_blink(cxa_led_t *const ledIn, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn)
+void cxa_led_blink(cxa_led_t *const ledIn, uint8_t onBrightness_255In, uint32_t onPeriod_msIn, uint32_t offPeriod_msIn)
 {
 	cxa_assert(ledIn);
 	cxa_assert(ledIn->scm_blink);
+
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_LED_STATE_BLINK;
-	ledIn->scm_blink(ledIn, onPeriod_msIn, offPeriod_msIn);
+	ledIn->scm_blink(ledIn, onBrightness_255In, onPeriod_msIn, offPeriod_msIn);
 }
 
 
-void cxa_led_flashOnce(cxa_led_t *const ledIn, bool flashStateIn, uint32_t period_msIn)
+void cxa_led_flashOnce(cxa_led_t *const ledIn, uint8_t brightness_255In, uint32_t period_msIn)
 {
 	cxa_assert(ledIn);
 	cxa_assert(ledIn->scm_flashOnce);
@@ -94,15 +70,17 @@ void cxa_led_flashOnce(cxa_led_t *const ledIn, bool flashStateIn, uint32_t perio
 
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_LED_STATE_FLASH_ONCE;
-	ledIn->scm_flashOnce(ledIn, flashStateIn, period_msIn);
+	ledIn->scm_flashOnce(ledIn, brightness_255In, period_msIn);
 }
 
 
-void cxa_led_setBrightness(cxa_led_t *const ledIn, uint8_t brightnessIn)
+void cxa_led_setSolid(cxa_led_t *const ledIn, uint8_t brightness_255In)
 {
 	cxa_assert(ledIn);
-	cxa_assert(ledIn->scm_setBrightness);
-	ledIn->scm_setBrightness(ledIn, brightnessIn);
+
+	ledIn->prevState = ledIn->currState;
+	ledIn->currState = CXA_LED_STATE_SOLID;
+	ledIn->scm_setSolid(ledIn, brightness_255In);
 }
 
 

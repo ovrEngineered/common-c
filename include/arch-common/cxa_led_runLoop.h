@@ -10,7 +10,7 @@
  * @endcode
  *
  *
- * @copyright 2016 opencxa.org
+ * @copyright 2015 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_RGBLED_TRILED_H_
-#define CXA_RGBLED_TRILED_H_
+#ifndef CXA_LED_RUNLOOP_H_
+#define CXA_LED_RUNLOOP_H_
 
 
 // ******** includes ********
 #include <cxa_led.h>
-#include <cxa_rgbLed.h>
+#include <cxa_gpio.h>
 #include <cxa_timeDiff.h>
 
 
@@ -41,36 +41,30 @@
 /**
  * @public
  */
-typedef struct cxa_rgbLed_triLed cxa_rgbLed_triLed_t;
+typedef struct cxa_led_runLoop cxa_led_runLoop_t;
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_led_runLoop_scm_setBrightness_t)(cxa_led_runLoop_t *const superIn, const uint8_t brightness_255In);
 
 
 /**
  * @private
  */
-struct cxa_rgbLed_triLed
+struct cxa_led_runLoop
 {
-	cxa_rgbLed_t super;
+	cxa_led_t super;
 
-	cxa_led_t* led_r;
-	cxa_led_t* led_g;
-	cxa_led_t* led_b;
+	cxa_gpio_t* gpio;
 
 	cxa_timeDiff_t td_gp;
 
 	struct
 	{
-		uint8_t r;
-		uint8_t g;
-		uint8_t b;
-	}lastSet;
-
-	struct
-	{
-		uint8_t r;
-		uint8_t g;
-		uint8_t b;
-		bool isOn;
-
+		uint8_t onBrightness_255;
+		bool wasOn;
 		uint32_t onPeriod_ms;
 		uint32_t offPeriod_ms;
 	}blink;
@@ -79,13 +73,26 @@ struct cxa_rgbLed_triLed
 	{
 		uint32_t period_ms;
 	}flash;
+
+	struct
+	{
+		uint8_t lastBrightness_255;
+	}solid;
+
+	struct
+	{
+		cxa_led_runLoop_scm_setBrightness_t setBrightness;
+	}scms;
 };
 
 
 // ******** global function prototypes ********
-void cxa_rgbLed_triLed_init(cxa_rgbLed_triLed_t *const ledIn,
-							cxa_led_t *const led_rIn, cxa_led_t *const led_gIn, cxa_led_t *const led_bIn,
-							int threadIdIn);
+/**
+ * @protected
+ */
+void cxa_led_runLoop_init(cxa_led_runLoop_t *const ledIn,
+						  cxa_led_runLoop_scm_setBrightness_t scm_setBrightnessIn,
+						  int threadIdIn);
 
 
-#endif /* CXA_RGBLED_TRILED_H_ */
+#endif /* CXA_LED_RUNLOOP_H_ */

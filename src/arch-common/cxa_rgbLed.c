@@ -38,17 +38,16 @@
 // ******** global function implementations ********
 void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
 					 cxa_rgbLed_scm_setRgb_t scm_setRgbIn,
-					 cxa_rgbLed_scm_blink_t scm_blinkIn,
 					 cxa_rgbLed_scm_alternateColors_t scm_alternateColorsIn,
 					 cxa_rgbLed_scm_flashOnce_t scm_flashOnceIn)
 {
 	cxa_assert(ledIn);
+	cxa_assert(scm_setRgbIn);
 
 	// save our references
-	ledIn->scm_setRgb = scm_setRgbIn;
-	ledIn->scm_blink = scm_blinkIn;
-	ledIn->scm_alternateColors = scm_alternateColorsIn;
-	ledIn->scm_flashOnce = scm_flashOnceIn;
+	ledIn->scms.setRgb = scm_setRgbIn;
+	ledIn->scms.alternateColors = scm_alternateColorsIn;
+	ledIn->scms.flashOnce = scm_flashOnceIn;
 
 	ledIn->currState = CXA_RGBLED_STATE_SOLID;
 }
@@ -57,10 +56,11 @@ void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
 void cxa_rgbLed_setRgb(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8_t bIn)
 {
 	cxa_assert(ledIn);
-	cxa_assert(ledIn->scm_setRgb);
+
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_RGBLED_STATE_SOLID;
-	ledIn->scm_setRgb(ledIn, rIn, gIn, bIn);
+
+	ledIn->scms.setRgb(ledIn, rIn, gIn, bIn);
 }
 
 
@@ -68,10 +68,8 @@ void cxa_rgbLed_blink(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint8
 					  uint16_t onPeriod_msIn, uint16_t offPeriod_msIn)
 {
 	cxa_assert(ledIn);
-	cxa_assert(ledIn->scm_blink);
-	ledIn->prevState = ledIn->currState;
-	ledIn->currState = CXA_RGBLED_STATE_BLINK;
-	ledIn->scm_blink(ledIn, rIn, gIn, bIn, onPeriod_msIn, offPeriod_msIn);
+
+	cxa_rgbLed_alternateColors(ledIn, rIn, gIn, bIn, onPeriod_msIn, 0, 0, 0, offPeriod_msIn);
 }
 
 
@@ -82,10 +80,12 @@ void cxa_rgbLed_alternateColors(cxa_rgbLed_t *const ledIn,
 							   uint16_t color2Period_msIn)
 {
 	cxa_assert(ledIn);
-	cxa_assert(ledIn->scm_alternateColors);
+	cxa_assert(ledIn->scms.alternateColors);
+
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_RGBLED_STATE_ALTERNATE_COLORS;
-	ledIn->scm_alternateColors(ledIn, r1In, g1In, b1In, color1Period_msIn, r2In, g2In, b2In, color2Period_msIn);
+
+	ledIn->scms.alternateColors(ledIn, r1In, g1In, b1In, color1Period_msIn, r2In, g2In, b2In, color2Period_msIn);
 }
 
 
@@ -93,12 +93,13 @@ void cxa_rgbLed_flashOnce(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, u
 						  uint16_t period_msIn)
 {
 	cxa_assert(ledIn);
-	cxa_assert(ledIn->scm_flashOnce);
+	cxa_assert(ledIn->scms.flashOnce);
 	if( ledIn->currState == CXA_RGBLED_STATE_FLASHONCE) return;
 
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_RGBLED_STATE_FLASHONCE;
-	ledIn->scm_flashOnce(ledIn, rIn, gIn, bIn, period_msIn);
+
+	ledIn->scms.flashOnce(ledIn, rIn, gIn, bIn, period_msIn);
 }
 
 // ******** local function implementations ********
