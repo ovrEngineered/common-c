@@ -57,8 +57,6 @@ struct cxa_led_runLoop
 {
 	cxa_led_t super;
 
-	cxa_gpio_t* gpio;
-
 	cxa_timeDiff_t td_gp;
 
 	struct

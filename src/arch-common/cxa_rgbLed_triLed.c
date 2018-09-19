@@ -19,6 +19,9 @@
 // ******** includes ********
 #include <cxa_assert.h>
 
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
 
@@ -46,7 +49,7 @@ void cxa_rgbLed_triLed_init(cxa_rgbLed_triLed_t *const ledIn,
 	// save our references
 	ledIn->led_r = led_rIn;
 	ledIn->led_g = led_gIn;
-	ledIn->led_r = led_bIn;
+	ledIn->led_b = led_bIn;
 
 	// initialize our superclass
 	cxa_rgbLed_runLoop_init(&ledIn->super, scm_setRgb, threadIdIn)

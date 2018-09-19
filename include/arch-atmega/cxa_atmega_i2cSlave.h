@@ -27,7 +27,7 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_ATM_I2CSLAVE_MAXWRITE_SIZE_BYTES
-#define CXA_ATM_I2CSLAVE_MAXOP_SIZE_BYTES		9
+#define CXA_ATM_I2CSLAVE_MAXOP_SIZE_BYTES		16
 #endif
 
 

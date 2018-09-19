@@ -18,7 +18,9 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
-#include <cxa_runLoop.h>
+
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
 
 
 // ******** local macro definitions ********

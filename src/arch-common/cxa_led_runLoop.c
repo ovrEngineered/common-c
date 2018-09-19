@@ -20,6 +20,9 @@
 #include <cxa_assert.h>
 #include <cxa_runLoop.h>
 
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
 
@@ -106,18 +109,11 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 	switch( ledIn->super.currState )
 	{
 		case CXA_LED_STATE_BLINK:
-			if( cxa_timeDiff_isElapsed_recurring_ms(&ledIn->td_gp, (cxa_gpio_getValue(ledIn->gpio) ? ledIn->blink.onPeriod_ms : ledIn->blink.offPeriod_ms)) )
+			if( cxa_timeDiff_isElapsed_recurring_ms(&ledIn->td_gp, (ledIn->blink.wasOn ? ledIn->blink.onPeriod_ms : ledIn->blink.offPeriod_ms)) )
 			{
-				if( cxa_gpio_getValue(ledIn->gpio) )
-				{
-					ledIn->blink.wasOn = false;
-					ledIn->scms.setBrightness(ledIn, 0);
-				}
-				else
-				{
-					ledIn->blink.wasOn = true;
-					ledIn->scms.setBrightness(ledIn, ledIn->blink.onBrightness_255);
-				}
+				ledIn->blink.wasOn = !ledIn->blink.wasOn;
+
+				ledIn->scms.setBrightness(ledIn, (ledIn->blink.wasOn ? ledIn->blink.onBrightness_255 : 0));
 			}
 			break;
 

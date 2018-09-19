@@ -20,6 +20,9 @@
 #include <cxa_assert.h>
 #include <cxa_runLoop.h>
 
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
 
@@ -131,14 +134,13 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 		case CXA_RGBLED_STATE_ALTERNATE_COLORS:
 			if( cxa_timeDiff_isElapsed_recurring_ms(&ledIn->td_gp, (ledIn->alternate.lastColorIndex == 0) ? ledIn->alternate.colors[0].period_ms : ledIn->alternate.colors[1].period_ms) )
 			{
-				if( ledIn->alternate.lastColorIndex == 0 ) ledIn->alternate.lastColorIndex = 1;
-				else ledIn->alternate.lastColorIndex = 0;
+				ledIn->alternate.lastColorIndex = (ledIn->alternate.lastColorIndex > 0) ? 0 : 1;
 
 				// set our individual brightnesses
 				ledIn->scms.setRgb(ledIn,
 								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
-								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
-								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
+								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].gOn_255,
+								   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].bOn_255);
 			}
 			break;
 
@@ -150,8 +152,8 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 					// set our individual brightnesses
 					ledIn->scms.setRgb(ledIn,
 									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
-									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
-									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255);
+									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].gOn_255,
+									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].bOn_255);
 					cxa_timeDiff_setStartTime_now(&ledIn->td_gp);
 				}
 				else if( ledIn->super.prevState == CXA_RGBLED_STATE_SOLID )

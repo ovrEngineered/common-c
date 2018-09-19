@@ -19,6 +19,9 @@
 // ******** includes ********
 #include <cxa_assert.h>
 
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
 
@@ -58,6 +61,7 @@ void cxa_led_blink(cxa_led_t *const ledIn, uint8_t onBrightness_255In, uint32_t 
 
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_LED_STATE_BLINK;
+
 	ledIn->scm_blink(ledIn, onBrightness_255In, onPeriod_msIn, offPeriod_msIn);
 }
 
@@ -70,6 +74,7 @@ void cxa_led_flashOnce(cxa_led_t *const ledIn, uint8_t brightness_255In, uint32_
 
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_LED_STATE_FLASH_ONCE;
+
 	ledIn->scm_flashOnce(ledIn, brightness_255In, period_msIn);
 }
 
@@ -80,6 +85,7 @@ void cxa_led_setSolid(cxa_led_t *const ledIn, uint8_t brightness_255In)
 
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_LED_STATE_SOLID;
+
 	ledIn->scm_setSolid(ledIn, brightness_255In);
 }
 
