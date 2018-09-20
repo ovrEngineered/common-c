@@ -29,7 +29,7 @@
 // ******** local function prototypes ********
 static bool scm_requestNewValue(cxa_tempSensor_t *const tempSnsIn);
 
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, void* userVarIn);
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -48,7 +48,7 @@ void cxa_tempSensor_adc_init_onePoint(cxa_tempSensor_adc_t *const tempSnsIn, cxa
 	tempSnsIn->onePointCal.vAtKnowTemp = vAtKnownTempIn;
 
 	// register our ADC listener
-	cxa_adcChannel_addListener(tempSnsIn->adc, cb_adcConvComplete, NULL, (void*)tempSnsIn);
+	cxa_adcChannel_addListener(tempSnsIn->adc, cb_adcConvComplete, (void*)tempSnsIn);
 
 	// initialize our super class
 	cxa_tempSensor_init(&tempSnsIn->super, scm_requestNewValue);
@@ -65,7 +65,7 @@ static bool scm_requestNewValue(cxa_tempSensor_t *const superIn)
 }
 
 
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, void* userVarIn)
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn)
 {
 	cxa_tempSensor_adc_t* tempSnsIn = (cxa_tempSensor_adc_t*)userVarIn;
 	cxa_assert(tempSnsIn);

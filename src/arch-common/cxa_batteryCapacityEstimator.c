@@ -28,7 +28,7 @@
 
 
 // ******** local function prototypes ********
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, void* userVarIn);
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -48,7 +48,7 @@ void cxa_batteryCapacityEstimator_init(cxa_batteryCapacityEstimator_t *const bce
 	bceIn->userVar = NULL;
 
 	// register as a listener on our ADC
-	cxa_adcChannel_addListener(bceIn->adc_battVoltage, cb_adcConvComplete, NULL, (void*)bceIn);
+	cxa_adcChannel_addListener(bceIn->adc_battVoltage, cb_adcConvComplete, (void*)bceIn);
 }
 
 
@@ -78,7 +78,7 @@ bool cxa_batteryCapacityEstimator_getValue_withCallback(cxa_batteryCapacityEstim
 
 
 // ******** local function implementations ********
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, void* userVarIn)
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn)
 {
 	cxa_batteryCapacityEstimator_t* bceIn = (cxa_batteryCapacityEstimator_t*)userVarIn;
 	cxa_assert(bceIn);

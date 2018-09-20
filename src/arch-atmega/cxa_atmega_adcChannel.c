@@ -72,7 +72,7 @@ static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 	uint16_t rawVal = ((uint16_t)ADCL << 0) | ((uint16_t)ADCH << 8);
 
 	// notify our listeners
-	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, NAN, (uint8_t*)&rawVal, sizeof(rawVal));
+	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, NAN, rawVal);
 
 	return true;
 }

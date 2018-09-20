@@ -51,13 +51,7 @@ typedef struct cxa_adcChannel cxa_adcChannel_t;
 /**
  * @public
  */
-typedef void (*cxa_adcChannel_cb_conversionComplete_t)(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, void* userVarIn);
-
-
-/**
- * @public
- */
-typedef void (*cxa_adcChannel_cb_conversionComplete_raw_t)(cxa_adcChannel_t *const adcChanIn, const uint8_t* rawValIn, size_t rawValLenIn, void* userVarIn);
+typedef void (*cxa_adcChannel_cb_conversionComplete_t)(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn);
 
 
 /**
@@ -72,7 +66,6 @@ typedef bool (*cxa_adcChannel_scm_startConversion_singleShot_t)(cxa_adcChannel_t
 typedef struct
 {
 	cxa_adcChannel_cb_conversionComplete_t cb_convComp;
-	cxa_adcChannel_cb_conversionComplete_raw_t cb_convComp_raw;
 
 	void *userVar;
 }cxa_adcChannel_listener_t;
@@ -87,6 +80,12 @@ struct cxa_adcChannel
 
 	cxa_array_t listeners;
 	cxa_adcChannel_listener_t listeners_raw[CXA_ADCCHAN_MAXNUM_LISTENERS];
+
+	struct
+	{
+		float voltage;
+		uint16_t raw;
+	}lastConversionValue;
 };
 
 
@@ -102,7 +101,6 @@ void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_s
  */
 void cxa_adcChannel_addListener(cxa_adcChannel_t *const adcChanIn,
 						 cxa_adcChannel_cb_conversionComplete_t cb_convCompIn,
-						 cxa_adcChannel_cb_conversionComplete_raw_t cb_convComp_rawIn,
 						 void* userVarIn);
 
 
@@ -113,9 +111,21 @@ bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn
 
 
 /**
+ * @public
+ */
+float cxa_adcChannel_getLastConversionValue_voltage(cxa_adcChannel_t *const adcChanIn);
+
+
+/**
+ * @public
+ */
+uint16_t cxa_adcChannel_getLastConversionValue_raw(cxa_adcChannel_t *const adcChanIn);
+
+
+/**
  * @protected
  */
-void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, float voltageIn, const uint8_t* rawValIn, size_t rawValLenIn);
+void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, float voltageIn, const uint16_t rawValIn);
 
 
 #endif /* CXA_ADCCHAN_H_ */

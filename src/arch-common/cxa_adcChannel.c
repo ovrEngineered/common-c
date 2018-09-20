@@ -48,16 +48,14 @@ void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_s
 
 void cxa_adcChannel_addListener(cxa_adcChannel_t *const adcChanIn,
 						 cxa_adcChannel_cb_conversionComplete_t cb_convCompIn,
-						 cxa_adcChannel_cb_conversionComplete_raw_t cb_convComp_rawIn,
 						 void* userVarIn)
 {
 	cxa_assert(adcChanIn);
-	cxa_assert( (cb_convCompIn != NULL) || (cb_convComp_rawIn != NULL) );
+	cxa_assert( cb_convCompIn != NULL );
 
 	cxa_adcChannel_listener_t newListener =
 	{
 			.cb_convComp = cb_convCompIn,
-			.cb_convComp_raw = cb_convComp_rawIn,
 			.userVar = userVarIn
 	};
 
@@ -73,16 +71,35 @@ bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn
 }
 
 
-void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, float voltageIn, const uint8_t* rawValIn, size_t rawValLenIn)
+float cxa_adcChannel_getLastConversionValue_voltage(cxa_adcChannel_t *const adcChanIn)
 {
 	cxa_assert(adcChanIn);
+
+	return adcChanIn->lastConversionValue.voltage;
+}
+
+
+uint16_t cxa_adcChannel_getLastConversionValue_raw(cxa_adcChannel_t *const adcChanIn)
+{
+	cxa_assert(adcChanIn);
+
+	return adcChanIn->lastConversionValue.raw;
+}
+
+
+void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, float voltageIn, const uint16_t rawValIn)
+{
+	cxa_assert(adcChanIn);
+
+	// save internally
+	adcChanIn->lastConversionValue.voltage = voltageIn;
+	adcChanIn->lastConversionValue.raw = rawValIn;
 
 	cxa_array_iterate(&adcChanIn->listeners, currListener, cxa_adcChannel_listener_t)
 	{
 		if( currListener == NULL ) continue;
 
-		if( currListener->cb_convComp != NULL ) currListener->cb_convComp(adcChanIn, voltageIn, currListener->userVar);
-		if( currListener->cb_convComp_raw != NULL ) currListener->cb_convComp_raw(adcChanIn, rawValIn, rawValLenIn, currListener->userVar);
+		if( currListener->cb_convComp != NULL ) currListener->cb_convComp(adcChanIn, voltageIn, rawValIn, currListener->userVar);
 	}
 }
 
