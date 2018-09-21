@@ -24,7 +24,7 @@
 
 
 // ******** local macro definitions ********
-#define ADPS_CLOCK_DIV				0x03
+#define ADPS_CLOCK_DIV				0x07
 
 
 // ******** local type definitions ********
