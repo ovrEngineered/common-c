@@ -89,6 +89,8 @@ struct cxa_rgbLed
 	cxa_rgbLed_state_t prevState;
 	cxa_rgbLed_state_t currState;
 
+	uint8_t maxBright_pcnt100;
+
 	struct
 	{
 		cxa_rgbLed_scm_setRgb_t setRgb;
@@ -106,6 +108,12 @@ void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
 					 cxa_rgbLed_scm_setRgb_t scm_setRgbIn,
 					 cxa_rgbLed_scm_alternateColors_t scm_alternateColorsIn,
 					 cxa_rgbLed_scm_flashOnce_t scm_flashOnceIn);
+
+
+/**
+ * @public
+ */
+void cxa_rgbLed_setMaxBright_pcnt100(cxa_rgbLed_t *const ledIn, const uint8_t max_pcnt100In);
 
 
 /**

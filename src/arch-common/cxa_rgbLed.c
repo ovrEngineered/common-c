@@ -24,6 +24,7 @@
 
 
 // ******** local macro definitions ********
+#define SCALE_COLOR(colorIn)		(colorIn) = ((colorIn) * (ledIn->maxBright_pcnt100 / 100.0))
 
 
 // ******** local type definitions ********
@@ -50,6 +51,15 @@ void cxa_rgbLed_init(cxa_rgbLed_t *const ledIn,
 	ledIn->scms.flashOnce = scm_flashOnceIn;
 
 	ledIn->currState = CXA_RGBLED_STATE_SOLID;
+	ledIn->maxBright_pcnt100 = 100;
+}
+
+
+void cxa_rgbLed_setMaxBright_pcnt100(cxa_rgbLed_t *const ledIn, const uint8_t max_pcnt100In)
+{
+	cxa_assert(ledIn);
+
+	ledIn->maxBright_pcnt100 = max_pcnt100In;
 }
 
 
@@ -59,6 +69,10 @@ void cxa_rgbLed_setRgb(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, uint
 
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_RGBLED_STATE_SOLID;
+
+	SCALE_COLOR(rIn);
+	SCALE_COLOR(gIn);
+	SCALE_COLOR(bIn);
 
 	ledIn->scms.setRgb(ledIn, rIn, gIn, bIn);
 }
@@ -85,6 +99,14 @@ void cxa_rgbLed_alternateColors(cxa_rgbLed_t *const ledIn,
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_RGBLED_STATE_ALTERNATE_COLORS;
 
+	SCALE_COLOR(r1In);
+	SCALE_COLOR(g1In);
+	SCALE_COLOR(b1In);
+
+	SCALE_COLOR(r2In);
+	SCALE_COLOR(g2In);
+	SCALE_COLOR(b2In);
+
 	ledIn->scms.alternateColors(ledIn, r1In, g1In, b1In, color1Period_msIn, r2In, g2In, b2In, color2Period_msIn);
 }
 
@@ -98,6 +120,10 @@ void cxa_rgbLed_flashOnce(cxa_rgbLed_t *const ledIn, uint8_t rIn, uint8_t gIn, u
 
 	ledIn->prevState = ledIn->currState;
 	ledIn->currState = CXA_RGBLED_STATE_FLASHONCE;
+
+	SCALE_COLOR(rIn);
+		SCALE_COLOR(gIn);
+		SCALE_COLOR(bIn);
 
 	ledIn->scms.flashOnce(ledIn, rIn, gIn, bIn, period_msIn);
 }
