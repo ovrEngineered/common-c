@@ -32,6 +32,8 @@
 
 // ******** local function prototypes ********
 static bool isChannelA(cxa_atmega_timer8_ocr_t const* ocrIn);
+static void setMode(cxa_atmega_timer8_ocr_t const* ocrIn, const cxa_atmega_timer8_ocr_mode_t modeIn);
+static void enableOutputDrivers(cxa_atmega_timer8_ocr_t const* ocrIn, const bool driverEnableIn);
 
 
 // ********  local variable declarations *********
@@ -43,47 +45,8 @@ void cxa_atmega_timer8_ocr_configure(cxa_atmega_timer8_ocr_t *const ocrIn, const
 	cxa_assert(ocrIn);
 	cxa_assert(ocrIn->parent);
 
-	switch( ocrIn->parent->id )
-	{
-		case CXA_ATM_TIMER8_0:
-			if( isChannelA(ocrIn) )
-			{
-				TCCR0A = (TCCR0A & ~(0x03 << 6)) | (modeIn << 6);
-				DDRD = (DDRD & ~(1 << 6)) | (1 << 6);				// make sure to enable output drivers
-			}
-			else
-			{
-				TCCR0A = (TCCR0A & ~(0x03 << 4)) | (modeIn << 4);
-				DDRD = (DDRD & ~(1 << 5)) | (1 << 5);				// make sure to enable output drivers
-			}
-			break;
-
-		case CXA_ATM_TIMER8_1:
-			if( isChannelA(ocrIn) )
-			{
-				TCCR1A = (TCCR1A & ~(0x03 << 6)) | (modeIn << 6);
-				DDRB = (DDRB & ~(1 << 1)) | (1 << 1);				// make sure to enable output drivers
-			}
-			else
-			{
-				TCCR1A = (TCCR1A & ~(0x03 << 4)) | (modeIn << 4);
-				DDRB = (DDRB & ~(1 << 2)) | (1 << 2);				// make sure to enable output drivers
-			}
-			break;
-
-		case CXA_ATM_TIMER8_2:
-			if( isChannelA(ocrIn) )
-			{
-				TCCR2A = (TCCR2A & ~(0x03 << 6)) | (modeIn << 6);
-				DDRB = (DDRB & ~(1 << 3)) | (1 << 3);				// make sure to enable output drivers
-			}
-			else
-			{
-				TCCR2A = (TCCR2A & ~(0x03 << 4)) | (modeIn << 4);
-				DDRD = (DDRD & ~(1 << 3)) | (1 << 3);				// make sure to enable output drivers
-			}
-			break;
-	}
+	setMode(ocrIn, modeIn);
+	cxa_atmega_timer8_ocr_setValue(ocrIn, 0);
 }
 
 
@@ -92,27 +55,31 @@ void cxa_atmega_timer8_ocr_setValue(cxa_atmega_timer8_ocr_t *const ocrIn, const 
 	cxa_assert(ocrIn);
 	cxa_assert(ocrIn->parent);
 
+	uint8_t prevValue = 0;
 	switch( ocrIn->parent->id )
 	{
 		case CXA_ATM_TIMER8_0:
 			if( isChannelA(ocrIn) )
 			{
+				prevValue = OCR0A;
 				OCR0A = valueIn;
 			}
 			else
 			{
+				prevValue = OCR0B;
 				OCR0B = valueIn;
 			}
-			break;
 			break;
 
 		case CXA_ATM_TIMER8_1:
 			if( isChannelA(ocrIn) )
 			{
+				prevValue = OCR1A;
 				OCR1A = valueIn;
 			}
 			else
 			{
+				prevValue = OCR1B;
 				OCR1B = valueIn;
 			}
 			break;
@@ -120,14 +87,20 @@ void cxa_atmega_timer8_ocr_setValue(cxa_atmega_timer8_ocr_t *const ocrIn, const 
 		case CXA_ATM_TIMER8_2:
 			if( isChannelA(ocrIn) )
 			{
+				prevValue = OCR2A;
 				OCR2A = valueIn;
 			}
 			else
 			{
+				prevValue = OCR2B;
 				OCR2B = valueIn;
 			}
 			break;
 	}
+
+	// enable or disable our output drivers as needed
+	if( (prevValue > 0) && (valueIn == 0) ) enableOutputDrivers(ocrIn, false);
+	if( (prevValue == 0) && (valueIn > 0) ) enableOutputDrivers(ocrIn, true);
 }
 
 
@@ -137,4 +110,88 @@ static bool isChannelA(cxa_atmega_timer8_ocr_t const* ocrIn)
 	cxa_assert(ocrIn);
 
 	return (ocrIn == &ocrIn->parent->ocrA);
+}
+
+
+static void setMode(cxa_atmega_timer8_ocr_t const* ocrIn, const cxa_atmega_timer8_ocr_mode_t modeIn)
+{
+	cxa_assert(ocrIn);
+
+	switch( ocrIn->parent->id )
+	{
+		case CXA_ATM_TIMER8_0:
+			if( isChannelA(ocrIn) )
+			{
+				TCCR0A = (TCCR0A & ~(0x03 << 6)) | (modeIn << 6);
+			}
+			else
+			{
+				TCCR0A = (TCCR0A & ~(0x03 << 4)) | (modeIn << 4);
+			}
+			break;
+
+		case CXA_ATM_TIMER8_1:
+			if( isChannelA(ocrIn) )
+			{
+				TCCR1A = (TCCR1A & ~(0x03 << 6)) | (modeIn << 6);
+			}
+			else
+			{
+				TCCR1A = (TCCR1A & ~(0x03 << 4)) | (modeIn << 4);
+			}
+			break;
+
+		case CXA_ATM_TIMER8_2:
+			if( isChannelA(ocrIn) )
+			{
+				TCCR2A = (TCCR2A & ~(0x03 << 6)) | (modeIn << 6);
+			}
+			else
+			{
+				TCCR2A = (TCCR2A & ~(0x03 << 4)) | (modeIn << 4);
+			}
+			break;
+	}
+}
+
+
+static void enableOutputDrivers(cxa_atmega_timer8_ocr_t const* ocrIn, const bool driverEnableIn)
+{
+	cxa_assert(ocrIn);
+
+	switch( ocrIn->parent->id )
+	{
+		case CXA_ATM_TIMER8_0:
+			if( isChannelA(ocrIn) )
+			{
+				DDRD = (DDRD & ~(1 << 6)) | (driverEnableIn << 6);
+			}
+			else
+			{
+				DDRD = (DDRD & ~(1 << 5)) | (driverEnableIn << 5);
+			}
+			break;
+
+		case CXA_ATM_TIMER8_1:
+			if( isChannelA(ocrIn) )
+			{
+				DDRB = (DDRB & ~(1 << 1)) | (driverEnableIn << 1);
+			}
+			else
+			{
+				DDRB = (DDRB & ~(1 << 2)) | (driverEnableIn << 2);
+			}
+			break;
+
+		case CXA_ATM_TIMER8_2:
+			if( isChannelA(ocrIn) )
+			{
+				DDRB = (DDRB & ~(1 << 3)) | (driverEnableIn << 3);
+			}
+			else
+			{
+				DDRD = (DDRD & ~(1 << 3)) | (driverEnableIn << 3);
+			}
+			break;
+	}
 }
