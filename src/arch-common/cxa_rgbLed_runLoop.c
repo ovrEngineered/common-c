@@ -149,17 +149,21 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			{
 				if( ledIn->super.prevState == CXA_RGBLED_STATE_ALTERNATE_COLORS )
 				{
-					// set our individual brightnesses
-					ledIn->scms.setRgb(ledIn,
-									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
-									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].gOn_255,
-									   ledIn->alternate.colors[ledIn->alternate.lastColorIndex].bOn_255);
-					cxa_timeDiff_setStartTime_now(&ledIn->td_gp);
+					// call the superclass to reset the internal state
+					cxa_rgbLed_alternateColors(&ledIn->super,
+							ledIn->alternate.colors[ledIn->alternate.lastColorIndex].rOn_255,
+							ledIn->alternate.colors[ledIn->alternate.lastColorIndex].gOn_255,
+							ledIn->alternate.colors[ledIn->alternate.lastColorIndex].bOn_255,
+							ledIn->alternate.colors[ledIn->alternate.lastColorIndex].period_ms,
+							ledIn->alternate.colors[!ledIn->alternate.lastColorIndex].rOn_255,
+							ledIn->alternate.colors[!ledIn->alternate.lastColorIndex].gOn_255,
+							ledIn->alternate.colors[!ledIn->alternate.lastColorIndex].bOn_255,
+							ledIn->alternate.colors[!ledIn->alternate.lastColorIndex].period_ms);
 				}
 				else if( ledIn->super.prevState == CXA_RGBLED_STATE_SOLID )
 				{
-					// set our individual brightnesses
-					ledIn->scms.setRgb(ledIn, ledIn->solid.lastBrightnessR_255, ledIn->solid.lastBrightnessG_255, ledIn->solid.lastBrightnessB_255);
+					// call the superclass to reset the internal state
+					cxa_rgbLed_setRgb(&ledIn->super, ledIn->solid.lastBrightnessR_255, ledIn->solid.lastBrightnessG_255, ledIn->solid.lastBrightnessB_255);
 				}
 			}
 			break;
