@@ -96,7 +96,7 @@ static void scm_readBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn, uin
 	if( sendStopIn ) i2c_master_stop(handle);
 
 	// commit the read to the bus
-	esp_err_t ret = i2c_master_cmd_begin(i2cIn->i2cPort, handle, 2000 * portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(i2cIn->i2cPort, handle, 500 * portTICK_RATE_MS);
 
 	// create our return buffer
 	cxa_fixedByteBuffer_t fbb_readBytes;
@@ -137,7 +137,7 @@ static void scm_readBytesWithControlBytes(cxa_i2cMaster_t *const superIn,
 	if( sendStopIn ) i2c_master_stop(handle);
 
 	// commit the read to the bus
-	esp_err_t ret = i2c_master_cmd_begin(i2cIn->i2cPort, handle, 2000 * portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(i2cIn->i2cPort, handle, 500 * portTICK_RATE_MS);
 
 	// create our return buffer
 	cxa_fixedByteBuffer_t fbb_readBytes;
@@ -166,7 +166,7 @@ static void scm_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn, ui
 	if( sendStopIn ) i2c_master_stop(handle);
 
 	// commit the write to the bus
-	esp_err_t ret = i2c_master_cmd_begin(i2cIn->i2cPort, handle, 2000 * portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(i2cIn->i2cPort, handle, 500 * portTICK_RATE_MS);
 
 	// return our success or failure
 	cxa_i2cMaster_notify_writeComplete(&i2cIn->super, (ret == ESP_OK));
