@@ -32,6 +32,7 @@
 
 // ******** local function prototypes ********
 static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn);
+static uint16_t scm_getMaxRawValue(cxa_adcChannel_t *const superIn);
 
 
 // ********  local variable declarations *********
@@ -51,7 +52,7 @@ void cxa_atmega_adcChannel_init(cxa_atmega_adcChannel_t* const adcChanIn, const 
 	DIDR0 |= (1 << adcChanIn->chanId);
 
 	// initialize our super class
-	cxa_adcChannel_init(&adcChanIn->super, scm_startConversion_singleShot);
+	cxa_adcChannel_init(&adcChanIn->super, scm_startConversion_singleShot, scm_getMaxRawValue);
 }
 
 
@@ -75,4 +76,10 @@ static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, NAN, rawVal);
 
 	return true;
+}
+
+
+static uint16_t scm_getMaxRawValue(cxa_adcChannel_t *const superIn)
+{
+	return 1023;
 }
