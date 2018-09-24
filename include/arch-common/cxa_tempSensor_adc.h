@@ -37,25 +37,72 @@
 
 
 // ******** global type definitions *********
-typedef struct
+/**
+ * @public
+ */
+typedef struct cxa_tempSensor_adc cxa_tempSensor_adc_t;
+
+
+/**
+ * private
+ */
+typedef enum
+{
+	CXA_TEMPSENSOR_CALTYPE_ONEPOINTVOLTAGE,
+	CXA_TEMPSENSOR_CALTYPE_BETA,
+}cxa_tempSensor_calibrationType_t;
+
+
+/**
+ * @private
+ */
+struct cxa_tempSensor_adc
 {
 	cxa_tempSensor_t super;
 
 	cxa_adcChannel_t* adc;
 
-	struct
-	{
-		float knownTemp_c;
-		float vAtKnowTemp;
-	} onePointCal;
+	cxa_tempSensor_calibrationType_t calibrationType;
 
-}cxa_tempSensor_adc_t;
+	union
+	{
+		struct
+		{
+			float knownTemp_c;
+			float vAtKnownTemp;
+		} onePointCal;
+
+		struct
+		{
+			float r1_ohm;
+			float r0_ohm;
+			float t0_c;
+			float beta;
+		} beta;
+	} calibrationVals;
+};
 
 
 
 // ******** global function prototypes ********
-void cxa_tempSensor_adc_init_onePoint(cxa_tempSensor_adc_t *const tempSnsIn, cxa_adcChannel_t* adcChanIn,
-							 float knownTemp_cIn, float vAtKnownTempIn);
+void cxa_tempSensor_adc_init_voltageOnePoint(cxa_tempSensor_adc_t *const tempSnsIn, cxa_adcChannel_t *const adcChanIn,
+							 	 	 	 	 float knownTemp_cIn, float vAtKnownTempIn);
+
+/**
+ * @public
+ * Initializes temp sensor using "Beta Parameter" calibration
+ *
+ * @param tempSnsIn pointer to a pre-allocated tempSensor object
+ * @param adcChanIn pointer to a pre-initialized ADC channel used
+ * 					to measure the temperature
+ * @param r1_ohmIn	resistance of the top resistor of the voltage divider
+ * 					(thermistor is the bottom resistor)
+ * @param r0_ohmIn	resistance of the thermistor at reference temperature t0
+ * @param t0_cIn	reference temperature (usually 25C)
+ * @param betaIn	beta value of the thermistor
+ */
+void cxa_tempSensor_adc_init_beta(cxa_tempSensor_adc_t *const tempSnsIn, cxa_adcChannel_t *const adcChanIn,
+								  float r1_ohmIn, float r0_ohmIn, float t0_cIn, float betaIn);
 
 
 #endif /* CXA_TEMPSENSOR_ADC_H_ */
