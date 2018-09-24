@@ -21,7 +21,7 @@
 #include <cxa_assert.h>
 #include <cxa_network_wifiManager.h>
 
-#include "apps/sntp/sntp.h"
+#include "lwip/apps/sntp.h"
 #include <sys/time.h>
 #include <time.h>
 
