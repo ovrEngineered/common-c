@@ -61,6 +61,12 @@ typedef bool (*cxa_adcChannel_scm_startConversion_singleShot_t)(cxa_adcChannel_t
 
 
 /**
+ * @protected
+ */
+typedef uint16_t (*cxa_adcChannel_scm_getMaxRawValue_t)(cxa_adcChannel_t *const superIn);
+
+
+/**
  * @private
  */
 typedef struct
@@ -76,8 +82,6 @@ typedef struct
  */
 struct cxa_adcChannel
 {
-	cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ss;
-
 	cxa_array_t listeners;
 	cxa_adcChannel_listener_t listeners_raw[CXA_ADCCHAN_MAXNUM_LISTENERS];
 
@@ -86,6 +90,12 @@ struct cxa_adcChannel
 		float voltage;
 		uint16_t raw;
 	}lastConversionValue;
+
+	struct
+	{
+		cxa_adcChannel_scm_startConversion_singleShot_t startConv_ss;
+		cxa_adcChannel_scm_getMaxRawValue_t getMaxRawValue;
+	}scms;
 };
 
 
@@ -93,7 +103,9 @@ struct cxa_adcChannel
 /**
  * @protected
  */
-void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn);
+void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn,
+						 cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn,
+						 cxa_adcChannel_scm_getMaxRawValue_t scm_getMaxRawValueIn);
 
 
 /**
@@ -120,6 +132,12 @@ float cxa_adcChannel_getLastConversionValue_voltage(cxa_adcChannel_t *const adcC
  * @public
  */
 uint16_t cxa_adcChannel_getLastConversionValue_raw(cxa_adcChannel_t *const adcChanIn);
+
+
+/**
+ * @public
+ */
+uint16_t cxa_adcChannel_getMaxRawValue(cxa_adcChannel_t *const adcChanIn);
 
 
 /**

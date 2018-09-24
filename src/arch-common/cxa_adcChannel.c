@@ -33,13 +33,17 @@
 
 
 // ******** global function implementations ********
-void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn, cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn)
+void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn,
+						 cxa_adcChannel_scm_startConversion_singleShot_t scm_startConv_ssIn,
+						 cxa_adcChannel_scm_getMaxRawValue_t scm_getMaxRawValueIn)
 {
 	cxa_assert(adcChanIn);
 	cxa_assert(scm_startConv_ssIn);
+	cxa_assert(scm_getMaxRawValueIn);
 
 	// save our references
-	adcChanIn->scm_startConv_ss = scm_startConv_ssIn;
+	adcChanIn->scms.startConv_ss = scm_startConv_ssIn;
+	adcChanIn->scms.getMaxRawValue = scm_getMaxRawValueIn;
 
 	// setup our listeners
 	cxa_array_initStd(&adcChanIn->listeners, adcChanIn->listeners_raw);
@@ -66,8 +70,8 @@ void cxa_adcChannel_addListener(cxa_adcChannel_t *const adcChanIn,
 bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn)
 {
 	cxa_assert(adcChanIn);
-	cxa_assert(adcChanIn->scm_startConv_ss);
-	return adcChanIn->scm_startConv_ss(adcChanIn);
+
+	return adcChanIn->scms.startConv_ss(adcChanIn);
 }
 
 
@@ -84,6 +88,14 @@ uint16_t cxa_adcChannel_getLastConversionValue_raw(cxa_adcChannel_t *const adcCh
 	cxa_assert(adcChanIn);
 
 	return adcChanIn->lastConversionValue.raw;
+}
+
+
+uint16_t cxa_adcChannel_getMaxRawValue(cxa_adcChannel_t *const adcChanIn)
+{
+	cxa_assert(adcChanIn);
+
+	return adcChanIn->scms.getMaxRawValue(adcChanIn);
 }
 
 
