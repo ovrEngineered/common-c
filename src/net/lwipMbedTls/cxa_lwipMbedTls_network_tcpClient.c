@@ -26,7 +26,7 @@
 #include <cxa_stringUtils.h>
 #include <cxa_uniqueId.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
 
 #include <lwip/err.h>
