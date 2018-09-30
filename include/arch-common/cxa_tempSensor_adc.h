@@ -34,6 +34,7 @@
 
 
 // ******** global macro definitions ********
+#define CXA_CELSIUS_TO_KELVIN_OFFSET			273.15
 
 
 // ******** global type definitions *********

@@ -25,7 +25,6 @@
 
 
 // ******** local macro definitions ********
-#define KELVIN_OFFSET			273.15
 
 
 // ******** local type definitions ********
@@ -115,9 +114,10 @@ static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVolt
 			if( (rawValueIn > 0) && (rawValueIn != maxRawValue) )
 			{
 				float r_therm = -((float)rawValueIn * tempSnsIn->calibrationVals.beta.r1_ohm) / ((float)rawValueIn - (float)maxRawValue);
-				temp_c = (tempSnsIn->calibrationVals.beta.beta * (tempSnsIn->calibrationVals.beta.t0_c + KELVIN_OFFSET)) /
-						 (tempSnsIn->calibrationVals.beta.beta + ((tempSnsIn->calibrationVals.beta.t0_c + KELVIN_OFFSET) * log10(r_therm / tempSnsIn->calibrationVals.beta.r0_ohm))) -
-						 KELVIN_OFFSET;
+				temp_c = (tempSnsIn->calibrationVals.beta.beta * (tempSnsIn->calibrationVals.beta.t0_c + CXA_CELSIUS_TO_KELVIN_OFFSET)) /
+						 (tempSnsIn->calibrationVals.beta.beta + ((tempSnsIn->calibrationVals.beta.t0_c + CXA_CELSIUS_TO_KELVIN_OFFSET) * log(r_therm / tempSnsIn->calibrationVals.beta.r0_ohm))) -
+						 CXA_CELSIUS_TO_KELVIN_OFFSET;
+				cxa_logger_stepDebug_msg("r_therm: %.2f   temp_c: %.2f", r_therm, temp_c);
 			}
 
 			cxa_tempSensor_notify_updatedValue(&tempSnsIn->super, true, temp_c);
