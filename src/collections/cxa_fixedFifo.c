@@ -211,6 +211,14 @@ size_t cxa_fixedFifo_getFreeSize_elems(cxa_fixedFifo_t *const fifoIn)
 }
 
 
+size_t cxa_fixedFifo_getMaxSize_elems(cxa_fixedFifo_t *const fifoIn)
+{
+	cxa_assert(fifoIn);
+
+	return fifoIn->maxNumElements;
+}
+
+
 bool cxa_fixedFifo_isFull(cxa_fixedFifo_t *const fifoIn)
 {
 	cxa_assert(fifoIn);

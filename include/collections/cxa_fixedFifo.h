@@ -319,6 +319,17 @@ size_t cxa_fixedFifo_getFreeSize_elems(cxa_fixedFifo_t *const fifoIn);
 
 /**
  * @public
+ * @brief Determines the maximum number of elements in the FIFO.
+ *
+ * @param[in] fifoIn pointer to the pre-initialized FIFO object
+ *
+ * @return the maximum number of the elements the FIFO can hold
+ */
+size_t cxa_fixedFifo_getMaxSize_elems(cxa_fixedFifo_t *const fifoIn);
+
+
+/**
+ * @public
  * @brief Determines whether the FIFO is full (cannot hold any more elements).
  *
  * @param[in] fifoIn pointer to the pre-initialized FIFO object
