@@ -348,7 +348,7 @@ static bool scm_handleRequest_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	cxa_assert(remainingTopicIn);
 	cxa_assert(msgIn);
 
-	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
+	cxa_logger_trace_untermString(&superIn->logger, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
 
 	char *methodName, *id;
 	size_t methodNameLen_bytes, idLen_bytes;
@@ -407,7 +407,7 @@ static bool scm_handleRequest_downstream(cxa_mqtt_rpc_node_t *const superIn,
 		}
 
 		// if we made it here, it is bound for a unknown method
-		cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_WARN, "unknown method: '", currTopic, currTopicLen_bytes, "'");
+		cxa_logger_warn_untermString(&superIn->logger, "unknown method: '", currTopic, currTopicLen_bytes, "'");
 		cxa_linkedField_t *lf_payload, *lf_retPayload;
 		cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
 		if( respMsg != NULL ) sendResponse(superIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_METHOD_DNE, respMsg);
@@ -423,7 +423,7 @@ static bool scm_handleRequest_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	}
 
 	// if we made it here, it is bound for an unknown subnode
-	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_WARN, "unknown subNode: '", currTopic, currTopicLen_bytes, "'");
+	cxa_logger_warn_untermString(&superIn->logger, "unknown subNode: '", currTopic, currTopicLen_bytes, "'");
 	cxa_linkedField_t *lf_payload, *lf_retPayload;
 	cxa_mqtt_message_t* respMsg = prepForResponse(superIn, msgIn, &lf_payload, &lf_retPayload);
 	if( respMsg != NULL ) sendResponse(superIn, CXA_MQTT_RPC_METHODRETVAL_FAIL_NODE_DNE, respMsg);

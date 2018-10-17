@@ -164,7 +164,7 @@ static void handleMessage_connect(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cxa_
 			break;
 
 		case CXA_MQTT_RPC_NODE_BRIDGE_AUTH_DISALLOW:
-			cxa_logger_log_untermString(&nodeIn->super.logger, CXA_LOG_LEVEL_WARN, "client not authorized: '", clientId, clientIdLen_bytes, "'");
+			cxa_logger_warn_untermString(&nodeIn->super.logger, "client not authorized: '", clientId, clientIdLen_bytes, "'");
 			sendMessage_connack(nodeIn, false, CXA_MQTT_CONNACK_RETCODE_REFUSED_BADUSERNAMEPASSWORD);
 			break;
 

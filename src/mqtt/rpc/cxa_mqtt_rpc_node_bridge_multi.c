@@ -127,7 +127,7 @@ static cxa_mqtt_rpc_node_bridge_authorization_t bridgeAuthCb(char *const clientI
 
 		if( cxa_stringUtils_equals(currRemoteNode->clientId, clientIdIn) )
 		{
-			cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_DEBUG, "reauth attempt for '", clientIdIn, clientIdLen_bytes, "'");
+			cxa_logger_debug_untermString(&nodeIn->super.super.logger, "reauth attempt for '", clientIdIn, clientIdLen_bytes, "'");
 			return CXA_MQTT_RPC_NODE_BRIDGE_AUTH_ALLOW;
 		}
 	}
@@ -182,7 +182,7 @@ static void scm_handleMessage_upstream(cxa_mqtt_rpc_node_t *const superIn, cxa_m
 	// this _may_ be our client state message...if so, we don't need to do anything
 	if( cxa_stringUtils_endsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_CONNSTATE_STREAM_NAME) ) return;
 
-	cxa_logger_log_untermString(&nodeIn->super.super.logger, CXA_LOG_LEVEL_TRACE, "<< '", topicName, topicNameLen_bytes, "'");
+	cxa_logger_trace_untermString(&nodeIn->super.super.logger, "<< '", topicName, topicNameLen_bytes, "'");
 
 	if( cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, "/", 1) ||
 		cxa_stringUtils_startsWith_withLengths(topicName, topicNameLen_bytes, CXA_MQTT_RPCNODE_LOCALROOT_PREFIX, strlen(CXA_MQTT_RPCNODE_LOCALROOT_PREFIX)))
@@ -248,7 +248,7 @@ static bool scm_handleMessage_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	cxa_assert(remainingTopicIn);
 	cxa_assert(msgIn);
 
-	cxa_logger_log_untermString(&superIn->logger, CXA_LOG_LEVEL_TRACE, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
+	cxa_logger_trace_untermString(&superIn->logger, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
 
 	char *methodName, *id;
 	size_t methodNameLen_bytes, idLen_bytes;

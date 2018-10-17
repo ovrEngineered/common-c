@@ -636,7 +636,7 @@ static void handleMessage_publish(cxa_mqtt_client_t *const clientIn, cxa_mqtt_me
 	size_t payloadSize_bytes;
 	if( cxa_mqtt_message_publish_getTopicName(msgIn, &topicName, &topicNameLen_bytes) && cxa_mqtt_message_publish_getPayload(msgIn, &lf_payload) )
 	{
-		cxa_logger_log_untermString(&clientIn->logger, CXA_LOG_LEVEL_INFO, "got PUBLISH '", topicName, topicNameLen_bytes, "'");
+		cxa_logger_info_untermString(&clientIn->logger, "got PUBLISH '", topicName, topicNameLen_bytes, "'");
 
 		payloadSize_bytes = cxa_linkedField_getSize_bytes(lf_payload);
 		payload = (payloadSize_bytes > 0) ? cxa_linkedField_get_pointerToIndex(lf_payload, 0) : NULL;
