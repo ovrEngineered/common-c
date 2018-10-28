@@ -19,6 +19,7 @@
 // ******** includes ********
 #include <avr/io.h>
 #include <avr/boot.h>
+#include <stdio.h>
 
 
 // ******** local macro definitions ********
