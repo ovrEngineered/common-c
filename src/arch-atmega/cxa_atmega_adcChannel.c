@@ -31,7 +31,7 @@
 
 
 // ******** local function prototypes ********
-static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn);
+static void scm_startConversion_singleShot(cxa_adcChannel_t *const superIn);
 static uint16_t scm_getMaxRawValue(cxa_adcChannel_t *const superIn);
 
 
@@ -57,7 +57,7 @@ void cxa_atmega_adcChannel_init(cxa_atmega_adcChannel_t* const adcChanIn, const 
 
 
 // ******** local function implementations ********
-static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
+static void scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 {
 	cxa_atmega_adcChannel_t* adcChanIn = (cxa_atmega_adcChannel_t*)superIn;
 	cxa_assert(superIn);
@@ -73,9 +73,7 @@ static bool scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 	uint16_t rawVal = ((uint16_t)ADCL << 0) | ((uint16_t)ADCH << 8);
 
 	// notify our listeners
-	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, NAN, rawVal);
-
-	return true;
+	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, true, NAN, rawVal);
 }
 
 
