@@ -19,6 +19,7 @@
 // ******** includes ********
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
+#include <math.h>
 
 
 // ******** local macro definitions ********
@@ -28,7 +29,7 @@
 
 
 // ******** local function prototypes ********
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn);
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, bool wasSuccessfulIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -64,24 +65,24 @@ bool cxa_batteryCapacityEstimator_getValue_withCallback(cxa_batteryCapacityEstim
 	bceIn->cb_updateValue = cbIn;
 	bceIn->userVar = userVarIn;
 
-	// try to start our conversion
-	bool retVal = cxa_adcChannel_startConversion_singleShot(bceIn->adc_battVoltage);
+	// start our conversion
+	cxa_adcChannel_startConversion_singleShot(bceIn->adc_battVoltage);
 
-	// cleanup if we failed to start
-	if( !retVal )
-	{
-		bceIn->cb_updateValue = NULL;
-		bceIn->userVar = NULL;
-	}
-	return retVal;
+	return true;
 }
 
 
 // ******** local function implementations ********
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn)
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, bool wasSuccessfulIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn)
 {
 	cxa_batteryCapacityEstimator_t* bceIn = (cxa_batteryCapacityEstimator_t*)userVarIn;
 	cxa_assert(bceIn);
+
+	if( !wasSuccessfulIn )
+	{
+		if( bceIn->cb_updateValue != NULL ) bceIn->cb_updateValue(bceIn, false, NAN, bceIn->userVar);
+		return;
+	}
 
 	// adjust our read voltage
 	readVoltageIn *= bceIn->battVoltMult;
@@ -91,7 +92,7 @@ static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVolt
 	battPcnt = CXA_MIN(battPcnt, 1.0);
 
 	// call our callback
-	if( bceIn->cb_updateValue != NULL ) bceIn->cb_updateValue(bceIn, battPcnt, bceIn->userVar);
+	if( bceIn->cb_updateValue != NULL ) bceIn->cb_updateValue(bceIn, true, battPcnt, bceIn->userVar);
 
 	// cleanup
 	bceIn->cb_updateValue = NULL;

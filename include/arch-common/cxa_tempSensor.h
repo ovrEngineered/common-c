@@ -38,6 +38,11 @@
 #define CXA_TEMPSENSE_CTOF(degCIn)			(((degCIn) * 1.8) + 32.0)
 
 
+#ifndef CXA_TEMPSENSE_MAXNUM_LISTENERS
+#define CXA_TEMPSENSE_MAXNUM_LISTENERS			1
+#endif
+
+
 // ******** global type definitions *********
 /**
  * @public
@@ -54,7 +59,17 @@ typedef void (*cxa_tempSensor_cb_updatedValue_t)(cxa_tempSensor_t *const tmpSnsI
 /**
  * @protected
  */
-typedef bool (*cxa_tempSensor_scm_requestNewValue_t)(cxa_tempSensor_t *const superIn);
+typedef void (*cxa_tempSensor_scm_requestNewValue_t)(cxa_tempSensor_t *const superIn);
+
+
+/**
+ * @private
+ */
+typedef struct
+{
+	cxa_tempSensor_cb_updatedValue_t cb_onTempUpdate;
+	void* userVar;
+}cxa_tempSensor_listenerEntry_t;
 
 
 /**
@@ -67,8 +82,8 @@ struct cxa_tempSensor
 	bool wasLastReadSuccessful;
 	float lastReading_degC;
 
-	cxa_tempSensor_cb_updatedValue_t cb_onTempUpdate;
-	void* userVar;
+	cxa_array_t listeners;
+	cxa_tempSensor_listenerEntry_t listeners_raw[CXA_TEMPSENSE_MAXNUM_LISTENERS];
 };
 
 
@@ -82,7 +97,13 @@ void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_re
 /**
  * @public
  */
-bool cxa_tempSensor_getValue_withCallback(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_cb_updatedValue_t cbIn, void* userVarIn);
+void cxa_tempSensor_addListener(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_cb_updatedValue_t cbIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+void cxa_tempSensor_requestNewValueNow(cxa_tempSensor_t *const tmpSnsIn);
 
 
 /**

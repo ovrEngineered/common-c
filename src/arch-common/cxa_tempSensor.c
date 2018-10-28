@@ -42,37 +42,31 @@ void cxa_tempSensor_init(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_scm_re
 
 	// save our references
 	tmpSnsIn->scm_requestNewValue = scm_requestNewValIn;
-	tmpSnsIn->cb_onTempUpdate = NULL;
-	tmpSnsIn->userVar = NULL;
 
 	tmpSnsIn->wasLastReadSuccessful = false;
 	tmpSnsIn->lastReading_degC = NAN;
+
+	cxa_array_initStd(&tmpSnsIn->listeners, tmpSnsIn->listeners_raw);
 }
 
 
-bool cxa_tempSensor_getValue_withCallback(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_cb_updatedValue_t cbIn, void* userVarIn)
+void cxa_tempSensor_addListener(cxa_tempSensor_t *const tmpSnsIn, cxa_tempSensor_cb_updatedValue_t cbIn, void* userVarIn)
+{
+	cxa_assert(tmpSnsIn);
+	cxa_assert(cbIn);
+
+	cxa_tempSensor_listenerEntry_t newEntry = {.cb_onTempUpdate = cbIn, .userVar = userVarIn};
+	cxa_assert_msg(cxa_array_append(&tmpSnsIn->listeners, &newEntry), "increase CXA_TEMPSENSE_MAXNUM_LISTENERS");
+}
+
+
+void cxa_tempSensor_requestNewValueNow(cxa_tempSensor_t *const tmpSnsIn)
 {
 	cxa_assert(tmpSnsIn);
 	cxa_assert(tmpSnsIn->scm_requestNewValue);
 
-	// make sure we don't have a read in progress
-	if( tmpSnsIn->cb_onTempUpdate != NULL ) return false;
-
-	// save our callback
-	tmpSnsIn->cb_onTempUpdate = cbIn;
-	tmpSnsIn->userVar = userVarIn;
-
-	// try to start our read
-	bool retVal = tmpSnsIn->scm_requestNewValue(tmpSnsIn);
-
-	// cleanup if the request failed
-	if( !retVal )
-	{
-		tmpSnsIn->cb_onTempUpdate = NULL;
-		tmpSnsIn->userVar = NULL;
-	}
-
-	return retVal;
+	// start our read
+	tmpSnsIn->scm_requestNewValue(tmpSnsIn);
 }
 
 
@@ -100,9 +94,12 @@ void cxa_tempSensor_notify_updatedValue(cxa_tempSensor_t *const tmpSnsIn, bool w
 	tmpSnsIn->wasLastReadSuccessful = wasSuccessfulIn;
 	tmpSnsIn->lastReading_degC = newTemp_degCIn;
 
-	if( tmpSnsIn->cb_onTempUpdate != NULL ) tmpSnsIn->cb_onTempUpdate(tmpSnsIn, wasSuccessfulIn, valueDidChange, newTemp_degCIn, tmpSnsIn->userVar);
-	tmpSnsIn->cb_onTempUpdate = NULL;
-	tmpSnsIn->userVar = NULL;
+	cxa_array_iterate(&tmpSnsIn->listeners, currListener, cxa_tempSensor_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+
+		if( currListener->cb_onTempUpdate != NULL ) currListener->cb_onTempUpdate(tmpSnsIn, wasSuccessfulIn, valueDidChange, newTemp_degCIn, currListener->userVar);
+	}
 }
 
 

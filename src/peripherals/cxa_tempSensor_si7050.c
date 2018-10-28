@@ -34,7 +34,7 @@
 
 
 // ******** local function prototypes ********
-static bool scm_requestNewValue(cxa_tempSensor_t *const superIn);
+static void scm_requestNewValue(cxa_tempSensor_t *const superIn);
 
 static void i2cCb_onReadComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
 
@@ -57,7 +57,7 @@ void cxa_tempSensor_si7050_init(cxa_tempSensor_si7050_t *const siIn, cxa_i2cMast
 
 
 // ******** local function implementations ********
-static bool scm_requestNewValue(cxa_tempSensor_t *const superIn)
+static void scm_requestNewValue(cxa_tempSensor_t *const superIn)
 {
 	cxa_tempSensor_si7050_t* siIn = (cxa_tempSensor_si7050_t*)superIn;
 	cxa_assert(siIn);
@@ -65,11 +65,13 @@ static bool scm_requestNewValue(cxa_tempSensor_t *const superIn)
 	cxa_fixedByteBuffer_t fbb_payload;
 	uint8_t fbb_payload_raw[1];
 	cxa_fixedByteBuffer_initStd(&fbb_payload, fbb_payload_raw);
-	if( !cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0xE3) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint8(&fbb_payload, 0xE3) )
+	{
+		cxa_tempSensor_notify_updatedValue(&siIn->super, false, NAN);
+		return;
+	}
 
 	cxa_i2cMaster_readBytes_withControlBytes(siIn->i2c, I2C_ADDR_7BIT, true, &fbb_payload, 2, i2cCb_onReadComplete, (void*)siIn);
-
-	return true;
 }
 
 

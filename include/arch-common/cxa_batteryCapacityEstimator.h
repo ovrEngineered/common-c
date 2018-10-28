@@ -45,7 +45,7 @@ typedef struct cxa_batteryCapacityEstimator cxa_batteryCapacityEstimator_t;
 /**
  * @public
  */
-typedef void (*cxa_batteryCapacityEstimator_cb_updatedValue_t)(cxa_batteryCapacityEstimator_t *const cbeIn, float battPcntIn, void* userVarIn);
+typedef void (*cxa_batteryCapacityEstimator_cb_updatedValue_t)(cxa_batteryCapacityEstimator_t *const cbeIn, bool wasSuccessfulIn, float battPcntIn, void* userVarIn);
 
 
 /**

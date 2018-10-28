@@ -25,15 +25,16 @@
 
 
 // ******** local macro definitions ********
+#define DISCARD_TOPBOTTOM_RANGE_PCNT100					2.0
 
 
 // ******** local type definitions ********
 
 
 // ******** local function prototypes ********
-static bool scm_requestNewValue(cxa_tempSensor_t *const tempSnsIn);
+static void scm_requestNewValue(cxa_tempSensor_t *const tempSnsIn);
 
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn);
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, bool wasSuccessfulIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -83,19 +84,27 @@ void cxa_tempSensor_adc_init_beta(cxa_tempSensor_adc_t *const tempSnsIn, cxa_adc
 
 
 // ******** local function implementations ********
-static bool scm_requestNewValue(cxa_tempSensor_t *const superIn)
+static void scm_requestNewValue(cxa_tempSensor_t *const superIn)
 {
 	cxa_tempSensor_adc_t* tempSnsIn = (cxa_tempSensor_adc_t*)superIn;
 	cxa_assert(tempSnsIn);
 
-	return cxa_adcChannel_startConversion_singleShot(tempSnsIn->adc);
+	// start the conversion
+	cxa_adcChannel_startConversion_singleShot(tempSnsIn->adc);
 }
 
 
-static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn)
+static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, bool wasSuccessfulIn, float readVoltageIn, uint16_t rawValueIn, void* userVarIn)
 {
 	cxa_tempSensor_adc_t* tempSnsIn = (cxa_tempSensor_adc_t*)userVarIn;
 	cxa_assert(tempSnsIn);
+
+	if( !wasSuccessfulIn )
+	{
+		cxa_tempSensor_notify_updatedValue(&tempSnsIn->super, false, NAN);
+		return;
+	}
+	// if we made it here, the conversion was successful
 
 	switch( tempSnsIn->calibrationType )
 	{
@@ -111,7 +120,7 @@ static void cb_adcConvComplete(cxa_adcChannel_t *const adcChanIn, float readVolt
 			float temp_c = NAN;
 
 			uint16_t maxRawValue = cxa_adcChannel_getMaxRawValue(tempSnsIn->adc);
-			if( (rawValueIn > 0) && (rawValueIn != maxRawValue) )
+			if( ((maxRawValue * DISCARD_TOPBOTTOM_RANGE_PCNT100 / 100.0) < rawValueIn) && (rawValueIn < (maxRawValue * (100 - DISCARD_TOPBOTTOM_RANGE_PCNT100) / 100.0)) )
 			{
 				float r_therm = -((float)rawValueIn * tempSnsIn->calibrationVals.beta.r1_ohm) / ((float)rawValueIn - (float)maxRawValue);
 				temp_c = (tempSnsIn->calibrationVals.beta.beta * (tempSnsIn->calibrationVals.beta.t0_c + CXA_CELSIUS_TO_KELVIN_OFFSET)) /

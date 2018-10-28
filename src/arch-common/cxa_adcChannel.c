@@ -18,6 +18,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <math.h>
 
 
 // ******** local macro definitions ********
@@ -47,6 +48,10 @@ void cxa_adcChannel_init(cxa_adcChannel_t* const adcChanIn,
 
 	// setup our listeners
 	cxa_array_initStd(&adcChanIn->listeners, adcChanIn->listeners_raw);
+
+	adcChanIn->lastConversionValue.raw = 0;
+	adcChanIn->lastConversionValue.voltage = NAN;
+	adcChanIn->lastConversionValue.wasSuccessful = false;
 }
 
 
@@ -67,11 +72,19 @@ void cxa_adcChannel_addListener(cxa_adcChannel_t *const adcChanIn,
 }
 
 
-bool cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn)
+void cxa_adcChannel_startConversion_singleShot(cxa_adcChannel_t *const adcChanIn)
 {
 	cxa_assert(adcChanIn);
 
-	return adcChanIn->scms.startConv_ss(adcChanIn);
+	adcChanIn->scms.startConv_ss(adcChanIn);
+}
+
+
+bool cxa_adcChannel_wasLastConversionSuccessful(cxa_adcChannel_t *const adcChanIn)
+{
+	cxa_assert(adcChanIn);
+
+	return adcChanIn->lastConversionValue.wasSuccessful;
 }
 
 
@@ -99,11 +112,12 @@ uint16_t cxa_adcChannel_getMaxRawValue(cxa_adcChannel_t *const adcChanIn)
 }
 
 
-void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, float voltageIn, const uint16_t rawValIn)
+void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn, bool wasSuccessfulIn, float voltageIn, const uint16_t rawValIn)
 {
 	cxa_assert(adcChanIn);
 
 	// save internally
+	adcChanIn->lastConversionValue.wasSuccessful = wasSuccessfulIn;
 	adcChanIn->lastConversionValue.voltage = voltageIn;
 	adcChanIn->lastConversionValue.raw = rawValIn;
 
@@ -111,7 +125,7 @@ void cxa_adcChannel_notify_conversionComplete(cxa_adcChannel_t *const adcChanIn,
 	{
 		if( currListener == NULL ) continue;
 
-		if( currListener->cb_convComp != NULL ) currListener->cb_convComp(adcChanIn, voltageIn, rawValIn, currListener->userVar);
+		if( currListener->cb_convComp != NULL ) currListener->cb_convComp(adcChanIn, wasSuccessfulIn, voltageIn, rawValIn, currListener->userVar);
 	}
 }
 
