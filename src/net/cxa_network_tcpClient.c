@@ -127,4 +127,40 @@ cxa_ioStream_t* cxa_network_tcpClient_getIoStream(cxa_network_tcpClient_t *const
 }
 
 
+void cxa_network_tcpClient_notify_connect(cxa_network_tcpClient_t *const netClientIn)
+{
+	cxa_assert(netClientIn);
+	
+	cxa_array_iterate(&netClientIn->listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onConnect != NULL ) currListener->cb_onConnect(netClientIn, currListener->userVar);
+	}
+}
+
+
+void cxa_network_tcpClient_notify_connectFail(cxa_network_tcpClient_t *const netClientIn)
+{
+	cxa_assert(netClientIn);
+	
+	cxa_array_iterate(&netClientIn->listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onConnectFail != NULL ) currListener->cb_onConnectFail(netClientIn, currListener->userVar);
+	}
+}
+
+
+void cxa_network_tcpClient_notify_disconnect(cxa_network_tcpClient_t *const netClientIn)
+{
+	cxa_assert(netClientIn);
+	
+	cxa_array_iterate(&netClientIn->listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+		if( currListener->cb_onDisconnect != NULL ) currListener->cb_onDisconnect(netClientIn, currListener->userVar);
+	}
+}
+
+
 // ******** local function implementations ********

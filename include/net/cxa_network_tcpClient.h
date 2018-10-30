@@ -181,4 +181,21 @@ bool cxa_network_tcpClient_isConnected(cxa_network_tcpClient_t *const netClientI
 cxa_ioStream_t* cxa_network_tcpClient_getIoStream(cxa_network_tcpClient_t *const netClientIn);
 
 
+/**
+ * @protected
+ */
+void cxa_network_tcpClient_notify_connect(cxa_network_tcpClient_t *const netClientIn);
+
+
+/**
+ * @protected
+ */
+void cxa_network_tcpClient_notify_connectFail(cxa_network_tcpClient_t *const netClientIn);
+
+
+/**
+ * @protected
+ */
+void cxa_network_tcpClient_notify_disconnect(cxa_network_tcpClient_t *const netClientIn);
+ 
 #endif // CXA_NETWORK_TCPCLIENT_H_
