@@ -113,6 +113,26 @@ bool cxa_fixedFifo_queue(cxa_fixedFifo_t *const fifoIn, void *const elemIn)
 }
 
 
+bool cxa_fixedFifo_peek(cxa_fixedFifo_t *const fifoIn, void *elemOut)
+{
+	cxa_assert(fifoIn);
+
+	// if we're empty, we have nothing to return
+	if( cxa_fixedFifo_isEmpty(fifoIn) )
+	{
+		return false;
+	}
+
+	// if we made it here, we should return our element
+	if( elemOut != NULL )
+	{
+		memcpy(elemOut, (const void*)(((uint8_t*)fifoIn->bufferLoc) + (fifoIn->removeIndex * fifoIn->datatypeSize_bytes)), fifoIn->datatypeSize_bytes);
+	}
+
+	return true;
+}
+
+
 bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 {
 	cxa_assert(fifoIn);

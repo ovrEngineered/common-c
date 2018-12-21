@@ -227,6 +227,17 @@ void cxa_fixedFifo_clear(cxa_fixedFifo_t *const fifoIn);
  */
 bool cxa_fixedFifo_queue(cxa_fixedFifo_t *const fifoIn, void *const elemIn);
 
+/**
+ * @public
+ * @brief "Peeks" at the next element in the FIFO. Does not remove the
+ * element from the queue.
+ *
+ * @param[in] fifoIn pointer to the pre-initialized FIFO object
+ * @param[out] elemOut pointer to where the element should be copied. May be
+ * 		NULL if no copy is desired.
+ *
+ */
+bool cxa_fixedFifo_peek(cxa_fixedFifo_t *const fifoIn, void *elemOut);
 
 /**
  * @public
