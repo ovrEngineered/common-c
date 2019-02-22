@@ -66,7 +66,7 @@ typedef enum
 	REG_SUBADR2 = 0x0F,
 	REG_SUBADR3 = 0x10,
 	REG_ALLCALLADR = 0x11
-}register_t;
+}pca_register_t;
 
 
 typedef enum

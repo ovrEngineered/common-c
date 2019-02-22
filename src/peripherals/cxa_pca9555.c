@@ -44,12 +44,12 @@ typedef enum
 	REG_POL1 = 0x05,
 	REG_CFG0 = 0x06,
 	REG_CFG1 = 0x07
-}register_t;
+}pca_register_t;
 
 
 // ******** local function prototypes ********
-static bool readFromRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, uint8_t* valOut);
-static bool writeToRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, uint8_t valIn);
+static bool readFromRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t* valOut);
+static bool writeToRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t valIn);
 
 static void getGpioPortAndChannelNum(cxa_gpio_pca9555_t *gpioIn, uint8_t* portOut, uint8_t* chanNumOut);
 static uint8_t getDirValueForPort(cxa_pca9555_t *pcaIn, uint8_t portNumIn);
@@ -121,7 +121,7 @@ cxa_gpio_t* cxa_pca9555_getGpio(cxa_pca9555_t *const pcaIn, uint8_t portNumIn, u
 
 
 // ******** local function implementations ********
-static bool readFromRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, uint8_t* valOut)
+static bool readFromRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t* valOut)
 {
 	cxa_assert(pcaIn);
 
@@ -132,7 +132,7 @@ static bool readFromRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, 
 }
 
 
-static bool writeToRegister(cxa_pca9555_t *const pcaIn, register_t registerIn, uint8_t valIn)
+static bool writeToRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t valIn)
 {
 //	uint8_t ctrlBytes = registerIn;
 #warning fix this
@@ -232,7 +232,7 @@ static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction
 
 	uint8_t portNum, chanNum;
 	getGpioPortAndChannelNum(gpioIn, &portNum, &chanNum);
-	register_t reg = (portNum == 0) ? REG_CFG0 : REG_CFG1;
+	pca_register_t reg = (portNum == 0) ? REG_CFG0 : REG_CFG1;
 
 	uint8_t dirVal = getDirValueForPort(gpioIn->pca, portNum);
 	dirVal = (dirVal & ~(1 << chanNum)) | (((dirIn == CXA_GPIO_DIR_INPUT) ? 1 : 0) << chanNum);
@@ -248,7 +248,7 @@ static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn)
 
 	uint8_t portNum, chanNum;
 	getGpioPortAndChannelNum(gpioIn, &portNum, &chanNum);
-	register_t reg = (portNum == 0) ? REG_CFG0 : REG_CFG1;
+	pca_register_t reg = (portNum == 0) ? REG_CFG0 : REG_CFG1;
 
 	uint8_t dirVal;
 	cxa_gpio_direction_t retVal = CXA_GPIO_DIR_UNKNOWN;
@@ -286,7 +286,7 @@ static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 
 	uint8_t portNum, chanNum;
 	getGpioPortAndChannelNum(gpioIn, &portNum, &chanNum);
-	register_t reg = (portNum == 0) ? REG_OUTPUT0 : REG_OUTPUT1;
+	pca_register_t reg = (portNum == 0) ? REG_OUTPUT0 : REG_OUTPUT1;
 
 	uint8_t outputVal = getOutputValueForPort(gpioIn->pca, portNum);
 	uint8_t polVal = (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn;
@@ -307,7 +307,7 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 	// couldn't shortcut...read from the device
 	uint8_t portNum, chanNum;
 	getGpioPortAndChannelNum(gpioIn, &portNum, &chanNum);
-	register_t reg = (portNum == 0) ? REG_OUTPUT0 : REG_OUTPUT1;
+	pca_register_t reg = (portNum == 0) ? REG_OUTPUT0 : REG_OUTPUT1;
 
 	uint8_t inputVal;
 	if( !readFromRegister(gpioIn->pca, reg, &inputVal) ) return 0;
