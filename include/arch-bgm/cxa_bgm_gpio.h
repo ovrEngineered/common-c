@@ -21,7 +21,7 @@
 // ******** includes ********
 #include <cxa_gpio.h>
 
-#include "em_gpio.h"
+#include <em_gpio.h>
 
 
 // ******** global macro definitions ********
