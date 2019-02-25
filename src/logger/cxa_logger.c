@@ -42,6 +42,7 @@
 
 
 // ******** local function prototypes ********
+static void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, va_list argsIn);
 static inline void checkSysLogInit(void);
 static void writeField(const char *const stringIn, size_t maxFieldLenIn);
 static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn);
@@ -106,46 +107,12 @@ cxa_logger_t* cxa_logger_getSysLog(void)
 }
 
 
-void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, va_list argsIn)
+void cxa_logger_log_formattedString_impl(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, ...)
 {
-	cxa_assert(loggerIn);
-	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
-				(levelIn == CXA_LOG_LEVEL_WARN) ||
-				(levelIn == CXA_LOG_LEVEL_INFO) ||
-				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
-				(levelIn == CXA_LOG_LEVEL_TRACE) );
-	cxa_assert(formatIn);
-	checkSysLogInit();
-
-	// if we don't have an ioStream, don't worry about it!
-	if( ioStream == NULL ) return;
-
-
-	cxa_criticalSection_enter();
-
-#ifdef CXA_CONSOLE_ENABLE
-	cxa_console_prelog();
-	if( cxa_console_isExecutingCommand() )
-	{
-		cxa_criticalSection_exit();
-		return;
-	}
-#endif
-
-	// common header
-	writeHeader(loggerIn, levelIn);
-
-	// now do our VARARGS
-	cxa_ioStream_vWriteString(ioStream, formatIn, argsIn, true, CXA_LOGGER_TRUNCATE_STRING);
-
-	// print EOL
-	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
-
-#ifdef CXA_CONSOLE_ENABLE
-	cxa_console_postlog();
-#endif
-
-	cxa_criticalSection_exit();
+	va_list varArgs;
+	va_start(varArgs, formatIn);
+	cxa_logger_log_varArgs(loggerIn, levelIn, formatIn, varArgs);
+	va_end(varArgs);
 }
 
 
@@ -194,12 +161,53 @@ void cxa_logger_log_untermString_impl(cxa_logger_t *const loggerIn, const uint8_
 }
 
 
-void cxa_logger_log_formattedString_impl(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, ...)
+void cxa_logger_log_memdump_impl(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* prefixIn, const void* ptrIn, size_t ptrLen_bytes, const char* postFixIn)
 {
-	va_list varArgs;
-	va_start(varArgs, formatIn);
-	cxa_logger_log_varArgs(loggerIn, levelIn, formatIn, varArgs);
-	va_end(varArgs);
+	cxa_assert(loggerIn);
+	cxa_assert(loggerIn);
+	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
+			(levelIn == CXA_LOG_LEVEL_WARN) ||
+			(levelIn == CXA_LOG_LEVEL_INFO) ||
+			(levelIn == CXA_LOG_LEVEL_DEBUG) ||
+			(levelIn == CXA_LOG_LEVEL_TRACE) );
+	cxa_assert(ptrIn);
+	checkSysLogInit();
+
+	// if we don't have an ioStream, don't worry about it!
+	if( ioStream == NULL ) return;
+
+
+	cxa_criticalSection_enter();
+
+#ifdef CXA_CONSOLE_ENABLE
+	cxa_console_prelog();
+	if( cxa_console_isExecutingCommand() )
+	{
+		cxa_criticalSection_exit();
+		return;
+	}
+#endif
+
+	// common header
+	writeHeader(loggerIn, levelIn);
+
+	// write our message
+	cxa_ioStream_writeString(ioStream, "{");
+	for( size_t i = 0; i < ptrLen_bytes; i++ )
+	{
+		cxa_ioStream_writeFormattedString(ioStream, "%02X", ((uint8_t*)ptrIn)[i]);
+		if( i != (ptrLen_bytes-1) ) cxa_ioStream_writeString(ioStream, ", ");
+	}
+	cxa_ioStream_writeString(ioStream, "}");
+
+	// print EOL
+	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+
+#ifdef CXA_CONSOLE_ENABLE
+	cxa_console_postlog();
+#endif
+
+	cxa_criticalSection_exit();
 }
 
 
@@ -303,6 +311,49 @@ void cxa_logger_stepDebug_memDump_impl(const char* fileIn, const int lineNumIn, 
 
 
 // ******** local function implementations ********
+void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, va_list argsIn)
+{
+	cxa_assert(loggerIn);
+	cxa_assert( (levelIn == CXA_LOG_LEVEL_ERROR) ||
+				(levelIn == CXA_LOG_LEVEL_WARN) ||
+				(levelIn == CXA_LOG_LEVEL_INFO) ||
+				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
+				(levelIn == CXA_LOG_LEVEL_TRACE) );
+	cxa_assert(formatIn);
+	checkSysLogInit();
+
+	// if we don't have an ioStream, don't worry about it!
+	if( ioStream == NULL ) return;
+
+
+	cxa_criticalSection_enter();
+
+#ifdef CXA_CONSOLE_ENABLE
+	cxa_console_prelog();
+	if( cxa_console_isExecutingCommand() )
+	{
+		cxa_criticalSection_exit();
+		return;
+	}
+#endif
+
+	// common header
+	writeHeader(loggerIn, levelIn);
+
+	// now do our VARARGS
+	cxa_ioStream_vWriteString(ioStream, formatIn, argsIn, true, CXA_LOGGER_TRUNCATE_STRING);
+
+	// print EOL
+	cxa_ioStream_writeBytes(ioStream, (void*)CXA_LINE_ENDING, strlen(CXA_LINE_ENDING));
+
+#ifdef CXA_CONSOLE_ENABLE
+	cxa_console_postlog();
+#endif
+
+	cxa_criticalSection_exit();
+}
+
+
 static inline void checkSysLogInit(void)
 {
 	if( !isSysLogInit )
