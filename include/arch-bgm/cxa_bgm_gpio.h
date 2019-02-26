@@ -49,6 +49,9 @@ struct cxa_bgm_gpio
 	unsigned int pinNum;
 
 	bool lastVal;
+
+	cxa_gpio_cb_onInterrupt_t cb_interrupt;
+	void* cb_interrupt_userVar;
 };
 
 
