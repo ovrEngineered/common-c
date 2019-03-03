@@ -187,7 +187,7 @@ static void scm_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn, ui
 	// if we made it here, we're actually writing data
 
 	I2C_TransferSeq_TypeDef    seq;
-	seq.addr  = addressIn;
+	seq.addr  = addressIn << 1;
 	seq.flags = I2C_FLAG_WRITE;
 
 	// control bytes first
@@ -195,7 +195,7 @@ static void scm_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn, ui
 	seq.buf[0].len  = cxa_fixedByteBuffer_getSize_bytes(writeBytesIn);
 
 	// nothing else
-	seq.buf[0].len  = 0;
+	seq.buf[1].len  = 0;
 
 	// commit the read to the bus
 	I2C_TransferReturn_TypeDef ret = I2CSPM_Transfer(i2cIn->i2cPort, &seq);
