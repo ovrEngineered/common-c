@@ -192,6 +192,7 @@ void cxa_logger_log_memdump_impl(cxa_logger_t *const loggerIn, const uint8_t lev
 	writeHeader(loggerIn, levelIn);
 
 	// write our message
+	if( prefixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)prefixIn);
 	cxa_ioStream_writeString(ioStream, "{");
 	for( size_t i = 0; i < ptrLen_bytes; i++ )
 	{
@@ -199,6 +200,7 @@ void cxa_logger_log_memdump_impl(cxa_logger_t *const loggerIn, const uint8_t lev
 		if( i != (ptrLen_bytes-1) ) cxa_ioStream_writeString(ioStream, ", ");
 	}
 	cxa_ioStream_writeString(ioStream, "}");
+	if( postFixIn != NULL ) cxa_ioStream_writeString(ioStream, (char *const)postFixIn);
 
 	// print EOL
 	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
