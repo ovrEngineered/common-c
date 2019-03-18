@@ -37,6 +37,7 @@
 
 
 // ******** local function prototypes ********
+static void cb_onRunLoopStart(void* userVarIn);
 static void cb_onRunLoopUpdate(void* userVarIn);
 
 static cxa_stateMachine_state_t* getState_byId(cxa_stateMachine_t *const smIn, int idIn);
@@ -71,7 +72,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, i
 	#endif
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)smIn);
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopStart, cb_onRunLoopUpdate, (void*)smIn);
 }
 
 
@@ -130,7 +131,7 @@ void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateI
 	cxa_assert( cxa_stateMachine_getCurrentState(smIn) == CXA_STATE_MACHINE_STATE_UNKNOWN );
 
 	cxa_stateMachine_transition(smIn, stateIdIn);
-	cb_onRunLoopUpdate((void*)smIn);
+	// update will be called on runLoop start
 }
 
 
@@ -165,6 +166,18 @@ int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn)
 
 
 // ******** local function implementations ********
+static void cb_onRunLoopStart(void* userVarIn)
+{
+	cxa_stateMachine_t* smIn = (cxa_stateMachine_t*)userVarIn;
+	cxa_assert(smIn);
+
+	cxa_assert_msg( (smIn->nextState != NULL),
+					"cxa_stateMachine_setInitialState not called" );
+
+	cb_onRunLoopUpdate((void*)smIn);
+}
+
+
 static void cb_onRunLoopUpdate(void* userVarIn)
 {
 	cxa_stateMachine_t* smIn = (cxa_stateMachine_t*)userVarIn;
