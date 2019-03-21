@@ -107,6 +107,8 @@ struct cxa_stateMachine
 	cxa_stateMachine_state_t* currState;
 	cxa_stateMachine_state_t* nextState;
 	
+	bool hasStarted;
+
 	cxa_array_t states;
 	cxa_stateMachine_state_t states_raw[CXA_STATE_MACHINE_MAXNUM_STATES];
 	

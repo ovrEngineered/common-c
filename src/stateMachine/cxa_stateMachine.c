@@ -37,7 +37,6 @@
 
 
 // ******** local function prototypes ********
-static void cb_onRunLoopStart(void* userVarIn);
 static void cb_onRunLoopUpdate(void* userVarIn);
 
 static cxa_stateMachine_state_t* getState_byId(cxa_stateMachine_t *const smIn, int idIn);
@@ -55,6 +54,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, i
 	// set some sensible defaults
 	smIn->currState = NULL;
 	smIn->nextState = NULL;
+	smIn->hasStarted = false;
 	
 	// setup our internal state
 	cxa_array_init(&smIn->states, sizeof(*smIn->states_raw), (void*)smIn->states_raw, sizeof(smIn->states_raw));
@@ -72,7 +72,7 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, i
 	#endif
 
 	// register for run loop execution
-	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopStart, cb_onRunLoopUpdate, (void*)smIn);
+	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, (void*)smIn);
 }
 
 
@@ -82,6 +82,7 @@ void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const c
 {
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
+	cxa_assert(!smIn->hasStarted);
 	cxa_assert(idIn != CXA_STATE_MACHINE_STATE_UNKNOWN);
 
 	// make sure we don't already have this state added
@@ -93,9 +94,6 @@ void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const c
 
 	// add the new state to our array of states
 	cxa_assert_msg(cxa_array_append(&smIn->states, &newState), "increase 'CXA_STATE_MACHINE_MAXNUM_STATES'");
-	
-	// if we're currently not in a known state, enter this state (when update is called)
-	if( smIn->currState == NULL ) cxa_stateMachine_transition(smIn, idIn);
 }
 
 
@@ -105,6 +103,7 @@ void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, c
 {
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
+	cxa_assert(!smIn->hasStarted);
 	cxa_assert(smIn->timedStatesEnabled);
 	cxa_assert(idIn != CXA_STATE_MACHINE_STATE_UNKNOWN);
 
@@ -118,9 +117,6 @@ void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, c
 
 	// add the new state to our array of states
 	cxa_assert(cxa_array_append(&smIn->states, &newState));
-
-	// if we're currently not in a known state, enter this state (when update is called)
-	if( smIn->currState == NULL ) cxa_stateMachine_transition(smIn, idIn);	
 }
 #endif
 
@@ -128,16 +124,29 @@ void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, c
 void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateIdIn)
 {
 	cxa_assert(smIn);
-	cxa_assert( cxa_stateMachine_getCurrentState(smIn) == CXA_STATE_MACHINE_STATE_UNKNOWN );
+	cxa_assert(!smIn->hasStarted);
 
-	cxa_stateMachine_transition(smIn, stateIdIn);
-	// update will be called on runLoop start
+	// get our next state
+	cxa_stateMachine_state_t *newNextState = getState_byId(smIn, stateIdIn);
+	cxa_assert(newNextState != NULL);
+
+	// we have a valid new state...mark for transition
+	smIn->nextState = newNextState;
 }
 
 
 void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn)
 {
 	cxa_assert(smIn);
+#ifdef CXA_STATE_MACHINE_ENABLE_LOGGING
+	if( !smIn->hasStarted )
+	{
+		cxa_logger_error(&smIn->logger, "trying to transition to stateId '%d' before runloop has started", stateIdIn);
+		cxa_assert(false);
+	}
+#else
+	cxa_assert(smIn->hasStarted);
+#endif
 	
 	// get our next state
 	cxa_stateMachine_state_t *newNextState = getState_byId(smIn, stateIdIn);
@@ -151,6 +160,7 @@ void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn)
 void cxa_stateMachine_transitionNow(cxa_stateMachine_t *const smIn, int stateIdIn)
 {
 	cxa_assert(smIn);
+	cxa_assert(smIn->hasStarted);
 
 	cxa_stateMachine_transition(smIn, stateIdIn);
 	cb_onRunLoopUpdate((void*)smIn);
@@ -166,23 +176,14 @@ int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn)
 
 
 // ******** local function implementations ********
-static void cb_onRunLoopStart(void* userVarIn)
-{
-	cxa_stateMachine_t* smIn = (cxa_stateMachine_t*)userVarIn;
-	cxa_assert(smIn);
-
-	cxa_assert_msg( (smIn->nextState != NULL),
-					"cxa_stateMachine_setInitialState not called" );
-
-	cb_onRunLoopUpdate((void*)smIn);
-}
-
-
 static void cb_onRunLoopUpdate(void* userVarIn)
 {
 	cxa_stateMachine_t* smIn = (cxa_stateMachine_t*)userVarIn;
 	cxa_assert(smIn);
 	
+	// make sure we've been marked as started
+	if( !smIn->hasStarted ) smIn->hasStarted = true;
+
 	// see if we should transition
 	if( smIn->nextState != NULL )
 	{
