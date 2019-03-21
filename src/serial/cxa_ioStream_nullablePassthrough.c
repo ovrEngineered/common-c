@@ -40,8 +40,11 @@ void cxa_ioStream_nullablePassthrough_init(cxa_ioStream_nullablePassthrough_t *c
 {
 	cxa_assert(npIn);
 
+	npIn->numBytesWritten = 0;
+
 	// setup our nonnull ioStream
 	cxa_ioStream_init(&npIn->nonnullStream);
+	cxa_ioStream_bind(&npIn->nonnullStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)npIn);
 
 	// and our nullable stream
 	npIn->nullableStream = NULL;
@@ -69,20 +72,24 @@ void cxa_ioStream_nullablePassthrough_setNullableStream(cxa_ioStream_nullablePas
 {
 	cxa_assert(npIn);
 
-	// unbind our nonnull stream if we need to
-	if( npIn->nullableStream != NULL )
-	{
-		cxa_ioStream_unbind(&npIn->nonnullStream);
-	}
-
 	// save our new ioStream
 	npIn->nullableStream = ioStreamIn;
+}
 
-	// bind our nonnull stream if we need to
-	if( npIn->nullableStream != NULL )
-	{
-		cxa_ioStream_bind(&npIn->nonnullStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)npIn);
-	}
+
+size_t cxa_ioStream_nullablePassthrough_getNumBytesWritten(cxa_ioStream_nullablePassthrough_t *const npIn)
+{
+	cxa_assert(npIn);
+
+	return npIn->numBytesWritten;
+}
+
+
+void cxa_ioStream_nullablePassthrough_resetNumByesWritten(cxa_ioStream_nullablePassthrough_t *const npIn)
+{
+	cxa_assert(npIn);
+
+	npIn->numBytesWritten = 0;
 }
 
 
@@ -103,7 +110,9 @@ static bool cb_ioStream_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 	cxa_ioStream_nullablePassthrough_t *const npIn = (cxa_ioStream_nullablePassthrough_t*)userVarIn;
 	cxa_assert(npIn);
 
-	if( npIn->nullableStream == NULL ) return false;
+	npIn->numBytesWritten += bufferSize_bytesIn;
+
+	if( npIn->nullableStream == NULL ) return true;
 
 	return cxa_ioStream_writeBytes(npIn->nullableStream, buffIn, bufferSize_bytesIn);
 }

@@ -30,6 +30,8 @@ typedef struct
 {
 	cxa_ioStream_t nonnullStream;
 	cxa_ioStream_t* nullableStream;
+
+	size_t numBytesWritten;
 }cxa_ioStream_nullablePassthrough_t;
 
 
@@ -41,6 +43,9 @@ cxa_ioStream_t* cxa_ioStream_nullablePassthrough_getNonullStream(cxa_ioStream_nu
 cxa_ioStream_t* cxa_ioStream_nullablePassthrough_getNullableStream(cxa_ioStream_nullablePassthrough_t *const npIn);
 void cxa_ioStream_nullablePassthrough_setNullableStream(cxa_ioStream_nullablePassthrough_t *const npIn,
 														cxa_ioStream_t *const ioStreamIn);
+
+size_t cxa_ioStream_nullablePassthrough_getNumBytesWritten(cxa_ioStream_nullablePassthrough_t *const npIn);
+void cxa_ioStream_nullablePassthrough_resetNumByesWritten(cxa_ioStream_nullablePassthrough_t *const npIn);
 
 
 #endif
