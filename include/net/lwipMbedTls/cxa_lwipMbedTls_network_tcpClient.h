@@ -24,10 +24,7 @@
 #include <cxa_stateMachine.h>
 #include <cxa_timeDiff.h>
 
-#include <lwip/api.h>
-
 #include <mbedtls/net.h>
-#include <mbedtls/esp_debug.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
@@ -61,7 +58,7 @@ struct cxa_lwipMbedTls_network_tcpClient
 	cxa_network_tcpClient_t super;
 
 	char targetHostName[CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES+1];
-	ip_addr_t targetIp;
+//	ip_addr_t targetIp;
 	char targetPortNum[CXA_LWIPMBEDTLS_NETWORK_TCPCLIENT_MAXPORTNUMLEN_BYTES+1];
 
 	cxa_timeDiff_t td_writeTimeout;

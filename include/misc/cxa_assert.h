@@ -39,6 +39,7 @@
 
 
 // ******** includes ********
+#include <stddef.h>
 #include <stdio.h>
 #include <cxa_config.h>
 #ifdef CXA_ASSERT_GPIO_FLASH_ENABLE

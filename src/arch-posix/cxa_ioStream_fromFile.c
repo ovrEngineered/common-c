@@ -22,15 +22,14 @@
 
 
 // ******** includes ********
-#include <string.h>
+#include <cxa_assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <cxa_assert.h>
-
-#include <termios.h>
-#include <errno.h>
 #include <string.h>
+#include <sys/types.h>
+#include <termios.h>
+#include <unistd.h>
 
 
 // ******** local macro definitions ********

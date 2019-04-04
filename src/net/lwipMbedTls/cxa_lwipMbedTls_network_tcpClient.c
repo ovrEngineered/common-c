@@ -26,15 +26,12 @@
 #include <cxa_stringUtils.h>
 #include <cxa_uniqueId.h>
 
+#if defined MBEDTLS_DEBUG_C && defined ESP32
+#include <mbedtls/esp_debug.h>
+#endif
+
 #define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
-
-#include <lwip/err.h>
-#include <lwip/sockets.h>
-#include <lwip/sys.h>
-#include <lwip/netdb.h>
-#include <lwip/dns.h>
-#include <lwip/api.h>
 
 
 // ******** local macro definitions ********
@@ -186,7 +183,7 @@ static bool scm_connectToHost(cxa_network_tcpClient_t *const superIn, char *cons
     mbedtls_ssl_conf_authmode(&netClientIn->tls.conf, MBEDTLS_SSL_VERIFY_NONE);
 	mbedtls_ssl_conf_rng(&netClientIn->tls.conf, mbedtls_ctr_drbg_random, &netClientIn->tls.ctr_drbg);
 
-#ifdef MBEDTLS_DEBUG_C
+#if defined MBEDTLS_DEBUG_C && defined ESP32
     mbedtls_esp_enable_debug_log(&netClientIn->tls.conf, DEBUG_LEVEL);
 #endif
 
@@ -324,7 +321,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	mbedtls_ssl_conf_rng(&netClientIn->tls.conf, mbedtls_ctr_drbg_random, &netClientIn->tls.ctr_drbg);
 	mbedtls_ssl_conf_own_cert(&netClientIn->tls.conf, &netClientIn->tls.cert_client, &netClientIn->tls.client_key_private);
 
-#ifdef MBEDTLS_DEBUG_C
+#if defined MBEDTLS_DEBUG_C && defined ESP32
     mbedtls_esp_enable_debug_log(&netClientIn->tls.conf, DEBUG_LEVEL);
 #endif
 

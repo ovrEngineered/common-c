@@ -15,7 +15,7 @@
  * @author Christopher Armenio
  */
 #ifndef CXA_MQTT_CLIENT_NETWORK_H_
-#define CXA_MQTT_CLIENT_NETWORKH_
+#define CXA_MQTT_CLIENT_NETWORK_H_
 
 
 // ******** includes ********

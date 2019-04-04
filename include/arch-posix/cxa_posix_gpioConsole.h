@@ -25,6 +25,7 @@
 
 // ******** includes ********
 #include <cxa_gpio.h>
+#include <cxa_logger_header.h>
 
 
 // ******** global macro definitions ********
@@ -37,7 +38,10 @@ typedef struct
 
 	const char *name;
 	cxa_gpio_direction_t currDir;
+	cxa_gpio_polarity_t polarity;
 	bool currVal;
+
+	cxa_logger_t logger;
 }cxa_posix_gpioConsole_t;
 
 

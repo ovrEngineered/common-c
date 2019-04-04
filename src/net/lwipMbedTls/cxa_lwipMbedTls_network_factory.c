@@ -19,9 +19,6 @@
 // ******** includes ********
 #include <stdbool.h>
 
-#include <cxa_lwipMbedTls_network_tcpClient.h>
-#include <cxa_lwipMbedTls_network_tcpServer.h>
-
 #include <cxa_config.h>
 
 
@@ -34,6 +31,15 @@
 	#define CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS		1
 #endif
 
+// do these includes after macro definitions
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_CLIENTS > 0
+#include <cxa_lwipMbedTls_network_tcpClient.h>
+#endif
+
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS > 0
+#include <cxa_lwipMbedTls_network_tcpServer.h>
+#endif
+
 
 // ******** local type definitions ********
 typedef struct
@@ -43,11 +49,13 @@ typedef struct
 }tcpClient_entry_t;
 
 
+#if CXA_LWIPMBEDTLS_MAXNUM_TCP_SERVERS > 0
 typedef struct
 {
 	cxa_lwipMbedTls_network_tcpServer_t server;
 	bool isReserved;
 }tcpServer_entry_t;
+#endif
 
 
 // ******** local function prototypes ********

@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 opencxa.org
+ * Copyright 2016 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <cxa_assert.h>
-#include <time.h>
-#include <sys/time.h>
+#include "cxa_criticalSection.h"
 
-#ifdef __MACH__
-#include <mach/clock.h>
-#include <mach/mach.h>
-#endif
+
+// ******** includes ********
 
 
 // ******** local macro definitions ********
@@ -29,43 +25,23 @@
 // ******** local type definitions ********
 
 
+
 // ******** local function prototypes ********
-static void current_utc_time(struct timeval *ts);
 
 
 // ********  local variable declarations *********
 
 
 // ******** global function implementations ********
-
-
-uint32_t cxa_timeBase_getCount_us(void)
+void cxa_criticalSection_enter(void)
 {
-	struct timeval ts;
-	current_utc_time(&ts);
-	return (1000000 * ts.tv_sec) + (ts.tv_usec);
 }
 
 
-uint32_t cxa_timeBase_getMaxCount_us(void)
-{
-	return UINT32_MAX;
+void cxa_criticalSection_exit(void)
+{	
 }
 
 
 // ******** local function implementations ********
-static void current_utc_time(struct timeval *ts)
-{
-	#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
-		clock_serv_t cclock;
-		mach_timespec_t mts;
-		host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-		clock_get_time(cclock, &mts);
-		mach_port_deallocate(mach_task_self(), cclock);
-		ts->tv_sec = mts.tv_sec;
-		ts->tv_usec = mts.tv_nsec / 1000;
-	#else
-		gettimeofday(ts, NULL);
-	#endif
-}
 

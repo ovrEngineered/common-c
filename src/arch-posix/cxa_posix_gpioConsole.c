@@ -26,6 +26,9 @@
 #include <cxa_assert.h>
 #include <cxa_config.h>
 
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
 
@@ -34,6 +37,12 @@
 
 
 // ******** local function prototypes ********
+static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn);
+static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn);
+static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn);
+static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn);
+static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn);
+static bool scm_getValue(cxa_gpio_t *const superIn);
 
 
 // ********  local variable declarations *********
@@ -48,6 +57,12 @@ void cxa_posix_gpioConsole_init_input(cxa_posix_gpioConsole_t *const gpioIn, con
 	// save our references
 	gpioIn->name = nameIn;
 
+	// setup our logger
+	cxa_logger_init_formattedString(&gpioIn->logger, "gpio: '%s'", nameIn);
+
+	// initialize our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
+
 	// set our initial direction
 	cxa_gpio_setDirection(&gpioIn->super, CXA_GPIO_DIR_INPUT);
 }
@@ -60,6 +75,12 @@ void cxa_posix_gpioConsole_init_output(cxa_posix_gpioConsole_t *const gpioIn, co
 
 	// save our references
 	gpioIn->name = nameIn;
+
+	// setup our logger
+	cxa_logger_init_formattedString(&gpioIn->logger, "gpio: '%s'", nameIn);
+
+	// initialize our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 
 	// set our initial value
 	cxa_gpio_setValue(&gpioIn->super, initValIn);
@@ -76,12 +97,19 @@ void cxa_posix_gpioConsole_init_safe(cxa_posix_gpioConsole_t *const gpioIn, cons
 	// save our references
 	gpioIn->name = nameIn;
 
+	// setup our logger
+	cxa_logger_init_formattedString(&gpioIn->logger, "gpio: '%s'", nameIn);
+
+	// initialize our super class
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
+
 	// we don't know our current direction
 	gpioIn->currDir = CXA_GPIO_DIR_UNKNOWN;
 }
 
 
-void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
+// ******** local function implementations ********
+static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
 {
 	cxa_assert(superIn);
 	cxa_assert( (dirIn == CXA_GPIO_DIR_INPUT) ||
@@ -91,11 +119,11 @@ void cxa_gpio_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t
 	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	gpioIn->currDir = dirIn;
-	printf("gpio_%s[%p] setDir: %s" CXA_LINE_ENDING, gpioIn->name, gpioIn, cxa_gpio_direction_toString(gpioIn->currDir));
+	cxa_logger_debug(&gpioIn->logger, "setDir: %d", dirIn);
 }
 
 
-cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const superIn)
+static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn)
 {
 	cxa_assert(superIn);
 
@@ -106,7 +134,31 @@ cxa_gpio_direction_t cxa_gpio_getDirection(cxa_gpio_t *const superIn)
 }
 
 
-void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
+static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn)
+{
+	cxa_assert(superIn);
+	cxa_assert( (polarityIn == CXA_GPIO_POLARITY_NONINVERTED) ||
+				(polarityIn == CXA_GPIO_POLARITY_INVERTED) );
+
+	// get a pointer to our class
+	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
+
+	gpioIn->polarity = polarityIn;
+}
+
+
+static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn)
+{
+	cxa_assert(superIn);
+
+	// get a pointer to our class
+	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
+
+	return gpioIn->polarity;
+}
+
+
+static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 {
 	cxa_assert(superIn);
 
@@ -114,31 +166,18 @@ void cxa_gpio_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
 	gpioIn->currVal = valIn;
-	printf("gpio_%s[%p] setVal: %d" CXA_LINE_ENDING, gpioIn->name, gpioIn, gpioIn->currVal);
+	cxa_logger_debug(&gpioIn->logger, "setVal: %d", gpioIn->currVal);
 }
 
 
-bool cxa_gpio_getValue(cxa_gpio_t *const superIn)
+static bool scm_getValue(cxa_gpio_t *const superIn)
 {
 	cxa_assert(superIn);
 
 	// get a pointer to our class
 	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
 
-	return gpioIn->currVal;
+	bool retVal = gpioIn->currVal;
+	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal : retVal;
 }
-
-
-void cxa_gpio_toggle(cxa_gpio_t *const superIn)
-{
-	cxa_assert(superIn);
-
-	// get a pointer to our class
-	cxa_posix_gpioConsole_t *const gpioIn = (cxa_posix_gpioConsole_t *const)superIn;
-
-	gpioIn->currVal = !gpioIn->currVal;
-}
-
-
-// ******** local function implementations ********
 
