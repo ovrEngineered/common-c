@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cxa_assert.h>
-#include <cxa_console.h>
 #include <cxa_network_wifiManager.h>
 #include <cxa_nvsManager.h>
 #include <cxa_stateMachine.h>
@@ -28,6 +27,10 @@
 #include <cxa_uniqueId.h>
 
 #include <cxa_config.h>
+
+#ifdef CXA_CONSOLE_ENABLE
+#include <cxa_console.h>
+#endif
 
 #define CXA_LOG_LEVEL					CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
@@ -64,6 +67,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStat
 static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 
+#ifdef CXA_CXA_CONSOLE_ENABLE
 static void consoleCb_areCredentialsSet(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_clearCredentials(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_setServerRootCertificate(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
@@ -71,7 +75,7 @@ static void consoleCb_setClientCertificate(cxa_array_t *const argsIn, cxa_ioStre
 static void consoleCb_setPrivateKey(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 
 static bool receiveCString(cxa_ioStream_t *const ioStreamIn, uint8_t *const targetBufferIn, size_t expectedNumBytesIn, const char *const nvsKeyIn);
-
+#endif
 
 // ********  local variable declarations *********
 static cxa_mqtt_client_network_t mqttClient;
@@ -128,11 +132,13 @@ void cxa_mqtt_connManager_init(char *const hostNameIn, uint16_t portNumIn, int t
 	cxa_mqtt_client_addListener(&mqttClient.super, mqttClientCb_onConnect, mqttClientCb_onConnectFail, mqttClientCb_onDisconnect, NULL, NULL);
 
 	// don't forget our console commands
+#ifdef CXA_CONSOLE_ENABLE
 	cxa_console_addCommand("mqtt_areCredsSet", "returns whether mqtt credentials are set", NULL, 0, consoleCb_areCredentialsSet, NULL);
 	cxa_console_addCommand("mqtt_clearCreds", "clear credentials", NULL, 0, consoleCb_clearCredentials, NULL);
 	cxa_console_addCommand("mqtt_setSrvCert", "sets the TLS root certificate (send bytes after cmd)", NULL, 0, consoleCb_setServerRootCertificate, NULL);
 	cxa_console_addCommand("mqtt_setClCert", "sets the TLS client certificate (send bytes after cmd)", NULL, 0, consoleCb_setClientCertificate, NULL);
 	cxa_console_addCommand("mqtt_setPrvKey", "sets the TLS private key (send bytes after cmd)", NULL, 0, consoleCb_setPrivateKey, NULL);
+#endif
 
 	// try to load our credentials
 	isSet_serverRootCert = cxa_nvsManager_get_cString(NVSKEY_SERVER_CERT, serverRootCert, sizeof(serverRootCert));
@@ -279,6 +285,7 @@ static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *
 }
 
 
+#ifdef CXA_CONSOLE_ENABLE
 static void consoleCb_areCredentialsSet(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
 	if( cxa_mqtt_connManager_areCredentialsSet() )
@@ -387,3 +394,4 @@ static bool receiveCString(cxa_ioStream_t *const ioStreamIn, uint8_t *const targ
 	cxa_ioStream_writeLine(ioStreamIn, "YES");
 	return true;
 }
+#endif
