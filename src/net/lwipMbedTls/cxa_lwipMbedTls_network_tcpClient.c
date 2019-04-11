@@ -447,6 +447,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 	cxa_assert(netClientIn);
 
 	// make sure our socket is non-blocking now
+	cxa_logger_trace(&netClientIn->super.logger, "making socket non-blocking");
 	if( mbedtls_net_set_nonblock(&netClientIn->tls.server_fd) != 0 )
 	{
 		cxa_logger_warn(&netClientIn->super.logger, "error setting socket to nonblock");
@@ -456,6 +457,8 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 
 	// bind our ioStream
 	cxa_ioStream_bind(&netClientIn->super.ioStream, cb_ioStream_readByte, cb_ioStream_writeBytes, (void*)netClientIn);
+
+	cxa_logger_trace(&netClientIn->super.logger, "connected");
 
 	// notify our listeners
 	cxa_array_iterate(&netClientIn->super.listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
