@@ -93,7 +93,7 @@ static bool parseIdForInterface(char *const ifaceIn)
 	size_t size_bytes = 0;
 
 	char cmdLine[128];
-	snprintf(cmdLine, sizeof(cmdLine), "/sbin/ifconfig %s", ifaceIn);
+	snprintf(cmdLine, sizeof(cmdLine), "/sbin/ifconfig %s 2>/dev/null", ifaceIn);
 	cmdLine[sizeof(cmdLine)-1] = 0;
 
 	FILE *fp = popen(cmdLine, "r");

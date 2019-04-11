@@ -20,8 +20,10 @@
 
 // ******** includes ********
 #include <stdio.h>
+#include <string.h>
 
 #include <cxa_assert.h>
+#include <cxa_stringUtils.h>
 
 
 #define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
@@ -29,7 +31,6 @@
 
 
 // ******** local macro definitions ********
-#define NVS_NAMESPACE			"ovr"
 
 
 // ******** local type definitions ********
@@ -58,8 +59,42 @@ bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 
 bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes)
 {
-	cxa_assert_failWithMsg("not implemented");
-	return false;
+	cxa_assert(keyIn);
+
+	char keyAndDir[64];
+	memset(keyAndDir, 0, sizeof(keyAndDir));
+	cxa_stringUtils_concat(keyAndDir, "../nvs/", sizeof(keyAndDir));
+	cxa_stringUtils_concat(keyAndDir, keyIn, sizeof(keyAndDir));
+
+	FILE* file = fopen(keyAndDir, "r");
+	if( file == NULL ) return false;
+
+	if( valueOut != NULL )
+	{
+		size_t numBytesRead = 0;
+
+		// read one byte at a time
+		while( fread(((void*)&valueOut[numBytesRead]), 1, 1, file) == 1 )
+		{
+			numBytesRead++;
+			if( numBytesRead == maxOutputSize_bytes ) break;
+		}
+
+		// make sure we didn't have an error
+		if( ferror(file) != 0 )
+		{
+			fclose(file);
+			return false;
+		}
+
+		// make sure everything is null terminated
+		valueOut[numBytesRead] = 0;
+	}
+
+	// close our file
+	fclose(file);
+
+	return true;
 }
 
 
