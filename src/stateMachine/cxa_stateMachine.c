@@ -145,7 +145,7 @@ void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn)
 		cxa_assert(false);
 	}
 #else
-	cxa_assert(smIn->hasStarted);
+	cxa_assert_msg(smIn->hasStarted, "attempt to transition before runLoop has started");
 #endif
 	
 	// get our next state
