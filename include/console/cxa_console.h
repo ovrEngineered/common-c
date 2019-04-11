@@ -25,10 +25,6 @@
 
 
 // ******** global macro definitions ********
-#ifndef CXA_CONSOLE_ENABLE
-#error "Must define CXA_CONSOLE_ENABLE in 'cxa_config.h' to use console"
-#endif
-
 #ifndef CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES
 	#define CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES		32
 #endif
