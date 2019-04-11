@@ -67,7 +67,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int nextStat
 static void stateCb_connectStandOff_enter(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_connectStandOff_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 
-#ifdef CXA_CXA_CONSOLE_ENABLE
+#ifdef CXA_CONSOLE_ENABLE
 static void consoleCb_areCredentialsSet(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_clearCredentials(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
 static void consoleCb_setServerRootCertificate(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn);
@@ -169,7 +169,11 @@ bool cxa_mqtt_connManager_start(void)
 	if( (cxa_stateMachine_getCurrentState(&stateMachine) != STATE_IDLE) ) return true;
 
 	// we must not be running...make sure we have credentials
-	if( ! cxa_mqtt_connManager_areCredentialsSet() ) return false;
+	if( ! cxa_mqtt_connManager_areCredentialsSet() )
+	{
+		cxa_logger_warn(&logger, "no credentials set");
+		return false;
+	}
 
 	cxa_logger_debug(&logger, "start requested");
 	numFailedConnects = 0;

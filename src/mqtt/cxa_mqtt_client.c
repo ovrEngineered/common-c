@@ -121,7 +121,7 @@ void cxa_mqtt_client_init(cxa_mqtt_client_t *const clientIn, cxa_ioStream_t *con
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTING_TRANSPORT, "connectingTransport", NULL, NULL, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTING, "connecting", stateCb_connecting_enter, stateCb_connecting_state, NULL, (void*)clientIn);
 	cxa_stateMachine_addState(&clientIn->stateMachine, MQTT_STATE_CONNECTED, "connected", stateCb_connected_enter, stateCb_connected_state, NULL, (void*)clientIn);
-	cxa_stateMachine_transition(&clientIn->stateMachine, MQTT_STATE_IDLE);
+	cxa_stateMachine_setInitialState(&clientIn->stateMachine, MQTT_STATE_IDLE);
 }
 
 
