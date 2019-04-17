@@ -26,6 +26,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
 
@@ -89,7 +92,7 @@ static bool parseIdForInterface(char *const ifaceIn)
 	bool retVal = false;
 	char targetString[] = "ether ";
 
-	char *returnData = NULL;
+	char *currLine = NULL;
 	size_t size_bytes = 0;
 
 	char cmdLine[128];
@@ -97,25 +100,26 @@ static bool parseIdForInterface(char *const ifaceIn)
 	cmdLine[sizeof(cmdLine)-1] = 0;
 
 	FILE *fp = popen(cmdLine, "r");
-	while( getline(&returnData, &size_bytes, fp) > 0 )
+	while( getline(&currLine, &size_bytes, fp) > 0 )
 	{
-		if( strstr(returnData, targetString) == NULL )
+		char* ethStart;
+		if( (ethStart = strstr(currLine, targetString)) == NULL )
 		{
-			free(returnData);
-			returnData = NULL;
+			free(currLine);
+			currLine = NULL;
 			continue;
 		}
 		// if we made it here we have an ethernet line
 
 		// copy to our local store
-		char* ethernetAddress_tmp = returnData + strlen(targetString) + 1;
+		char* ethernetAddress_tmp = ethStart + strlen(targetString);
 		ethernetAddress_tmp[17] = 0;
 		memset(id_str, 0, sizeof(id_str));
 		memcpy(id_str, ethernetAddress_tmp, strlen(ethernetAddress_tmp));
 
 		// free memory
-		free(returnData);
-		returnData = NULL;
+		free(currLine);
+		currLine = NULL;
 
 		// we're done
 		retVal = true;
