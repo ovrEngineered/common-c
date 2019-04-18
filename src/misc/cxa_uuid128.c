@@ -180,7 +180,7 @@ void cxa_uuid128_toShortString(cxa_uuid128_t *const uuidIn, cxa_uuid128_string_t
 	char* lastChars = cxa_stringUtils_getLastCharacters(tmpStr.str, 4);
 	if( lastChars == NULL ) lastChars = tmpStr.str;
 
-	strlcpy(strOut->str, lastChars, sizeof(strOut->str));
+	cxa_stringUtils_copy(strOut->str, lastChars, sizeof(strOut->str));
 }
 
 

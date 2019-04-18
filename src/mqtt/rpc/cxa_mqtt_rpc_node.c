@@ -119,8 +119,8 @@ void cxa_mqtt_rpc_node_addMethod(cxa_mqtt_rpc_node_t *const nodeIn, char *const 
 		.cb_method = cb_methodIn,
 		.userVar = userVarIn
 	};
-	cxa_assert(nameIn && (strlen(nameIn) < (sizeof(newEntry.name)-1)) );
-	strlcpy(newEntry.name, nameIn, sizeof(newEntry.name));
+	cxa_assert( nameIn && (strlen(nameIn) < (sizeof(newEntry.name)-1)) );
+	cxa_stringUtils_copy(newEntry.name, nameIn, sizeof(newEntry.name));
 	cxa_assert( cxa_array_append(&nodeIn->methods, &newEntry) );
 }
 
@@ -193,8 +193,8 @@ bool cxa_mqtt_rpc_node_executeMethod(cxa_mqtt_rpc_node_t *const nodeIn,
 		};
 
 		// copy over the method name and the id
-		strlcpy(newRequest.name, methodNameIn, sizeof(newRequest.name));
-		strlcpy(newRequest.id, msgId, sizeof(newRequest.id));
+		cxa_stringUtils_copy(newRequest.name, methodNameIn, sizeof(newRequest.name));
+		cxa_stringUtils_copy(newRequest.id, msgId, sizeof(newRequest.id));
 
 		// initialize our timeout
 		cxa_timeDiff_init(&newRequest.td_timeout);

@@ -138,7 +138,7 @@ void cxa_btle_uuid_toShortString(cxa_btle_uuid_t *const uuidIn, cxa_btle_uuid_st
 	char* lastChars = cxa_stringUtils_getLastCharacters(tmpStr.str, 4);
 	if( lastChars == NULL ) lastChars = tmpStr.str;
 
-	strlcpy(strOut->str, lastChars, sizeof(strOut->str));
+	cxa_stringUtils_copy(strOut->str, lastChars, sizeof(strOut->str));
 }
 
 

@@ -169,7 +169,7 @@ static bool scm_connectToHost(cxa_network_tcpClient_t *const superIn, char *cons
 	    	cxa_logger_warn(&netClientIn->super.logger, "failed to set tls hostname: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 			return false;
 	    }
-	    strlcpy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
+	    cxa_stringUtils_copy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
 	}
 
 	// SSL configuration
@@ -305,7 +305,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	    	cxa_logger_warn(&netClientIn->super.logger, "failed to set tls hostname: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 			return false;
 	    }
-	    strlcpy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
+	    cxa_stringUtils_copy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName));
 	}
 
 	// SSL configuration
