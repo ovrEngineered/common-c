@@ -17,6 +17,7 @@
 
 
 // ******** includes ********
+#include <pthread.h>
 
 
 // ******** local macro definitions ********
@@ -30,16 +31,19 @@
 
 
 // ********  local variable declarations *********
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 // ******** global function implementations ********
 void cxa_criticalSection_enter(void)
 {
+	pthread_mutex_lock( &mutex );
 }
 
 
 void cxa_criticalSection_exit(void)
-{	
+{
+	pthread_mutex_unlock( &mutex );
 }
 
 
