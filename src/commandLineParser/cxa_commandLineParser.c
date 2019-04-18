@@ -170,8 +170,8 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 				return false;
 			}
 			// get the argument value
-			cxa_stringUtils_parseResult_t argVal = cxa_stringUtils_parseString(passedOpt);
-			if( argVal.dataType != expectedOpt->expectedArgType )
+			cxa_stringUtils_parseResult_t argVal;
+			if( !cxa_stringUtils_parseString(argv[i], &argVal) || (argVal.dataType != expectedOpt->expectedArgType) )
 			{
 				fprintf(stderr, "Error: Cannot parse expected %s argument from string [%s]" CXA_LINE_ENDING, cxa_stringUtils_getStringForDataType(argVal.dataType), passedOpt);
 				return false;
@@ -191,7 +191,7 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 				continue;
 			}
 
-			// if we made it ehre, things get a little tricky...
+			// if we made it here, things get a little tricky...
 			char* nextStr = argv[i];
 			if( cxa_stringUtils_startsWith(nextStr, "--") || cxa_stringUtils_startsWith(nextStr, "-") )
 			{
@@ -203,8 +203,8 @@ bool cxa_commandLineParser_parseOptions(cxa_commandLineParser_t *const clpIn, in
 			else
 			{
 				// the next string is not an option...therefore it should be an argument
-				cxa_stringUtils_parseResult_t argVal = cxa_stringUtils_parseString(passedOpt);
-				if( argVal.dataType != expectedOpt->expectedArgType )
+				cxa_stringUtils_parseResult_t argVal;
+				if( !cxa_stringUtils_parseString(passedOpt, &argVal) || (argVal.dataType != expectedOpt->expectedArgType) )
 				{
 					fprintf(stderr, "Error: Cannot parse expected %s argument from string [%s]" CXA_LINE_ENDING, cxa_stringUtils_getStringForDataType(argVal.dataType), passedOpt);
 					return false;
