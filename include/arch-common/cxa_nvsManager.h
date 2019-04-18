@@ -41,8 +41,6 @@
 
 
 // ******** global function prototypes ********
-void cxa_nvsManager_init(void);
-
 bool cxa_nvsManager_doesKeyExist(const char *const keyIn);
 
 bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes);

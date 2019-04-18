@@ -19,6 +19,7 @@
 
 
 // ******** includes ********
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -40,18 +41,28 @@
 
 
 // ********  local variable declarations *********
+static char NVS_DIR[255];
+
+static bool isInit = false;
 static cxa_logger_t logger;
 
 
 // ******** global function implementations ********
-void cxa_nvsManager_init(void)
+void cxa_posix_nvsManager_init(char *const nvsDirIn)
 {
+	cxa_assert_msg(strlen(nvsDirIn) < (sizeof(NVS_DIR)-1), "nvs directory too long");
+
 	cxa_logger_init(&logger, "nvsManager");
+
+	cxa_stringUtils_copy(NVS_DIR, nvsDirIn, sizeof(NVS_DIR));
+
+	isInit = true;
 }
 
 
 bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 {
+	cxa_assert(isInit);
 	cxa_assert_failWithMsg("not implemented");
 	return false;
 }
@@ -59,11 +70,13 @@ bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 
 bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes)
 {
+	cxa_assert(isInit);
 	cxa_assert(keyIn);
 
 	char keyAndDir[64];
 	memset(keyAndDir, 0, sizeof(keyAndDir));
-	cxa_stringUtils_concat(keyAndDir, "../nvs/", sizeof(keyAndDir));
+	cxa_stringUtils_concat(keyAndDir, NVS_DIR, sizeof(keyAndDir));
+	cxa_stringUtils_concat(keyAndDir, "/", sizeof(keyAndDir));
 	cxa_stringUtils_concat(keyAndDir, keyIn, sizeof(keyAndDir));
 
 	FILE* file = fopen(keyAndDir, "r");
@@ -100,6 +113,7 @@ bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, s
 
 bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 {
+	cxa_assert(isInit);
 	cxa_assert_failWithMsg("not implemented");
 	return false;
 }
@@ -107,6 +121,7 @@ bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 
 bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut)
 {
+	cxa_assert(isInit);
 	cxa_assert_failWithMsg("not implemented");
 	return false;
 }
@@ -114,6 +129,7 @@ bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut
 
 bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
 {
+	cxa_assert(isInit);
 	cxa_assert_failWithMsg("not implemented");
 	return false;
 }
@@ -121,6 +137,7 @@ bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
 
 bool cxa_nvsManager_erase(const char *const keyIn)
 {
+	cxa_assert(isInit);
 	cxa_assert_failWithMsg("not implemented");
 	return false;
 }
@@ -128,6 +145,7 @@ bool cxa_nvsManager_erase(const char *const keyIn)
 
 bool cxa_nvsManager_commit(void)
 {
+	cxa_assert(isInit);
 	cxa_assert_failWithMsg("not implemented");
 	return false;
 }
