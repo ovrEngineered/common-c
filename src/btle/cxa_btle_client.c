@@ -46,8 +46,9 @@ void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
 						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
 						  cxa_btle_client_scm_startConnection_t scm_startConnectionIn,
 						  cxa_btle_client_scm_stopConnection_t scm_stopConnectionIn,
-						  cxa_btle_client_scm_isConnected_t scm_isConnectedIn,
-						  cxa_btle_client_scm_writeToCharacteristic_t scm_writeToCharIn)
+						  cxa_btle_client_scm_readFromCharacteristic_t scm_readFromCharIn,
+						  cxa_btle_client_scm_writeToCharacteristic_t scm_writeToCharIn,
+						  cxa_btle_client_scm_changeNotifications_t scm_changeNotificationsIn)
 {
 	cxa_assert(btlecIn);
 	cxa_assert(scm_getStateIn);
@@ -60,13 +61,15 @@ void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
 	btlecIn->scms.stopScan = scm_stopScanIn;
 	btlecIn->scms.startConnection = scm_startConnectionIn;
 	btlecIn->scms.stopConnection = scm_stopConnectionIn;
-	btlecIn->scms.isConnected = scm_isConnectedIn;
+	btlecIn->scms.readFromCharacteristic = scm_readFromCharIn;
 	btlecIn->scms.writeToCharacteristic = scm_writeToCharIn;
+	btlecIn->scms.changeNotifications = scm_changeNotificationsIn;
 	btlecIn->hasActivityAvailable = false;
 
 	// clear our callbacks
 	memset((void*)&btlecIn->cbs, 0, sizeof(btlecIn->cbs));
 	cxa_array_initStd(&btlecIn->listeners, btlecIn->listeners_raw);
+	cxa_array_initStd(&btlecIn->notiIndiSubs, btlecIn->notiIndiSubs_raw);
 }
 
 
@@ -161,6 +164,7 @@ bool cxa_btle_client_hasActivityAvailable(cxa_btle_client_t *const btlecIn)
 
 void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn,
 									 cxa_btle_client_cb_onConnectionOpened_t cb_connectionOpenedIn,
+									 cxa_btle_client_cb_onConnectionFailed_t cb_connectionFailedIn,
 									 cxa_btle_client_cb_onConnectionClosed_t cb_connectionUnintentionallyClosedIn,
 									 void* userVarIn)
 {
@@ -168,6 +172,7 @@ void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48
 
 	// save our callbacks
 	btlecIn->cbs.connecting.onConnectionOpened = cb_connectionOpenedIn;
+	btlecIn->cbs.connecting.onConnectionFailed = cb_connectionFailedIn;
 	btlecIn->cbs.connecting.onConnectionClosed = cb_connectionUnintentionallyClosedIn;
 	btlecIn->cbs.connecting.userVar = userVarIn;
 
@@ -177,6 +182,7 @@ void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48
 
 
 void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
+									cxa_eui48_t *const targetAddrIn,
 									cxa_btle_client_cb_onConnectionClosed_t cb_connectionClosedIn,
 									void *userVarIn)
 {
@@ -187,37 +193,68 @@ void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
 	btlecIn->cbs.connecting.userVar = userVarIn;
 
 	cxa_assert(btlecIn->scms.stopConnection != NULL);
-	btlecIn->scms.stopConnection(btlecIn);
+	btlecIn->scms.stopConnection(btlecIn, targetAddrIn);
+}
+
+
+void cxa_btle_client_readFromCharacteristic(cxa_btle_client_t *const btlecIn,
+										    cxa_eui48_t *const targetAddrIn,
+										    const char *const serviceUuidIn,
+										    const char *const characteristicUuidIn,
+										    cxa_btle_client_cb_onReadComplete_t cb_readCompleteIn,
+										    void* userVarIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
+
+	// save our callbacks
+	btlecIn->cbs.reading.onReadComplete = cb_readCompleteIn;
+	btlecIn->cbs.reading.userVar = userVarIn;
+
+	cxa_assert(btlecIn->scms.readFromCharacteristic != NULL);
+
+
+	btlecIn->scms.readFromCharacteristic(btlecIn, targetAddrIn, serviceUuidIn, characteristicUuidIn);
 }
 
 
 void cxa_btle_client_writeToCharacteristic_fbb(cxa_btle_client_t *const btlecIn,
-											   const char *const serviceIdIn,
-											   const char *const characteristicIdIn,
+											   cxa_eui48_t *const targetAddrIn,
+											   const char *const serviceUuidIn,
+											   const char *const characteristicUuidIn,
 											   cxa_fixedByteBuffer_t *const dataIn,
 											   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
 											   void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
 
 	// save our callbacks
 	btlecIn->cbs.writing.onWriteComplete = cb_writeCompleteIn;
 	btlecIn->cbs.writing.userVar = userVarIn;
 
 	cxa_assert(btlecIn->scms.writeToCharacteristic != NULL);
-	btlecIn->scms.writeToCharacteristic(btlecIn, serviceIdIn, characteristicIdIn, dataIn);
+	btlecIn->scms.writeToCharacteristic(btlecIn, targetAddrIn, serviceUuidIn, characteristicUuidIn, dataIn);
 }
 
 
 void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
-										   const char *const serviceIdIn,
-										   const char *const characteristicIdIn,
+										   cxa_eui48_t *const targetAddrIn,
+										   const char *const serviceUuidIn,
+										   const char *const characteristicUuidIn,
 										   void *const dataIn,
 										   size_t numBytesIn,
 										   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
 										   void* userVarIn)
 {
 	cxa_assert(btlecIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
 
 	// save our callbacks
 	btlecIn->cbs.writing.onWriteComplete = cb_writeCompleteIn;
@@ -226,9 +263,87 @@ void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
 	cxa_assert(btlecIn->scms.writeToCharacteristic != NULL);
 
 	cxa_fixedByteBuffer_t fbb_data;
-	cxa_fixedByteBuffer_init(&fbb_data, dataIn, numBytesIn);
+	cxa_fixedByteBuffer_init_inPlace(&fbb_data, numBytesIn, dataIn, numBytesIn);
 
-	btlecIn->scms.writeToCharacteristic(btlecIn, serviceIdIn, characteristicIdIn, &fbb_data);
+	btlecIn->scms.writeToCharacteristic(btlecIn, targetAddrIn, serviceUuidIn, characteristicUuidIn, &fbb_data);
+}
+
+
+void cxa_btle_client_subscribeToNotifications(cxa_btle_client_t *const btlecIn,
+	    									  cxa_eui48_t *const targetAddrIn,
+											  const char *const serviceUuidIn,
+											  const char *const characteristicUuidIn,
+											  cxa_btle_client_cb_onNotiIndiSubscriptionChanged_t cb_onSubscribedIn,
+											  cxa_btle_client_cb_onNotiIndiRx_t cb_onRxIn,
+											  void* userVarIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
+
+	// make sure we have room to store the subscription
+	cxa_btle_client_notiIndiSubscription_t* newSub = cxa_array_append_empty(&btlecIn->notiIndiSubs);
+	if( newSub == NULL )
+	{
+		if( cb_onSubscribedIn != NULL ) cb_onSubscribedIn(targetAddrIn, serviceUuidIn, characteristicUuidIn, false, userVarIn);
+		return;
+	}
+
+	// record our info
+	newSub->cb_onSubscriptionChanged = cb_onSubscribedIn;
+	newSub->cb_onRx = cb_onRxIn;
+	newSub->userVar = userVarIn;
+	cxa_eui48_initFromEui48(&newSub->address, targetAddrIn);
+	if( !cxa_btle_uuid_initFromString(&newSub->uuid_service, serviceUuidIn) )
+	{
+		cxa_array_remove(&btlecIn->notiIndiSubs, newSub);
+		if( cb_onSubscribedIn != NULL ) cb_onSubscribedIn(targetAddrIn, serviceUuidIn, characteristicUuidIn, false, userVarIn);
+		return;
+	}
+	if( !cxa_btle_uuid_initFromString(&newSub->uuid_characteristic, characteristicUuidIn) )
+	{
+		cxa_array_remove(&btlecIn->notiIndiSubs, newSub);
+		if( cb_onSubscribedIn != NULL ) cb_onSubscribedIn(targetAddrIn, serviceUuidIn, characteristicUuidIn, false, userVarIn);
+		return;
+	}
+
+	cxa_assert(btlecIn->scms.changeNotifications != NULL);
+	btlecIn->scms.changeNotifications(btlecIn, targetAddrIn, serviceUuidIn, characteristicUuidIn, true);
+}
+
+
+void cxa_btle_client_unsubscribeToNotifications(cxa_btle_client_t *const btlecIn,
+												cxa_eui48_t *const targetAddrIn,
+												const char *const serviceUuidIn,
+												const char *const characteristicUuidIn,
+												cxa_btle_client_cb_onNotiIndiSubscriptionChanged_t cb_onUnsubscribedIn,
+												void* userVarIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
+
+	// save our callback
+	btlecIn->cbs.unsubscribing.onUnsubscribed = cb_onUnsubscribedIn;
+	btlecIn->cbs.unsubscribing.userVar = userVarIn;
+
+	// make sure to remove our notification entry (if we have one)
+	cxa_array_iterate(&btlecIn->notiIndiSubs, currSub, cxa_btle_client_notiIndiSubscription_t)
+	{
+		if( currSub == NULL ) continue;
+
+		if( cxa_eui48_isEqual(&currSub->address, targetAddrIn) &&
+			cxa_btle_uuid_isEqualToString(&currSub->uuid_service, serviceUuidIn) &&
+			cxa_btle_uuid_isEqualToString(&currSub->uuid_characteristic, characteristicUuidIn) )
+		{
+			cxa_array_remove(&btlecIn->notiIndiSubs, currSub);
+		}
+	}
+
+	// actually perform the change on the device
+	btlecIn->scms.changeNotifications(btlecIn, targetAddrIn, serviceUuidIn, characteristicUuidIn, false);
 }
 
 
@@ -282,46 +397,122 @@ void cxa_btle_client_notify_scanStop(cxa_btle_client_t *const btlecIn)
 }
 
 
-void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn)
+void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn)
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.connecting.onConnectionOpened != NULL ) btlecIn->cbs.connecting.onConnectionOpened(wasSuccessfulIn, btlecIn->cbs.connecting.userVar);
+	if( btlecIn->cbs.connecting.onConnectionOpened != NULL ) btlecIn->cbs.connecting.onConnectionOpened(targetAddrIn, btlecIn->cbs.connecting.userVar);
 }
 
 
-void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn)
+void cxa_btle_client_notify_connectionFailed(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn)
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.connecting.onConnectionClosed != NULL ) btlecIn->cbs.connecting.onConnectionClosed(btlecIn->cbs.connecting.userVar);
+	if( btlecIn->cbs.connecting.onConnectionFailed != NULL ) btlecIn->cbs.connecting.onConnectionFailed(targetAddrIn, btlecIn->cbs.connecting.userVar);
+}
+
+
+void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn)
+{
+	cxa_assert(btlecIn);
+
+	if( btlecIn->cbs.connecting.onConnectionClosed != NULL ) btlecIn->cbs.connecting.onConnectionClosed(targetAddrIn, btlecIn->cbs.connecting.userVar);
 }
 
 
 void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn,
-										  cxa_btle_uuid_t *const uuid_serviceIn,
-										  cxa_btle_uuid_t *const uuid_charIn,
+										  cxa_eui48_t *const targetAddrIn,
+										  const char *const serviceUuidIn,
+										  const char *const characteristicUuidIn,
 										  bool wasSuccessfulIn)
 {
 	cxa_assert(btlecIn);
-	cxa_assert(uuid_serviceIn);
-	cxa_assert(uuid_charIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
 
 	if( btlecIn->cbs.writing.onWriteComplete != NULL )
 	{
-		btlecIn->cbs.writing.onWriteComplete(uuid_serviceIn, uuid_charIn, wasSuccessfulIn, btlecIn->cbs.writing.userVar);
+		btlecIn->cbs.writing.onWriteComplete(targetAddrIn, serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, btlecIn->cbs.writing.userVar);
 	}
 }
 
 
 void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn,
-		  	  	  	  	  	  	  	     cxa_btle_uuid_t *const uuid_serviceIn,
-										 cxa_btle_uuid_t *const uuid_charIn,
-										 bool wasSuccessfulIn)
+										 cxa_eui48_t *const targetAddrIn,
+										 const char *const serviceUuidIn,
+										 const char *const characteristicUuidIn,
+										 bool wasSuccessfulIn,
+										 cxa_fixedByteBuffer_t *fbb_readDataIn)
 {
 	cxa_assert(btlecIn);
-	cxa_assert(uuid_serviceIn);
-	cxa_assert(uuid_charIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
+
+	if( btlecIn->cbs.reading.onReadComplete != NULL )
+	{
+		btlecIn->cbs.reading.onReadComplete(targetAddrIn, serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, fbb_readDataIn, btlecIn->cbs.reading.userVar);
+	}
+}
+
+
+void cxa_btle_client_notify_notiIndiSubscriptionChanged(cxa_btle_client_t *const btlecIn,
+														cxa_eui48_t *const targetAddrIn,
+														const char *const serviceUuidIn,
+														const char *const characteristicUuidIn,
+														bool wasSuccessfulIn,
+														bool notificationsEnabledIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
+
+	if( notificationsEnabledIn )
+	{
+		cxa_array_iterate(&btlecIn->notiIndiSubs, currSub, cxa_btle_client_notiIndiSubscription_t)
+		{
+			if( currSub == NULL ) continue;
+
+			if( cxa_eui48_isEqual(&currSub->address, targetAddrIn) &&
+				cxa_btle_uuid_isEqualToString(&currSub->uuid_service, serviceUuidIn) &&
+				cxa_btle_uuid_isEqualToString(&currSub->uuid_characteristic, characteristicUuidIn) )
+			{
+				if( currSub->cb_onSubscriptionChanged != NULL ) currSub->cb_onSubscriptionChanged(targetAddrIn, serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, currSub->userVar);
+			}
+		}
+	}
+	else
+	{
+		if( btlecIn->cbs.unsubscribing.onUnsubscribed != NULL ) btlecIn->cbs.unsubscribing.onUnsubscribed(targetAddrIn, serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, btlecIn->cbs.unsubscribing.userVar);
+	}
+}
+
+
+void cxa_btle_client_notify_notiIndiRx(cxa_btle_client_t *const btlecIn,
+									   cxa_eui48_t *const targetAddrIn,
+									   const char *const serviceUuidIn,
+									   const char *const characteristicUuidIn,
+									   cxa_fixedByteBuffer_t *fbb_dataIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(targetAddrIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(characteristicUuidIn);
+
+	cxa_array_iterate(&btlecIn->notiIndiSubs, currSub, cxa_btle_client_notiIndiSubscription_t)
+	{
+		if( currSub == NULL ) continue;
+
+		if( cxa_eui48_isEqual(&currSub->address, targetAddrIn) &&
+			cxa_btle_uuid_isEqualToString(&currSub->uuid_service, serviceUuidIn) &&
+			cxa_btle_uuid_isEqualToString(&currSub->uuid_characteristic, characteristicUuidIn) )
+		{
+			if( currSub->cb_onRx != NULL ) currSub->cb_onRx(targetAddrIn, serviceUuidIn, characteristicUuidIn, fbb_dataIn, currSub->userVar);
+		}
+	}
 }
 
 

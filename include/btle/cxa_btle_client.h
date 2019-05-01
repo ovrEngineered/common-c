@@ -31,7 +31,11 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_BTLE_CLIENT_MAXNUM_LISTENERS
-	#define CXA_BTLE_CLIENT_MAXNUM_LISTENERS		2
+	#define CXA_BTLE_CLIENT_MAXNUM_LISTENERS				2
+#endif
+
+#ifndef CXA_BTLE_CLIENT_MAXNUM_NOTIINDI_SUBSCRIPTIONS
+	#define CXA_BTLE_CLIENT_MAXNUM_NOTIINDI_SUBSCRIPTIONS	2
 #endif
 
 
@@ -61,9 +65,6 @@ typedef enum
 	CXA_BTLE_CLIENT_STATE_STARTUP,
 	CXA_BTLE_CLIENT_STATE_STARTUPFAILED,
 	CXA_BTLE_CLIENT_STATE_READY,
-	CXA_BTLE_CLIENT_STATE_SCANNING,
-	CXA_BTLE_CLIENT_STATE_CONNECTING,
-	CXA_BTLE_CLIENT_STATE_CONNECTED
 }cxa_btle_client_state_t;
 
 
@@ -148,21 +149,59 @@ typedef void (*cxa_btle_client_cb_onScanStop_t)(void* userVarIn);
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onConnectionOpened_t)(bool wasSuccessfulIn, void* userVarIn);
+typedef void (*cxa_btle_client_cb_onConnectionOpened_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
 
 
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onConnectionClosed_t)(void* userVarIn);
+typedef void (*cxa_btle_client_cb_onConnectionFailed_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
 
 
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onWriteComplete_t)(cxa_btle_uuid_t *const uuid_serviceIn,
-													 cxa_btle_uuid_t *const uuid_charIn,
+typedef void (*cxa_btle_client_cb_onConnectionClosed_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onReadComplete_t)(cxa_eui48_t *const targetAddrIn,
+													const char *const serviceUuidIn,
+													const char *const characteristicUuidIn,
+													bool wasSuccessfulIn,
+													cxa_fixedByteBuffer_t *fbb_readDataIn,
+													void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onWriteComplete_t)(cxa_eui48_t *const targetAddrIn,
+													 const char *const serviceUuidIn,
+													 const char *const characteristicUuidIn,
 													 bool wasSuccessfulIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onNotiIndiSubscriptionChanged_t)(cxa_eui48_t *const targetAddrIn,
+														  	  	   const char *const serviceUuidIn,
+																   const char *const characteristicUuidIn,
+																   bool wasSuccessfulIn,
+																   void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_btle_client_cb_onNotiIndiRx_t)(cxa_eui48_t *const targetAddrIn,
+												  const char *const serviceUuidIn,
+												  const char *const characteristicUuidIn,
+												  cxa_fixedByteBuffer_t *fbb_readDataIn,
+												  void* userVarIn);
 
 
 /**
@@ -192,22 +231,35 @@ typedef void (*cxa_btle_client_scm_startConnection_t)(cxa_btle_client_t *const s
 /**
  * @private
  */
-typedef void (*cxa_btle_client_scm_stopConnection_t)(cxa_btle_client_t *const superIn);
+typedef void (*cxa_btle_client_scm_stopConnection_t)(cxa_btle_client_t *const superIn, cxa_eui48_t *const targetAddrIn);
 
 
 /**
  * @private
  */
-typedef bool (*cxa_btle_client_scm_isConnected_t)(cxa_btle_client_t *const superIn);
+typedef void (*cxa_btle_client_scm_readFromCharacteristic_t)(cxa_btle_client_t *const superIn,
+															 cxa_eui48_t *const targetAddrIn,
+															 const char *const serviceUuidIn,
+															 const char *const characteristicUuidIn);
 
 
 /**
  * @private
  */
 typedef void (*cxa_btle_client_scm_writeToCharacteristic_t)(cxa_btle_client_t *const superIn,
-															const char *const serviceIdIn,
-															const char *const characteristicIdIn,
+															cxa_eui48_t *const targetAddrIn,
+															const char *const serviceUuidIn,
+															const char *const characteristicUuidIn,
 															cxa_fixedByteBuffer_t *const dataIn);
+
+/**
+ * @private
+ */
+typedef void (*cxa_btle_client_scm_changeNotifications_t)(cxa_btle_client_t *const superIn,
+														  cxa_eui48_t *const targetAddrIn,
+														  const char *const serviceUuidIn,
+														  const char *const characteristicUuidIn,
+														  bool enableNotifications);
 
 
 /**
@@ -224,10 +276,28 @@ typedef struct
 /**
  * @private
  */
+typedef struct
+{
+	cxa_eui48_t address;
+	cxa_btle_uuid_t uuid_service;
+	cxa_btle_uuid_t uuid_characteristic;
+
+	cxa_btle_client_cb_onNotiIndiSubscriptionChanged_t cb_onSubscriptionChanged;
+	cxa_btle_client_cb_onNotiIndiRx_t cb_onRx;
+	void* userVar;
+}cxa_btle_client_notiIndiSubscription_t;
+
+
+/**
+ * @private
+ */
 struct cxa_btle_client
 {
 	cxa_array_t listeners;
 	cxa_btle_client_listener_entry_t listeners_raw[CXA_BTLE_CLIENT_MAXNUM_LISTENERS];
+
+	cxa_array_t notiIndiSubs;
+	cxa_btle_client_notiIndiSubscription_t notiIndiSubs_raw[CXA_BTLE_CLIENT_MAXNUM_NOTIINDI_SUBSCRIPTIONS];
 
 	bool hasActivityAvailable;
 
@@ -245,15 +315,28 @@ struct cxa_btle_client
 		struct
 		{
 			cxa_btle_client_cb_onConnectionOpened_t onConnectionOpened;
+			cxa_btle_client_cb_onConnectionFailed_t onConnectionFailed;
 			cxa_btle_client_cb_onConnectionClosed_t onConnectionClosed;
 			void* userVar;
 		}connecting;
 
 		struct
 		{
+			cxa_btle_client_cb_onReadComplete_t onReadComplete;
+			void* userVar;
+		}reading;
+
+		struct
+		{
 			cxa_btle_client_cb_onWriteComplete_t onWriteComplete;
 			void* userVar;
 		}writing;
+
+		struct
+		{
+			cxa_btle_client_cb_onNotiIndiSubscriptionChanged_t onUnsubscribed;
+			void* userVar;
+		}unsubscribing;
 	}cbs;
 
 	struct
@@ -265,9 +348,11 @@ struct cxa_btle_client
 
 		cxa_btle_client_scm_startConnection_t startConnection;
 		cxa_btle_client_scm_stopConnection_t stopConnection;
-		cxa_btle_client_scm_isConnected_t isConnected;
 
+		cxa_btle_client_scm_readFromCharacteristic_t readFromCharacteristic;
 		cxa_btle_client_scm_writeToCharacteristic_t writeToCharacteristic;
+
+		cxa_btle_client_scm_changeNotifications_t changeNotifications;
 	}scms;
 };
 
@@ -277,13 +362,14 @@ struct cxa_btle_client
  * @protected
  */
 void cxa_btle_client_init(cxa_btle_client_t *const btlecIn,
-						  cxa_btle_client_scm_getState_t scm_getState,
+						  cxa_btle_client_scm_getState_t scm_getStateIn,
 						  cxa_btle_client_scm_startScan_t scm_startScanIn,
 						  cxa_btle_client_scm_stopScan_t scm_stopScanIn,
 						  cxa_btle_client_scm_startConnection_t scm_startConnectionIn,
 						  cxa_btle_client_scm_stopConnection_t scm_stopConnectionIn,
-						  cxa_btle_client_scm_isConnected_t scm_isConnectedIn,
-						  cxa_btle_client_scm_writeToCharacteristic_t scm_writeToCharIn);
+						  cxa_btle_client_scm_readFromCharacteristic_t scm_readFromCharIn,
+						  cxa_btle_client_scm_writeToCharacteristic_t scm_writeToCharIn,
+						  cxa_btle_client_scm_changeNotifications_t scm_changeNotificationsIn);
 
 
 /**
@@ -339,6 +425,7 @@ bool cxa_btle_client_hasActivityAvailable(cxa_btle_client_t *const btlecIn);
  */
 void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn,
 									 cxa_btle_client_cb_onConnectionOpened_t cb_connectionOpenedIn,
+									 cxa_btle_client_cb_onConnectionFailed_t cb_connectionFailedIn,
 									 cxa_btle_client_cb_onConnectionClosed_t cb_connectionUnintentionallyClosedIn,
 									 void* userVarIn);
 
@@ -347,6 +434,7 @@ void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48
  * @public
  */
 void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
+									cxa_eui48_t *const targetAddrIn,
 									cxa_btle_client_cb_onConnectionClosed_t cb_connectionClosedIn,
 									void *userVarIn);
 
@@ -354,9 +442,21 @@ void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
 /**
  * @public
  */
+void cxa_btle_client_readFromCharacteristic(cxa_btle_client_t *const btlecIn,
+										    cxa_eui48_t *const targetAddrIn,
+										    const char *const serviceUuidIn,
+										    const char *const characteristicUuidIn,
+										    cxa_btle_client_cb_onReadComplete_t cb_readCompleteIn,
+										    void* userVarIn);
+
+
+/**
+ * @public
+ */
 void cxa_btle_client_writeToCharacteristic_fbb(cxa_btle_client_t *const btlecIn,
-										   	   const char *const serviceIdIn,
-											   const char *const characteristicIdIn,
+											   cxa_eui48_t *const targetAddrIn,
+										   	   const char *const serviceUuidIn,
+											   const char *const characteristicUuidIn,
 											   cxa_fixedByteBuffer_t *const dataIn,
 											   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
 											   void* userVarIn);
@@ -366,12 +466,36 @@ void cxa_btle_client_writeToCharacteristic_fbb(cxa_btle_client_t *const btlecIn,
  * @public
  */
 void cxa_btle_client_writeToCharacteristic(cxa_btle_client_t *const btlecIn,
-										   const char *const serviceIdIn,
-										   const char *const characteristicIdIn,
+										   cxa_eui48_t *const targetAddrIn,
+										   const char *const serviceUuidIn,
+										   const char *const characteristicUuidIn,
 										   void *const dataIn,
 										   size_t numBytesIn,
 										   cxa_btle_client_cb_onWriteComplete_t cb_writeCompleteIn,
 										   void* userVarIn);
+
+
+/**
+ * @public
+ */
+void cxa_btle_client_subscribeToNotifications(cxa_btle_client_t *const btlecIn,
+	    									  cxa_eui48_t *const targetAddrIn,
+											  const char *const serviceUuidIn,
+											  const char *const characteristicUuidIn,
+											  cxa_btle_client_cb_onNotiIndiSubscriptionChanged_t cb_onSubscribedIn,
+											  cxa_btle_client_cb_onNotiIndiRx_t cb_onRxIn,
+											  void* userVarIn);
+
+
+/**
+ * @public
+ */
+void cxa_btle_client_unsubscribeToNotifications(cxa_btle_client_t *const btlecIn,
+												cxa_eui48_t *const targetAddrIn,
+												const char *const serviceUuidIn,
+												const char *const characteristicUuidIn,
+												cxa_btle_client_cb_onNotiIndiSubscriptionChanged_t cb_onUnsubscribedIn,
+												void* userVarIn);
 
 
 /**
@@ -407,21 +531,28 @@ void cxa_btle_client_notify_scanStop(cxa_btle_client_t *const btlecIn);
 /**
  * @protected
  */
-void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, bool wasSuccessfulIn);
+void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
 
 
 /**
  * @protected
  */
-void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn);
+void cxa_btle_client_notify_connectionFailed(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
 
 
 /**
  * @protected
  */
 void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn,
-										  cxa_btle_uuid_t *const uuid_serviceIn,
-										  cxa_btle_uuid_t *const uuid_charIn,
+										  cxa_eui48_t *const targetAddrIn,
+										  const char *const serviceUuidIn,
+										  const char *const characteristicUuidIn,
 										  bool wasSuccessfulIn);
 
 
@@ -429,9 +560,32 @@ void cxa_btle_client_notify_writeComplete(cxa_btle_client_t *const btlecIn,
  * @protected
  */
 void cxa_btle_client_notify_readComplete(cxa_btle_client_t *const btlecIn,
-		  	  	  	  	  	  	  	     cxa_btle_uuid_t *const uuid_serviceIn,
-										 cxa_btle_uuid_t *const uuid_charIn,
-										 bool wasSuccessfulIn);
+										 cxa_eui48_t *const targetAddrIn,
+										 const char *const serviceUuidIn,
+										 const char *const characteristicUuidIn,
+										 bool wasSuccessfulIn,
+										 cxa_fixedByteBuffer_t *fbb_readDataIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_notiIndiSubscriptionChanged(cxa_btle_client_t *const btlecIn,
+														cxa_eui48_t *const targetAddrIn,
+														const char *const serviceUuidIn,
+														const char *const characteristicUuidIn,
+														bool wasSuccessfulIn,
+														bool notificationsEnableIn);
+
+
+/**
+ * @protected
+ */
+void cxa_btle_client_notify_notiIndiRx(cxa_btle_client_t *const btlecIn,
+									   cxa_eui48_t *const targetAddrIn,
+									   const char *const serviceUuidIn,
+									   const char *const characteristicUuidIn,
+									   cxa_fixedByteBuffer_t *fbb_dataIn);
 
 
 /**

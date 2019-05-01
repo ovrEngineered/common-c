@@ -38,12 +38,15 @@
 
 
 // ******** global function implementations ********
-void cxa_uuid128_init(cxa_uuid128_t *const uuidIn, uint8_t *const bytesIn)
+void cxa_uuid128_init(cxa_uuid128_t *const uuidIn, uint8_t *const bytesIn, bool transposeIn)
 {
 	cxa_assert(uuidIn);
 	cxa_assert(bytesIn);
 
-	memcpy(uuidIn->bytes, bytesIn, sizeof(uuidIn->bytes));
+	for( size_t i = 0; i < sizeof(uuidIn->bytes); i++ )
+	{
+		uuidIn->bytes[i] = bytesIn[transposeIn ? (sizeof(uuidIn->bytes)-i-1) : i];
+	}
 }
 
 
