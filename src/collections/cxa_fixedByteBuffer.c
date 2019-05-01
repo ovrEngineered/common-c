@@ -146,6 +146,21 @@ void* cxa_fixedByteBuffer_append_emptyBytes(cxa_fixedByteBuffer_t *const fbbIn, 
 }
 
 
+bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixedByteBuffer_t *const sourceFbbIn)
+{
+	cxa_assert(fbbIn);
+
+	if( sourceFbbIn == NULL ) return true;
+
+	cxa_array_iterate(&sourceFbbIn->bytes, currByte, uint8_t)
+	{
+		if( !cxa_fixedByteBuffer_append_uint8(fbbIn, *currByte) ) return false;
+	}
+
+	return true;
+}
+
+
 bool cxa_fixedByteBuffer_remove(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, const size_t numBytesIn)
 {
 	cxa_assert(fbbIn);
@@ -343,6 +358,14 @@ bool cxa_fixedByteBuffer_insert(cxa_fixedByteBuffer_t *const fbbIn, const size_t
 	}
 
 	return true;
+}
+
+
+uint8_t* cxa_fixedByteBuffer_get_pointerToStartOfData(cxa_fixedByteBuffer_t *const fbbIn)
+{
+	cxa_assert(fbbIn);
+
+	return cxa_array_get_noBoundsCheck(&fbbIn->bytes, 0);
 }
 
 

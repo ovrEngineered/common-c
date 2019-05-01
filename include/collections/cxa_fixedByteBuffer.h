@@ -91,7 +91,6 @@
 #define cxa_fixedByteBuffer_append_uint32BE(fbbIn, uint32In)				cxa_fixedByteBuffer_append((fbbIn), (uint8_t[]){((uint8_t)((((uint32_t)(uint32In)) & 0xFF000000) >> 24)), ((uint8_t)((((uint32_t)(uint32In)) & 0x00FF0000) >> 16)), ((uint8_t)((((uint32_t)(uint32In)) & 0x0000FF00) >> 8)), ((uint8_t)((((uint32_t)(uint32In)) & 0x000000FF) >> 0)) }, 4)
 #define cxa_fixedByteBuffer_append_float(fbbIn, floatIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)&(floatIn), 4)
 #define cxa_fixedByteBuffer_append_cString(fbbIn, strIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)(strIn), (strlen(strIn)+1))
-#define cxa_fixedByteBuffer_append_fbb(fbbIn, otherFbbIn)					cxa_fixedByteBuffer_append((fbbIn), cxa_fixedByteBuffer_get_pointerToIndex((otherFbbIn), 0), cxa_fixedByteBuffer_getSize_bytes((otherFbbIn)))
 
 #define cxa_fixedByteBuffer_append_lengthPrefixedCString_uint16BE(fbbIn, strIn, includeNullTermIn)	\
 	cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE((fbbIn), (strIn), strlen(strIn) + ((includeNullTermIn) ? 1 : 0))
@@ -274,6 +273,17 @@ void* cxa_fixedByteBuffer_append_emptyBytes(cxa_fixedByteBuffer_t *const fbbIn, 
 
 /**
  * @public
+ * @brief Appends the contents of the source buffer to the target buffer.
+ *
+ * @param[in] fbbIn pointer to the pre-initialized cxa_fixedByteBuffer_t object
+ *
+ * @return true if the contents were copied, false if there is not enough space
+ */
+bool cxa_fixedByteBuffer_append_fbb(cxa_fixedByteBuffer_t *const fbbIn, cxa_fixedByteBuffer_t *const sourceFbbIn);
+
+
+/**
+ * @public
  * @brief Removes the specified elements from the buffer (moving all following elements down)
  *
  * @param[in] fbbIn pointer to the pre-initialized cxa_fixedByteBuffer_t object
@@ -321,6 +331,16 @@ bool cxa_fixedByteBuffer_replace_cString(cxa_fixedByteBuffer_t *const fbbIn, con
 
 bool cxa_fixedByteBuffer_insert(cxa_fixedByteBuffer_t *const fbbIn, const size_t indexIn, uint8_t *const ptrIn, const size_t numBytesIn);
 
+/**
+ * @public
+ * @brief Returns a pointer to the starting address of the data store for this buffer.
+ * 		  Commonly used by logging functions.
+ *
+ * @param[in] fbbIn pointer to the pre-initialized cxa_fixedByteBuffer_t object
+ *
+ * @return pointer to the data store for this buffer
+ */
+uint8_t* cxa_fixedByteBuffer_get_pointerToStartOfData(cxa_fixedByteBuffer_t *const fbbIn);
 
 /**
  * @public
