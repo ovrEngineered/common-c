@@ -84,7 +84,7 @@
 	#define cxa_logger_debug_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 	#define cxa_logger_trace_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 
-	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
@@ -109,8 +109,8 @@
 	#define cxa_logger_debug_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 	#define cxa_logger_trace_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 
-	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
@@ -134,9 +134,9 @@
 	#define cxa_logger_debug_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 	#define cxa_logger_trace_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 
-	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 
@@ -159,10 +159,10 @@
 	#define cxa_logger_debug_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)							cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 	#define cxa_logger_trace_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 
-	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_TRACE) )
@@ -184,11 +184,11 @@
 	#define cxa_logger_debug_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)							cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 	#define cxa_logger_trace_memDump(loggerIn, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)							cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_TRACE, prefixIn, ptrIn, ptrLen_bytesIn, postFixIn)
 
-	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
-	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_TRACE, prefixIn, cxa_fixedByteBuffer_get_pointerToIndex((fbbIn),0), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_error_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_ERROR, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_warn_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_WARN, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_TRACE, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 
 #else
 	#error "Unknown CXA_LOG_LEVEL specified"
