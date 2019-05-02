@@ -96,34 +96,10 @@ struct cxa_blueGiga_btle_client
 	bool hasBootFailed;
 	bool isActiveScan;
 
-	cxa_eui48_t connectAddr;
-	bool isConnectAddrRandom;
-
-	uint8_t currConnHandle;
-
-	struct
-	{
-		cxa_softWatchDog_t watchdog;
-
-		cxa_blueGiga_btle_client_procedureType_t procedureType;
-
-		cxa_btle_uuid_t readWriteTargetUuid_service;
-		cxa_btle_uuid_t readWriteTargetUuid_characteristic;
-
-		uint8_t writeData[20];
-		uint8_t writeDataLength_bytes;
-
-		uint16_t serviceHandle_start;
-		uint16_t serviceHandle_end;
-
-		uint16_t characteristicHandle;
-	}currProcedure;
-
 	cxa_blueGiga_gpio_t gpios[CXA_BLUEGIGA_BTLE_MAX_NUM_GPIOS];
 	cxa_blueGiga_i2cMaster_t i2cMaster;
 
 	cxa_stateMachine_t stateMachine_conn;
-	cxa_stateMachine_t stateMachine_currProcedure;
 
 	cxa_logger_t logger;
 };
