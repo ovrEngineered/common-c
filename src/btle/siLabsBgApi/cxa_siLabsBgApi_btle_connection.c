@@ -142,14 +142,7 @@ void cxa_siLabsBgApi_btle_connection_stopConnection(cxa_siLabsBgApi_btle_connect
 	gecko_cmd_le_connection_close(connIn->connHandle);
 	cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_UNUSED);
 
-	if( prevState == STATE_CONNECTED_CONNECT_TIMEOUT )
-	{
-		cxa_btle_client_notify_connectionFailed(connIn->parentClient, &connIn->targetAddress);
-	}
-	else
-	{
-		cxa_btle_client_notify_connectionClose(connIn->parentClient, &connIn->targetAddress);
-	}
+	cxa_btle_client_notify_connectionClose(connIn->parentClient, &connIn->targetAddress);
 }
 
 
@@ -830,7 +823,10 @@ static void stateCb_connTimeout_enter(cxa_stateMachine_t *const smIn, int prevSt
 	cxa_assert(connIn);
 
 	cxa_logger_warn(&connIn->logger, "connection timeout");
-	cxa_siLabsBgApi_btle_connection_stopConnection(connIn);
+
+	gecko_cmd_le_connection_close(connIn->connHandle);
+	cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_UNUSED);
+	cxa_btle_client_notify_connectionFailed(connIn->parentClient, &connIn->targetAddress);
 }
 
 
