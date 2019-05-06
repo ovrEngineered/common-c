@@ -33,7 +33,6 @@
 
 
 // ******** local function prototypes ********
-static void parseAdvField(cxa_btle_advField_t *advFieldIn, uint8_t* bytesIn);
 
 
 // ********  local variable declarations *********
@@ -516,83 +515,5 @@ void cxa_btle_client_notify_notiIndiRx(cxa_btle_client_t *const btlecIn,
 }
 
 
-bool cxa_btle_client_countAdvFields(uint8_t *const bytesIn, size_t maxLen_bytesIn, size_t *const numAdvFieldsOut)
-{
-	int numAdvFields = 0;
-	for( size_t i = 0; i < maxLen_bytesIn; i++ )
-	{
-		// at the start of a record...first byte is length
-		int fieldLen = bytesIn[i];
-		if( fieldLen == 0 ) break;
-
-		if( (fieldLen + i) > maxLen_bytesIn )
-		{
-			return false;
-		}
-
-		numAdvFields++;
-		i += fieldLen;
-	}
-	if( numAdvFieldsOut != NULL ) *numAdvFieldsOut = numAdvFields;
-	return true;
-}
-
-
-bool cxa_btle_client_parseAdvFieldsForPacket(cxa_btle_advPacket_t *packetIn, size_t numAdvFieldsIn, uint8_t *const bytesIn, size_t maxLen_bytesIn)
-{
-	cxa_assert(packetIn);
-	cxa_assert(bytesIn);
-
-	if( numAdvFieldsIn > 0 )
-	{
-		size_t currByteIndex = 0;
-		for( size_t i = 0; i < numAdvFieldsIn; i++ )
-		{
-			cxa_btle_advField_t* currField = (cxa_btle_advField_t*)cxa_array_append_empty(&packetIn->advFields);
-			if( currField == NULL ) return false;
-
-			parseAdvField(currField, &bytesIn[currByteIndex]);
-
-			// +1 is for the length byte itself
-			currByteIndex += currField->length + 1;
-		}
-	}
-
-	return true;
-}
-
-
 // ******** local function implementations ********
-static void parseAdvField(cxa_btle_advField_t *advFieldIn, uint8_t* bytesIn)
-{
-	cxa_assert(advFieldIn);
-	cxa_assert(bytesIn);
 
-	// first byte is always length byte
-	advFieldIn->length = *bytesIn;
-	bytesIn++;
-
-	// next is type
-	advFieldIn->type = (cxa_btle_advFieldType_t)*bytesIn;
-	bytesIn++;
-
-	// the rest depends on the type
-	switch( advFieldIn->type )
-	{
-		case CXA_BTLE_ADVFIELDTYPE_FLAGS:
-			advFieldIn->asFlags.flags = *bytesIn;
-			break;
-
-		case CXA_BTLE_ADVFIELDTYPE_TXPOWER:
-			advFieldIn->asTxPower.txPower_dBm = *bytesIn;
-			break;
-
-		case CXA_BTLE_ADVFIELDTYPE_MAN_DATA:
-			advFieldIn->asManufacturerData.companyId = (uint16_t)*bytesIn;
-			bytesIn++;
-			advFieldIn->asManufacturerData.companyId |= ((uint16_t)*bytesIn) << 8;
-			bytesIn++;
-			cxa_fixedByteBuffer_init_inPlace(&advFieldIn->asManufacturerData.manBytes, advFieldIn->length - 3, bytesIn, advFieldIn->length - 3);
-			break;
-	}
-}

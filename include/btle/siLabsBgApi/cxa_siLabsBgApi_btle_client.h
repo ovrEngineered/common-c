@@ -50,6 +50,8 @@ struct cxa_siLabsBgApi_btle_client
 {
 	cxa_btle_client_t super;
 
+	int threadId;
+
 	cxa_ioStream_peekable_t ios_usart;
 	bool hasBootFailed;
 

@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include <cxa_array.h>
+#include <cxa_btle_advPacket.h>
 #include <cxa_btle_uuid.h>
 #include <cxa_eui48.h>
 #include <cxa_fixedByteBuffer.h>
@@ -51,63 +52,10 @@ typedef struct cxa_btle_client cxa_btle_client_t;
  */
 typedef enum
 {
-	CXA_BTLE_ADVFIELDTYPE_FLAGS = 0x01,
-	CXA_BTLE_ADVFIELDTYPE_TXPOWER = 0x0A,
-	CXA_BTLE_ADVFIELDTYPE_MAN_DATA = 0xFF
-}cxa_btle_advFieldType_t;
-
-
-/**
- * @public
- */
-typedef enum
-{
 	CXA_BTLE_CLIENT_STATE_STARTUP,
 	CXA_BTLE_CLIENT_STATE_STARTUPFAILED,
 	CXA_BTLE_CLIENT_STATE_READY,
 }cxa_btle_client_state_t;
-
-
-/**
- * @public
- */
-typedef struct
-{
-	uint8_t length;
-	cxa_btle_advFieldType_t type;
-
-	union
-	{
-		struct
-		{
-			uint8_t flags;
-		}asFlags;
-
-		struct
-		{
-			int8_t txPower_dBm;
-		}asTxPower;
-
-		struct
-		{
-			uint16_t companyId;
-			cxa_fixedByteBuffer_t manBytes;
-		}asManufacturerData;
-	};
-}cxa_btle_advField_t;
-
-
-/**
- * @public
- */
-typedef struct
-{
-	cxa_eui48_t addr;
-	bool isRandomAddress;
-	int rssi;
-
-	cxa_array_t advFields;
-}cxa_btle_advPacket_t;
 
 
 /**
@@ -586,17 +534,5 @@ void cxa_btle_client_notify_notiIndiRx(cxa_btle_client_t *const btlecIn,
 									   const char *const serviceUuidIn,
 									   const char *const characteristicUuidIn,
 									   cxa_fixedByteBuffer_t *fbb_dataIn);
-
-
-/**
- * @protected
- */
-bool cxa_btle_client_countAdvFields(uint8_t *const bytesIn, size_t maxLen_bytesIn, size_t *const numAdvFieldsOut);
-
-
-/**
- * @protected
- */
-bool cxa_btle_client_parseAdvFieldsForPacket(cxa_btle_advPacket_t *packetIn, size_t numAdvFieldsIn, uint8_t *const bytesIn, size_t maxLen_bytesIn);
 
 #endif

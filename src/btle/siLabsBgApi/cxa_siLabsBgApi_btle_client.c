@@ -22,6 +22,7 @@
 #include <cxa_array.h>
 #include <cxa_assert.h>
 #include <cxa_ioStream_peekable.h>
+#include <cxa_runLoop.h>
 
 #define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
@@ -76,6 +77,9 @@ static void scm_changeNotifications(cxa_btle_client_t *const superIn,
 									const char *const characteristicUuidIn,
 									bool enableNotifications);
 
+static void runLoopOneShot_startScan(void* userVarIn);
+static void runLoopOneShot_stopScan(void* userVarIn);
+
 static void bglib_cb_output(uint32_t numBytesIn, uint8_t* dataIn);
 static int32_t bglib_cb_input(uint32_t numBytesToReadIn, uint8_t* dataOut);
 static int32_t bglib_cb_peek(void);
@@ -94,6 +98,7 @@ void cxa_siLabsBgApi_btle_client_init(cxa_siLabsBgApi_btle_client_t *const btlec
 
 	// save our references and setup our internal state
 	SINGLETON = btlecIn;
+	btlecIn->threadId = threadIdIn;
 	cxa_ioStream_peekable_init(&btlecIn->ios_usart, ioStreamIn);
 	cxa_logger_init(&btlecIn->logger, "bgApiBtleC");
 	btlecIn->hasBootFailed = false;
@@ -224,6 +229,29 @@ static void appHandleEvents(cxa_siLabsBgApi_btle_client_t *const btlecIn, struct
 			break;
 		}
 
+		case gecko_evt_le_gap_scan_response_id:
+		{
+//			cxa_logger_debug_memDump(&btlecIn->logger, "rxBytes: ", evt->data.evt_le_gap_scan_response.data.data, evt->data.evt_le_gap_scan_response.data.len, NULL);
+
+			cxa_btle_advPacket_t rxPacket;
+			if( cxa_btle_advPacket_init(&rxPacket,
+										evt->data.evt_le_gap_scan_response.address.addr,
+										(evt->data.evt_le_gap_scan_response.address_type == le_gap_address_type_random),
+										evt->data.evt_le_gap_scan_response.rssi,
+										evt->data.evt_le_gap_scan_response.data.data,
+										evt->data.evt_le_gap_scan_response.data.len) )
+			{
+				// if we made it here, we parsed the packet successfully...notify our listeners
+				cxa_btle_client_notify_advertRx(&btlecIn->super, &rxPacket);
+			}
+			else
+			{
+				cxa_logger_warn(&btlecIn->logger, "malformed advert packet");
+			}
+
+			break;
+		}
+
 		case gecko_evt_le_connection_parameters_id:
 		case gecko_evt_le_connection_phy_status_id:
 		case gecko_evt_gatt_mtu_exchanged_id:
@@ -343,6 +371,7 @@ static void stateCb_ready_enter(cxa_stateMachine_t *const smIn, int prevStateIdI
 	cxa_assert(btlecIn);
 
 	cxa_logger_info(&btlecIn->logger, "radio is ready");
+	cxa_btle_client_notify_onBecomesReady(&btlecIn->super);
 }
 
 
@@ -381,8 +410,9 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 {
 	cxa_siLabsBgApi_btle_client_t *const btlecIn = (cxa_siLabsBgApi_btle_client_t *const)superIn;
 	cxa_assert(btlecIn);
+	cxa_assert_msg(!isActiveIn, "not yet implemented");
 
-	cxa_assert_failWithMsg("not implemented");
+	cxa_runLoop_dispatchNextIteration(btlecIn->threadId, runLoopOneShot_startScan, (void*)btlecIn);
 }
 
 
@@ -391,7 +421,7 @@ static void scm_stopScan(cxa_btle_client_t *const superIn)
 	cxa_siLabsBgApi_btle_client_t *const btlecIn = (cxa_siLabsBgApi_btle_client_t *const)superIn;
 	cxa_assert(btlecIn);
 
-	cxa_assert_failWithMsg("not implemented");
+	cxa_runLoop_dispatchNextIteration(btlecIn->threadId, runLoopOneShot_stopScan, (void*)btlecIn);
 }
 
 
@@ -496,6 +526,33 @@ static void scm_changeNotifications(cxa_btle_client_t *const superIn,
 		cxa_logger_warn(&btlecIn->logger, "not connected to '%s'", addr_str);
 		cxa_btle_client_notify_writeComplete(&btlecIn->super, targetAddrIn, serviceUuidIn, characteristicUuidIn, false);
 	}
+}
+
+
+static void runLoopOneShot_startScan(void* userVarIn)
+{
+	cxa_siLabsBgApi_btle_client_t *const btlecIn = (cxa_siLabsBgApi_btle_client_t *const)userVarIn;
+	cxa_assert(btlecIn);
+
+	struct gecko_msg_le_gap_start_discovery_rsp_t* rsp = gecko_cmd_le_gap_start_discovery(le_gap_phy_1m, le_gap_discover_generic);
+	if( rsp->result != 0 )
+	{
+		cxa_logger_warn(&btlecIn->logger, "scan start failed");
+		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
+		return;
+	}
+	// if we made it here, scan start was successful
+
+	cxa_btle_client_notify_scanStart(&btlecIn->super, true);
+}
+
+
+static void runLoopOneShot_stopScan(void* userVarIn)
+{
+	cxa_siLabsBgApi_btle_client_t *const btlecIn = (cxa_siLabsBgApi_btle_client_t *const)userVarIn;
+	cxa_assert(btlecIn);
+
+	gecko_cmd_le_gap_end_procedure();
 }
 
 
