@@ -134,7 +134,6 @@ void cxa_siLabsBgApi_btle_connection_stopConnection(cxa_siLabsBgApi_btle_connect
 		return;
 	}
 
-	state_t prevState = cxa_stateMachine_getCurrentState(&connIn->stateMachine);
 	cxa_eui48_string_t targetAddr_str;
 	cxa_eui48_toString(&connIn->targetAddress, &targetAddr_str);
 
