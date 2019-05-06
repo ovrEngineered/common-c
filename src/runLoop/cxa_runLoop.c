@@ -45,10 +45,28 @@
 
 
 // ******** local type definitions ********
+typedef enum
+{
+	STATE_UNUSED,
+	STATE_RESERVED_CONFIGURING,
+	STATE_RESERVED_CONFIGURED_UNSTARTED,
+	STATE_RESERVED_CONFIGURED_STARTED
+}state_t;
+
+
+typedef enum
+{
+	TYPE_STANDARD,
+	TYPE_ONESHOT
+}type_t;
+
+
 typedef struct
 {
+	state_t state;
+	type_t type;
+
 	int threadId;
-	bool hasBeenStarted;
 
 	uint32_t execPeriod_ms;
 	cxa_timeDiff_t td_exec;
@@ -60,14 +78,14 @@ typedef struct
 
 
 // ******** local function prototypes ********
-static void cxa_runLoop_init(void);
+static void init(void);
+static cxa_runLoop_entry_t* reserveUnusedEntry(void);
 
 
 // ********  local variable declarations *********
 static bool isInit = false;
 
-static cxa_array_t cbs;
-static cxa_runLoop_entry_t cbs_raw[CXA_RUNLOOP_MAXNUM_ENTRIES];
+static cxa_runLoop_entry_t entries[CXA_RUNLOOP_MAXNUM_ENTRIES];
 
 static cxa_logger_t logger;
 
@@ -75,62 +93,115 @@ static cxa_logger_t logger;
 // ******** global function implementations ********
 void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn)
 {
-	if( !isInit ) cxa_runLoop_init();
+	if( !isInit ) init();
 
-	// create our new entry
-	cxa_runLoop_entry_t newEntry = {.threadId = threadIdIn, .hasBeenStarted=false, .execPeriod_ms=0, .startupCb=startupCbIn, .updateCb=updateCbIn, .userVar=userVarIn};
-	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
+	cxa_runLoop_entry_t* newEntry = reserveUnusedEntry();
+	cxa_assert_msg(newEntry, "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
+
+	newEntry->threadId = threadIdIn;
+	newEntry->type = TYPE_STANDARD;
+	newEntry->execPeriod_ms=0;
+	newEntry->startupCb=startupCbIn;
+	newEntry->updateCb=updateCbIn;
+	newEntry->userVar=userVarIn;
+	cxa_timeDiff_init(&newEntry->td_exec);
+	newEntry->state = STATE_RESERVED_CONFIGURED_UNSTARTED;
 }
 
 
 void cxa_runLoop_addTimedEntry(int threadIdIn, uint32_t execPeriod_msIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn)
 {
-	if( !isInit ) cxa_runLoop_init();
+	if( !isInit ) init();
 
-	// create our new entry
-	cxa_runLoop_entry_t newEntry = {.threadId = threadIdIn, .hasBeenStarted=false, .execPeriod_ms=execPeriod_msIn, .startupCb=startupCbIn, .updateCb=updateCbIn, .userVar=userVarIn};
-	cxa_timeDiff_init(&newEntry.td_exec);
-	cxa_assert_msg(cxa_array_append(&cbs, &newEntry), "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
+	cxa_runLoop_entry_t* newEntry = reserveUnusedEntry();
+	cxa_assert_msg(newEntry, "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
+
+	newEntry->threadId = threadIdIn;
+	newEntry->type = TYPE_STANDARD;
+	newEntry->execPeriod_ms=execPeriod_msIn;
+	newEntry->startupCb=startupCbIn;
+	newEntry->updateCb=updateCbIn;
+	newEntry->userVar=userVarIn;
+	cxa_timeDiff_init(&newEntry->td_exec);
+	newEntry->state = STATE_RESERVED_CONFIGURED_UNSTARTED;
 }
 
 
 void cxa_runLoop_clearAllEntries(void)
 {
 	isInit = false;
-	cxa_runLoop_init();
+	init();
+}
+
+
+void cxa_runLoop_dispatchNextIteration(int threadIdIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn)
+{
+	if( !isInit ) init();
+
+	cxa_runLoop_entry_t* newEntry = reserveUnusedEntry();
+	cxa_assert_msg(newEntry, "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
+
+	newEntry->threadId = threadIdIn;
+	newEntry->type = TYPE_ONESHOT;
+	newEntry->execPeriod_ms=0;
+	newEntry->startupCb=NULL;
+	newEntry->updateCb=updateCbIn;
+	newEntry->userVar=userVarIn;
+	cxa_timeDiff_init(&newEntry->td_exec);
+	newEntry->state = STATE_RESERVED_CONFIGURED_UNSTARTED;
+}
+
+
+void cxa_runLoop_dispatchAfter(int threadIdIn, uint32_t delay_msIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn)
+{
+	if( !isInit ) init();
+
+	cxa_runLoop_entry_t* newEntry = reserveUnusedEntry();
+	cxa_assert_msg(newEntry, "increase CXA_RUNLOOP_MAXNUM_ENTRIES");
+
+	newEntry->threadId = threadIdIn;
+	newEntry->type = TYPE_ONESHOT;
+	newEntry->execPeriod_ms=delay_msIn;
+	newEntry->startupCb=NULL;
+	newEntry->updateCb=updateCbIn;
+	newEntry->userVar=userVarIn;
+	cxa_timeDiff_init(&newEntry->td_exec);
+	newEntry->state = STATE_RESERVED_CONFIGURED_UNSTARTED;
 }
 
 
 uint32_t cxa_runLoop_iterate(int threadIdIn)
 {
-	if( !isInit ) cxa_runLoop_init();
+	if( !isInit ) init();
 
 	uint32_t iter_startTime_us = cxa_timeBase_getCount_us();
 
 	// iterate first and make sure all of our entries have been started
-	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
+	for( size_t i = 0; i < sizeof(entries)/sizeof(*entries); i++ )
 	{
-		if( (currEntry != NULL) && (currEntry->threadId == threadIdIn) &&
-			!currEntry->hasBeenStarted && (currEntry->startupCb != NULL) )
+		if( (entries[i].threadId == threadIdIn) &&
+			(entries[i].state == STATE_RESERVED_CONFIGURED_UNSTARTED) )
 		{
-			currEntry->hasBeenStarted = true;
-			currEntry->startupCb(currEntry->userVar);
+			if( entries[i].startupCb != NULL ) entries[i].startupCb(entries[i].userVar);
+			entries[i].state = STATE_RESERVED_CONFIGURED_STARTED;
 		}
 	}
 
 	// now iterate again and call our update functions
-	cxa_array_iterate(&cbs, currEntry, cxa_runLoop_entry_t)
+	for( size_t i = 0; i < sizeof(entries)/sizeof(*entries); i++ )
 	{
-		if( (currEntry != NULL) && (currEntry->threadId == threadIdIn) &&
-			(currEntry->updateCb != NULL) )
+		if( (entries[i].threadId == threadIdIn) &&
+			(entries[i].state == STATE_RESERVED_CONFIGURED_STARTED) )
 		{
 			// we know this is valid callback for this thread...
 			// if it's timed, make sure we're calling it at the right pace
-
-			if( (currEntry->execPeriod_ms == 0) ||
-				 cxa_timeDiff_isElapsed_recurring_ms(&currEntry->td_exec, currEntry->execPeriod_ms) )
+			if( (entries[i].execPeriod_ms == 0) ||
+				 cxa_timeDiff_isElapsed_recurring_ms(&entries[i].td_exec, entries[i].execPeriod_ms) )
 			{
-				currEntry->updateCb(currEntry->userVar);
+				entries[i].updateCb(entries[i].userVar);
+
+				// free this entry if it's a one-shot
+				if( entries[i].type == TYPE_ONESHOT ) entries[i].state = STATE_UNUSED;
 			}
 		}
 	}
@@ -149,7 +220,7 @@ uint32_t cxa_runLoop_iterate(int threadIdIn)
 
 void cxa_runLoop_execute(int threadIdIn)
 {
-	if( !isInit ) cxa_runLoop_init();
+	if( !isInit ) init();
 
 	// start the iterations
 	while(1)
@@ -160,13 +231,31 @@ void cxa_runLoop_execute(int threadIdIn)
 
 
 // ******** local function implementations ********
-static void cxa_runLoop_init(void)
+static void init(void)
 {
 	if( isInit ) return;
 
-	cxa_array_initStd(&cbs, cbs_raw);
+	for( size_t i = 0; i < sizeof(entries)/sizeof(*entries); i++ )
+	{
+		entries[i].state = STATE_UNUSED;
+	}
 	cxa_logger_init(&logger, "runLoop");
 
 	isInit = true;
+}
+
+
+static cxa_runLoop_entry_t* reserveUnusedEntry(void)
+{
+	for( size_t i = 0; i < sizeof(entries)/sizeof(*entries); i++ )
+	{
+		if( entries[i].state == STATE_UNUSED )
+		{
+			entries[i].state = STATE_RESERVED_CONFIGURING;
+			return &entries[i];
+		}
+	}
+
+	return NULL;
 }
 

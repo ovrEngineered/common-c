@@ -27,7 +27,6 @@
 // ******** includes ********
 #include <stdbool.h>
 #include <stdint.h>
-#include <cxa_array.h>
 #include <cxa_config.h>
 
 
@@ -50,6 +49,9 @@ typedef void (*cxa_runLoop_cb_t)(void* userVarIn);
 void cxa_runLoop_addEntry(int threadIdIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn);
 void cxa_runLoop_addTimedEntry(int threadIdIn, uint32_t execPeriod_msIn, cxa_runLoop_cb_t startupCbIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn);
 void cxa_runLoop_clearAllEntries(void);
+
+void cxa_runLoop_dispatchNextIteration(int threadIdIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn);
+void cxa_runLoop_dispatchAfter(int threadIdIn, uint32_t delay_msIn, cxa_runLoop_cb_t updateCbIn, void *const userVarIn);
 
 uint32_t cxa_runLoop_iterate(int threadIdIn);
 void cxa_runLoop_execute(int threadIdIn);
