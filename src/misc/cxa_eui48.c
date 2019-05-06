@@ -145,6 +145,18 @@ void cxa_eui48_toString(cxa_eui48_t *const uuidIn, cxa_eui48_string_t *const str
 }
 
 
+bool cxa_eui48_isEqualToString(cxa_eui48_t *const uuidIn, const char *const uuidStrIn)
+{
+	cxa_assert(uuidIn);
+	cxa_assert(uuidStrIn);
+
+	cxa_eui48_t tmpEui48;
+	if( !cxa_eui48_initFromString(&tmpEui48, uuidStrIn) ) return false;
+	return cxa_eui48_isEqual(uuidIn, &tmpEui48);
+
+}
+
+
 void cxa_eui48_toShortString(cxa_eui48_t *const uuidIn, cxa_eui48_string_t *const strOut)
 {
 	cxa_assert(uuidIn);

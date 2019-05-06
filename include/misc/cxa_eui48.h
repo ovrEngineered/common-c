@@ -48,6 +48,7 @@ void cxa_eui48_initFromEui48(cxa_eui48_t *const targetIn, cxa_eui48_t *const sou
 void cxa_eui48_initRandom(cxa_eui48_t *const uuidIn);
 
 bool cxa_eui48_isEqual(cxa_eui48_t *const uuid1In, cxa_eui48_t *const uuid2In);
+bool cxa_eui48_isEqualToString(cxa_eui48_t *const uuidIn, const char *const uuidStrIn);
 
 void cxa_eui48_toString(cxa_eui48_t *const uuidIn, cxa_eui48_string_t *const strOut);
 void cxa_eui48_toShortString(cxa_eui48_t *const uuidIn, cxa_eui48_string_t *const strOut);
