@@ -101,6 +101,8 @@ bool cxa_btle_advPacket_init(cxa_btle_advPacket_t *const advPacketIn,
 							 int rssiIn,
 							 uint8_t *const dataIn, size_t dataLen_bytesIn);
 
+cxa_eui48_t* cxa_btle_advPacket_getAddress(cxa_btle_advPacket_t *const advPacketIn);
+
 bool cxa_btle_advPacket_getNumFields(cxa_btle_advPacket_t *const advPacketIn, size_t *const numAdvFieldsOut);
 bool cxa_btle_advPacket_getField(cxa_btle_advPacket_t *const advPacketIn, size_t fieldIndexIn, cxa_btle_advField_t *const fieldOut);
 
