@@ -44,7 +44,6 @@ void cxa_fixedByteBuffer_init(cxa_fixedByteBuffer_t *const fbbIn, void *const bu
 {
 	cxa_assert(fbbIn);
 	cxa_assert(bufferLocIn);
-	cxa_assert(bufferMaxSize_bytesIn > 0);
 
 	// setup our internal state
 	cxa_array_init(&fbbIn->bytes, 1, bufferLocIn, bufferMaxSize_bytesIn);
