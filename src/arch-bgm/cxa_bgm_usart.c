@@ -88,10 +88,12 @@ void cxa_bgm_usart_init_noHH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uart
 	{
 		CMU_ClockEnable(cmuClock_USART1, true);
 	}
+#ifdef USART2
 	else if( usartIn->uartId == USART2 )
 	{
 		CMU_ClockEnable(cmuClock_USART2, true);
 	}
+#endif
 
 	// set pin modes for USART TX and RX pins
 	GPIO_PinModeSet(txPortNumIn, txPinNumIn, gpioModePushPull, 1);
@@ -121,10 +123,12 @@ void cxa_bgm_usart_init_noHH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uart
 	{
 		NVIC_EnableIRQ(USART1_RX_IRQn);
 	}
+#ifdef USART2
 	else if( usartIn->uartId == USART2 )
 	{
 		NVIC_EnableIRQ(USART2_RX_IRQn);
 	}
+#endif
 }
 
 
@@ -216,4 +220,7 @@ static void handleIsr_rx(USART_TypeDef *usart_rawIn)
 // ******** Interrupt Handlers ********
 void USART0_RX_IRQHandler(void) { handleIsr_rx(USART0); }
 void USART1_RX_IRQHandler(void) { handleIsr_rx(USART1); }
+
+#ifdef USART2
 void USART2_RX_IRQHandler(void) { handleIsr_rx(USART2); }
+#endif

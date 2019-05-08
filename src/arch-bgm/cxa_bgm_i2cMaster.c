@@ -64,14 +64,18 @@ void cxa_bgm_i2cMaster_init(cxa_bgm_i2cMaster_t *const i2cIn, I2C_TypeDef *const
 	i2cIn->scl.loc = sclLocIn;
 
 	// enable the clock to the peripheral
+#if defined(_SILICON_LABS_32B_SERIES_2)
 	if( i2cIn->i2cPort == I2C0 )
 	{
 		CMU_ClockEnable(cmuClock_I2C0, true);
 	}
+#ifdef I2C1
 	else if( i2cIn->i2cPort == I2C1 )
 	{
 		CMU_ClockEnable(cmuClock_I2C1, true);
 	}
+#endif
+#endif
 
 	// make sure the pins are setup correctly
 	GPIO_PinModeSet(i2cIn->sda.port, i2cIn->sda.pinNum, gpioModeWiredAndPullUpFilter, 1);
