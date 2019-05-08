@@ -65,7 +65,7 @@ bool cxa_btle_uuid_init(cxa_btle_uuid_t *const uuidIn, uint8_t *const bytesIn, s
 }
 
 
-bool cxa_btle_uuid_initFromBuffer(cxa_btle_uuid_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn, size_t numBytesIn)
+bool cxa_btle_uuid_initFromBuffer(cxa_btle_uuid_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn, size_t numBytesIn, bool transposeIn)
 {
 	cxa_assert(uuidIn);
 	cxa_assert(fbbIn);
@@ -79,7 +79,7 @@ bool cxa_btle_uuid_initFromBuffer(cxa_btle_uuid_t *const uuidIn, cxa_fixedByteBu
 	else if( numBytesIn == 16 )
 	{
 		uuidIn->type = CXA_BTLE_UUID_TYPE_128BIT;
-		retVal = cxa_uuid128_initFromBuffer(&uuidIn->as128Bit, fbbIn, indexIn, false);
+		retVal = cxa_uuid128_initFromBuffer(&uuidIn->as128Bit, fbbIn, indexIn, transposeIn);
 	}
 	return retVal;
 }

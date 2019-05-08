@@ -64,7 +64,7 @@ struct cxa_btle_uuid
 
 // ******** global function prototypes ********
 bool cxa_btle_uuid_init(cxa_btle_uuid_t *const uuidIn, uint8_t *const bytesIn, size_t numBytesIn, bool transposeIn);
-bool cxa_btle_uuid_initFromBuffer(cxa_btle_uuid_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn, size_t numBytesIn);
+bool cxa_btle_uuid_initFromBuffer(cxa_btle_uuid_t *const uuidIn, cxa_fixedByteBuffer_t *const fbbIn, size_t indexIn, size_t numBytesIn, bool transposeIn);
 bool cxa_btle_uuid_initFromString(cxa_btle_uuid_t *const uuidIn, const char *const strIn);
 void cxa_btle_uuid_initFromUuid(cxa_btle_uuid_t *const targetUuidIn, cxa_btle_uuid_t *const sourceUuidIn, bool transposeIn);
 
