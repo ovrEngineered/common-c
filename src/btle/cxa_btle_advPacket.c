@@ -122,7 +122,8 @@ bool cxa_btle_advPacket_isAdvertisingService(cxa_btle_advPacket_t *const advPack
 		{
 			cxa_btle_advField_t currField;
 			if( cxa_btle_advPacket_getField(advPacketIn, currFieldIndex, &currField) &&
-				(currField.type == CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS) )
+				((currField.type == CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS) ||
+				 (currField.type == CXA_BTLE_ADVFIELDTYPE_COMPLETE_SERVICE_UUIDS)) )
 			{
 				size_t numUuidsThisField;
 				if( cxa_btle_advField_getNumUuids(&currField, &numUuidsThisField) )
@@ -147,9 +148,10 @@ bool cxa_btle_advPacket_isAdvertisingService(cxa_btle_advPacket_t *const advPack
 bool cxa_btle_advField_getNumUuids(cxa_btle_advField_t *const advFieldIn, size_t* numUuidsOut)
 {
 	// make sure this is the right type
-	if( advFieldIn->type != CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS ) return false;
+	if( (advFieldIn->type != CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS) &&
+		(advFieldIn->type != CXA_BTLE_ADVFIELDTYPE_COMPLETE_SERVICE_UUIDS) ) return false;
 
-	if( numUuidsOut != NULL ) *numUuidsOut = cxa_fixedByteBuffer_getSize_bytes(&advFieldIn->asIncompleteServiceUuids.uuidBytes) / 16;
+	if( numUuidsOut != NULL ) *numUuidsOut = cxa_fixedByteBuffer_getSize_bytes(&advFieldIn->asServiceUuids.uuidBytes) / 16;
 
 	return true;
 }
@@ -160,16 +162,17 @@ bool cxa_btle_advField_getUuid(cxa_btle_advField_t *const advFieldIn, size_t uui
 	cxa_assert(advFieldIn);
 
 	// make sure this is the right type
-	if( advFieldIn->type != CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS ) return false;
+	if( (advFieldIn->type != CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS) &&
+		(advFieldIn->type != CXA_BTLE_ADVFIELDTYPE_COMPLETE_SERVICE_UUIDS) ) return false;
 
 	// make sure we have enough bytes
-	if( cxa_fixedByteBuffer_getSize_bytes(&advFieldIn->asIncompleteServiceUuids.uuidBytes) < ((uuidIndexIn*16) + 16) ) return false;
+	if( cxa_fixedByteBuffer_getSize_bytes(&advFieldIn->asServiceUuids.uuidBytes) < ((uuidIndexIn*16) + 16) ) return false;
 
 	// parse it (if needed)
 	bool retVal = true;
 	if( uuidOut != NULL )
 	{
-		retVal = cxa_btle_uuid_initFromBuffer(uuidOut, &advFieldIn->asIncompleteServiceUuids.uuidBytes, uuidIndexIn*16, 16);
+		retVal = cxa_btle_uuid_initFromBuffer(uuidOut, &advFieldIn->asServiceUuids.uuidBytes, uuidIndexIn*16, 16, true);
 	}
 	return retVal;
 }
@@ -248,10 +251,11 @@ static bool parseAdvField(cxa_btle_advPacket_t *const advPacketIn, cxa_btle_advF
 			break;
 		}
 
+		case CXA_BTLE_ADVFIELDTYPE_COMPLETE_SERVICE_UUIDS:
 		case CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS:
 		{
 			size_t uuidSize_bytes = advFieldIn->length-1;
-			cxa_fixedByteBuffer_init_subBufferFixedSize(&advFieldIn->asIncompleteServiceUuids.uuidBytes, &advPacketIn->fbb_data, fieldByteIndexIn+2, uuidSize_bytes);
+			cxa_fixedByteBuffer_init_subBufferFixedSize(&advFieldIn->asServiceUuids.uuidBytes, &advPacketIn->fbb_data, fieldByteIndexIn+2, uuidSize_bytes);
 			break;
 		}
 

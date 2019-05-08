@@ -43,6 +43,7 @@ typedef enum
 {
 	CXA_BTLE_ADVFIELDTYPE_FLAGS = 0x01,
 	CXA_BTLE_ADVFIELDTYPE_INCOMPLETE_SERVICE_UUIDS = 0x06,
+	CXA_BTLE_ADVFIELDTYPE_COMPLETE_SERVICE_UUIDS = 0x07,
 	CXA_BTLE_ADVFIELDTYPE_TXPOWER = 0x0A,
 	CXA_BTLE_ADVFIELDTYPE_MAN_DATA = 0xFF
 }cxa_btle_advFieldType_t;
@@ -66,7 +67,7 @@ typedef struct
 		struct
 		{
 			cxa_fixedByteBuffer_t uuidBytes;
-		}asIncompleteServiceUuids;
+		}asServiceUuids;
 
 		struct
 		{
