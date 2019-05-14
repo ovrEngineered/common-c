@@ -137,7 +137,7 @@ void cxa_siLabsBgApi_btle_connection_stopConnection(cxa_siLabsBgApi_btle_connect
 	if( cxa_stateMachine_getCurrentState(&connIn->stateMachine) == STATE_UNUSED )
 	{
 		// if we're already closed, let them know
-		cxa_btle_client_notify_connectionClose(connIn->parentClient, &connIn->targetAddress);
+		cxa_btle_client_notify_connectionClose_expected(connIn->parentClient, &connIn->targetAddress);
 		return;
 	}
 
