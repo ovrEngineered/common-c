@@ -29,20 +29,23 @@
 #define	CONNECT_TIMEOUT_MS				5000
 #define	PROCEDURE_TIMEOUT_MS			5000
 
+#define DISCONNECT_TIMEOUT_MS			2000
+
 
 // ******** local type definitions ********
 typedef enum
 {
 	STATE_UNUSED,
 	STATE_CONNECTING,
+	STATE_CONNECTING_TIMEOUT,
 	STATE_CONNECTED_IDLE,
 	STATE_CONNECTED_RESOLVE_SERVICE,
 	STATE_CONNECTED_RESOLVE_CHAR,
-	STATE_CONNECTED_CONNECT_TIMEOUT,
 	STATE_CONNECTED_PROCEDURE_TIMEOUT,
 	STATE_CONNECTED_READ,
 	STATE_CONNECTED_WRITE,
-	STATE_CONNECTED_CHANGE_NOTI_INDI
+	STATE_CONNECTED_CHANGE_NOTI_INDI,
+	STATE_DISCONNECTING
 }state_t;
 
 
@@ -53,15 +56,17 @@ static cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* getCachedCha
 
 static void handleProcedureComplete(cxa_siLabsBgApi_btle_connection_t *const connIn, bool wasSuccessfulIn);
 
+static void stateCb_unused_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connectingTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connIdle_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connResolveService_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connResolveChar_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connRead_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connWrite_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connChangeNotiIndi_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_connTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_connProcTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_disconnecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -84,16 +89,18 @@ void cxa_siLabsBgApi_btle_connection_init(cxa_siLabsBgApi_btle_connection_t *con
 
 	// setup our stateMachine
 	cxa_stateMachine_init(&connIn->stateMachine, "siLabsBgApiConn", threadIdIn);
-	cxa_stateMachine_addState(&connIn->stateMachine, STATE_UNUSED, "unused", NULL, NULL, NULL, (void*)connIn);
-	cxa_stateMachine_addState_timed(&connIn->stateMachine, STATE_CONNECTING, "connecting", STATE_CONNECTED_CONNECT_TIMEOUT, CONNECT_TIMEOUT_MS, stateCb_connecting_enter, NULL, NULL, (void*)connIn);
+	cxa_stateMachine_addState(&connIn->stateMachine, STATE_UNUSED, "unused", stateCb_unused_enter, NULL, NULL, (void*)connIn);
+	cxa_stateMachine_addState_timed(&connIn->stateMachine, STATE_CONNECTING, "connecting", STATE_CONNECTING_TIMEOUT, CONNECT_TIMEOUT_MS, stateCb_connecting_enter, NULL, NULL, (void*)connIn);
+	cxa_stateMachine_addState(&connIn->stateMachine, STATE_CONNECTING_TIMEOUT, "connTimeout", stateCb_connectingTimeout_enter, NULL, NULL, (void*)connIn);
 	cxa_stateMachine_addState(&connIn->stateMachine, STATE_CONNECTED_IDLE, "connIdle", stateCb_connIdle_enter, NULL, NULL, (void*)connIn);
 	cxa_stateMachine_addState_timed(&connIn->stateMachine, STATE_CONNECTED_RESOLVE_SERVICE, "connResService", STATE_CONNECTED_PROCEDURE_TIMEOUT, PROCEDURE_TIMEOUT_MS, stateCb_connResolveService_enter, NULL, NULL, (void*)connIn);
 	cxa_stateMachine_addState_timed(&connIn->stateMachine, STATE_CONNECTED_RESOLVE_CHAR, "connResChar", STATE_CONNECTED_PROCEDURE_TIMEOUT, PROCEDURE_TIMEOUT_MS, stateCb_connResolveChar_enter, NULL, NULL, (void*)connIn);
 	cxa_stateMachine_addState(&connIn->stateMachine, STATE_CONNECTED_READ, "read", stateCb_connRead_enter, NULL, NULL, (void*)connIn);
 	cxa_stateMachine_addState(&connIn->stateMachine, STATE_CONNECTED_WRITE, "write", stateCb_connWrite_enter, NULL, NULL, (void*)connIn);
 	cxa_stateMachine_addState(&connIn->stateMachine, STATE_CONNECTED_CHANGE_NOTI_INDI, "changeNotiIndi", stateCb_connChangeNotiIndi_enter, NULL, NULL, (void*)connIn);
-	cxa_stateMachine_addState(&connIn->stateMachine, STATE_CONNECTED_CONNECT_TIMEOUT, "connTimeout", stateCb_connTimeout_enter, NULL, NULL, (void*)connIn);
 	cxa_stateMachine_addState(&connIn->stateMachine, STATE_CONNECTED_PROCEDURE_TIMEOUT, "procTimeout", stateCb_connProcTimeout_enter, NULL, NULL, (void*)connIn);
+	cxa_stateMachine_addState_timed(&connIn->stateMachine, STATE_DISCONNECTING, "disconnecting", STATE_UNUSED, DISCONNECT_TIMEOUT_MS, stateCb_disconnecting_enter, NULL, NULL, (void*)connIn);
+
 	cxa_stateMachine_setInitialState(&connIn->stateMachine, STATE_UNUSED);
 }
 
@@ -134,14 +141,8 @@ void cxa_siLabsBgApi_btle_connection_stopConnection(cxa_siLabsBgApi_btle_connect
 		return;
 	}
 
-	cxa_eui48_string_t targetAddr_str;
-	cxa_eui48_toString(&connIn->targetAddress, &targetAddr_str);
-
-	cxa_logger_warn(&connIn->logger, "closing connection to '%s'", targetAddr_str.str);
-	gecko_cmd_le_connection_close(connIn->connHandle);
-	cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_UNUSED);
-
-	cxa_btle_client_notify_connectionClose(connIn->parentClient, &connIn->targetAddress);
+	connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_USER_REQUESTED;
+	cxa_stateMachine_transition(&connIn->stateMachine, STATE_DISCONNECTING);
 }
 
 
@@ -357,14 +358,25 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_closed(cxa_siLabsBgApi_btle_con
 {
 	cxa_assert(connIn);
 
-	if( cxa_stateMachine_getCurrentState(&connIn->stateMachine) == STATE_UNUSED ) return;
+	// ascertain our reason based upon our state
+	switch( cxa_stateMachine_getCurrentState(&connIn->stateMachine) )
+	{
+		case STATE_CONNECTING_TIMEOUT:
+		case STATE_DISCONNECTING:
+			// we've already set the disconnect reason
+			break;
 
+		default:
+			connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_STACK;
+			break;
+	}
+
+	// start the transition
 	cxa_eui48_string_t targetAddr_str;
 	cxa_eui48_toString(&connIn->targetAddress, &targetAddr_str);
 
 	cxa_logger_warn(&connIn->logger, "connection to '%s' closed", targetAddr_str.str);
 	cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_UNUSED);
-	cxa_btle_client_notify_connectionClose(connIn->parentClient, &connIn->targetAddress);
 }
 
 
@@ -625,6 +637,28 @@ static void handleProcedureComplete(cxa_siLabsBgApi_btle_connection_t *const con
 }
 
 
+static void stateCb_unused_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
+	cxa_assert(connIn);
+
+	if( prevStateIdIn != CXA_STATE_MACHINE_STATE_UNKNOWN )
+	{
+		switch( connIn->disconnectReason )
+		{
+			case CXA_BTLE_CLIENT_DISCONNECT_REASON_USER_REQUESTED:
+				cxa_btle_client_notify_connectionClose_expected(connIn->parentClient, &connIn->targetAddress);
+				break;
+
+			default:
+				cxa_btle_client_notify_connectionClose_unexpected(connIn->parentClient, &connIn->targetAddress, connIn->disconnectReason);
+				break;
+		}
+
+	}
+}
+
+
 static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
@@ -641,10 +675,21 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevSta
 	if( rsp->result != 0 )
 	{
 		cxa_logger_warn(&connIn->logger, "connection failed: %d", rsp->result);
+		connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_STACK;
 		cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_UNUSED);
-		cxa_btle_client_notify_connectionFailed(connIn->parentClient, &connIn->targetAddress);
 		return;
 	}
+}
+
+
+static void stateCb_connectingTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
+	cxa_assert(connIn);
+
+	cxa_logger_warn(&connIn->logger, "connection timeout");
+	connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_CONNECTION_TIMEOUT;
+	cxa_stateMachine_transition(&connIn->stateMachine, STATE_DISCONNECTING);
 }
 
 
@@ -816,19 +861,6 @@ static void stateCb_connChangeNotiIndi_enter(cxa_stateMachine_t *const smIn, int
 }
 
 
-static void stateCb_connTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
-{
-	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
-	cxa_assert(connIn);
-
-	cxa_logger_warn(&connIn->logger, "connection timeout");
-
-	gecko_cmd_le_connection_close(connIn->connHandle);
-	cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_UNUSED);
-	cxa_btle_client_notify_connectionFailed(connIn->parentClient, &connIn->targetAddress);
-}
-
-
 static void stateCb_connProcTimeout_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
@@ -836,4 +868,17 @@ static void stateCb_connProcTimeout_enter(cxa_stateMachine_t *const smIn, int pr
 
 	cxa_logger_warn(&connIn->logger, "procedure timeout");
 	cxa_siLabsBgApi_btle_connection_stopConnection(connIn);
+}
+
+
+static void stateCb_disconnecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+{
+	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
+	cxa_assert(connIn);
+
+	cxa_eui48_string_t targetAddr_str;
+	cxa_eui48_toString(&connIn->targetAddress, &targetAddr_str);
+
+	cxa_logger_warn(&connIn->logger, "closing connection to '%s'", targetAddr_str.str);
+	gecko_cmd_le_connection_close(connIn->connHandle);
 }

@@ -112,6 +112,8 @@ struct cxa_siLabsBgApi_btle_connection
 	cxa_fixedByteBuffer_t fbb_read;
 	uint8_t fbb_read_raw[CXA_SILABSBGAPI_BTLE_CONNECTION_BUFFER_SIZE_BYTES];
 
+	cxa_btle_client_disconnectReason_t disconnectReason;
+
 	cxa_stateMachine_t stateMachine;
 	cxa_logger_t logger;
 };

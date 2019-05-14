@@ -163,16 +163,14 @@ bool cxa_btle_client_hasActivityAvailable(cxa_btle_client_t *const btlecIn)
 
 void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn,
 									 cxa_btle_client_cb_onConnectionOpened_t cb_connectionOpenedIn,
-									 cxa_btle_client_cb_onConnectionFailed_t cb_connectionFailedIn,
-									 cxa_btle_client_cb_onConnectionClosed_t cb_connectionUnintentionallyClosedIn,
+									 cxa_btle_client_cb_onConnectionClosed_unexpected_t cb_connectionClosed_unexpectedIn,
 									 void* userVarIn)
 {
 	cxa_assert(btlecIn);
 
 	// save our callbacks
 	btlecIn->cbs.connecting.onConnectionOpened = cb_connectionOpenedIn;
-	btlecIn->cbs.connecting.onConnectionFailed = cb_connectionFailedIn;
-	btlecIn->cbs.connecting.onConnectionClosed = cb_connectionUnintentionallyClosedIn;
+	btlecIn->cbs.connecting.onConnectionClosed_unexpected = cb_connectionClosed_unexpectedIn;
 	btlecIn->cbs.connecting.userVar = userVarIn;
 
 	cxa_assert(btlecIn->scms.startConnection != NULL);
@@ -182,13 +180,13 @@ void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48
 
 void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
 									cxa_eui48_t *const targetAddrIn,
-									cxa_btle_client_cb_onConnectionClosed_t cb_connectionClosedIn,
+									cxa_btle_client_cb_onConnectionClosed_expected_t cb_connectionClosed_expectedIn,
 									void *userVarIn)
 {
 	cxa_assert(btlecIn);
 
 	// save our callbacks
-	btlecIn->cbs.connecting.onConnectionClosed = cb_connectionClosedIn;
+	btlecIn->cbs.connecting.onConnectionClosed_expected = cb_connectionClosed_expectedIn;
 	btlecIn->cbs.connecting.userVar = userVarIn;
 
 	cxa_assert(btlecIn->scms.stopConnection != NULL);
@@ -404,19 +402,19 @@ void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, 
 }
 
 
-void cxa_btle_client_notify_connectionFailed(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn)
+void cxa_btle_client_notify_connectionClose_expected(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn)
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.connecting.onConnectionFailed != NULL ) btlecIn->cbs.connecting.onConnectionFailed(targetAddrIn, btlecIn->cbs.connecting.userVar);
+	if( btlecIn->cbs.connecting.onConnectionClosed_expected != NULL ) btlecIn->cbs.connecting.onConnectionClosed_expected(targetAddrIn, btlecIn->cbs.connecting.userVar);
 }
 
 
-void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn)
+void cxa_btle_client_notify_connectionClose_unexpected(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn, cxa_btle_client_disconnectReason_t reasonIn)
 {
 	cxa_assert(btlecIn);
 
-	if( btlecIn->cbs.connecting.onConnectionClosed != NULL ) btlecIn->cbs.connecting.onConnectionClosed(targetAddrIn, btlecIn->cbs.connecting.userVar);
+	if( btlecIn->cbs.connecting.onConnectionClosed_unexpected != NULL ) btlecIn->cbs.connecting.onConnectionClosed_unexpected(targetAddrIn, reasonIn, btlecIn->cbs.connecting.userVar);
 }
 
 

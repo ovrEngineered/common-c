@@ -61,6 +61,17 @@ typedef enum
 /**
  * @public
  */
+typedef enum
+{
+	CXA_BTLE_CLIENT_DISCONNECT_REASON_USER_REQUESTED,
+	CXA_BTLE_CLIENT_DISCONNECT_REASON_CONNECTION_TIMEOUT,
+	CXA_BTLE_CLIENT_DISCONNECT_REASON_STACK
+}cxa_btle_client_disconnectReason_t;
+
+
+/**
+ * @public
+ */
 typedef void (*cxa_btle_client_cb_onReady_t)(cxa_btle_client_t *const btlecIn, void* userVarIn);
 
 
@@ -103,13 +114,13 @@ typedef void (*cxa_btle_client_cb_onConnectionOpened_t)(cxa_eui48_t *const targe
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onConnectionFailed_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
+typedef void (*cxa_btle_client_cb_onConnectionClosed_expected_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
 
 
 /**
  * @public
  */
-typedef void (*cxa_btle_client_cb_onConnectionClosed_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
+typedef void (*cxa_btle_client_cb_onConnectionClosed_unexpected_t)(cxa_eui48_t *const targetAddrIn, cxa_btle_client_disconnectReason_t reasonIn, void* userVarIn);
 
 
 /**
@@ -263,8 +274,8 @@ struct cxa_btle_client
 		struct
 		{
 			cxa_btle_client_cb_onConnectionOpened_t onConnectionOpened;
-			cxa_btle_client_cb_onConnectionFailed_t onConnectionFailed;
-			cxa_btle_client_cb_onConnectionClosed_t onConnectionClosed;
+			cxa_btle_client_cb_onConnectionClosed_unexpected_t onConnectionClosed_unexpected;
+			cxa_btle_client_cb_onConnectionClosed_expected_t onConnectionClosed_expected;
 			void* userVar;
 		}connecting;
 
@@ -373,8 +384,7 @@ bool cxa_btle_client_hasActivityAvailable(cxa_btle_client_t *const btlecIn);
  */
 void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn,
 									 cxa_btle_client_cb_onConnectionOpened_t cb_connectionOpenedIn,
-									 cxa_btle_client_cb_onConnectionFailed_t cb_connectionFailedIn,
-									 cxa_btle_client_cb_onConnectionClosed_t cb_connectionUnintentionallyClosedIn,
+									 cxa_btle_client_cb_onConnectionClosed_unexpected_t cb_connectionClosed_unexpectedIn,
 									 void* userVarIn);
 
 
@@ -383,7 +393,7 @@ void cxa_btle_client_startConnection(cxa_btle_client_t *const btlecIn, cxa_eui48
  */
 void cxa_btle_client_stopConnection(cxa_btle_client_t *const btlecIn,
 									cxa_eui48_t *const targetAddrIn,
-									cxa_btle_client_cb_onConnectionClosed_t cb_connectionClosedIn,
+									cxa_btle_client_cb_onConnectionClosed_expected_t cb_connectionClosed_expectedIn,
 									void *userVarIn);
 
 
@@ -485,13 +495,13 @@ void cxa_btle_client_notify_connectionStarted(cxa_btle_client_t *const btlecIn, 
 /**
  * @protected
  */
-void cxa_btle_client_notify_connectionFailed(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
+void cxa_btle_client_notify_connectionClose_expected(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
 
 
 /**
  * @protected
  */
-void cxa_btle_client_notify_connectionClose(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
+void cxa_btle_client_notify_connectionClose_unexpected(cxa_btle_client_t *const btlecIn, cxa_eui48_t *const targetAddrIn, cxa_btle_client_disconnectReason_t reasonIn);
 
 
 /**
