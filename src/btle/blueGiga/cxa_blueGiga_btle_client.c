@@ -72,9 +72,9 @@ static void responseCb_endProcedure(cxa_blueGiga_btle_client_t *const btlecIn, b
 
 static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool wasSuccessfulIn);
 
-static cxa_btle_client_state_t scm_getState(cxa_btle_client_t *const superIn);
-static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn);
-static void scm_stopScan(cxa_btle_client_t *const superIn);
+static cxa_btle_central_state_t scm_getState(cxa_btle_central_t *const superIn);
+static void scm_startScan(cxa_btle_central_t *const superIn, bool isActiveIn);
+static void scm_stopScan(cxa_btle_central_t *const superIn);
 
 static void stateCb_conn_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_conn_reset_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
@@ -101,7 +101,7 @@ void cxa_blueGiga_btle_client_init(cxa_blueGiga_btle_client_t *const btlecIn, cx
 	cxa_softWatchDog_init(&btlecIn->inFlightRequest.watchdog, COMMAND_TIMEOUT_MS, threadIdIn, handleBgTimeout, (void*)btlecIn);
 
 	// initialize our superclass
-	cxa_btle_client_init(&btlecIn->super, scm_getState,
+	cxa_btle_central_init(&btlecIn->super, scm_getState,
 						 scm_startScan, scm_stopScan,
 						 NULL, NULL,
 						 NULL, NULL, NULL);
@@ -315,7 +315,7 @@ static void handleBgEvent(cxa_blueGiga_btle_client_t *const btlecIn, cxa_fixedBy
 
 		// notify our listeners
 		btlecIn->super.hasActivityAvailable = true;
-		cxa_btle_client_notify_advertRx(&btlecIn->super, &rxPacket);
+		cxa_btle_central_notify_advertRx(&btlecIn->super, &rxPacket);
 	}
 	else if( (classId == CXA_BLUEGIGA_CLASSID_SYSTEM) && (method == CXA_BLUEGIGA_EVENTID_SYSTEM_PROTOCOLERROR) )
 	{
@@ -431,7 +431,7 @@ static void responseCb_setScanParams(cxa_blueGiga_btle_client_t *const btlecIn, 
 	if( !wasSuccessfulIn || !cxa_fixedByteBuffer_get_uint16LE(payloadIn, 0, response) || (response != 0) )
 	{
 		cxa_logger_warn(&btlecIn->logger, "error setting scan params 0x%04X, aborting scan", response);
-		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
+		cxa_btle_central_notify_scanStart(&btlecIn->super, false);
 		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
@@ -464,13 +464,13 @@ static void responseCb_discover(cxa_blueGiga_btle_client_t *const btlecIn, bool 
 		cxa_blueGiga_btle_client_sendCommand(btlecIn, CXA_BLUEGIGA_CLASSID_GAP, CXA_BLUEGIGA_METHODID_GAP_ENDPROCEDURE, NULL, NULL, NULL);
 
 		// notify our clients and transition back to ready
-		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
+		cxa_btle_central_notify_scanStart(&btlecIn->super, false);
 		cxa_stateMachine_transition(&btlecIn->stateMachine_conn, CONNSTATE_READY);
 		return;
 	}
 
 	cxa_logger_info(&btlecIn->logger, "scan started");
-	cxa_btle_client_notify_scanStart(&btlecIn->super, true);
+	cxa_btle_central_notify_scanStart(&btlecIn->super, true);
 }
 
 
@@ -504,30 +504,30 @@ static void gpioCb_onGpiosConfigured(cxa_blueGiga_btle_client_t* btlecIn, bool w
 }
 
 
-static cxa_btle_client_state_t scm_getState(cxa_btle_client_t *const superIn)
+static cxa_btle_central_state_t scm_getState(cxa_btle_central_t *const superIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
 	cxa_assert(btlecIn);
 
-	cxa_btle_client_state_t retVal = CXA_BTLE_CLIENT_STATE_STARTUP;
+	cxa_btle_central_state_t retVal = CXA_BTLE_CENTRAL_STATE_STARTUP;
 	switch( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) )
 	{
 		case CONNSTATE_RESET:
 		case CONNSTATE_WAIT_BOOT:
 		case CONNSTATE_CONFIG_PERIPHS:
-			retVal = btlecIn->hasBootFailed ? CXA_BTLE_CLIENT_STATE_STARTUPFAILED : CXA_BTLE_CLIENT_STATE_STARTUP;
+			retVal = btlecIn->hasBootFailed ? CXA_BTLE_CENTRAL_STATE_STARTUPFAILED : CXA_BTLE_CENTRAL_STATE_STARTUP;
 			break;
 
 		case CONNSTATE_READY:
 		case CONNSTATE_SCANNING:
-			retVal = CXA_BTLE_CLIENT_STATE_READY;
+			retVal = CXA_BTLE_CENTRAL_STATE_READY;
 			break;
 	}
 	return retVal;
 }
 
 
-static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
+static void scm_startScan(cxa_btle_central_t *const superIn, bool isActiveIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
 	cxa_assert(btlecIn);
@@ -536,7 +536,7 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 	if( cxa_stateMachine_getCurrentState(&btlecIn->stateMachine_conn) != CONNSTATE_READY )
 	{
 		cxa_logger_warn(&btlecIn->logger, "not ready to start scan");
-		cxa_btle_client_notify_scanStart(&btlecIn->super, false);
+		cxa_btle_central_notify_scanStart(&btlecIn->super, false);
 		return;
 	}
 
@@ -545,7 +545,7 @@ static void scm_startScan(cxa_btle_client_t *const superIn, bool isActiveIn)
 }
 
 
-static void scm_stopScan(cxa_btle_client_t *const superIn)
+static void scm_stopScan(cxa_btle_central_t *const superIn)
 {
 	cxa_blueGiga_btle_client_t* btlecIn = (cxa_blueGiga_btle_client_t*)superIn;
 	cxa_assert(btlecIn);
@@ -595,7 +595,7 @@ static void stateCb_conn_waitBoot_leave(cxa_stateMachine_t *const smIn, int next
 	if( nextStateIdIn == CONNSTATE_RESET )
 	{
 		btlecIn->hasBootFailed = true;
-		cxa_btle_client_notify_onFailedInit(&btlecIn->super, true);
+		cxa_btle_central_notify_onFailedInit(&btlecIn->super, true);
 	}
 	else
 	{
@@ -623,11 +623,11 @@ static void stateCb_conn_ready_enter(cxa_stateMachine_t *const smIn, int prevSta
 	// we've just booted, let our listeners know
 	if( prevStateIdIn == CONNSTATE_CONFIG_PERIPHS )
 	{
-		cxa_btle_client_notify_onBecomesReady(&btlecIn->super);
+		cxa_btle_central_notify_onBecomesReady(&btlecIn->super);
 	}
 	else if( prevStateIdIn == CONNSTATE_SCANNING )
 	{
-		cxa_btle_client_notify_scanStop(&btlecIn->super);
+		cxa_btle_central_notify_scanStop(&btlecIn->super);
 	}
 }
 

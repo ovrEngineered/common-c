@@ -22,10 +22,11 @@
 #include <gecko_bglib.h>
 #include <stdbool.h>
 
-#include <cxa_btle_client.h>
+#include <cxa_btle_central.h>
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_logger_header.h>
 #include <cxa_stateMachine.h>
+
 
 
 // ******** global macro definitions ********
@@ -88,7 +89,7 @@ typedef struct
  */
 struct cxa_siLabsBgApi_btle_connection
 {
-	cxa_btle_client_t* parentClient;
+	cxa_btle_central_t* parentClient;
 
 	uint8_t connHandle;
 	cxa_eui48_t targetAddress;
@@ -112,7 +113,7 @@ struct cxa_siLabsBgApi_btle_connection
 	cxa_fixedByteBuffer_t fbb_read;
 	uint8_t fbb_read_raw[CXA_SILABSBGAPI_BTLE_CONNECTION_BUFFER_SIZE_BYTES];
 
-	cxa_btle_client_disconnectReason_t disconnectReason;
+	cxa_btle_central_disconnectReason_t disconnectReason;
 
 	cxa_stateMachine_t stateMachine;
 	cxa_logger_t logger;
@@ -120,7 +121,7 @@ struct cxa_siLabsBgApi_btle_connection
 
 
 // ******** global function prototypes ********
-void cxa_siLabsBgApi_btle_connection_init(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_client_t *const parentClientIn, int threadIdIn);
+void cxa_siLabsBgApi_btle_connection_init(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_central_t *const parentClientIn, int threadIdIn);
 
 bool cxa_siLabsBgApi_btle_connection_isUsed(cxa_siLabsBgApi_btle_connection_t *const connIn);
 

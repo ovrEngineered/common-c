@@ -14,56 +14,57 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_SILABSBGAPI_BTLE_CLIENT_H_
-#define CXA_SILABSBGAPI_BTLE_CLIENT_H_
+#ifndef CXA_SILABSBGAPI_BTLE_CENTRAL_H_
+#define CXA_SILABSBGAPI_BTLE_CENTRAL_H_
 
 
 // ******** includes ********
-#include <cxa_btle_client.h>
+#include <gecko_bglib.h>
+
+#include <cxa_btle_central.h>
 #include <cxa_btle_uuid.h>
 #include <cxa_eui48.h>
 #include <cxa_ioStream_peekable.h>
-#include <cxa_logger_header.h>
 #include <cxa_siLabsBgApi_btle_connection.h>
-#include <cxa_stateMachine.h>
 
 
 // ******** global macro definitions ********
-#ifndef CXA_SILABSBGAPI_BTLE_CLIENT_MAXNUM_CONNS
-	#define CXA_SILABSBGAPI_BTLE_CLIENT_MAXNUM_CONNS						2
+#ifndef CXA_SILABSBGAPI_BTLE_CENTRAL_MAXNUM_CONNS
+	#define CXA_SILABSBGAPI_BTLE_CENTRAL_MAXNUM_CONNS						2
 #endif
-
-
 
 
 // ******** global type definitions *********
 /**
  * @public
  */
-typedef struct cxa_siLabsBgApi_btle_client cxa_siLabsBgApi_btle_client_t;
+typedef struct cxa_siLabsBgApi_btle_central cxa_siLabsBgApi_btle_central_t;
 
 
 /**
  * @private
  */
-struct cxa_siLabsBgApi_btle_client
+struct cxa_siLabsBgApi_btle_central
 {
-	cxa_btle_client_t super;
+	cxa_btle_central_t super;
 
 	int threadId;
 
-	cxa_ioStream_peekable_t ios_usart;
-	bool hasBootFailed;
-
-	cxa_siLabsBgApi_btle_connection_t conns[CXA_SILABSBGAPI_BTLE_CLIENT_MAXNUM_CONNS];
-
-	cxa_stateMachine_t stateMachine;
-	cxa_logger_t logger;
+	cxa_siLabsBgApi_btle_connection_t conns[CXA_SILABSBGAPI_BTLE_CENTRAL_MAXNUM_CONNS];
 };
 
 
 // ******** global function prototypes ********
-void cxa_siLabsBgApi_btle_client_init(cxa_siLabsBgApi_btle_client_t *const btlecIn, cxa_ioStream_t *const ioStreamIn, int threadIdIn);
+/**
+ * @protected
+ */
+void cxa_siLabsBgApi_btle_central_init(cxa_siLabsBgApi_btle_central_t *const btlecIn, int threadIdIn);
 
+/**
+ * @protected
+ *
+ * @return true if this event was handled
+ */
+bool cxa_siLabsBgApi_btle_central_handleBgEvent(cxa_siLabsBgApi_btle_central_t *const btlecIn, struct gecko_cmd_packet *evt);
 
 #endif

@@ -62,7 +62,7 @@ static void scm_readBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn, uin
 	cxa_assert(i2cIn);
 
 	// need our radio to be ready
-	if( cxa_btle_client_getState(&i2cIn->btlec->super) != CXA_BTLE_CLIENT_STATE_READY )
+	if( cxa_btle_central_getState(&i2cIn->btlec->super) != CXA_BTLE_CLIENT_STATE_READY )
 	{
 		cxa_i2cMaster_notify_readComplete(&i2cIn->super, false, NULL);
 		return;
@@ -89,7 +89,7 @@ static void scm_writeBytes(cxa_i2cMaster_t *const superIn, uint8_t addressIn, ui
 	cxa_assert(i2cIn);
 
 	// need our radio to be ready
-	if( cxa_btle_client_getState(&i2cIn->btlec->super) != CXA_BTLE_CLIENT_STATE_READY )
+	if( cxa_btle_central_getState(&i2cIn->btlec->super) != CXA_BTLE_CLIENT_STATE_READY )
 	{
 		cxa_i2cMaster_notify_writeComplete(&i2cIn->super, false);
 		return;

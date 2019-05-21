@@ -73,7 +73,7 @@ static void stateCb_disconnecting_enter(cxa_stateMachine_t *const smIn, int prev
 
 
 // ******** global function implementations ********
-void cxa_siLabsBgApi_btle_connection_init(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_client_t *const parentClientIn, int threadIdIn)
+void cxa_siLabsBgApi_btle_connection_init(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_central_t *const parentClientIn, int threadIdIn)
 {
 	cxa_assert(connIn);
 	cxa_assert(parentClientIn);
@@ -137,11 +137,11 @@ void cxa_siLabsBgApi_btle_connection_stopConnection(cxa_siLabsBgApi_btle_connect
 	if( cxa_stateMachine_getCurrentState(&connIn->stateMachine) == STATE_UNUSED )
 	{
 		// if we're already closed, let them know
-		cxa_btle_client_notify_connectionClose_expected(connIn->parentClient, &connIn->targetAddress);
+		cxa_btle_central_notify_connectionClose_expected(connIn->parentClient, &connIn->targetAddress);
 		return;
 	}
 
-	connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_USER_REQUESTED;
+	connIn->disconnectReason = CXA_BTLE_CENTRAL_DISCONNECT_REASON_USER_REQUESTED;
 	cxa_stateMachine_transition(&connIn->stateMachine, STATE_DISCONNECTING);
 }
 
@@ -159,7 +159,7 @@ void cxa_siLabsBgApi_btle_connection_readFromCharacteristic(cxa_siLabsBgApi_btle
 		(connIn->targetProcType != CXA_SILABSBGAPI_PROCTYPE_NONE) )
 	{
 		cxa_logger_warn(&connIn->logger, "incorrect state - rfc");
-		cxa_btle_client_notify_readComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, NULL);
+		cxa_btle_central_notify_readComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, NULL);
 		return;
 	}
 
@@ -167,13 +167,13 @@ void cxa_siLabsBgApi_btle_connection_readFromCharacteristic(cxa_siLabsBgApi_btle
 	if( !cxa_btle_uuid_initFromString(&connIn->targetServiceUuid, serviceUuidIn) )
 	{
 		cxa_logger_warn(&connIn->logger, "invalid service UUID");
-		cxa_btle_client_notify_readComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, NULL);
+		cxa_btle_central_notify_readComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, NULL);
 		return;
 	}
 	if( !cxa_btle_uuid_initFromString(&connIn->targetCharacteristicUuid, characteristicUuidIn) )
 	{
 		cxa_logger_warn(&connIn->logger, "invalid characteristic UUID");
-		cxa_btle_client_notify_readComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, NULL);
+		cxa_btle_central_notify_readComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, NULL);
 		return;
 	}
 
@@ -219,7 +219,7 @@ void cxa_siLabsBgApi_btle_connection_writeToCharacteristic(cxa_siLabsBgApi_btle_
 		(connIn->targetProcType != CXA_SILABSBGAPI_PROCTYPE_NONE) )
 	{
 		cxa_logger_warn(&connIn->logger, "incorrect state - wtc");
-		cxa_btle_client_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false);
+		cxa_btle_central_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false);
 		return;
 	}
 
@@ -227,13 +227,13 @@ void cxa_siLabsBgApi_btle_connection_writeToCharacteristic(cxa_siLabsBgApi_btle_
 	if( !cxa_btle_uuid_initFromString(&connIn->targetServiceUuid, serviceUuidIn) )
 	{
 		cxa_logger_warn(&connIn->logger, "invalid service UUID");
-		cxa_btle_client_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false);
+		cxa_btle_central_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false);
 		return;
 	}
 	if( !cxa_btle_uuid_initFromString(&connIn->targetCharacteristicUuid, characteristicUuidIn) )
 	{
 		cxa_logger_warn(&connIn->logger, "invalid characteristic UUID");
-		cxa_btle_client_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false);
+		cxa_btle_central_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false);
 		return;
 	}
 
@@ -284,7 +284,7 @@ void cxa_siLabsBgApi_btle_connection_changeNotifications(cxa_siLabsBgApi_btle_co
 	if( (currState == STATE_UNUSED) &&
 		!enableNotificationsIn )
 	{
-		cxa_btle_client_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, true, enableNotificationsIn);
+		cxa_btle_central_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, true, enableNotificationsIn);
 		return;
 	}
 
@@ -293,7 +293,7 @@ void cxa_siLabsBgApi_btle_connection_changeNotifications(cxa_siLabsBgApi_btle_co
 		(connIn->targetProcType != CXA_SILABSBGAPI_PROCTYPE_NONE) )
 	{
 		cxa_logger_warn(&connIn->logger, "incorrect state - cn");
-		cxa_btle_client_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, false);
+		cxa_btle_central_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, false);
 		return;
 	}
 
@@ -301,13 +301,13 @@ void cxa_siLabsBgApi_btle_connection_changeNotifications(cxa_siLabsBgApi_btle_co
 	if( !cxa_btle_uuid_initFromString(&connIn->targetServiceUuid, serviceUuidIn) )
 	{
 		cxa_logger_warn(&connIn->logger, "invalid service UUID");
-		cxa_btle_client_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, false);
+		cxa_btle_central_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, false);
 		return;
 	}
 	if( !cxa_btle_uuid_initFromString(&connIn->targetCharacteristicUuid, characteristicUuidIn) )
 	{
 		cxa_logger_warn(&connIn->logger, "invalid characteristic UUID");
-		cxa_btle_client_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, false);
+		cxa_btle_central_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, serviceUuidIn, characteristicUuidIn, false, false);
 		return;
 	}
 
@@ -350,7 +350,7 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_opened(cxa_siLabsBgApi_btle_con
 	connIn->connHandle = newConnHandleIn;
 
 	cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_CONNECTED_IDLE);
-	cxa_btle_client_notify_connectionStarted(connIn->parentClient, &connIn->targetAddress);
+	cxa_btle_central_notify_connectionStarted(connIn->parentClient, &connIn->targetAddress);
 }
 
 
@@ -367,7 +367,7 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_closed(cxa_siLabsBgApi_btle_con
 			break;
 
 		default:
-			connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_STACK;
+			connIn->disconnectReason = CXA_BTLE_CENTRAL_DISCONNECT_REASON_STACK;
 			break;
 	}
 
@@ -465,7 +465,7 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicValueUpdated(cxa_
 				cxa_fixedByteBuffer_t tmpBuffer;
 				cxa_fixedByteBuffer_init_inPlace(&tmpBuffer, dataLen_bytesIn, dataIn, dataLen_bytesIn);
 
-				cxa_btle_client_notify_notiIndiRx(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, &tmpBuffer);
+				cxa_btle_central_notify_notiIndiRx(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, &tmpBuffer);
 			}
 			break;
 		}
@@ -620,15 +620,15 @@ static void handleProcedureComplete(cxa_siLabsBgApi_btle_connection_t *const con
 	switch( prevProcType )
 	{
 		case CXA_SILABSBGAPI_PROCTYPE_READ:
-			cxa_btle_client_notify_readComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn, &connIn->fbb_read);
+			cxa_btle_central_notify_readComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn, &connIn->fbb_read);
 			break;
 
 		case CXA_SILABSBGAPI_PROCTYPE_WRITE:
-			cxa_btle_client_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn);
+			cxa_btle_central_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn);
 			break;
 
 		case CXA_SILABSBGAPI_PROCTYPE_NOTI_INDI_CHANGE:
-			cxa_btle_client_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn, connIn->procEnableNotifications);
+			cxa_btle_central_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn, connIn->procEnableNotifications);
 			break;
 
 		default:
@@ -646,12 +646,12 @@ static void stateCb_unused_enter(cxa_stateMachine_t *const smIn, int prevStateId
 	{
 		switch( connIn->disconnectReason )
 		{
-			case CXA_BTLE_CLIENT_DISCONNECT_REASON_USER_REQUESTED:
-				cxa_btle_client_notify_connectionClose_expected(connIn->parentClient, &connIn->targetAddress);
+			case CXA_BTLE_CENTRAL_DISCONNECT_REASON_USER_REQUESTED:
+				cxa_btle_central_notify_connectionClose_expected(connIn->parentClient, &connIn->targetAddress);
 				break;
 
 			default:
-				cxa_btle_client_notify_connectionClose_unexpected(connIn->parentClient, &connIn->targetAddress, connIn->disconnectReason);
+				cxa_btle_central_notify_connectionClose_unexpected(connIn->parentClient, &connIn->targetAddress, connIn->disconnectReason);
 				break;
 		}
 
@@ -670,12 +670,12 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevSta
 	cxa_eui48_string_t targetAddr_str;
 	cxa_eui48_toString(&connIn->targetAddress, &targetAddr_str);
 
-	cxa_logger_debug(&connIn->logger, "connecting to '%s'", targetAddr_str.str);
+	cxa_logger_info(&connIn->logger, "connecting to '%s'", targetAddr_str.str);
 	struct gecko_msg_le_gap_connect_rsp_t* rsp = gecko_cmd_le_gap_connect(targetAddr, le_gap_address_type_public, le_gap_phy_1m);
 	if( rsp->result != 0 )
 	{
 		cxa_logger_warn(&connIn->logger, "connection failed: %d", rsp->result);
-		connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_STACK;
+		connIn->disconnectReason = CXA_BTLE_CENTRAL_DISCONNECT_REASON_STACK;
 		cxa_stateMachine_transitionNow(&connIn->stateMachine, STATE_UNUSED);
 		return;
 	}
@@ -688,7 +688,7 @@ static void stateCb_connectingTimeout_enter(cxa_stateMachine_t *const smIn, int 
 	cxa_assert(connIn);
 
 	cxa_logger_warn(&connIn->logger, "connection timeout");
-	connIn->disconnectReason = CXA_BTLE_CLIENT_DISCONNECT_REASON_CONNECTION_TIMEOUT;
+	connIn->disconnectReason = CXA_BTLE_CENTRAL_DISCONNECT_REASON_CONNECTION_TIMEOUT;
 	cxa_stateMachine_transition(&connIn->stateMachine, STATE_DISCONNECTING);
 }
 
@@ -698,7 +698,7 @@ static void stateCb_connIdle_enter(cxa_stateMachine_t *const smIn, int prevState
 	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
 	cxa_assert(connIn);
 
-	cxa_logger_debug(&connIn->logger, "connected and idle");
+	cxa_logger_info(&connIn->logger, "connected and idle");
 
 	connIn->targetProcType = CXA_SILABSBGAPI_PROCTYPE_NONE;
 }
@@ -787,7 +787,7 @@ static void stateCb_connRead_enter(cxa_stateMachine_t *const smIn, int prevState
 	{
 		cxa_logger_warn(&connIn->logger, "read failed: %d", rsp->result);
 
-		cxa_btle_client_notify_readComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, false, NULL);
+		cxa_btle_central_notify_readComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, false, NULL);
 		return;
 	}
 	// if we made it here, the read was successful
@@ -822,7 +822,7 @@ static void stateCb_connWrite_enter(cxa_stateMachine_t *const smIn, int prevStat
 	{
 		cxa_logger_warn(&connIn->logger, "write failed: %d", rsp->result);
 
-		cxa_btle_client_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, false);
+		cxa_btle_central_notify_writeComplete(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, false);
 		return;
 	}
 	// if we made it here, the write was successful
@@ -853,11 +853,11 @@ static void stateCb_connChangeNotiIndi_enter(cxa_stateMachine_t *const smIn, int
 	{
 		cxa_logger_warn(&connIn->logger, "write failed: %d", rsp->result);
 
-		cxa_btle_client_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, false, false);
+		cxa_btle_central_notify_notiIndiSubscriptionChanged(connIn->parentClient, &connIn->targetAddress, str_serviceUuid.str, str_charUuid.str, false, false);
 		return;
 	}
 	// if we made it here, the write was successful
-	cxa_logger_debug(&connIn->logger, "subscription change complete, awaiting response");
+	cxa_logger_debug(&connIn->logger, "subscription change requested, awaiting response");
 }
 
 

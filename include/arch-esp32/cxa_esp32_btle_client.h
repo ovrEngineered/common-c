@@ -19,7 +19,7 @@
 
 
 // ******** includes ********
-#include <cxa_btle_client.h>
+#include <cxa_btle_central.h>
 
 
 // ******** global macro definitions ********
@@ -29,6 +29,6 @@
 
 
 // ******** global function prototypes ********
-cxa_btle_client_t* cxa_esp32_btle_client_getSingleton(void);
+cxa_btle_central_t* cxa_esp32_btle_client_getSingleton(void);
 
 #endif

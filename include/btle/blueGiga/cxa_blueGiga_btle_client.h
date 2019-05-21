@@ -22,7 +22,6 @@
 #include <cxa_blueGiga_gpio.h>
 #include <cxa_blueGiga_i2cMaster.h>
 #include <cxa_blueGiga_types.h>
-#include <cxa_btle_client.h>
 #include <cxa_btle_uuid.h>
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_gpio.h>
@@ -32,6 +31,7 @@
 #include <cxa_protocolParser_bgapi.h>
 #include <cxa_softWatchDog.h>
 #include <cxa_stateMachine.h>
+#include <cxa_btle_central.h>
 
 
 // ******** global macro definitions ********
@@ -71,7 +71,7 @@ typedef void (*cxa_blueGiga_btle_client_cb_onResponse_t)(cxa_blueGiga_btle_clien
  */
 struct cxa_blueGiga_btle_client
 {
-	cxa_btle_client_t super;
+	cxa_btle_central_t super;
 
 	cxa_gpio_t *gpio_reset;
 	cxa_protocolParser_bgapi_t protoParse;
