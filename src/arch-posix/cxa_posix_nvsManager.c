@@ -38,6 +38,7 @@
 
 
 // ******** local function prototypes ********
+static bool getKeyAndDir(const char *const keyIn, char *const keyAndDirInOut, size_t maxKeyAndDirSize_bytesIn);
 
 
 // ********  local variable declarations *********
@@ -74,10 +75,7 @@ bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, s
 	cxa_assert(keyIn);
 
 	char keyAndDir[64];
-	memset(keyAndDir, 0, sizeof(keyAndDir));
-	cxa_stringUtils_concat(keyAndDir, NVS_DIR, sizeof(keyAndDir));
-	cxa_stringUtils_concat(keyAndDir, "/", sizeof(keyAndDir));
-	cxa_stringUtils_concat(keyAndDir, keyIn, sizeof(keyAndDir));
+	if( !getKeyAndDir(keyIn, keyAndDir, sizeof(keyAndDir)) ) return false;
 
 	FILE* file = fopen(keyAndDir, "r");
 	if( file == NULL ) return false;
@@ -135,11 +133,77 @@ bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
 }
 
 
+bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, size_t maxOutputSize_bytesIn, size_t *const actualOutputSize_bytesOut)
+{
+	cxa_assert(isInit);
+	cxa_assert(keyIn);
+
+	char keyAndDir[64];
+	if( !getKeyAndDir(keyIn, keyAndDir, sizeof(keyAndDir)) ) return false;
+
+	FILE* file = fopen(keyAndDir, "r");
+	if( file == NULL ) return false;
+
+	if( valueOut != NULL )
+	{
+		size_t numBytesRead = 0;
+
+		// read one byte at a time
+		while( fread(((void*)&valueOut[numBytesRead]), 1, 1, file) == 1 )
+		{
+			numBytesRead++;
+			if( numBytesRead == maxOutputSize_bytesIn ) break;
+		}
+
+		// make sure we didn't have an error
+		if( ferror(file) != 0 )
+		{
+			fclose(file);
+			return false;
+		}
+
+		// set our output size if desired
+		if( actualOutputSize_bytesOut != NULL ) *actualOutputSize_bytesOut = numBytesRead;
+	}
+
+	// close our file
+	fclose(file);
+
+	return true;
+}
+
+
+bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, size_t blobSize_bytesIn)
+{
+	cxa_assert(isInit);
+	cxa_assert(keyIn);
+
+	char keyAndDir[64];
+	if( !getKeyAndDir(keyIn, keyAndDir, sizeof(keyAndDir)) ) return false;
+
+	FILE* file = fopen(keyAndDir, "w");
+	if( file == NULL ) return false;
+
+	if( fwrite((void*)valueIn, blobSize_bytesIn, 1, file) != 1 )
+	{
+		fclose(file);
+		return false;
+	}
+
+	fclose(file);
+	return true;
+}
+
+
 bool cxa_nvsManager_erase(const char *const keyIn)
 {
 	cxa_assert(isInit);
-	cxa_assert_failWithMsg("not implemented");
-	return false;
+	cxa_assert(keyIn);
+
+	char keyAndDir[64];
+	if( !getKeyAndDir(keyIn, keyAndDir, sizeof(keyAndDir)) ) return false;
+
+	return (remove(keyAndDir) == 0);
 }
 
 
@@ -152,4 +216,13 @@ bool cxa_nvsManager_commit(void)
 
 
 // ******** local function implementations ********
+static bool getKeyAndDir(const char *const keyIn, char *const keyAndDirInOut, size_t maxKeyAndDirSize_bytesIn)
+{
+	memset(keyAndDirInOut, 0, maxKeyAndDirSize_bytesIn);
+	if( !cxa_stringUtils_concat(keyAndDirInOut, NVS_DIR, maxKeyAndDirSize_bytesIn) ) return false;
+	if( !cxa_stringUtils_concat(keyAndDirInOut, "/", maxKeyAndDirSize_bytesIn) ) return false;
+	if( !cxa_stringUtils_concat(keyAndDirInOut, keyIn, maxKeyAndDirSize_bytesIn) ) return false;
+
+	return true;
+}
 
