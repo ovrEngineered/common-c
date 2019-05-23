@@ -53,7 +53,17 @@ typedef struct
 	cxa_btle_uuid_t charUuid;
 
 	uint16_t handle;
-}cxa_siLabsBgApi_btle_handleCharMapping_t;
+}cxa_siLabsBgApi_btle_handleCharMapEntry_t;
+
+
+/**
+ * @private
+ */
+typedef struct
+{
+	uint8_t handle;
+	cxa_eui48_t macAddress;
+}cxa_siLabsBgApi_btle_handleMacMapEntry_t;
 
 
 /**
@@ -64,10 +74,10 @@ struct cxa_siLabsBgApi_btle_peripheral
 	cxa_btle_peripheral_t super;
 
 	cxa_array_t handleCharMap;
-	cxa_siLabsBgApi_btle_handleCharMapping_t handleCharMap_raw[CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES];
+	cxa_siLabsBgApi_btle_handleCharMapEntry_t handleCharMap_raw[CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES];
 
-	cxa_array_t connHandles;
-	uint8_t connHandles_raw[CXA_SILABSBGAPI_BTLE_MAXNUM_CONNS];
+	cxa_array_t handleMacMap;
+	cxa_siLabsBgApi_btle_handleMacMapEntry_t handleMacMap_raw[CXA_SILABSBGAPI_BTLE_MAXNUM_CONNS];
 };
 
 
