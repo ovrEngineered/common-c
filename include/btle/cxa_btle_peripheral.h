@@ -26,6 +26,7 @@
 
 // ******** includes ********
 #include <cxa_array.h>
+#include <cxa_btle_central.h>
 #include <cxa_btle_uuid.h>
 #include <cxa_config.h>
 #include <cxa_eui48.h>
@@ -41,6 +42,10 @@
 	#define CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES				6
 #endif
 
+#ifndef CXA_BTLE_PERIPHERAL_MAXNUM_CENTRALPROXY_SERVICE
+	#define CXA_BTLE_PERIPHERAL_MAXNUM_CENTRALPROXY_SERVICE		1
+#endif
+
 
 // ******** global type definitions *********
 /**
@@ -54,11 +59,12 @@ typedef struct cxa_btle_peripheral cxa_btle_peripheral_t;
  */
 typedef enum
 {
-	CXA_BTLE_PERIPHERAL_READRET_SUCCESS,
-	CXA_BTLE_PERIPHERAL_READRET_NOT_PERMITTED,
-	CXA_BTLE_PERIPHERAL_READRET_VALUE_NOT_ALLOWED,
-	CXA_BTLE_PERIPHERAL_READRET_ATTRIBUTE_NOT_FOUND
-
+	CXA_BTLE_PERIPHERAL_READRET_SUCCESS = 0x0000,
+	CXA_BTLE_PERIPHERAL_READRET_NOT_YET_COMPLETE = 0x0001,
+	CXA_BTLE_PERIPHERAL_READRET_NOT_PERMITTED = 0x0403,
+	CXA_BTLE_PERIPHERAL_READRET_VALUE_NOT_ALLOWED = 0x0413,
+	CXA_BTLE_PERIPHERAL_READRET_ATTRIBUTE_NOT_FOUND = 0x040a,
+	CXA_BTLE_PERIPHERAL_READRET_UNLIKELY = 0x040e
 }cxa_btle_peripheral_readRetVal_t;
 
 
@@ -68,10 +74,11 @@ typedef enum
 typedef enum
 {
 	CXA_BTLE_PERIPHERAL_WRITERET_SUCCESS = 0x0000,
+	CXA_BTLE_PERIPHERAL_WRITERET_NOT_YET_COMPLETE = 0x0001,
 	CXA_BTLE_PERIPHERAL_WRITERET_NOT_PERMITTED = 0x0403,
 	CXA_BTLE_PERIPHERAL_WRITERET_VALUE_NOT_ALLOWED = 0x0413,
-	CXA_BTLE_PERIPHERAL_WRITERET_ATTRIBUTE_NOT_FOUND = 0x040a
-
+	CXA_BTLE_PERIPHERAL_WRITERET_ATTRIBUTE_NOT_FOUND = 0x040a,
+	CXA_BTLE_PERIPHERAL_WRITERET_UNLIKELY = 0x040e
 }cxa_btle_peripheral_writeRetVal_t;
 
 
@@ -114,6 +121,24 @@ typedef cxa_btle_peripheral_writeRetVal_t (*cxa_btle_peripheral_cb_onWriteReques
 /**
  * @private
  */
+typedef void (*cxa_btle_peripheral_scm_sendNotification_t)(cxa_btle_peripheral_t *const superIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_fixedByteBuffer_t *const fbb_dataIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_btle_peripheral_scm_sendDeferredReadResponse_t)(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const targetAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_readRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbbReadDataIn);
+
+
+/**
+ * @private
+ */
+typedef void (*cxa_btle_peripheral_scm_sendDeferredWriteResponse_t)(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const targetAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_writeRetVal_t retValIn);
+
+
+/**
+ * @private
+ */
 typedef struct
 {
 	cxa_btle_peripheral_cb_onReady_t cb_onReady;
@@ -147,13 +172,36 @@ typedef struct
 /**
  * @private
  */
+typedef struct
+{
+	cxa_btle_central_t* btlec;
+	cxa_eui48_t targetMac;
+	cxa_btle_uuid_t serviceUuid;
+
+	cxa_eui48_t sourceMac;
+}cxa_btle_peripheral_centralProxy_service_entry_t;
+
+
+/**
+ * @private
+ */
 struct cxa_btle_peripheral
 {
+	struct
+	{
+		cxa_btle_peripheral_scm_sendNotification_t sendNotification;
+		cxa_btle_peripheral_scm_sendDeferredReadResponse_t sendDeferredReadResponseIn;
+		cxa_btle_peripheral_scm_sendDeferredWriteResponse_t sendDeferredWriteResponseIn;
+	}scms;
+
 	cxa_array_t charEntries;
 	cxa_btle_peripheral_charEntry_t charEntries_raw[CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES];
 
 	cxa_array_t listeners;
 	cxa_btle_peripheral_listener_entry_t listeners_raw[CXA_BTLE_PERIPHERAL_MAXNUM_LISTENERS];
+
+	cxa_array_t centralProxy_services;
+	cxa_btle_peripheral_centralProxy_service_entry_t centralProxy_services_raw[CXA_BTLE_PERIPHERAL_MAXNUM_CENTRALPROXY_SERVICE];
 
 	cxa_logger_t logger;
 };
@@ -163,7 +211,10 @@ struct cxa_btle_peripheral
 /**
  * @protected
  */
-void cxa_btle_peripheral_init(cxa_btle_peripheral_t *const btlepIn);
+void cxa_btle_peripheral_init(cxa_btle_peripheral_t *const btlepIn,
+							  cxa_btle_peripheral_scm_sendNotification_t scm_sendNotificationIn,
+							  cxa_btle_peripheral_scm_sendDeferredReadResponse_t scm_sendDeferredReadResponseIn,
+							  cxa_btle_peripheral_scm_sendDeferredWriteResponse_t scm_sendDeferredWriteResponseIn);
 
 
 /**
@@ -196,6 +247,34 @@ void cxa_btle_peripheral_registerCharacteristicHandler_write(cxa_btle_peripheral
 
 
 /**
+ * @public
+ */
+void cxa_btle_peripheral_registerCentralProxy_service(cxa_btle_peripheral_t *const btlepIn,
+													  const char *const serviceUuidStrIn,
+													  cxa_btle_central_t *const btlecIn,
+													  cxa_eui48_t *const targetMacIn);
+
+
+/**
+ * @public
+ */
+void cxa_btle_peripheral_sendNotification(cxa_btle_peripheral_t *const btlepIn,
+										  const char *const serviceUuidStrIn,
+										  const char *const charUuidStrIn,
+										  void *const dataIn,
+										  size_t numBytesIn);
+
+
+/**
+ * @public
+ */
+void cxa_btle_peripheral_sendNotification_fbb(cxa_btle_peripheral_t *const btlepIn,
+											  const char *const serviceUuidStrIn,
+											  const char *const charUuidStrIn,
+											  cxa_fixedByteBuffer_t *const fbb_dataIn);
+
+
+/**
  * @protected
  */
 void cxa_btle_peripheral_notify_onBecomesReady(cxa_btle_peripheral_t *const btlepIn);
@@ -222,7 +301,18 @@ void cxa_btle_peripheral_notify_connectionClosed(cxa_btle_peripheral_t *const bt
 /**
  * @protected
  */
+cxa_btle_peripheral_readRetVal_t cxa_btle_peripheral_notify_readRequest(cxa_btle_peripheral_t *const btlepIn,
+																		cxa_eui48_t *const sourceMacAddrIn,
+																		cxa_btle_uuid_t *const serviceUuidIn,
+																		cxa_btle_uuid_t *const charUuidIn,
+																		cxa_fixedByteBuffer_t *const dataOut);
+
+
+/**
+ * @protected
+ */
 cxa_btle_peripheral_writeRetVal_t cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepIn,
+																		  cxa_eui48_t *const sourceMacAddrIn,
 																		  cxa_btle_uuid_t *const serviceUuidIn,
 																		  cxa_btle_uuid_t *const charUuidIn,
 																		  cxa_fixedByteBuffer_t *const dataIn);
