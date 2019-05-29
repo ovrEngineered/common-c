@@ -15,7 +15,7 @@
  *
  * @author Christopher Armenio
  */
-#include "cxa_nvsManager.h"
+#include "cxa_esp32_nvsManager.h"
 
 
 // ******** includes ********
@@ -50,6 +50,12 @@ static cxa_logger_t logger;
 
 
 // ******** global function implementations ********
+bool cxa_esp32_nvsManager_init(void)
+{
+	return (nvs_flash_init() == ESP_OK);
+}
+
+
 bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 {
 	if( !isInit ) init();
@@ -92,7 +98,6 @@ bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut
 {
 	if( !isInit ) init();
 
-	// first, determine the size of the stored string
 	esp_err_t retVal = nvs_get_u32(handle, keyIn, valueOut);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
 	return (retVal == ESP_OK);
@@ -104,6 +109,34 @@ bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
 	if( !isInit ) init();
 
 	esp_err_t retVal = nvs_set_u32(handle, keyIn, valueIn);
+	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+	return (retVal == ESP_OK);
+}
+
+
+bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, size_t maxOutputSize_bytesIn, size_t *const actualOutputSize_bytesOut)
+{
+	if( !isInit ) init();
+
+	esp_err_t retVal = nvs_get_blob(handle, keyIn, valueOut, &maxOutputSize_bytesIn);
+	if( retVal != ESP_OK )
+	{
+		cxa_logger_warn(&logger, "get error: %d", retVal);
+	}
+	else
+	{
+		if( actualOutputSize_bytesOut != NULL ) *actualOutputSize_bytesOut = maxOutputSize_bytesIn;
+	}
+
+	return (retVal == ESP_OK);
+}
+
+
+bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, size_t blobSize_bytesIn)
+{
+	if( !isInit ) init();
+
+	esp_err_t retVal = nvs_set_blob(handle, keyIn, valueIn, blobSize_bytesIn);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
 	return (retVal == ESP_OK);
 }
