@@ -25,8 +25,8 @@
 
 
 // ******** includes ********
-#include <cxa_btle_central.h>
-#include <cxa_btle_peripheral.h>
+#include <cxa_siLabsBgApi_btle_central.h>
+#include <cxa_siLabsBgApi_btle_peripheral.h>
 #include <cxa_ioStream.h>
 
 
@@ -46,13 +46,13 @@ void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdI
 /**
  * @public
  */
-cxa_btle_central_t* cxa_siLabsBgApi_module_getBtleCentral(void);
+cxa_siLabsBgApi_btle_central_t* cxa_siLabsBgApi_module_getBtleCentral(void);
 
 
 /**
  * @public
  */
-cxa_btle_peripheral_t* cxa_siLabsBgApi_module_getBtlePeripheral(void);
+cxa_siLabsBgApi_btle_peripheral_t* cxa_siLabsBgApi_module_getBtlePeripheral(void);
 
 
 /**

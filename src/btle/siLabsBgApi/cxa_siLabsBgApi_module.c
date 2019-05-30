@@ -106,15 +106,15 @@ void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdI
 }
 
 
-cxa_btle_central_t* cxa_siLabsBgApi_module_getBtleCentral(void)
+cxa_siLabsBgApi_btle_central_t* cxa_siLabsBgApi_module_getBtleCentral(void)
 {
-	return &btlec.super;
+	return &btlec;
 }
 
 
-cxa_btle_peripheral_t* cxa_siLabsBgApi_module_getBtlePeripheral(void)
+cxa_siLabsBgApi_btle_peripheral_t* cxa_siLabsBgApi_module_getBtlePeripheral(void)
 {
-	return &btlep.super;
+	return &btlep;
 }
 
 

@@ -60,6 +60,13 @@ struct cxa_siLabsBgApi_btle_central
  */
 void cxa_siLabsBgApi_btle_central_init(cxa_siLabsBgApi_btle_central_t *const btlecIn, int threadIdIn);
 
+
+/**
+ * @public
+ */
+bool cxa_siLabsBgApi_btle_central_setConnectionInterval(cxa_siLabsBgApi_btle_central_t *const btlecIn, cxa_eui48_t *const targetConnectionAddressIn, uint16_t connectionInterval_msIn);
+
+
 /**
  * @protected
  *

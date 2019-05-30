@@ -86,6 +86,59 @@ void cxa_siLabsBgApi_btle_central_init(cxa_siLabsBgApi_btle_central_t *const btl
 }
 
 
+bool cxa_siLabsBgApi_btle_central_setConnectionInterval(cxa_siLabsBgApi_btle_central_t *const btlecIn, cxa_eui48_t *const targetConnectionAddressIn, uint16_t connectionInterval_msIn)
+{
+	cxa_assert(btlecIn);
+	cxa_assert(targetConnectionAddressIn);
+
+	cxa_siLabsBgApi_btle_connection_t* targetConn = getConnectionByAddress(btlecIn, targetConnectionAddressIn);
+	if( targetConn == NULL ) return false;
+
+	// validate per Apple Accessory Design Guidlines page 70
+	// https://developer.apple.com/accessories/Accessory-Design-Guidelines.pdf
+
+
+	// Interval Min ≥ 15 ms
+	if( connectionInterval_msIn < 15 ) return false;
+
+	// Interval Min modulo 15 ms == 0
+	if( (connectionInterval_msIn % 15) != 0 ) return false;
+	uint16_t min_interval_ms = connectionInterval_msIn;
+
+
+	// One of the following:
+	//  - Interval Min + 15 ms ≤ Interval Max
+	//  - Interval Min == Interval Max == 15 ms
+	uint16_t max_interval_ms = (min_interval_ms == 15) ? min_interval_ms : (min_interval_ms + 15);
+
+
+	// Interval Max * (Slave Latency + 1) ≤ 2 seconds
+	uint16_t latency = (2.0 / ((float)(max_interval_ms * 1000.0))) - 1.0;
+
+
+	// Interval Max * (Slave Latency + 1) * 3 < connSupervisionTimeout
+	// minimum of 100
+	uint16_t timeout_ms = (max_interval_ms * (latency + 1) * 3);
+	if( timeout_ms < 100 ) timeout_ms = 100;
+
+
+	cxa_logger_info(&btlecIn->super.logger, "setting conn. params   minInt: %d ms   maxIn: %dms  lat: %d  timeout: %d ms", min_interval_ms, max_interval_ms, latency, timeout_ms);
+	struct gecko_msg_le_connection_set_parameters_rsp_t* resp = gecko_cmd_le_connection_set_parameters(targetConn->connHandle,
+																									   (min_interval_ms / 1.25),
+																									   (max_interval_ms / 1.25),
+																									   latency,
+																									   timeout_ms / 10);
+	if( resp->result != 0 )
+	{
+		cxa_logger_warn(&btlecIn->super.logger, "error setting conn. params: 0x%04x", resp->result);
+		return false;
+	}
+
+	// if we made it here, we were successful;
+	return true;
+}
+
+
 bool cxa_siLabsBgApi_btle_central_handleBgEvent(cxa_siLabsBgApi_btle_central_t *const btlecIn, struct gecko_cmd_packet *evt)
 {
 	cxa_assert(btlecIn);
