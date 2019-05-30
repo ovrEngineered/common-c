@@ -39,9 +39,13 @@ static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t
 static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn);
 static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn);
 static bool scm_getValue(cxa_gpio_t *const superIn);
+static bool scm_enableInterrupts(cxa_gpio_t *const superIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn);
+
+static void esp32GpioIsr(void* userVarIn);
 
 
 // ********  local variable declarations *********
+static bool isGpioIsrServiceInstalled = false;
 
 
 // ******** global function implementations ********
@@ -59,7 +63,7 @@ void cxa_esp32_gpio_init_input(cxa_esp32_gpio_t *const gpioIn, const gpio_num_t 
 	gpio_pad_select_gpio(pinNumIn);
 
 	// initialize our super class
-	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, scm_enableInterrupts);
 
 	// set our initial direction
 	cxa_gpio_setDirection(&gpioIn->super, CXA_GPIO_DIR_INPUT);
@@ -186,5 +190,58 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 
 	bool retVal = (gpioIn->dir == CXA_GPIO_DIR_INPUT) ? gpio_get_level(gpioIn->pinNum) : gpioIn->lastVal;
 	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal : retVal;
+}
+
+
+static bool scm_enableInterrupts(cxa_gpio_t *const superIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn)
+{
+	cxa_assert(superIn);
+
+	// get a pointer to our class
+	cxa_esp32_gpio_t *const gpioIn = (cxa_esp32_gpio_t *const)superIn;
+
+	// install the GPIO ISR service if needed
+	if( !isGpioIsrServiceInstalled )
+	{
+		gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
+		isGpioIsrServiceInstalled = true;
+	}
+
+	// register a handler
+	gpio_isr_handler_add(gpioIn->pinNum, esp32GpioIsr, (void*)gpioIn);
+
+	// set our interrupt type
+	gpio_int_type_t esp32IntType = GPIO_INTR_DISABLE;
+	switch( intTypeIn )
+	{
+		case CXA_GPIO_INTERRUPTTYPE_RISING_EDGE:
+			esp32IntType = GPIO_INTR_POSEDGE;
+			break;
+
+		case CXA_GPIO_INTERRUPTTYPE_FALLING_EDGE:
+			esp32IntType = GPIO_INTR_NEGEDGE;
+			break;
+
+		case CXA_GPIO_INTERRUPTTYPE_ONCHANGE:
+			esp32IntType = GPIO_INTR_ANYEDGE;
+			break;
+	}
+	gpio_set_intr_type(gpioIn->pinNum, esp32IntType);
+
+	// enable our interrupt
+	gpio_intr_enable(gpioIn->pinNum);
+
+	return true;
+}
+
+
+static void esp32GpioIsr(void* userVarIn)
+{
+	cxa_assert(userVarIn);
+
+	// get a pointer to our class
+	cxa_esp32_gpio_t *const gpioIn = (cxa_esp32_gpio_t *const)userVarIn;
+
+	cxa_gpio_notify_onInterrupt(&gpioIn->super);
 }
 

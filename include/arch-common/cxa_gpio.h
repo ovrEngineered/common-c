@@ -115,7 +115,7 @@ typedef enum
 /**
  * @public
  */
-typedef void (*cxa_gpio_cb_onInterrupt_t)(cxa_gpio_t *const gpioIn, cxa_gpio_interruptType_t intTypeIn, bool newValIn, void* userVarIn);
+typedef void (*cxa_gpio_cb_onInterrupt_t)(cxa_gpio_t *const gpioIn, bool newValIn, void* userVarIn);
 
 
 /**
@@ -172,6 +172,12 @@ struct cxa_gpio
 	cxa_gpio_scm_setValue_t scm_setValue;
 	cxa_gpio_scm_getValue_t scm_getValue;
 	cxa_gpio_scm_enableInterrupt_t scm_enableInterrupt;
+
+	struct
+	{
+		cxa_gpio_cb_onInterrupt_t onInterrupt;
+		void* userVar;
+	}cbs;
 };
 
 
@@ -282,7 +288,21 @@ bool cxa_gpio_getValue(cxa_gpio_t *const gpioIn);
 void cxa_gpio_toggle(cxa_gpio_t *const gpioIn);
 
 
+/**
+ * @public
+ * @brief Enables interrupts for this GPIO
+ *
+ * @param[in] gpioIn pointer to a pre-initialized GPIO object
+ * @param[in] intTypeIn the type of interrupt
+ * @param[in] cbIn the callback function that will be executed upon interrupt
+ * @param[in] userVarIn user-provided variable to be passed to the callback
+ */
 bool cxa_gpio_enableInterrupt(cxa_gpio_t *const gpioIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn);
 
+
+/**
+ * @protected
+ */
+void cxa_gpio_notify_onInterrupt(cxa_gpio_t *const gpioIn);
 
 #endif // CXA_GPIO_H_

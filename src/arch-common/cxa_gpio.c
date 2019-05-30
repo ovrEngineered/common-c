@@ -63,6 +63,9 @@ void cxa_gpio_init(cxa_gpio_t *const gpioIn,
 	gpioIn->scm_setValue = scm_setValueIn;
 	gpioIn->scm_getValue = scm_getValueIn;
 	gpioIn->scm_enableInterrupt = scm_enableInterruptIn;
+
+	// zero-out our callbacks
+	gpioIn->cbs.onInterrupt = NULL;
 }
 
 
@@ -127,7 +130,19 @@ bool cxa_gpio_enableInterrupt(cxa_gpio_t *const gpioIn, cxa_gpio_interruptType_t
 	cxa_assert(gpioIn);
 	cxa_assert(gpioIn->scm_enableInterrupt);
 
+	// save our callback
+	gpioIn->cbs.onInterrupt = cbIn;
+	gpioIn->cbs.userVar = userVarIn;
+
 	return gpioIn->scm_enableInterrupt(gpioIn, intTypeIn, cbIn, userVarIn);
+}
+
+
+void cxa_gpio_notify_onInterrupt(cxa_gpio_t *const gpioIn)
+{
+	cxa_assert(gpioIn);
+
+	if( gpioIn->cbs.onInterrupt != NULL ) gpioIn->cbs.onInterrupt(gpioIn, cxa_gpio_getValue(gpioIn), gpioIn->cbs.userVar);
 }
 
 
