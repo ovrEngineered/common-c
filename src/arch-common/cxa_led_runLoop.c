@@ -122,12 +122,11 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			{
 				if( ledIn->super.prevState == CXA_LED_STATE_BLINK )
 				{
-					ledIn->scms.setBrightness(ledIn, ledIn->blink.wasOn ? ledIn->blink.onBrightness_255 : 0);
-					cxa_timeDiff_setStartTime_now(&ledIn->td_gp);
+					cxa_led_blink(&ledIn->super, ledIn->blink.wasOn ? ledIn->blink.onBrightness_255 : 0, ledIn->blink.onPeriod_ms, ledIn->blink.offPeriod_ms);
 				}
 				else if( ledIn->super.prevState == CXA_LED_STATE_SOLID )
 				{
-					ledIn->scms.setBrightness(ledIn, ledIn->solid.lastBrightness_255);
+					cxa_led_setSolid(&ledIn->super, ledIn->solid.lastBrightness_255);
 				}
 			}
 			break;
