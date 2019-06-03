@@ -116,6 +116,7 @@ static bool set_interface_attribs (int fd, int speed, int parity)
 	tty.c_cflag &= ~CSTOPB;
 	tty.c_cflag &= ~CRTSCTS;
 
+	cfmakeraw(&tty);                // make raw connection
 	if (tcsetattr (fd, TCSANOW, &tty) != 0) false;
 	return true;
 }
