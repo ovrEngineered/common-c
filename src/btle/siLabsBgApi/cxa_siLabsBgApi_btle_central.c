@@ -378,6 +378,8 @@ static void scm_stopConnection(cxa_btle_central_t *const superIn, cxa_eui48_t *c
 		cxa_eui48_string_t addr_str;
 		cxa_eui48_toString(targetAddrIn, &addr_str);
 		cxa_logger_warn(&btlecIn->super.logger, "not connected to '%s'", addr_str);
+
+		cxa_btle_central_notify_connectionClose_expected(&btlecIn->super, targetAddrIn);
 	}
 }
 
