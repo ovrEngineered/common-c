@@ -178,6 +178,10 @@ void cxa_btle_central_startConnection(cxa_btle_central_t *const btlecIn, cxa_eui
 	btlecIn->cbs.connecting.onConnectionClosed_unexpected = cb_connectionClosed_unexpectedIn;
 	btlecIn->cbs.connecting.userVar = userVarIn;
 
+	// clear our noti/indi subscriptions (since we don't know whether the device has preserved them)
+	cxa_array_clear(&btlecIn->notiIndiSubs);
+
+	// perform the connection
 	cxa_assert(btlecIn->scms.startConnection != NULL);
 	cxa_eui48_string_t targetAddr_str;
 	cxa_eui48_toString(addrIn, &targetAddr_str);
@@ -291,6 +295,25 @@ void cxa_btle_central_subscribeToNotifications(cxa_btle_central_t *const btlecIn
 	cxa_assert(serviceUuidIn);
 	cxa_assert(characteristicUuidIn);
 
+	// don't allow duplicate subscriptions
+	cxa_array_iterate(&btlecIn->notiIndiSubs, currSub, cxa_btle_central_notiIndiSubscription_t)
+	{
+		if( currSub == NULL ) continue;
+
+		if( cxa_eui48_isEqual(&currSub->address, targetAddrIn) &&
+			cxa_btle_uuid_isEqualToString(&currSub->uuid_service, serviceUuidIn) &&
+			cxa_btle_uuid_isEqualToString(&currSub->uuid_characteristic, characteristicUuidIn) &&
+			(currSub->cb_onSubscriptionChanged == cb_onSubscribedIn) &&
+			(currSub->cb_onRx == cb_onRxIn) &&
+			(currSub->userVar == userVarIn) )
+		{
+			// let them know subscription was successful (since we're already subscribed)
+			if( cb_onSubscribedIn != NULL ) cb_onSubscribedIn(targetAddrIn, serviceUuidIn, characteristicUuidIn, true, userVarIn);
+			return;
+		}
+	}
+	// if we made it here, we don't have a duplicate subscription...subscribe
+
 	// make sure we have room to store the subscription
 	cxa_btle_central_notiIndiSubscription_t* newSub = cxa_array_append_empty(&btlecIn->notiIndiSubs);
 	if( newSub == NULL )
@@ -317,6 +340,7 @@ void cxa_btle_central_subscribeToNotifications(cxa_btle_central_t *const btlecIn
 		return;
 	}
 
+	// tell the device we're interested
 	cxa_assert(btlecIn->scms.changeNotifications != NULL);
 	cxa_logger_info(&btlecIn->logger, "subscribing to '%s::%s'", serviceUuidIn, characteristicUuidIn);
 	btlecIn->scms.changeNotifications(btlecIn, targetAddrIn, serviceUuidIn, characteristicUuidIn, true);
@@ -340,8 +364,9 @@ void cxa_btle_central_unsubscribeToNotifications(cxa_btle_central_t *const btlec
 	btlecIn->cbs.unsubscribing.userVar = userVarIn;
 
 	// make sure to remove our notification entry (if we have one)
-	cxa_array_iterate(&btlecIn->notiIndiSubs, currSub, cxa_btle_central_notiIndiSubscription_t)
+	for( size_t i = 0; i < cxa_array_getSize_elems(&btlecIn->notiIndiSubs); i++ )
 	{
+		cxa_btle_central_notiIndiSubscription_t* currSub = cxa_array_get(&btlecIn->notiIndiSubs, i);
 		if( currSub == NULL ) continue;
 
 		if( cxa_eui48_isEqual(&currSub->address, targetAddrIn) &&
@@ -349,6 +374,7 @@ void cxa_btle_central_unsubscribeToNotifications(cxa_btle_central_t *const btlec
 			cxa_btle_uuid_isEqualToString(&currSub->uuid_characteristic, characteristicUuidIn) )
 		{
 			cxa_array_remove(&btlecIn->notiIndiSubs, currSub);
+			i--;
 		}
 	}
 
