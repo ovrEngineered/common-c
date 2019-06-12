@@ -340,7 +340,7 @@ cxa_btle_peripheral_writeRetVal_t cxa_btle_peripheral_notify_writeRequest(cxa_bt
 
 			// defer the sending of the response until we get a callback from the central
 			cxa_btle_central_writeToCharacteristic_fbb(cpsEntry->btlec, &cpsEntry->targetMac, serviceUuidStr.str, charUuidStr.str, dataIn, btleCb_centralProxyService_onWriteComplete, (void*)btlepIn);
-			retVal = CXA_BTLE_PERIPHERAL_READRET_NOT_YET_COMPLETE;
+			retVal = CXA_BTLE_PERIPHERAL_WRITERET_NOT_YET_COMPLETE;
 		}
 	}
 
@@ -426,7 +426,7 @@ static void btleCb_centralProxyService_onWriteComplete(cxa_eui48_t *const target
 	cxa_btle_peripheral_centralProxy_service_entry_t* cpsEntry = getCentralProxyServiceEntry(btlepIn, &tmpServiceUuid);
 	if( cpsEntry != NULL )
 	{
-		cxa_btle_peripheral_readRetVal_t retVal = wasSuccessfulIn ? CXA_BTLE_PERIPHERAL_READRET_SUCCESS : CXA_BTLE_PERIPHERAL_READRET_UNLIKELY;
+		cxa_btle_peripheral_writeRetVal_t retVal = wasSuccessfulIn ? CXA_BTLE_PERIPHERAL_WRITERET_SUCCESS : CXA_BTLE_PERIPHERAL_WRITERET_UNLIKELY;
 
 		btlepIn->scms.sendDeferredWriteResponseIn(btlepIn, &cpsEntry->sourceMac, serviceUuidStrIn, characteristicUuidStrIn, retVal);
 	}
