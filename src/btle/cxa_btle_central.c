@@ -288,14 +288,12 @@ void cxa_btle_central_notify_connectionStarted(cxa_btle_central_t *const btlecIn
 {
 	cxa_assert(btlecIn);
 
-	cxa_logger_info(&btlecIn->logger, "connection started");
-
-	// we _are_ managing this connection
+	// call our callback
 	if( btlecIn->cbs.connecting.onConnectionOpened != NULL )
 	{
 		cxa_btle_central_cb_onConnectionOpened_t cb = btlecIn->cbs.connecting.onConnectionOpened;
 		btlecIn->cbs.connecting.onConnectionOpened = NULL;
-		cb(true, connIn, btlecIn->cbs.connecting.userVar);
+		cb(wasSuccessfulIn, connIn, btlecIn->cbs.connecting.userVar);
 	}
 }
 

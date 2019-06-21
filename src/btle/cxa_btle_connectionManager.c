@@ -279,7 +279,7 @@ bool cxa_btle_connectionManager_isRunning(cxa_btle_connectionManager_t *const bt
 {
 	cxa_assert(btleCmIn);
 
-	return (btleCmIn->conn != NULL) && cxa_stateMachine_getCurrentState(&btleCmIn->stateMachine) != STATE_STOPPED;
+	return cxa_stateMachine_getCurrentState(&btleCmIn->stateMachine) != STATE_STOPPED;
 }
 
 
@@ -297,7 +297,8 @@ bool cxa_btle_connectionManager_getMacAddress(cxa_btle_connectionManager_t *cons
 
 	if( !cxa_btle_connectionManager_isRunning(btleCmIn) ) return false;
 
-	if( macAddrOut != NULL ) cxa_eui48_initFromEui48(macAddrOut, cxa_btle_connection_getTargetMacAddress(btleCmIn->conn));
+
+	if( macAddrOut != NULL ) cxa_eui48_initFromEui48(macAddrOut, &btleCmIn->targetMacAddress);
 
 	return true;
 }

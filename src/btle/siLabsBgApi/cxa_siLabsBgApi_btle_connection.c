@@ -880,6 +880,15 @@ static void stateCb_disconnecting_enter(cxa_stateMachine_t *const smIn, int prev
 	cxa_eui48_string_t targetAddr_str;
 	cxa_eui48_toString(&connIn->super.targetAddr, &targetAddr_str);
 
-	cxa_logger_warn(&connIn->logger, "closing connection to '%s'", targetAddr_str.str);
+	if( prevStateIdIn == STATE_CONNECTING_TIMEOUT )
+	{
+		cxa_logger_debug(&connIn->logger, "connection to '%s' failed", targetAddr_str.str);
+		cxa_btle_central_notify_connectionStarted((cxa_btle_central_t*)connIn->super.btlec, false, NULL);
+	}
+	else
+	{
+		cxa_logger_debug(&connIn->logger, "closing connection to '%s'", targetAddr_str.str);
+	}
+
 	gecko_cmd_le_connection_close(connIn->connHandle);
 }

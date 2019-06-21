@@ -33,7 +33,7 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_SILABSBGAPI_BTLE_MAXNUM_CONNS
-#define CXA_SILABSBGAPI_BTLE_MAXNUM_CONNS			1
+#define CXA_SILABSBGAPI_BTLE_MAXNUM_CONNS			3
 #endif
 
 
