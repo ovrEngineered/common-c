@@ -54,12 +54,11 @@ static void notifyListeners_onSubStateTransitionComplete(cxa_btle_connectionMana
 
 static void executeNextSubscriptionEntry(cxa_btle_connectionManager_t *const btleCmIn);
 
-static void btleCb_onConnectionOpened(cxa_eui48_t *const targetAddrIn, void* userVarIn);
-static void btleCb_onConnectionUnexpectedClose(cxa_eui48_t *const targetAddrIn, cxa_btle_central_disconnectReason_t reasonIn, void* userVarIn);
-static void btleCb_onConnectionIntentionalClose_stopping(cxa_eui48_t *const targetAddrIn, void* userVarIn);
+static void btleCb_onConnectionOpened(bool wasSuccessfulIn, cxa_btle_connection_t *const connectionIn, void* userVarIn);
+static void btleCb_onConnectionClosed(cxa_btle_connection_disconnectReason_t reasonIn, void* userVarIn);
 
-static void btleCb_onNotiIndiSubscriptionChanged(cxa_eui48_t *const targetAddrIn, const char *const serviceUuidIn, const char *const characteristicUuidIn, bool wasSuccessfulIn, void* userVarIn);
-static void btleCb_onNotiIndiRx(cxa_eui48_t *const targetAddrIn, const char *const serviceUuidIn, const char *const characteristicUuidIn, cxa_fixedByteBuffer_t *fbb_readDataIn, void* userVarIn);
+static void btleCb_onNotiIndiSubscriptionChanged(const char *const serviceUuidIn, const char *const characteristicUuidIn, bool wasSuccessfulIn, void* userVarIn);
+static void btleCb_onNotiIndiRx(const char *const serviceUuidIn, const char *const characteristicUuidIn, cxa_fixedByteBuffer_t *fbb_readDataIn, void* userVarIn);
 
 static void stateCb_waitForBtlecReady_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_waitForBtlecReady_state(cxa_stateMachine_t *const smIn, void *userVarIn);
@@ -224,7 +223,7 @@ cxa_btle_connectionManager_subscriptionState_t* cxa_btle_connectionManager_addSu
 bool cxa_btle_connectionManager_addSubscriptionStateEntry_subscribed(cxa_btle_connectionManager_subscriptionState_t *const subStateIn,
 														  const char *const serviceUuidIn,
 														  const char *const characteristicUuidIn,
-														  cxa_btle_central_cb_onNotiIndiRx_t cb_onRxIn,
+														  cxa_btle_connection_cb_onNotiIndiRx_t cb_onRxIn,
 														  void* userVarIn)
 {
 	cxa_assert(subStateIn);
@@ -280,7 +279,7 @@ bool cxa_btle_connectionManager_isRunning(cxa_btle_connectionManager_t *const bt
 {
 	cxa_assert(btleCmIn);
 
-	return cxa_stateMachine_getCurrentState(&btleCmIn->stateMachine) != STATE_STOPPED;
+	return (btleCmIn->conn != NULL) && cxa_stateMachine_getCurrentState(&btleCmIn->stateMachine) != STATE_STOPPED;
 }
 
 
@@ -298,17 +297,17 @@ bool cxa_btle_connectionManager_getMacAddress(cxa_btle_connectionManager_t *cons
 
 	if( !cxa_btle_connectionManager_isRunning(btleCmIn) ) return false;
 
-	if( macAddrOut != NULL ) cxa_eui48_initFromEui48(macAddrOut, &btleCmIn->targetMacAddress);
+	if( macAddrOut != NULL ) cxa_eui48_initFromEui48(macAddrOut, cxa_btle_connection_getTargetMacAddress(btleCmIn->conn));
 
 	return true;
 }
 
 
-cxa_btle_central_t* cxa_btle_connectionManager_getCentral(cxa_btle_connectionManager_t *const btleCmIn)
+cxa_btle_connection_t* cxa_btle_connectionManager_getConnection(cxa_btle_connectionManager_t *const btleCmIn)
 {
 	cxa_assert(btleCmIn);
 
-	return btleCmIn->btlec;
+	return cxa_btle_connectionManager_isConnected(btleCmIn) ? btleCmIn->conn : NULL;
 }
 
 
@@ -369,52 +368,78 @@ static void executeNextSubscriptionEntry(cxa_btle_connectionManager_t *const btl
 	}
 	// if we made it here, we have another subscription entry to process
 
-	cxa_logger_debug(&btleCmIn->logger, "executing subscription entry %d / %d", btleCmIn->targetSubState->currEntryIndex, cxa_array_getSize_elems(&btleCmIn->targetSubState->entries));
+	cxa_logger_debug(&btleCmIn->logger, "executing subscription entry %d / %d", btleCmIn->targetSubState->currEntryIndex+1, cxa_array_getSize_elems(&btleCmIn->targetSubState->entries));
 	cxa_btle_uuid_string_t serviceUuidStr, charUuidStr;
 	cxa_btle_uuid_toString(&currEntry->uuid_service, &serviceUuidStr);
 	cxa_btle_uuid_toString(&currEntry->uuid_characteristic, &charUuidStr);
 
 	if( currEntry->isSubscribed )
 	{
-		cxa_btle_central_subscribeToNotifications(btleCmIn->btlec,
-				&btleCmIn->targetMacAddress,
-				serviceUuidStr.str,
-				charUuidStr.str,
-				btleCb_onNotiIndiSubscriptionChanged,
-				btleCb_onNotiIndiRx,
-				(void*)btleCmIn);
+		cxa_btle_connection_subscribeToNotifications(btleCmIn->conn,
+													 serviceUuidStr.str,
+													 charUuidStr.str,
+													 btleCb_onNotiIndiSubscriptionChanged,
+													 btleCb_onNotiIndiRx,
+													 (void*)btleCmIn);
 	}
 	else
 	{
-		cxa_btle_central_unsubscribeToNotifications(btleCmIn->btlec,
-													&btleCmIn->targetMacAddress,
-													serviceUuidStr.str,
-													charUuidStr.str,
-													btleCb_onNotiIndiSubscriptionChanged,
-													(void*)btleCmIn);
+		cxa_btle_connection_unsubscribeToNotifications(btleCmIn->conn,
+													   serviceUuidStr.str,
+													   charUuidStr.str,
+													   btleCb_onNotiIndiSubscriptionChanged,
+													   (void*)btleCmIn);
 	}
 }
 
 
 
-static void btleCb_onConnectionOpened(cxa_eui48_t *const targetAddrIn, void* userVarIn)
+static void btleCb_onConnectionOpened(bool wasSuccessfulIn, cxa_btle_connection_t *const connectionIn, void* userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
 
+	// make sure we were successful
+	if( !wasSuccessfulIn )
+	{
+		cxa_logger_debug(&btleCmIn->logger, "connection failed, will retry");
+
+		// we're in a good state to check our command before going any further
+		switch( btleCmIn->currCommand )
+		{
+			case CXA_BTLE_CONNMAN_CMD_RUN:
+			case CXA_BTLE_CONNMAN_CMD_RESTART:
+				cxa_stateMachine_transition(&btleCmIn->stateMachine, STATE_CONNECT_STANDOFF);
+				break;
+
+			case CXA_BTLE_CONNMAN_CMD_STOP:
+				// we're good!
+				cxa_stateMachine_transition(&btleCmIn->stateMachine, STATE_STOPPED);
+				break;
+		}
+		return;
+	}
+
+	// if we made it here we were successful...
 	cxa_logger_info(&btleCmIn->logger, "connected");
 
+	btleCmIn->conn = connectionIn;
+	cxa_btle_connection_setOnClosedCb(btleCmIn->conn, btleCb_onConnectionClosed, (void*)btleCmIn);
 	cxa_stateMachine_transition(&btleCmIn->stateMachine, STATE_CONNECTED);
 }
 
 
-static void btleCb_onConnectionUnexpectedClose(cxa_eui48_t *const targetAddrIn, cxa_btle_central_disconnectReason_t reasonIn, void* userVarIn)
+static void btleCb_onConnectionClosed(cxa_btle_connection_disconnectReason_t reasonIn, void* userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
 
-	cxa_logger_debug(&btleCmIn->logger, "connection closed, %s",
+	cxa_logger_debug(&btleCmIn->logger, "connection closed reason %d, %s",
+					 reasonIn,
 					 ((btleCmIn->currCommand == CXA_BTLE_CONNMAN_CMD_STOP) ? "stopping" : "retrying"));
+
+	// forget our current connection
+	btleCmIn->conn = NULL;
 
 	// we're in a good state to check our command before going any further
 	switch( btleCmIn->currCommand )
@@ -429,22 +454,10 @@ static void btleCb_onConnectionUnexpectedClose(cxa_eui48_t *const targetAddrIn, 
 			cxa_stateMachine_transition(&btleCmIn->stateMachine, STATE_STOPPED);
 			return;
 	}
-
-	// if we made it here, we'll retry after our standoff
-	cxa_stateMachine_transition(&btleCmIn->stateMachine, STATE_CONNECT_STANDOFF);
 }
 
 
-static void btleCb_onConnectionIntentionalClose_stopping(cxa_eui48_t *const targetAddrIn, void* userVarIn)
-{
-	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
-	cxa_assert(btleCmIn);
-
-	cxa_stateMachine_transition(&btleCmIn->stateMachine, STATE_STOPPED);
-}
-
-
-static void btleCb_onNotiIndiSubscriptionChanged(cxa_eui48_t *const targetAddrIn, const char *const serviceUuidIn, const char *const characteristicUuidIn, bool wasSuccessfulIn, void* userVarIn)
+static void btleCb_onNotiIndiSubscriptionChanged(const char *const serviceUuidIn, const char *const characteristicUuidIn, bool wasSuccessfulIn, void* userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
@@ -455,7 +468,7 @@ static void btleCb_onNotiIndiSubscriptionChanged(cxa_eui48_t *const targetAddrIn
 	// now make sure we were successful
 	if( !wasSuccessfulIn )
 	{
-		cxa_logger_warn(&btleCmIn->logger, "failed to subscribe to %s::%s", serviceUuidIn, characteristicUuidIn);
+		cxa_logger_warn(&btleCmIn->logger, "failed to change subscription to %s::%s", serviceUuidIn, characteristicUuidIn);
 		notifyListeners_onSubStateTransitionComplete(btleCmIn, false);
 		return;
 	}
@@ -466,7 +479,7 @@ static void btleCb_onNotiIndiSubscriptionChanged(cxa_eui48_t *const targetAddrIn
 }
 
 
-static void btleCb_onNotiIndiRx(cxa_eui48_t *const targetAddrIn, const char *const serviceUuidIn, const char *const characteristicUuidIn, cxa_fixedByteBuffer_t *fbb_readDataIn, void* userVarIn)
+static void btleCb_onNotiIndiRx(const char *const serviceUuidIn, const char *const characteristicUuidIn, cxa_fixedByteBuffer_t *fbb_readDataIn, void* userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
@@ -484,7 +497,7 @@ static void btleCb_onNotiIndiRx(cxa_eui48_t *const targetAddrIn, const char *con
 			currEntry->isSubscribed &&
 			(currEntry->cb_onRx != NULL) )
 		{
-			currEntry->cb_onRx(targetAddrIn, serviceUuidIn, characteristicUuidIn, fbb_readDataIn, currEntry->userVar);
+			currEntry->cb_onRx(serviceUuidIn, characteristicUuidIn, fbb_readDataIn, currEntry->userVar);
 		}
 	}
 }
@@ -540,7 +553,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevSta
 
 	// we're good to start our connection
 	cxa_btle_central_startConnection(btleCmIn->btlec, &btleCmIn->targetMacAddress, false,
-									 btleCb_onConnectionOpened, btleCb_onConnectionUnexpectedClose, (void*)btleCmIn);
+									 btleCb_onConnectionOpened, (void*)btleCmIn);
 }
 
 
@@ -592,6 +605,8 @@ static void stateCb_disconnecting_enter(cxa_stateMachine_t *const smIn, int prev
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
 
-	// let our central know we want to stop
-	cxa_btle_central_stopConnection(btleCmIn->btlec, &btleCmIn->targetMacAddress, btleCb_onConnectionIntentionalClose_stopping, (void*)btleCmIn);
+	if( btleCmIn->conn != NULL )
+	{
+		cxa_btle_connection_stop(btleCmIn->conn);
+	}
 }

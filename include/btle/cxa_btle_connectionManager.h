@@ -27,6 +27,7 @@
 // ******** includes ********
 #include <cxa_array.h>
 #include <cxa_btle_central.h>
+#include <cxa_btle_connection.h>
 #include <cxa_config.h>
 #include <cxa_eui48.h>
 #include <cxa_logger_header.h>
@@ -46,9 +47,6 @@
 #ifndef CXA_BTLE_CONNECTION_MANAGER_MAXNUM_SUBSCRIPTION_STATES
 #define CXA_BTLE_CONNECTION_MANAGER_MAXNUM_SUBSCRIPTION_STATES				2
 #endif
-
-
-#define CXA_BTLE_CONNMAN_CSC(btleConnManIn)									((btleConnManIn)->btlec), &((btleConnManIn)->targetMacAddress)
 
 
 // ******** global type definitions *********
@@ -98,7 +96,7 @@ typedef struct
 	cxa_btle_uuid_t uuid_service;
 	cxa_btle_uuid_t uuid_characteristic;
 
-	cxa_btle_central_cb_onNotiIndiRx_t cb_onRx;
+	cxa_btle_connection_cb_onNotiIndiRx_t cb_onRx;
 	void* userVar;
 }cxa_btle_connectionManager_subscriptionState_entry_t;
 
@@ -150,6 +148,7 @@ struct cxa_btle_connectionManager
 
 	cxa_eui48_t targetMacAddress;
 	cxa_eui48_t nextMacAddress;
+	cxa_btle_connection_t* conn;
 
 	cxa_array_t listeners;
 	cxa_btle_connectionManager_listener_t listeners_raw[CXA_BTLE_CONNECTION_MANAGER_MAXNUM_LISTENERS];
@@ -181,13 +180,13 @@ void cxa_btle_connectionManager_forceReconnect(cxa_btle_connectionManager_t *con
 
 cxa_btle_connectionManager_subscriptionState_t* cxa_btle_connectionManager_addSubscriptionState(cxa_btle_connectionManager_t *const btleCmIn);
 bool cxa_btle_connectionManager_addSubscriptionStateEntry_subscribed(cxa_btle_connectionManager_subscriptionState_t *const subStateIn,
-														  const char *const serviceUuidIn,
-														  const char *const characteristicUuidIn,
-														  cxa_btle_central_cb_onNotiIndiRx_t cb_onRxIn,
-														  void* userVarIn);
+														  	  	  	 const char *const serviceUuidIn,
+																	 const char *const characteristicUuidIn,
+																	 cxa_btle_connection_cb_onNotiIndiRx_t cb_onRxIn,
+																	 void* userVarIn);
 bool cxa_btle_connectionManager_addSubscriptionStateEntry_unsubscribed(cxa_btle_connectionManager_subscriptionState_t *const subStateIn,
-														  const char *const serviceUuidIn,
-														  const char *const characteristicUuidIn);
+														  	  	  	   const char *const serviceUuidIn,
+																	   const char *const characteristicUuidIn);
 void cxa_btle_connectionManager_setTargetSubscriptionState(cxa_btle_connectionManager_t *const btleCmIn,
 														   cxa_btle_connectionManager_subscriptionState_t *const subStateIn);
 
@@ -195,6 +194,6 @@ bool cxa_btle_connectionManager_isRunning(cxa_btle_connectionManager_t *const bt
 bool cxa_btle_connectionManager_isConnected(cxa_btle_connectionManager_t *const btleCmIn);
 bool cxa_btle_connectionManager_getMacAddress(cxa_btle_connectionManager_t *const btleCmIn, cxa_eui48_t *const macAddrOut);
 
-cxa_btle_central_t* cxa_btle_connectionManager_getCentral(cxa_btle_connectionManager_t *const btleCmIn);
+cxa_btle_connection_t* cxa_btle_connectionManager_getConnection(cxa_btle_connectionManager_t *const btleCmIn);
 
 #endif

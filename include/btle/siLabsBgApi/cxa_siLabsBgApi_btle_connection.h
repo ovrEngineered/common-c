@@ -23,6 +23,7 @@
 #include <stdbool.h>
 
 #include <cxa_btle_central.h>
+#include <cxa_btle_connection.h>
 #include <cxa_fixedByteBuffer.h>
 #include <cxa_logger_header.h>
 #include <cxa_stateMachine.h>
@@ -89,10 +90,9 @@ typedef struct
  */
 struct cxa_siLabsBgApi_btle_connection
 {
-	cxa_btle_central_t* parentClient;
+	cxa_btle_connection_t super;
 
 	uint8_t connHandle;
-	cxa_eui48_t targetAddress;
 	bool isRandomAddress;
 
 	cxa_siLabsBgApi_btle_connection_procType_t targetProcType;
@@ -113,7 +113,7 @@ struct cxa_siLabsBgApi_btle_connection
 	cxa_fixedByteBuffer_t fbb_read;
 	uint8_t fbb_read_raw[CXA_SILABSBGAPI_BTLE_CONNECTION_BUFFER_SIZE_BYTES];
 
-	cxa_btle_central_disconnectReason_t disconnectReason;
+	cxa_btle_connection_disconnectReason_t disconnectReason;
 
 	cxa_stateMachine_t stateMachine;
 	cxa_logger_t logger;
@@ -126,23 +126,8 @@ void cxa_siLabsBgApi_btle_connection_init(cxa_siLabsBgApi_btle_connection_t *con
 bool cxa_siLabsBgApi_btle_connection_isUsed(cxa_siLabsBgApi_btle_connection_t *const connIn);
 
 void cxa_siLabsBgApi_btle_connection_startConnection(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_eui48_t *const targetAddrIn, bool isRandomAddrIn);
-void cxa_siLabsBgApi_btle_connection_stopConnection(cxa_siLabsBgApi_btle_connection_t *const connIn);
 
-void cxa_siLabsBgApi_btle_connection_readFromCharacteristic(cxa_siLabsBgApi_btle_connection_t *const connIn,
-															const char *const serviceUuidIn,
-															const char *const characteristicUuidIn);
-
-void cxa_siLabsBgApi_btle_connection_writeToCharacteristic(cxa_siLabsBgApi_btle_connection_t *const connIn,
-									  	  	  	  	  	   const char *const serviceUuidIn,
-														   const char *const characteristicUuidIn,
-														   cxa_fixedByteBuffer_t *const dataIn);
-
-void cxa_siLabsBgApi_btle_connection_changeNotifications(cxa_siLabsBgApi_btle_connection_t *const connIn,
-														 const char *const serviceUuidIn,
-														 const char *const characteristicUuidIn,
-														 bool enableNotificationsIn);
-
-void cxa_siLabsBgApi_btle_connection_handleEvent_opened(cxa_siLabsBgApi_btle_connection_t *const connIn, uint8_t newConnHandleIn);
+void cxa_siLabsBgApi_btle_connection_handleEvent_opened(cxa_siLabsBgApi_btle_connection_t *const connIn);
 void cxa_siLabsBgApi_btle_connection_handleEvent_closed(cxa_siLabsBgApi_btle_connection_t *const connIn, uint16_t reasonCodeIn);
 void cxa_siLabsBgApi_btle_connection_handleEvent_serviceResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuid, uint32_t handleIn);
 void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuid, uint16_t handleIn);

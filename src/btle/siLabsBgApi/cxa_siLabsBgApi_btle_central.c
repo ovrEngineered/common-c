@@ -44,21 +44,6 @@ static cxa_btle_central_state_t scm_getState(cxa_btle_central_t *const superIn);
 static void scm_startScan(cxa_btle_central_t *const superIn, bool isActiveIn);
 static void scm_stopScan(cxa_btle_central_t *const superIn);
 static void scm_startConnection(cxa_btle_central_t *const superIn, cxa_eui48_t *const targetAddrIn, bool isRandomAddrIn);
-static void scm_stopConnection(cxa_btle_central_t *const superIn, cxa_eui48_t *const targetAddrIn);
-static void scm_readFromCharacteristic(cxa_btle_central_t *const superIn,
-									   cxa_eui48_t *const targetAddrIn,
-									   const char *const serviceUuidIn,
-									   const char *const characteristicUuidIn);
-static void scm_writeToCharacteristic(cxa_btle_central_t *const superIn,
-									  cxa_eui48_t *const targetAddrIn,
-									  const char *const serviceIdIn,
-									  const char *const characteristicIdIn,
-									  cxa_fixedByteBuffer_t *const dataIn);
-static void scm_changeNotifications(cxa_btle_central_t *const superIn,
-		  	  	  	  	  	  	    cxa_eui48_t *const targetAddrIn,
-									const char *const serviceUuidIn,
-									const char *const characteristicUuidIn,
-									bool enableNotifications);
 
 static void runLoopOneShot_startScan(void* userVarIn);
 static void runLoopOneShot_stopScan(void* userVarIn);
@@ -74,6 +59,7 @@ void cxa_siLabsBgApi_btle_central_init(cxa_siLabsBgApi_btle_central_t *const btl
 
 	// save our references and setup our internal state
 	btlecIn->threadId = threadIdIn;
+	btlecIn->isConnectionInProgress = false;
 
 	// initialize our connections
 	for( size_t i = 0; i < sizeof(btlecIn->conns)/sizeof(*btlecIn->conns); i++ )
@@ -82,7 +68,7 @@ void cxa_siLabsBgApi_btle_central_init(cxa_siLabsBgApi_btle_central_t *const btl
 	}
 
 	// initialize our super class
-	cxa_btle_central_init(&btlecIn->super, scm_getState, scm_startScan, scm_stopScan, scm_startConnection, scm_stopConnection, scm_readFromCharacteristic, scm_writeToCharacteristic, scm_changeNotifications);
+	cxa_btle_central_init(&btlecIn->super, scm_getState, scm_startScan, scm_stopScan, scm_startConnection);
 }
 
 
@@ -151,14 +137,20 @@ bool cxa_siLabsBgApi_btle_central_handleBgEvent(cxa_siLabsBgApi_btle_central_t *
 	{
 		case gecko_evt_le_connection_opened_id:
 		{
+			btlecIn->isConnectionInProgress = false;
+
 			cxa_eui48_t connectedAddr;
 			cxa_eui48_init(&connectedAddr, evt->data.evt_le_connection_opened.address.addr);
-			// update our connection handle
-			cxa_siLabsBgApi_btle_connection_t* currConn = getConnectionByAddress(btlecIn, &connectedAddr);
+
+			cxa_eui48_string_t connectedAddrStr;
+			cxa_eui48_toString(&connectedAddr, &connectedAddrStr);
+
+			// notify our connection
+			cxa_siLabsBgApi_btle_connection_t* currConn = getConnectionByHandle(btlecIn, evt->data.evt_le_connection_opened.connection);
 			if( currConn != NULL )
 			{
-				cxa_logger_debug(&btlecIn->super.logger, "connected");
-				cxa_siLabsBgApi_btle_connection_handleEvent_opened(currConn, evt->data.evt_le_connection_opened.connection);
+				cxa_logger_debug(&btlecIn->super.logger, "connected to '%s' handle %d", connectedAddrStr.str, evt->data.evt_le_connection_opened.connection);
+				cxa_siLabsBgApi_btle_connection_handleEvent_opened(currConn);
 				retVal = true;
 			}
 			break;
@@ -166,6 +158,8 @@ bool cxa_siLabsBgApi_btle_central_handleBgEvent(cxa_siLabsBgApi_btle_central_t *
 
 		case gecko_evt_le_connection_closed_id:
 		{
+			btlecIn->isConnectionInProgress = false;
+
 			cxa_siLabsBgApi_btle_connection_t* currConn = getConnectionByHandle(btlecIn, evt->data.evt_le_connection_closed.connection);
 			if( currConn != NULL )
 			{
@@ -294,7 +288,9 @@ static cxa_siLabsBgApi_btle_connection_t* getConnectionByAddress(cxa_siLabsBgApi
 
 	for( size_t i = 0; i < sizeof(btlecIn->conns)/sizeof(*btlecIn->conns); i++ )
 	{
-		if( cxa_eui48_isEqual(&btlecIn->conns[i].targetAddress, targetAddrIn) )
+		cxa_siLabsBgApi_btle_connection_t* currConn = &btlecIn->conns[i];
+		if( cxa_siLabsBgApi_btle_connection_isUsed(currConn) &&
+			cxa_eui48_isEqual(&currConn->super.targetAddr, targetAddrIn) )
 		{
 			retVal = &btlecIn->conns[i];
 			break;
@@ -313,7 +309,9 @@ static cxa_siLabsBgApi_btle_connection_t* getConnectionByHandle(cxa_siLabsBgApi_
 
 	for( size_t i = 0; i < sizeof(btlecIn->conns)/sizeof(*btlecIn->conns); i++ )
 	{
-		if( btlecIn->conns[i].connHandle == connHandleIn )
+		cxa_siLabsBgApi_btle_connection_t* currConn = &btlecIn->conns[i];
+		if( cxa_siLabsBgApi_btle_connection_isUsed(currConn) &&
+			currConn->connHandle == connHandleIn )
 		{
 			retVal = &btlecIn->conns[i];
 			break;
@@ -357,104 +355,19 @@ static void scm_startConnection(cxa_btle_central_t *const superIn, cxa_eui48_t *
 	cxa_siLabsBgApi_btle_central_t *const btlecIn = (cxa_siLabsBgApi_btle_central_t *const)superIn;
 	cxa_assert(btlecIn);
 
+	// can only have one outstanding call to the "connect" command (until failed or cancelled)
+	if( btlecIn->isConnectionInProgress )
+	{
+		cxa_btle_central_notify_connectionStarted(&btlecIn->super, false, NULL);
+		return;
+	}
+	// if we made it here, we don't have any connections in progress
+	btlecIn->isConnectionInProgress = true;
+
+	// start our connection
 	cxa_siLabsBgApi_btle_connection_t* newConnection = getUnusedConnection(btlecIn);
 	cxa_assert_msg((newConnection != NULL), "too many open connections");
 	cxa_siLabsBgApi_btle_connection_startConnection(newConnection, targetAddrIn, isRandomAddrIn);
-}
-
-
-static void scm_stopConnection(cxa_btle_central_t *const superIn, cxa_eui48_t *const targetAddrIn)
-{
-	cxa_siLabsBgApi_btle_central_t *const btlecIn = (cxa_siLabsBgApi_btle_central_t *const)superIn;
-	cxa_assert(btlecIn);
-
-	cxa_siLabsBgApi_btle_connection_t* currConn = getConnectionByAddress(btlecIn, targetAddrIn);
-	if( currConn != NULL )
-	{
-		cxa_siLabsBgApi_btle_connection_stopConnection(currConn);
-	}
-	else
-	{
-		cxa_eui48_string_t addr_str;
-		cxa_eui48_toString(targetAddrIn, &addr_str);
-		cxa_logger_warn(&btlecIn->super.logger, "not connected to '%s'", addr_str);
-
-		cxa_btle_central_notify_connectionClose_expected(&btlecIn->super, targetAddrIn);
-	}
-}
-
-
-static void scm_readFromCharacteristic(cxa_btle_central_t *const superIn,
-									   cxa_eui48_t *const targetAddrIn,
-									   const char *const serviceUuidIn,
-									   const char *const characteristicUuidIn)
-{
-	cxa_siLabsBgApi_btle_central_t *const btlecIn = (cxa_siLabsBgApi_btle_central_t *const)superIn;
-	cxa_assert(btlecIn);
-
-	// make sure we know about this connection
-	cxa_siLabsBgApi_btle_connection_t* currConn = getConnectionByAddress(btlecIn, targetAddrIn);
-	if( currConn != NULL )
-	{
-		cxa_siLabsBgApi_btle_connection_readFromCharacteristic(currConn, serviceUuidIn, characteristicUuidIn);
-	}
-	else
-	{
-		cxa_eui48_string_t addr_str;
-		cxa_eui48_toString(targetAddrIn, &addr_str);
-		cxa_logger_warn(&btlecIn->super.logger, "not connected to '%s'", addr_str);
-		cxa_btle_central_notify_readComplete(&btlecIn->super, targetAddrIn, serviceUuidIn, characteristicUuidIn, false, NULL);
-	}
-}
-
-
-static void scm_writeToCharacteristic(cxa_btle_central_t *const superIn,
-									  cxa_eui48_t *const targetAddrIn,
-									  const char *const serviceUuidIn,
-									  const char *const characteristicUuidIn,
-									  cxa_fixedByteBuffer_t *const dataIn)
-{
-	cxa_siLabsBgApi_btle_central_t *const btlecIn = (cxa_siLabsBgApi_btle_central_t *const)superIn;
-	cxa_assert(btlecIn);
-
-	// make sure we know about this connection
-	cxa_siLabsBgApi_btle_connection_t* currConn = getConnectionByAddress(btlecIn, targetAddrIn);
-	if( currConn != NULL )
-	{
-		cxa_siLabsBgApi_btle_connection_writeToCharacteristic(currConn, serviceUuidIn, characteristicUuidIn, dataIn);
-	}
-	else
-	{
-		cxa_eui48_string_t addr_str;
-		cxa_eui48_toString(targetAddrIn, &addr_str);
-		cxa_logger_warn(&btlecIn->super.logger, "not connected to '%s'", addr_str);
-		cxa_btle_central_notify_writeComplete(&btlecIn->super, targetAddrIn, serviceUuidIn, characteristicUuidIn, false);
-	}
-}
-
-
-static void scm_changeNotifications(cxa_btle_central_t *const superIn,
-		  	  	  	  	  	  	    cxa_eui48_t *const targetAddrIn,
-									const char *const serviceUuidIn,
-									const char *const characteristicUuidIn,
-									bool enableNotifications)
-{
-	cxa_siLabsBgApi_btle_central_t *const btlecIn = (cxa_siLabsBgApi_btle_central_t *const)superIn;
-	cxa_assert(btlecIn);
-
-	// make sure we know about this connection
-	cxa_siLabsBgApi_btle_connection_t* currConn = getConnectionByAddress(btlecIn, targetAddrIn);
-	if( currConn != NULL )
-	{
-		cxa_siLabsBgApi_btle_connection_changeNotifications(currConn, serviceUuidIn, characteristicUuidIn, enableNotifications);
-	}
-	else
-	{
-		cxa_eui48_string_t addr_str;
-		cxa_eui48_toString(targetAddrIn, &addr_str);
-		cxa_logger_warn(&btlecIn->super.logger, "not connected to '%s'", addr_str);
-		cxa_btle_central_notify_writeComplete(&btlecIn->super, targetAddrIn, serviceUuidIn, characteristicUuidIn, false);
-	}
 }
 
 

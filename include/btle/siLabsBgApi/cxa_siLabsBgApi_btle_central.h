@@ -50,6 +50,8 @@ struct cxa_siLabsBgApi_btle_central
 
 	int threadId;
 
+	bool isConnectionInProgress;
+
 	cxa_siLabsBgApi_btle_connection_t conns[CXA_SILABSBGAPI_BTLE_CENTRAL_MAXNUM_CONNS];
 };
 

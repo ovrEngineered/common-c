@@ -24,6 +24,7 @@
 
 #include <cxa_array.h>
 #include <cxa_btle_advPacket.h>
+#include <cxa_btle_connection.h>
 #include <cxa_btle_uuid.h>
 #include <cxa_eui48.h>
 #include <cxa_fixedByteBuffer.h>
@@ -36,8 +37,8 @@
 	#define CXA_BTLE_CENTRAL_MAXNUM_LISTENERS				2
 #endif
 
-#ifndef CXA_BTLE_CENTRAL_MAXNUM_NOTIINDI_SUBSCRIPTIONS
-	#define CXA_BTLE_CENTRAL_MAXNUM_NOTIINDI_SUBSCRIPTIONS	2
+#ifndef CXA_BTLE_CENTRAL_MAXNUM_CONNECTIONS
+	#define CXA_BTLE_CENTRAL_MAXNUM_CONNECTIONS				2
 #endif
 
 
@@ -57,17 +58,6 @@ typedef enum
 	CXA_BTLE_CENTRAL_STATE_STARTUPFAILED,
 	CXA_BTLE_CENTRAL_STATE_READY,
 }cxa_btle_central_state_t;
-
-
-/**
- * @public
- */
-typedef enum
-{
-	CXA_BTLE_CENTRAL_DISCONNECT_REASON_USER_REQUESTED,
-	CXA_BTLE_CENTRAL_DISCONNECT_REASON_CONNECTION_TIMEOUT,
-	CXA_BTLE_CENTRAL_DISCONNECT_REASON_STACK
-}cxa_btle_central_disconnectReason_t;
 
 
 /**
@@ -109,59 +99,7 @@ typedef void (*cxa_btle_central_cb_onScanStop_t)(void* userVarIn);
 /**
  * @public
  */
-typedef void (*cxa_btle_central_cb_onConnectionOpened_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
-
-
-/**
- * @public
- */
-typedef void (*cxa_btle_central_cb_onConnectionClosed_expected_t)(cxa_eui48_t *const targetAddrIn, void* userVarIn);
-
-
-/**
- * @public
- */
-typedef void (*cxa_btle_central_cb_onConnectionClosed_unexpected_t)(cxa_eui48_t *const targetAddrIn, cxa_btle_central_disconnectReason_t reasonIn, void* userVarIn);
-
-
-/**
- * @public
- */
-typedef void (*cxa_btle_central_cb_onReadComplete_t)(cxa_eui48_t *const targetAddrIn,
-													 const char *const serviceUuidIn,
-													 const char *const characteristicUuidIn,
-													 bool wasSuccessfulIn,
-													 cxa_fixedByteBuffer_t *fbb_readDataIn,
-													 void* userVarIn);
-
-
-/**
- * @public
- */
-typedef void (*cxa_btle_central_cb_onWriteComplete_t)(cxa_eui48_t *const targetAddrIn,
-													  const char *const serviceUuidIn,
-													  const char *const characteristicUuidIn,
-													  bool wasSuccessfulIn, void* userVarIn);
-
-
-/**
- * @public
- */
-typedef void (*cxa_btle_central_cb_onNotiIndiSubscriptionChanged_t)(cxa_eui48_t *const targetAddrIn,
-														  	  	    const char *const serviceUuidIn,
-																	const char *const characteristicUuidIn,
-																	bool wasSuccessfulIn,
-																	void* userVarIn);
-
-
-/**
- * @public
- */
-typedef void (*cxa_btle_central_cb_onNotiIndiRx_t)(cxa_eui48_t *const targetAddrIn,
-												   const char *const serviceUuidIn,
-												   const char *const characteristicUuidIn,
-												   cxa_fixedByteBuffer_t *fbb_readDataIn,
-												   void* userVarIn);
+typedef void (*cxa_btle_central_cb_onConnectionOpened_t)(bool wasSuccessfulIn, cxa_btle_connection_t *const connectionIn, void* userVarIn);
 
 
 /**
@@ -191,40 +129,6 @@ typedef void (*cxa_btle_central_scm_startConnection_t)(cxa_btle_central_t *const
 /**
  * @private
  */
-typedef void (*cxa_btle_central_scm_stopConnection_t)(cxa_btle_central_t *const superIn, cxa_eui48_t *const targetAddrIn);
-
-
-/**
- * @private
- */
-typedef void (*cxa_btle_central_scm_readFromCharacteristic_t)(cxa_btle_central_t *const superIn,
-															  cxa_eui48_t *const targetAddrIn,
-															  const char *const serviceUuidIn,
-															  const char *const characteristicUuidIn);
-
-
-/**
- * @private
- */
-typedef void (*cxa_btle_central_scm_writeToCharacteristic_t)(cxa_btle_central_t *const superIn,
-															 cxa_eui48_t *const targetAddrIn,
-															 const char *const serviceUuidIn,
-															 const char *const characteristicUuidIn,
-															 cxa_fixedByteBuffer_t *const dataIn);
-
-/**
- * @private
- */
-typedef void (*cxa_btle_central_scm_changeNotifications_t)(cxa_btle_central_t *const superIn,
-														   cxa_eui48_t *const targetAddrIn,
-														   const char *const serviceUuidIn,
-														   const char *const characteristicUuidIn,
-														   bool enableNotifications);
-
-
-/**
- * @private
- */
 typedef struct
 {
 	cxa_btle_central_cb_onReady_t cb_onReady;
@@ -236,28 +140,10 @@ typedef struct
 /**
  * @private
  */
-typedef struct
-{
-	cxa_eui48_t address;
-	cxa_btle_uuid_t uuid_service;
-	cxa_btle_uuid_t uuid_characteristic;
-
-	cxa_btle_central_cb_onNotiIndiSubscriptionChanged_t cb_onSubscriptionChanged;
-	cxa_btle_central_cb_onNotiIndiRx_t cb_onRx;
-	void* userVar;
-}cxa_btle_central_notiIndiSubscription_t;
-
-
-/**
- * @private
- */
 struct cxa_btle_central
 {
 	cxa_array_t listeners;
 	cxa_btle_central_listener_entry_t listeners_raw[CXA_BTLE_CENTRAL_MAXNUM_LISTENERS];
-
-	cxa_array_t notiIndiSubs;
-	cxa_btle_central_notiIndiSubscription_t notiIndiSubs_raw[CXA_BTLE_CENTRAL_MAXNUM_NOTIINDI_SUBSCRIPTIONS];
 
 	bool hasActivityAvailable;
 
@@ -275,28 +161,8 @@ struct cxa_btle_central
 		struct
 		{
 			cxa_btle_central_cb_onConnectionOpened_t onConnectionOpened;
-			cxa_btle_central_cb_onConnectionClosed_unexpected_t onConnectionClosed_unexpected;
-			cxa_btle_central_cb_onConnectionClosed_expected_t onConnectionClosed_expected;
 			void* userVar;
 		}connecting;
-
-		struct
-		{
-			cxa_btle_central_cb_onReadComplete_t onReadComplete;
-			void* userVar;
-		}reading;
-
-		struct
-		{
-			cxa_btle_central_cb_onWriteComplete_t onWriteComplete;
-			void* userVar;
-		}writing;
-
-		struct
-		{
-			cxa_btle_central_cb_onNotiIndiSubscriptionChanged_t onUnsubscribed;
-			void* userVar;
-		}unsubscribing;
 	}cbs;
 
 	struct
@@ -307,12 +173,6 @@ struct cxa_btle_central
 		cxa_btle_central_scm_stopScan_t stopScan;
 
 		cxa_btle_central_scm_startConnection_t startConnection;
-		cxa_btle_central_scm_stopConnection_t stopConnection;
-
-		cxa_btle_central_scm_readFromCharacteristic_t readFromCharacteristic;
-		cxa_btle_central_scm_writeToCharacteristic_t writeToCharacteristic;
-
-		cxa_btle_central_scm_changeNotifications_t changeNotifications;
 	}scms;
 
 	cxa_logger_t logger;
@@ -327,11 +187,7 @@ void cxa_btle_central_init(cxa_btle_central_t *const btlecIn,
 						   cxa_btle_central_scm_getState_t scm_getStateIn,
 						   cxa_btle_central_scm_startScan_t scm_startScanIn,
 						   cxa_btle_central_scm_stopScan_t scm_stopScanIn,
-						   cxa_btle_central_scm_startConnection_t scm_startConnectionIn,
-						   cxa_btle_central_scm_stopConnection_t scm_stopConnectionIn,
-						   cxa_btle_central_scm_readFromCharacteristic_t scm_readFromCharIn,
-						   cxa_btle_central_scm_writeToCharacteristic_t scm_writeToCharIn,
-						   cxa_btle_central_scm_changeNotifications_t scm_changeNotificationsIn);
+						   cxa_btle_central_scm_startConnection_t scm_startConnectionIn);
 
 
 /**
@@ -385,78 +241,11 @@ bool cxa_btle_central_hasActivityAvailable(cxa_btle_central_t *const btlecIn);
 /**
  * @public
  */
-void cxa_btle_central_startConnection(cxa_btle_central_t *const btlecIn, cxa_eui48_t *const addrIn, bool isRandomAddrIn,
+void cxa_btle_central_startConnection(cxa_btle_central_t *const btlecIn,
+									  cxa_eui48_t *const addrIn,
+									  bool isRandomAddrIn,
 									  cxa_btle_central_cb_onConnectionOpened_t cb_connectionOpenedIn,
-									  cxa_btle_central_cb_onConnectionClosed_unexpected_t cb_connectionClosed_unexpectedIn,
 									  void* userVarIn);
-
-
-/**
- * @public
- */
-void cxa_btle_central_stopConnection(cxa_btle_central_t *const btlecIn,
-									 cxa_eui48_t *const targetAddrIn,
-									 cxa_btle_central_cb_onConnectionClosed_expected_t cb_connectionClosed_expectedIn,
-									 void *userVarIn);
-
-
-/**
- * @public
- */
-void cxa_btle_central_readFromCharacteristic(cxa_btle_central_t *const btlecIn,
-										     cxa_eui48_t *const targetAddrIn,
-										     const char *const serviceUuidIn,
-										     const char *const characteristicUuidIn,
-										     cxa_btle_central_cb_onReadComplete_t cb_readCompleteIn,
-										     void* userVarIn);
-
-
-/**
- * @public
- */
-void cxa_btle_central_writeToCharacteristic_fbb(cxa_btle_central_t *const btlecIn,
-											    cxa_eui48_t *const targetAddrIn,
-										   	    const char *const serviceUuidIn,
-											    const char *const characteristicUuidIn,
-											    cxa_fixedByteBuffer_t *const dataIn,
-											    cxa_btle_central_cb_onWriteComplete_t cb_writeCompleteIn,
-											    void* userVarIn);
-
-
-/**
- * @public
- */
-void cxa_btle_central_writeToCharacteristic(cxa_btle_central_t *const btlecIn,
-										    cxa_eui48_t *const targetAddrIn,
-										    const char *const serviceUuidIn,
-										    const char *const characteristicUuidIn,
-										    void *const dataIn,
-										    size_t numBytesIn,
-										    cxa_btle_central_cb_onWriteComplete_t cb_writeCompleteIn,
-										    void* userVarIn);
-
-
-/**
- * @public
- */
-void cxa_btle_central_subscribeToNotifications(cxa_btle_central_t *const btlecIn,
-	    									   cxa_eui48_t *const targetAddrIn,
-											   const char *const serviceUuidIn,
-											   const char *const characteristicUuidIn,
-											   cxa_btle_central_cb_onNotiIndiSubscriptionChanged_t cb_onSubscribedIn,
-											   cxa_btle_central_cb_onNotiIndiRx_t cb_onRxIn,
-											   void* userVarIn);
-
-
-/**
- * @public
- */
-void cxa_btle_central_unsubscribeToNotifications(cxa_btle_central_t *const btlecIn,
-												 cxa_eui48_t *const targetAddrIn,
-												 const char *const serviceUuidIn,
-												 const char *const characteristicUuidIn,
-												 cxa_btle_central_cb_onNotiIndiSubscriptionChanged_t cb_onUnsubscribedIn,
-												 void* userVarIn);
 
 
 /**
@@ -468,19 +257,22 @@ void cxa_btle_central_notify_onBecomesReady(cxa_btle_central_t *const btlecIn);
 /**
  * @protected
  */
-void cxa_btle_central_notify_onFailedInit(cxa_btle_central_t *const btlecIn, bool willAutoRetryIn);
+void cxa_btle_central_notify_onFailedInit(cxa_btle_central_t *const btlecIn,
+										  bool willAutoRetryIn);
 
 
 /**
  * @protected
  */
-void cxa_btle_central_notify_advertRx(cxa_btle_central_t *const btlecIn, cxa_btle_advPacket_t *packetIn);
+void cxa_btle_central_notify_advertRx(cxa_btle_central_t *const btlecIn,
+									  cxa_btle_advPacket_t *packetIn);
 
 
 /**
  * @protected
  */
-void cxa_btle_central_notify_scanStart(cxa_btle_central_t *const btlecIn, bool wasSuccessfulIn);
+void cxa_btle_central_notify_scanStart(cxa_btle_central_t *const btlecIn,
+									   bool wasSuccessfulIn);
 
 
 /**
@@ -492,60 +284,9 @@ void cxa_btle_central_notify_scanStop(cxa_btle_central_t *const btlecIn);
 /**
  * @protected
  */
-void cxa_btle_central_notify_connectionStarted(cxa_btle_central_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
+void cxa_btle_central_notify_connectionStarted(cxa_btle_central_t *const btlecIn,
+											   bool wasSuccessfulIn,
+											   cxa_btle_connection_t *const connIn);
 
-
-/**
- * @protected
- */
-void cxa_btle_central_notify_connectionClose_expected(cxa_btle_central_t *const btlecIn, cxa_eui48_t *const targetAddrIn);
-
-
-/**
- * @protected
- */
-void cxa_btle_central_notify_connectionClose_unexpected(cxa_btle_central_t *const btlecIn, cxa_eui48_t *const targetAddrIn, cxa_btle_central_disconnectReason_t reasonIn);
-
-
-/**
- * @protected
- */
-void cxa_btle_central_notify_writeComplete(cxa_btle_central_t *const btlecIn,
-										   cxa_eui48_t *const targetAddrIn,
-										   const char *const serviceUuidIn,
-										   const char *const characteristicUuidIn,
-										   bool wasSuccessfulIn);
-
-
-/**
- * @protected
- */
-void cxa_btle_central_notify_readComplete(cxa_btle_central_t *const btlecIn,
-										  cxa_eui48_t *const targetAddrIn,
-										  const char *const serviceUuidIn,
-										  const char *const characteristicUuidIn,
-										  bool wasSuccessfulIn,
-										  cxa_fixedByteBuffer_t *fbb_readDataIn);
-
-
-/**
- * @protected
- */
-void cxa_btle_central_notify_notiIndiSubscriptionChanged(cxa_btle_central_t *const btlecIn,
-														 cxa_eui48_t *const targetAddrIn,
-														 const char *const serviceUuidIn,
-														 const char *const characteristicUuidIn,
-														 bool wasSuccessfulIn,
-														 bool notificationsEnableIn);
-
-
-/**
- * @protected
- */
-void cxa_btle_central_notify_notiIndiRx(cxa_btle_central_t *const btlecIn,
-									    cxa_eui48_t *const targetAddrIn,
-									    const char *const serviceUuidIn,
-									    const char *const characteristicUuidIn,
-									    cxa_fixedByteBuffer_t *fbb_dataIn);
 
 #endif

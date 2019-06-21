@@ -53,8 +53,10 @@ static cxa_siLabsBgApi_btle_handleMacMapEntry_t* getHandleMacEntry_byMac(cxa_siL
 static cxa_siLabsBgApi_btle_handleMacMapEntry_t* getHandleMacEntry_byHandle(cxa_siLabsBgApi_btle_peripheral_t *const btlepIn, uint8_t handleIn);
 
 static void scm_sendNotification(cxa_btle_peripheral_t *const superIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_fixedByteBuffer_t *const fbb_dataIn);
-static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const targetAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_readRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbbReadDataIn);
-static void scm_sendDeferredWriteResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const targetAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_writeRetVal_t retValIn);
+static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const sourceAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_readRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbbReadDataIn);
+static void scm_sendDeferredWriteResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const sourceAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_writeRetVal_t retValIn);
+static void scm_setAdvertisingInfo(cxa_btle_peripheral_t *const superIn, uint32_t advertPeriod_msIn, cxa_fixedByteBuffer_t *const fbbAdvertDataIn);
+static void scm_startAdvertising(cxa_btle_peripheral_t *const superIn);
 
 
 // ********  local variable declarations *********
@@ -70,7 +72,7 @@ void cxa_siLabsBgApi_btle_peripheral_init(cxa_siLabsBgApi_btle_peripheral_t *con
 	cxa_array_initStd(&btlepIn->handleMacMap, btlepIn->handleMacMap_raw);
 
 	// initialize our super class
-	cxa_btle_peripheral_init(&btlepIn->super, scm_sendNotification, scm_sendDeferredReadResponse, scm_sendDeferredWriteResponse);
+	cxa_btle_peripheral_init(&btlepIn->super, scm_sendNotification, scm_sendDeferredReadResponse, scm_sendDeferredWriteResponse, scm_setAdvertisingInfo, scm_startAdvertising);
 }
 
 
@@ -154,8 +156,8 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 				uint8_t tmpFbb_raw[USER_READ_BUFFER_MAX_BYTES];
 				cxa_fixedByteBuffer_initStd(&tmpFbb, tmpFbb_raw);
 
-				cxa_btle_peripheral_readRetVal_t retVal = cxa_btle_peripheral_notify_readRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->serviceUuid, &charMapEntry->charUuid, &tmpFbb);
-				if( retVal != CXA_BTLE_PERIPHERAL_READRET_NOT_YET_COMPLETE )
+				cxa_btle_peripheral_readRetVal_t retVal;
+				if( cxa_btle_peripheral_notify_readRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->serviceUuid, &charMapEntry->charUuid, &tmpFbb, &retVal) )
 				{
 					// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
 					gecko_cmd_gatt_server_send_user_read_response(evt->data.evt_gatt_server_user_read_request.connection, charMapEntry->handle, (uint8_t)retVal, cxa_fixedByteBuffer_getSize_bytes(&tmpFbb), cxa_fixedByteBuffer_get_pointerToStartOfData(&tmpFbb));
@@ -175,8 +177,8 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 														  evt->data.evt_gatt_server_user_write_request.value.data,
 														  evt->data.evt_gatt_server_user_write_request.value.len);
 
-				cxa_btle_peripheral_writeRetVal_t retVal = cxa_btle_peripheral_notify_writeRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->serviceUuid, &charMapEntry->charUuid, &tmpFbb);
-				if( retVal != CXA_BTLE_PERIPHERAL_WRITERET_NOT_YET_COMPLETE )
+				cxa_btle_peripheral_writeRetVal_t retVal;
+				if( cxa_btle_peripheral_notify_writeRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->serviceUuid, &charMapEntry->charUuid, &tmpFbb, &retVal) )
 				{
 					// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
 					gecko_cmd_gatt_server_send_user_write_response(evt->data.evt_gatt_server_user_write_request.connection, evt->data.evt_gatt_server_user_write_request.characteristic, (uint8_t)retVal);
@@ -280,7 +282,7 @@ static void scm_sendNotification(cxa_btle_peripheral_t *const superIn, const cha
 }
 
 
-static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const targetAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_readRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbbReadDataIn)
+static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const sourceAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_readRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbbReadDataIn)
 {
 	cxa_siLabsBgApi_btle_peripheral_t *const btlepIn = (cxa_siLabsBgApi_btle_peripheral_t *const)superIn;
 	cxa_assert(btlepIn);
@@ -292,7 +294,7 @@ static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, c
 	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, characteristicUuidStrIn));
 
 	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, &tmpServiceUuid, &tmpCharUuid);
-	cxa_siLabsBgApi_btle_handleMacMapEntry_t* macMapEntry = getHandleMacEntry_byMac(btlepIn, targetAddrIn);
+	cxa_siLabsBgApi_btle_handleMacMapEntry_t* macMapEntry = getHandleMacEntry_byMac(btlepIn, sourceAddrIn);
 	if( (charMapEntry != NULL) && (macMapEntry != NULL) )
 	{
 		// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
@@ -301,7 +303,7 @@ static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, c
 }
 
 
-static void scm_sendDeferredWriteResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const targetAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_writeRetVal_t retValIn)
+static void scm_sendDeferredWriteResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const sourceAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_writeRetVal_t retValIn)
 {
 	cxa_siLabsBgApi_btle_peripheral_t *const btlepIn = (cxa_siLabsBgApi_btle_peripheral_t *const)superIn;
 	cxa_assert(btlepIn);
@@ -313,10 +315,52 @@ static void scm_sendDeferredWriteResponse(cxa_btle_peripheral_t *const superIn, 
 	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, characteristicUuidStrIn));
 
 	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, &tmpServiceUuid, &tmpCharUuid);
-	cxa_siLabsBgApi_btle_handleMacMapEntry_t* macMapEntry = getHandleMacEntry_byMac(btlepIn, targetAddrIn);
+	cxa_siLabsBgApi_btle_handleMacMapEntry_t* macMapEntry = getHandleMacEntry_byMac(btlepIn, sourceAddrIn);
 	if( (charMapEntry != NULL) && (macMapEntry != NULL) )
 	{
 		// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
 		gecko_cmd_gatt_server_send_user_write_response(macMapEntry->handle, charMapEntry->handle, (uint8_t)retValIn);
+	}
+}
+
+
+static void scm_setAdvertisingInfo(cxa_btle_peripheral_t *const superIn, uint32_t advertPeriod_msIn, cxa_fixedByteBuffer_t *const fbbAdvertDataIn)
+{
+	cxa_siLabsBgApi_btle_peripheral_t *const btlepIn = (cxa_siLabsBgApi_btle_peripheral_t *const)superIn;
+	cxa_assert(btlepIn);
+
+	// set our advertising timing
+	struct gecko_msg_le_gap_set_advertise_timing_rsp_t* rsp_advTiming = gecko_cmd_le_gap_set_advertise_timing(0, (advertPeriod_msIn * 1600) / 1000, ((advertPeriod_msIn + (advertPeriod_msIn/2)) * 1600) / 1000, 0, 0);
+	if( rsp_advTiming->result != 0 )
+	{
+		cxa_logger_warn(&btlepIn->super.logger, "error setting advertising timing: %d", rsp_advTiming->result);
+		return;
+	}
+
+	// set our advertising data (0 - advertising)
+	struct gecko_msg_le_gap_bt5_set_adv_data_rsp_t* rsp_advData = gecko_cmd_le_gap_bt5_set_adv_data(0, 0,
+																	(fbbAdvertDataIn != NULL) ? cxa_fixedByteBuffer_getSize_bytes(fbbAdvertDataIn) : 0,
+																	(fbbAdvertDataIn != NULL) ? cxa_fixedByteBuffer_get_pointerToStartOfData(fbbAdvertDataIn) : NULL);
+	if( rsp_advData->result != 0 )
+	{
+		cxa_logger_warn(&btlepIn->super.logger, "error setting advertising data: %d", rsp_advData->result);
+		return;
+	}
+}
+
+
+static void scm_startAdvertising(cxa_btle_peripheral_t *const superIn)
+{
+	cxa_siLabsBgApi_btle_peripheral_t *const btlepIn = (cxa_siLabsBgApi_btle_peripheral_t *const)superIn;
+	cxa_assert(btlepIn);
+
+	cxa_logger_debug(&btlepIn->super.logger, "starting advertising");
+
+	// start advertising
+	struct gecko_msg_le_gap_start_advertising_rsp_t* rsp_advStart = gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
+	if( rsp_advStart->result != 0 )
+	{
+		cxa_logger_warn(&btlepIn->super.logger, "error starting advertising: %d", rsp_advStart->result);
+		return;
 	}
 }
