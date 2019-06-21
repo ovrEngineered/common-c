@@ -257,8 +257,12 @@ void cxa_btle_central_notify_scanStart(cxa_btle_central_t *const btlecIn,
 	if( btlecIn->cbs.scanning.onScanStart != NULL )
 	{
 		cxa_btle_central_cb_onScanStart_t cb = btlecIn->cbs.scanning.onScanStart;
+		void* userVar = btlecIn->cbs.scanning.userVar;
+
 		btlecIn->cbs.scanning.onScanStart = NULL;
-		cb(wasSuccessfulIn, btlecIn->cbs.scanning.userVar);
+		btlecIn->cbs.scanning.userVar = NULL;
+
+		cb(wasSuccessfulIn, userVar);
 	}
 }
 
@@ -276,8 +280,12 @@ void cxa_btle_central_notify_scanStop(cxa_btle_central_t *const btlecIn)
 	if( btlecIn->cbs.scanning.onScanStop != NULL )
 	{
 		cxa_btle_central_cb_onScanStop_t cb = btlecIn->cbs.scanning.onScanStop;
+		void* userVar = btlecIn->cbs.scanning.userVar;
+
 		btlecIn->cbs.scanning.onScanStop = NULL;
-		cb(btlecIn->cbs.scanning.userVar);
+		btlecIn->cbs.scanning.userVar = NULL;
+
+		cb(userVar);
 	}
 }
 
@@ -292,8 +300,12 @@ void cxa_btle_central_notify_connectionStarted(cxa_btle_central_t *const btlecIn
 	if( btlecIn->cbs.connecting.onConnectionOpened != NULL )
 	{
 		cxa_btle_central_cb_onConnectionOpened_t cb = btlecIn->cbs.connecting.onConnectionOpened;
+		void* userVar = btlecIn->cbs.connecting.userVar;
+
 		btlecIn->cbs.connecting.onConnectionOpened = NULL;
-		cb(wasSuccessfulIn, connIn, btlecIn->cbs.connecting.userVar);
+		btlecIn->cbs.connecting.userVar = NULL;
+
+		cb(wasSuccessfulIn, connIn, userVar);
 	}
 }
 

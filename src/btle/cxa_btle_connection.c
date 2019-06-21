@@ -29,6 +29,9 @@
 
 #include <string.h>
 
+#define CXA_LOG_LEVEL					CXA_LOG_LEVEL_TRACE
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
 
@@ -309,8 +312,13 @@ void cxa_btle_connection_notify_connectionClose(cxa_btle_connection_t *const con
 	// notify our callback
 	if( connIn->cbs.connectionClosed.func != NULL )
 	{
-		connIn->cbs.connectionClosed.func(reasonIn, connIn->cbs.connectionClosed.userVar);
+		cxa_btle_connection_cb_onConnectionClosed_t cb = connIn->cbs.connectionClosed.func;
+		void* userVar = connIn->cbs.connectionClosed.userVar;
+
 		connIn->cbs.connectionClosed.func = NULL;
+		connIn->cbs.connectionClosed.userVar = NULL;
+
+		cb(reasonIn, userVar);
 	}
 }
 
@@ -327,8 +335,13 @@ void cxa_btle_connection_notify_writeComplete(cxa_btle_connection_t *const connI
 	// notify our callback
 	if( connIn->cbs.writeToChar.func != NULL )
 	{
-		connIn->cbs.writeToChar.func(wasSuccessfulIn, connIn->cbs.writeToChar.userVar);
+		cxa_btle_connection_cb_onWriteComplete_t cb = connIn->cbs.writeToChar.func;
+		void* userVar = connIn->cbs.writeToChar.userVar;
+
 		connIn->cbs.writeToChar.func = NULL;
+		connIn->cbs.writeToChar.userVar = NULL;
+
+		cb(wasSuccessfulIn, userVar);
 	}
 }
 
@@ -346,8 +359,13 @@ void cxa_btle_connection_notify_readComplete(cxa_btle_connection_t *const connIn
 	// notify our callback
 	if( connIn->cbs.readFromChar.func != NULL )
 	{
-		connIn->cbs.readFromChar.func(wasSuccessfulIn, fbb_readDataIn, connIn->cbs.readFromChar.userVar);
+		cxa_btle_connection_cb_onReadComplete_t cb = connIn->cbs.readFromChar.func;
+		void* userVar = connIn->cbs.readFromChar.userVar;
+
 		connIn->cbs.readFromChar.func = NULL;
+		connIn->cbs.readFromChar.userVar = NULL;
+
+		cb(wasSuccessfulIn, fbb_readDataIn, userVar);
 	}
 }
 
@@ -365,13 +383,23 @@ void cxa_btle_connection_notify_notiIndiSubscriptionChanged(cxa_btle_connection_
 	// notify our callback
 	if( notificationsEnableIn && (connIn->cbs.subscribeToChar.func != NULL) )
 	{
-		connIn->cbs.subscribeToChar.func(serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, connIn->cbs.subscribeToChar.userVar);
+		cxa_btle_connection_cb_onNotiIndiSubscriptionChanged_t cb = connIn->cbs.subscribeToChar.func;
+		void* userVar = connIn->cbs.subscribeToChar.userVar;
+
 		connIn->cbs.subscribeToChar.func = NULL;
+		connIn->cbs.subscribeToChar.userVar = NULL;
+
+		cb(serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, userVar);
 	}
 	else if( !notificationsEnableIn && (connIn->cbs.unsubscribeFromChar.func != NULL) )
 	{
-		connIn->cbs.unsubscribeFromChar.func(serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, connIn->cbs.unsubscribeFromChar.userVar);
+		cxa_btle_connection_cb_onNotiIndiSubscriptionChanged_t cb = connIn->cbs.unsubscribeFromChar.func;
+		void* userVar = connIn->cbs.unsubscribeFromChar.userVar;
+
 		connIn->cbs.unsubscribeFromChar.func = NULL;
+		connIn->cbs.unsubscribeFromChar.userVar = NULL;
+
+		cb(serviceUuidIn, characteristicUuidIn, wasSuccessfulIn, userVar);
 	}
 }
 

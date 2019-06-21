@@ -395,4 +395,6 @@ static void runLoopOneShot_stopScan(void* userVarIn)
 	cxa_assert(btlecIn);
 
 	gecko_cmd_le_gap_end_procedure();
+
+	cxa_btle_central_notify_scanStop(&btlecIn->super);
 }
