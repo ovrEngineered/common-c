@@ -262,6 +262,14 @@ void cxa_btle_connectionManager_setTargetSubscriptionState(cxa_btle_connectionMa
 	cxa_assert(btleCmIn);
 	cxa_assert(subStateIn);
 
+	// make sure we're not already in this state
+	if( subStateIn == btleCmIn->targetSubState )
+	{
+		cxa_logger_debug(&btleCmIn->logger, "already in this sub state");
+		notifyListeners_onSubStateTransitionComplete(btleCmIn, true);
+		return;
+	}
+
 	// save our target state
 	btleCmIn->targetSubState = subStateIn;
 	btleCmIn->targetSubState->currEntryIndex = 0;
