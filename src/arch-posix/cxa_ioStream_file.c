@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "cxa_ioStream_fromFile.h"
+#include "cxa_ioStream_file.h"
 
 
 /**
@@ -39,7 +39,7 @@
 
 
 // ******** local function prototypes ********
-static bool set_blocking(cxa_ioStream_fromFile_t *const ioStreamIn, bool should_block);
+static bool set_blocking(cxa_ioStream_file_t *const ioStreamIn, bool should_block);
 
 static cxa_ioStream_readStatus_t read_cb(uint8_t *const byteOut, void *const userVarIn);
 static bool write_cb(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
@@ -49,33 +49,53 @@ static bool write_cb(void* buffIn, size_t bufferSize_bytesIn, void *const userVa
 
 
 // ******** global function implementations ********
-void cxa_ioStream_fromFile_init(cxa_ioStream_fromFile_t *const ioStreamIn, FILE *const fileIn)
+void cxa_ioStream_file_init(cxa_ioStream_file_t *const ioStreamIn)
+{
+	cxa_assert(ioStreamIn);
+
+	// initialize our super class
+	cxa_ioStream_init(&ioStreamIn->super);
+}
+
+
+void cxa_ioStream_file_setFile(cxa_ioStream_file_t *const ioStreamIn, FILE *const fileIn)
 {
 	cxa_assert(ioStreamIn);
 	cxa_assert(fileIn);
 
-	// save our internal state
-	ioStreamIn->file = fileIn;
+	// make sure we clean up previously used files
+	if( cxa_ioStream_isBound(&ioStreamIn->super) )
+	{
+		cxa_ioStream_file_close(ioStreamIn);
+	}
 
-	// initialize our super class
-	cxa_ioStream_init(&ioStreamIn->super);
-	cxa_ioStream_bind(&ioStreamIn->super, read_cb, write_cb, (void*)ioStreamIn);
+	// save our references
+	ioStreamIn->file = fileIn;
 
 	// make our file non-blocking
 	set_blocking(ioStreamIn, true);
+
+	// get ready for use
+	cxa_ioStream_bind(&ioStreamIn->super, read_cb, write_cb, (void*)ioStreamIn);
 }
 
 
-void cxa_ioStream_fromFile_close(cxa_ioStream_fromFile_t *const ioStreamIn)
+void cxa_ioStream_file_close(cxa_ioStream_file_t *const ioStreamIn)
 {
 	cxa_assert(ioStreamIn);
 
-	set_blocking(ioStreamIn, false);
+	cxa_ioStream_unbind(&ioStreamIn->super);
+
+	if( ioStreamIn->file != NULL )
+	{
+		set_blocking(ioStreamIn, false);
+		fclose(ioStreamIn->file);
+	}
 }
 
 
 // ******** local function implementations ********
-static bool set_blocking(cxa_ioStream_fromFile_t *const ioStreamIn, bool should_block)
+static bool set_blocking(cxa_ioStream_file_t *const ioStreamIn, bool should_block)
 {
 	cxa_assert(ioStreamIn);
 
@@ -98,7 +118,7 @@ static bool set_blocking(cxa_ioStream_fromFile_t *const ioStreamIn, bool should_
 static cxa_ioStream_readStatus_t read_cb(uint8_t *const byteOut, void *const userVarIn)
 {
 	cxa_assert(userVarIn);
-	cxa_ioStream_fromFile_t* ioStreamIn = (cxa_ioStream_fromFile_t*)userVarIn;
+	cxa_ioStream_file_t* ioStreamIn = (cxa_ioStream_file_t*)userVarIn;
 
 	int fd = fileno(ioStreamIn->file);
 	cxa_assert(fd >= 0);
@@ -115,7 +135,7 @@ static cxa_ioStream_readStatus_t read_cb(uint8_t *const byteOut, void *const use
 static bool write_cb(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn)
 {
 	cxa_assert(userVarIn);
-	cxa_ioStream_fromFile_t* ioStreamIn = (cxa_ioStream_fromFile_t*)userVarIn;
+	cxa_ioStream_file_t* ioStreamIn = (cxa_ioStream_file_t*)userVarIn;
 	if( buffIn == NULL ) return false;
 
 	for( size_t i = 0; i < bufferSize_bytesIn; i++ )
