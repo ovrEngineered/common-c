@@ -93,7 +93,7 @@
 #define cxa_fixedByteBuffer_append_cString(fbbIn, strIn)					cxa_fixedByteBuffer_append((fbbIn), (uint8_t*)(strIn), (strlen(strIn)+1))
 
 #define cxa_fixedByteBuffer_append_lengthPrefixedCString_uint16BE(fbbIn, strIn, includeNullTermIn)	\
-	cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE((fbbIn), (strIn), strlen(strIn) + ((includeNullTermIn) ? 1 : 0))
+	cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE((fbbIn), (uint8_t*)(strIn), strlen((const char *)strIn) + ((includeNullTermIn) ? 1 : 0))
 
 #define cxa_fixedByteBuffer_remove_uint8(fbbIn, indexIn)					cxa_fixedByteBuffer_remove((fbbIn), (indexIn), 1)
 #define cxa_fixedByteBuffer_remove_uint16(fbbIn, indexIn)					cxa_fixedByteBuffer_remove((fbbIn), (indexIn), 2)

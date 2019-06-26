@@ -118,10 +118,11 @@ bool cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE(cxa_fixedByteBuffer
 	if( numBytesIn > 0 ) cxa_assert(ptrIn);
 
 	// make sure we have room for the operation
-	if( (sizeof(numBytesIn) + numBytesIn) < cxa_fixedByteBuffer_getFreeSize_bytes(fbbIn) ) return false;
+	if( cxa_fixedByteBuffer_getFreeSize_bytes(fbbIn) < (sizeof(numBytesIn) + numBytesIn) ) return false;
 
 	// first the size
-	if( !cxa_fixedByteBuffer_append_uint16LE(fbbIn, numBytesIn) ) return false;
+	if( !cxa_fixedByteBuffer_append_uint16BE(fbbIn, numBytesIn) ) return false;
+
 	// now the actual data
 	return cxa_fixedByteBuffer_append(fbbIn, ptrIn, numBytesIn);
 }
