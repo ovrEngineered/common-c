@@ -379,7 +379,9 @@ enum gecko_dev_types
 #define gecko_cmd_system_set_device_name_id                           (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x0d010000)
 #define gecko_cmd_system_linklayer_configure_id                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x0e010000)
 #define gecko_cmd_system_get_counters_id                              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x0f010000)
+#define gecko_cmd_system_data_buffer_write_id                         (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x12010000)
 #define gecko_cmd_system_set_identity_address_id                      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x13010000)
+#define gecko_cmd_system_data_buffer_clear_id                         (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x14010000)
 #define gecko_cmd_le_gap_open_id                                      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x00030000)
 #define gecko_cmd_le_gap_set_mode_id                                  (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x01030000)
 #define gecko_cmd_le_gap_discover_id                                  (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x02030000)
@@ -410,7 +412,9 @@ enum gecko_dev_types
 #define gecko_cmd_le_gap_set_discovery_extended_scan_response_id      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x1c030000)
 #define gecko_cmd_le_gap_start_periodic_advertising_id                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x1d030000)
 #define gecko_cmd_le_gap_stop_periodic_advertising_id                 (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x1f030000)
+#define gecko_cmd_le_gap_set_long_advertising_data_id                 (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x20030000)
 #define gecko_cmd_le_gap_enable_whitelisting_id                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x21030000)
+#define gecko_cmd_le_gap_set_conn_timing_parameters_id                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x22030000)
 #define gecko_cmd_sync_open_id                                        (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x00420000)
 #define gecko_cmd_sync_close_id                                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x01420000)
 #define gecko_cmd_le_connection_set_parameters_id                     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x00080000)
@@ -418,6 +422,7 @@ enum gecko_dev_types
 #define gecko_cmd_le_connection_disable_slave_latency_id              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x02080000)
 #define gecko_cmd_le_connection_set_phy_id                            (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x03080000)
 #define gecko_cmd_le_connection_close_id                              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x04080000)
+#define gecko_cmd_le_connection_set_timing_parameters_id              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x05080000)
 #define gecko_cmd_gatt_set_max_mtu_id                                 (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x00090000)
 #define gecko_cmd_gatt_discover_primary_services_id                   (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x01090000)
 #define gecko_cmd_gatt_discover_primary_services_by_uuid_id           (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x02090000)
@@ -446,6 +451,7 @@ enum gecko_dev_types
 #define gecko_cmd_gatt_server_send_characteristic_notification_id     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x050a0000)
 #define gecko_cmd_gatt_server_find_attribute_id                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x060a0000)
 #define gecko_cmd_gatt_server_set_capabilities_id                     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x080a0000)
+#define gecko_cmd_gatt_server_set_max_mtu_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x0a0a0000)
 #define gecko_cmd_hardware_set_soft_timer_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x000c0000)
 #define gecko_cmd_hardware_get_time_id                                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x0b0c0000)
 #define gecko_cmd_hardware_set_lazy_soft_timer_id                     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x0c0c0000)
@@ -472,6 +478,7 @@ enum gecko_dev_types
 #define gecko_cmd_sm_use_sc_oob_id                                    (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x110f0000)
 #define gecko_cmd_sm_set_sc_remote_oob_data_id                        (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x120f0000)
 #define gecko_cmd_sm_add_to_whitelist_id                              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x130f0000)
+#define gecko_cmd_sm_set_minimum_key_size_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x140f0000)
 #define gecko_cmd_homekit_configure_id                                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x00130000)
 #define gecko_cmd_homekit_advertise_id                                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x01130000)
 #define gecko_cmd_homekit_delete_pairings_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_cmd|0x02130000)
@@ -516,7 +523,9 @@ enum gecko_dev_types
 #define gecko_rsp_system_set_device_name_id                           (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x0d010000)
 #define gecko_rsp_system_linklayer_configure_id                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x0e010000)
 #define gecko_rsp_system_get_counters_id                              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x0f010000)
+#define gecko_rsp_system_data_buffer_write_id                         (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x12010000)
 #define gecko_rsp_system_set_identity_address_id                      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x13010000)
+#define gecko_rsp_system_data_buffer_clear_id                         (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x14010000)
 #define gecko_rsp_le_gap_open_id                                      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x00030000)
 #define gecko_rsp_le_gap_set_mode_id                                  (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x01030000)
 #define gecko_rsp_le_gap_discover_id                                  (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x02030000)
@@ -547,7 +556,9 @@ enum gecko_dev_types
 #define gecko_rsp_le_gap_set_discovery_extended_scan_response_id      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x1c030000)
 #define gecko_rsp_le_gap_start_periodic_advertising_id                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x1d030000)
 #define gecko_rsp_le_gap_stop_periodic_advertising_id                 (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x1f030000)
+#define gecko_rsp_le_gap_set_long_advertising_data_id                 (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x20030000)
 #define gecko_rsp_le_gap_enable_whitelisting_id                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x21030000)
+#define gecko_rsp_le_gap_set_conn_timing_parameters_id                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x22030000)
 #define gecko_rsp_sync_open_id                                        (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x00420000)
 #define gecko_rsp_sync_close_id                                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x01420000)
 #define gecko_rsp_le_connection_set_parameters_id                     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x00080000)
@@ -555,6 +566,7 @@ enum gecko_dev_types
 #define gecko_rsp_le_connection_disable_slave_latency_id              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x02080000)
 #define gecko_rsp_le_connection_set_phy_id                            (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x03080000)
 #define gecko_rsp_le_connection_close_id                              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x04080000)
+#define gecko_rsp_le_connection_set_timing_parameters_id              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x05080000)
 #define gecko_rsp_gatt_set_max_mtu_id                                 (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x00090000)
 #define gecko_rsp_gatt_discover_primary_services_id                   (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x01090000)
 #define gecko_rsp_gatt_discover_primary_services_by_uuid_id           (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x02090000)
@@ -583,6 +595,7 @@ enum gecko_dev_types
 #define gecko_rsp_gatt_server_send_characteristic_notification_id     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x050a0000)
 #define gecko_rsp_gatt_server_find_attribute_id                       (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x060a0000)
 #define gecko_rsp_gatt_server_set_capabilities_id                     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x080a0000)
+#define gecko_rsp_gatt_server_set_max_mtu_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x0a0a0000)
 #define gecko_rsp_hardware_set_soft_timer_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x000c0000)
 #define gecko_rsp_hardware_get_time_id                                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x0b0c0000)
 #define gecko_rsp_hardware_set_lazy_soft_timer_id                     (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x0c0c0000)
@@ -609,6 +622,7 @@ enum gecko_dev_types
 #define gecko_rsp_sm_use_sc_oob_id                                    (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x110f0000)
 #define gecko_rsp_sm_set_sc_remote_oob_data_id                        (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x120f0000)
 #define gecko_rsp_sm_add_to_whitelist_id                              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x130f0000)
+#define gecko_rsp_sm_set_minimum_key_size_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x140f0000)
 #define gecko_rsp_homekit_configure_id                                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x00130000)
 #define gecko_rsp_homekit_advertise_id                                (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x01130000)
 #define gecko_rsp_homekit_delete_pairings_id                          (((uint32)gecko_dev_type_gecko)|gecko_msg_type_rsp|0x02130000)
@@ -652,6 +666,7 @@ enum gecko_dev_types
 #define gecko_evt_le_gap_adv_timeout_id                               (((uint32)gecko_dev_type_gecko)|gecko_msg_type_evt|0x01030000)
 #define gecko_evt_le_gap_scan_request_id                              (((uint32)gecko_dev_type_gecko)|gecko_msg_type_evt|0x02030000)
 #define gecko_evt_le_gap_extended_scan_response_id                    (((uint32)gecko_dev_type_gecko)|gecko_msg_type_evt|0x04030000)
+#define gecko_evt_le_gap_periodic_advertising_status_id               (((uint32)gecko_dev_type_gecko)|gecko_msg_type_evt|0x05030000)
 #define gecko_evt_sync_opened_id                                      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_evt|0x00420000)
 #define gecko_evt_sync_closed_id                                      (((uint32)gecko_dev_type_gecko)|gecko_msg_type_evt|0x01420000)
 #define gecko_evt_sync_data_id                                        (((uint32)gecko_dev_type_gecko)|gecko_msg_type_evt|0x02420000)
@@ -810,12 +825,24 @@ PACKSTRUCT( struct gecko_msg_system_get_counters_rsp_t
     uint16              crc_errors;
     uint16              failures;
 });
+PACKSTRUCT( struct gecko_msg_system_data_buffer_write_cmd_t
+{
+    uint8array          data;
+});
+PACKSTRUCT( struct gecko_msg_system_data_buffer_write_rsp_t
+{
+    uint16              result;
+});
 PACKSTRUCT( struct gecko_msg_system_set_identity_address_cmd_t
 {
     bd_addr             address;
     uint8               type;
 });
 PACKSTRUCT( struct gecko_msg_system_set_identity_address_rsp_t
+{
+    uint16              result;
+});
+PACKSTRUCT( struct gecko_msg_system_data_buffer_clear_rsp_t
 {
     uint16              result;
 });
@@ -1124,11 +1151,33 @@ PACKSTRUCT( struct gecko_msg_le_gap_stop_periodic_advertising_rsp_t
 {
     uint16              result;
 });
+PACKSTRUCT( struct gecko_msg_le_gap_set_long_advertising_data_cmd_t
+{
+    uint8               handle;
+    uint8               packet_type;
+});
+PACKSTRUCT( struct gecko_msg_le_gap_set_long_advertising_data_rsp_t
+{
+    uint16              result;
+});
 PACKSTRUCT( struct gecko_msg_le_gap_enable_whitelisting_cmd_t
 {
     uint8               enable;
 });
 PACKSTRUCT( struct gecko_msg_le_gap_enable_whitelisting_rsp_t
+{
+    uint16              result;
+});
+PACKSTRUCT( struct gecko_msg_le_gap_set_conn_timing_parameters_cmd_t
+{
+    uint16              min_interval;
+    uint16              max_interval;
+    uint16              latency;
+    uint16              timeout;
+    uint16              min_ce_length;
+    uint16              max_ce_length;
+});
+PACKSTRUCT( struct gecko_msg_le_gap_set_conn_timing_parameters_rsp_t
 {
     uint16              result;
 });
@@ -1166,6 +1215,11 @@ PACKSTRUCT( struct gecko_msg_le_gap_extended_scan_response_evt_t
     uint8               channel;
     uint16              periodic_interval;
     uint8array          data;
+});
+PACKSTRUCT( struct gecko_msg_le_gap_periodic_advertising_status_evt_t
+{
+    uint8               sid;
+    uint32              status;
 });
 PACKSTRUCT( struct gecko_msg_sync_open_cmd_t
 {
@@ -1254,6 +1308,20 @@ PACKSTRUCT( struct gecko_msg_le_connection_close_cmd_t
     uint8               connection;
 });
 PACKSTRUCT( struct gecko_msg_le_connection_close_rsp_t
+{
+    uint16              result;
+});
+PACKSTRUCT( struct gecko_msg_le_connection_set_timing_parameters_cmd_t
+{
+    uint8               connection;
+    uint16              min_interval;
+    uint16              max_interval;
+    uint16              latency;
+    uint16              timeout;
+    uint16              min_ce_length;
+    uint16              max_ce_length;
+});
+PACKSTRUCT( struct gecko_msg_le_connection_set_timing_parameters_rsp_t
 {
     uint16              result;
 });
@@ -1609,6 +1677,15 @@ PACKSTRUCT( struct gecko_msg_gatt_server_set_capabilities_rsp_t
 {
     uint16              result;
 });
+PACKSTRUCT( struct gecko_msg_gatt_server_set_max_mtu_cmd_t
+{
+    uint16              max_mtu;
+});
+PACKSTRUCT( struct gecko_msg_gatt_server_set_max_mtu_rsp_t
+{
+    uint16              result;
+    uint16              max_mtu;
+});
 PACKSTRUCT( struct gecko_msg_gatt_server_attribute_value_evt_t
 {
     uint8               connection;
@@ -1853,6 +1930,14 @@ PACKSTRUCT( struct gecko_msg_sm_add_to_whitelist_cmd_t
     uint8               address_type;
 });
 PACKSTRUCT( struct gecko_msg_sm_add_to_whitelist_rsp_t
+{
+    uint16              result;
+});
+PACKSTRUCT( struct gecko_msg_sm_set_minimum_key_size_cmd_t
+{
+    uint8               minimum_key_size;
+});
+PACKSTRUCT( struct gecko_msg_sm_set_minimum_key_size_rsp_t
 {
     uint16              result;
 });
@@ -2331,8 +2416,11 @@ union{
     struct gecko_msg_system_linklayer_configure_rsp_t            rsp_system_linklayer_configure;
     struct gecko_msg_system_get_counters_cmd_t                   cmd_system_get_counters;
     struct gecko_msg_system_get_counters_rsp_t                   rsp_system_get_counters;
+    struct gecko_msg_system_data_buffer_write_cmd_t              cmd_system_data_buffer_write;
+    struct gecko_msg_system_data_buffer_write_rsp_t              rsp_system_data_buffer_write;
     struct gecko_msg_system_set_identity_address_cmd_t           cmd_system_set_identity_address;
     struct gecko_msg_system_set_identity_address_rsp_t           rsp_system_set_identity_address;
+    struct gecko_msg_system_data_buffer_clear_rsp_t              rsp_system_data_buffer_clear;
     struct gecko_msg_system_boot_evt_t                           evt_system_boot;
     struct gecko_msg_system_external_signal_evt_t                evt_system_external_signal;
     struct gecko_msg_system_hardware_error_evt_t                 evt_system_hardware_error;
@@ -2396,12 +2484,17 @@ union{
     struct gecko_msg_le_gap_start_periodic_advertising_rsp_t     rsp_le_gap_start_periodic_advertising;
     struct gecko_msg_le_gap_stop_periodic_advertising_cmd_t      cmd_le_gap_stop_periodic_advertising;
     struct gecko_msg_le_gap_stop_periodic_advertising_rsp_t      rsp_le_gap_stop_periodic_advertising;
+    struct gecko_msg_le_gap_set_long_advertising_data_cmd_t      cmd_le_gap_set_long_advertising_data;
+    struct gecko_msg_le_gap_set_long_advertising_data_rsp_t      rsp_le_gap_set_long_advertising_data;
     struct gecko_msg_le_gap_enable_whitelisting_cmd_t            cmd_le_gap_enable_whitelisting;
     struct gecko_msg_le_gap_enable_whitelisting_rsp_t            rsp_le_gap_enable_whitelisting;
+    struct gecko_msg_le_gap_set_conn_timing_parameters_cmd_t     cmd_le_gap_set_conn_timing_parameters;
+    struct gecko_msg_le_gap_set_conn_timing_parameters_rsp_t     rsp_le_gap_set_conn_timing_parameters;
     struct gecko_msg_le_gap_scan_response_evt_t                  evt_le_gap_scan_response;
     struct gecko_msg_le_gap_adv_timeout_evt_t                    evt_le_gap_adv_timeout;
     struct gecko_msg_le_gap_scan_request_evt_t                   evt_le_gap_scan_request;
     struct gecko_msg_le_gap_extended_scan_response_evt_t         evt_le_gap_extended_scan_response;
+    struct gecko_msg_le_gap_periodic_advertising_status_evt_t    evt_le_gap_periodic_advertising_status;
     struct gecko_msg_sync_open_cmd_t                             cmd_sync_open;
     struct gecko_msg_sync_open_rsp_t                             rsp_sync_open;
     struct gecko_msg_sync_close_cmd_t                            cmd_sync_close;
@@ -2419,6 +2512,8 @@ union{
     struct gecko_msg_le_connection_set_phy_rsp_t                 rsp_le_connection_set_phy;
     struct gecko_msg_le_connection_close_cmd_t                   cmd_le_connection_close;
     struct gecko_msg_le_connection_close_rsp_t                   rsp_le_connection_close;
+    struct gecko_msg_le_connection_set_timing_parameters_cmd_t   cmd_le_connection_set_timing_parameters;
+    struct gecko_msg_le_connection_set_timing_parameters_rsp_t   rsp_le_connection_set_timing_parameters;
     struct gecko_msg_le_connection_opened_evt_t                  evt_le_connection_opened;
     struct gecko_msg_le_connection_closed_evt_t                  evt_le_connection_closed;
     struct gecko_msg_le_connection_parameters_evt_t              evt_le_connection_parameters;
@@ -2487,6 +2582,8 @@ union{
     struct gecko_msg_gatt_server_find_attribute_rsp_t            rsp_gatt_server_find_attribute;
     struct gecko_msg_gatt_server_set_capabilities_cmd_t          cmd_gatt_server_set_capabilities;
     struct gecko_msg_gatt_server_set_capabilities_rsp_t          rsp_gatt_server_set_capabilities;
+    struct gecko_msg_gatt_server_set_max_mtu_cmd_t               cmd_gatt_server_set_max_mtu;
+    struct gecko_msg_gatt_server_set_max_mtu_rsp_t               rsp_gatt_server_set_max_mtu;
     struct gecko_msg_gatt_server_attribute_value_evt_t           evt_gatt_server_attribute_value;
     struct gecko_msg_gatt_server_user_read_request_evt_t         evt_gatt_server_user_read_request;
     struct gecko_msg_gatt_server_user_write_request_evt_t        evt_gatt_server_user_write_request;
@@ -2540,6 +2637,8 @@ union{
     struct gecko_msg_sm_set_sc_remote_oob_data_rsp_t             rsp_sm_set_sc_remote_oob_data;
     struct gecko_msg_sm_add_to_whitelist_cmd_t                   cmd_sm_add_to_whitelist;
     struct gecko_msg_sm_add_to_whitelist_rsp_t                   rsp_sm_add_to_whitelist;
+    struct gecko_msg_sm_set_minimum_key_size_cmd_t               cmd_sm_set_minimum_key_size;
+    struct gecko_msg_sm_set_minimum_key_size_rsp_t               rsp_sm_set_minimum_key_size;
     struct gecko_msg_sm_passkey_display_evt_t                    evt_sm_passkey_display;
     struct gecko_msg_sm_passkey_request_evt_t                    evt_sm_passkey_request;
     struct gecko_msg_sm_confirm_passkey_evt_t                    evt_sm_confirm_passkey;
@@ -3006,6 +3105,34 @@ static inline struct gecko_msg_system_get_counters_rsp_t* gecko_cmd_system_get_c
 
 /** 
 *
+* gecko_cmd_system_data_buffer_write
+*
+* This command can be used to write data into system data buffer. Data will be appended to the end of existing data. 
+*
+* @param data   Data to write    
+*
+**/
+
+static inline struct gecko_msg_system_data_buffer_write_rsp_t* gecko_cmd_system_data_buffer_write(uint8 data_len, const uint8* data_data)
+{
+    if ((uint16_t)data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
+    {
+        gecko_rsp_msg->data.rsp_system_data_buffer_write.result = bg_err_command_too_long;
+        return &gecko_rsp_msg->data.rsp_system_data_buffer_write;
+    }
+
+    
+    gecko_cmd_msg->data.cmd_system_data_buffer_write.data.len=data_len;
+    memcpy(gecko_cmd_msg->data.cmd_system_data_buffer_write.data.data,data_data,data_len);
+    gecko_cmd_msg->header=((gecko_cmd_system_data_buffer_write_id+((1+data_len)<<8)));
+    
+    gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
+    
+    return &gecko_rsp_msg->data.rsp_system_data_buffer_write;
+}
+
+/** 
+*
 * gecko_cmd_system_set_identity_address
 *
 * This command can be used to set the device's Bluetooth identity address.                 The address can be a public device address or static random address.                 A valid address set with this command overrides the default Bluetooth public                 address that was programmed at production, and it will be effective in the next system reboot.                 The stack treats 00:00:00:00:00:00 and ff:ff:ff:ff:ff:ff as invalid addresses.                 Thus passing one of them into this command will cause the stack to use the default address in next system reboot.              
@@ -3028,6 +3155,25 @@ static inline struct gecko_msg_system_set_identity_address_rsp_t* gecko_cmd_syst
     gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
     
     return &gecko_rsp_msg->data.rsp_system_set_identity_address;
+}
+
+/** 
+*
+* gecko_cmd_system_data_buffer_clear
+*
+* This command can be used to remove all data from system data buffer. 
+*    
+*
+**/
+
+static inline struct gecko_msg_system_data_buffer_clear_rsp_t* gecko_cmd_system_data_buffer_clear()
+{
+    
+    gecko_cmd_msg->header=((gecko_cmd_system_data_buffer_clear_id+((0)<<8)));
+    
+    gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
+    
+    return &gecko_rsp_msg->data.rsp_system_data_buffer_clear;
 }
 
 /** 
@@ -3096,7 +3242,7 @@ static inline struct gecko_msg_le_gap_set_mode_rsp_t* gecko_cmd_le_gap_set_mode(
 *
 * gecko_cmd_le_gap_discover
 *
-* Deprecated. Replacement is "le_gap_start_discovery" command which allows to scan on LE 1M PHY or LE Coded PHY.
+* Deprecated. Replacement is "le_gap_start_discovery"             command. To preserve the same functionality when migrating to this new command, use LE 1M PHY in scanning_phy parameter.
 * This command can be used to start the GAP discovery procedure to scan
 * for advertising devices on LE 1M PHY. To cancel an ongoing
 * discovery process use the "le_gap_end_procedure" command.
@@ -3167,7 +3313,8 @@ static inline struct gecko_msg_le_gap_end_procedure_rsp_t* gecko_cmd_le_gap_end_
 *  - 6: Advertise on CH38 and CH39
 *  - 7: Advertise on all channels
 * Recommended value: 7
-* Default value: 7    
+* Default value: 7
+*     
 *
 **/
 BGLIB_DEPRECATED_API 
@@ -3188,7 +3335,13 @@ static inline struct gecko_msg_le_gap_set_adv_parameters_rsp_t* gecko_cmd_le_gap
 *
 * gecko_cmd_le_gap_set_conn_parameters
 *
-* This command can be used to set the default Bluetooth connection parameters. The configured values are valid for all subsequent connections that will              be established. For changing the parameters of an already established connection use the command "le_connection_set_parameters". 
+* Deprecated. Replacement is "le_gap_set_conn_timing_parameters" command for setting timing parameters.
+* This command can be used to set the default Bluetooth connection
+* parameters. The configured values are valid for all subsequent
+* connections that will              be established. For changing the
+* parameters of an already established connection use the command
+* "le_connection_set_parameters".
+*  
 *
 * @param min_interval   Minimum value for the connection event interval. This must be set be less than or equal to max_interval.
 *  - Time = Value x 1.25 ms
@@ -3213,7 +3366,7 @@ static inline struct gecko_msg_le_gap_set_adv_parameters_rsp_t* gecko_cmd_le_gap
 *     
 *
 **/
-
+BGLIB_DEPRECATED_API 
 static inline struct gecko_msg_le_gap_set_conn_parameters_rsp_t* gecko_cmd_le_gap_set_conn_parameters(uint16 min_interval,uint16 max_interval,uint16 latency,uint16 timeout)
 {
     
@@ -3298,10 +3451,7 @@ static inline struct gecko_msg_le_gap_set_scan_parameters_rsp_t* gecko_cmd_le_ga
 *  - 2: OTA advertising packets
 *  - 4: OTA scan response packets
 * 
-* @param adv_data   Data to be set. Maximum data length: 
-*  - 31 bytes for legacy advertising;
-*  - 191 bytes for extended advertising
-*     
+* @param adv_data   Data to be set    
 *
 **/
 BGLIB_DEPRECATED_API 
@@ -3410,6 +3560,7 @@ static inline struct gecko_msg_le_gap_bt5_set_mode_rsp_t* gecko_cmd_le_gap_bt5_s
 *  - 7: Advertise on all channels
 * Recommended value: 7
 * Default value: 7
+* 
 * @param report_scan   If non-zero, enables scan request notification, and scan requests will be reported as events.
 * Default value: 0
 * 
@@ -3439,17 +3590,19 @@ static inline struct gecko_msg_le_gap_bt5_set_adv_parameters_rsp_t* gecko_cmd_le
 *
 * gecko_cmd_le_gap_bt5_set_adv_data
 *
-* This command can be used to set user defined data in advertising packets, scan response packets             or periodic advertising packets.             
+* This command can be used to set user defined data in advertising packets, scan response packets             or periodic advertising packets. Maximum 253 bytes of data can be set for extended advertising.             For setting longer advertising data, use command "le_gap_set_long_advertising_data".             
 * If advertising mode is currently enabled the new advertising data will
 * be used immediately.             Advertising mode can be enabled using
 * command             "le_gap_start_advertising".             Periodic
 * advertising mode can be enabled using command
 * "le_gap_start_periodic_advertising".
-* The maximum data length is 31 bytes for legacy advertising and 191
-* bytes for extended advertising.
+* The maximum data length is 31 bytes for legacy advertising. For
+* extended advertising, the maximum length is 1650 bytes,
+* but advertising parameters may limit the amount of data that can be
+* sent in a single advertisement.
 * The invalid parameter error will be returned in following situations:
 *  - The data length is more than 31 bytes but the advertiser can only advertise using legacy advertising PDUs;
-*  - The data length is more than 191 bytes when the advertiser can advertise using extended advertising PDUs;
+*  - The data is too long to fit into a single advertisement.
 *  - Set the data of advertising data packet when the advertiser is advertising in scannable mode using extended advertising PDUs;
 *  - Set the data of scan response data packet when the advertiser is advertising in connectable mode using extended advertising PDUs.
 * Note that the user defined data may be overwritten by the system when
@@ -3465,10 +3618,7 @@ static inline struct gecko_msg_le_gap_bt5_set_adv_parameters_rsp_t* gecko_cmd_le
 *  - 4: OTA scan response packets
 *  - 8: Periodic advertising packets
 * 
-* @param adv_data   Data to be set. Maximum data length: 
-*  - 31 bytes for legacy advertising;
-*  - 191 bytes for extended advertising
-*     
+* @param adv_data   Data to be set    
 *
 **/
 
@@ -3580,7 +3730,8 @@ static inline struct gecko_msg_le_gap_set_advertise_timing_rsp_t* gecko_cmd_le_g
 *  - 6: Advertise on CH38 and CH39
 *  - 7: Advertise on all channels
 * Recommended value: 7
-* Default value: 7    
+* Default value: 7
+*     
 *
 **/
 
@@ -3665,7 +3816,12 @@ static inline struct gecko_msg_le_gap_set_advertise_phy_rsp_t* gecko_cmd_le_gap_
 *
 * gecko_cmd_le_gap_set_advertise_configuration
 *
-* This command can be used to configure the type of advertising event and other advertising properties of the given advertising set. The command "le_gap_clear_advertise_configuration" can be used to clear the configurations set by this command. This setting will take effect on the next advertising enabling. 
+* This command can be used to enable advertising configuration flags on
+* the given advertising set. The                 configuration change
+* will take effects on the next advertising enabling.
+* These configuration flags can be disabled using
+* "le_gap_clear_advertise_configuration" command.
+*  
 *
 * @param handle   Advertising set handle
 * @param configurations   Advertising configuration flags to enable. This value can be a bitmask of multiple flags. Flags:                 
@@ -3694,7 +3850,7 @@ static inline struct gecko_msg_le_gap_set_advertise_configuration_rsp_t* gecko_c
 *
 * gecko_cmd_le_gap_clear_advertise_configuration
 *
-* This command can be used to disable advertising configurations on the given advertising set. The command "le_gap_set_advertise_configuration" can be used to set configurations. This setting will take effect on the next advertising enabling. 
+*  
 *
 * @param handle   Advertising set handle
 * @param configurations   Advertising configuration flags to disable. This value can be a bitmask of multiple flags. See "le_gap_set_advertise_configuration" for possible flags.                     
@@ -3729,6 +3885,8 @@ static inline struct gecko_msg_le_gap_clear_advertise_configuration_rsp_t* gecko
 * occurred under the default configuration:
 *  - The connectable mode is set to le_gap_connectable_non_scannable.
 *  - The primary advertising PHY has been set to LE Coded PHY by command "le_gap_set_advertise_phy".
+*  - The user advertising data length is more than 31 bytes.
+*  - Periodic advertising has been enabled.
 * If currently set parameters can't be used then an error will be
 * returned. Specifically, this command fails with "Connection Limit
 * Exceeded" error if it may cause the number of connections exceeding
@@ -3981,7 +4139,12 @@ static inline struct gecko_msg_le_gap_set_data_channel_classification_rsp_t* gec
 * configured MAX_CONNECTIONS value.
 * This command fails with "Invalid Parameter" error if the initiating
 * PHY value is invalid or the device does not support the PHY.
-* Later calls of this command have to wait for the ongoing command                  to complete. A received event                   "le_connection_opened"                  indicates connection opened successfully and a received event                 "le_connection_closed"                  indicates connection failures have occurred.              
+* Later calls of this command have to wait for the ongoing command
+* to complete. A received event                   "le_connection_opened"
+* indicates connection opened successfully and a received event
+* "le_connection_closed"                  indicates connection failures
+* have occurred.
+*  
 *
 * @param address   Address of the device to connect to
 * @param address_type   Address type of the device to connect to
@@ -4127,6 +4290,43 @@ static inline struct gecko_msg_le_gap_stop_periodic_advertising_rsp_t* gecko_cmd
 
 /** 
 *
+* gecko_cmd_le_gap_set_long_advertising_data
+*
+* This command can be used to set advertising data for specified packet
+* type and advertising set.             All data currently in the system
+* data buffer will be extracted as the advertising data. The buffer
+* will be emptied after this command regardless of the completion
+* status.
+* Prior to calling this command, data could be added to the buffer with
+* one or multiple calls of             "system_data_buffer_write".
+* See "le_gap_bt5_set_adv_data" for more details of advertising data.
+*  
+*
+* @param handle   Advertising set handle
+* @param packet_type   This value selects if the data is intended for advertising packets, scan response packets, or periodic advertising packets. Values:                     
+*  - 0: Advertising packets
+*  - 1: Scan response packets
+*  - 2: OTA advertising packets
+*  - 4: OTA scan response packets
+*  - 8: Periodic advertising packets
+*     
+*
+**/
+
+static inline struct gecko_msg_le_gap_set_long_advertising_data_rsp_t* gecko_cmd_le_gap_set_long_advertising_data(uint8 handle,uint8 packet_type)
+{
+    
+    gecko_cmd_msg->data.cmd_le_gap_set_long_advertising_data.handle=handle;
+    gecko_cmd_msg->data.cmd_le_gap_set_long_advertising_data.packet_type=packet_type;
+    gecko_cmd_msg->header=((gecko_cmd_le_gap_set_long_advertising_data_id+((2)<<8)));
+    
+    gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
+    
+    return &gecko_rsp_msg->data.rsp_le_gap_set_long_advertising_data;
+}
+
+/** 
+*
 * gecko_cmd_le_gap_enable_whitelisting
 *
 * This command is used to enable whitelisting. To add devices to the whitelist either bond with the device or add it manually with "sm_add_to_whitelist" 
@@ -4148,13 +4348,78 @@ static inline struct gecko_msg_le_gap_enable_whitelisting_rsp_t* gecko_cmd_le_ga
 
 /** 
 *
+* gecko_cmd_le_gap_set_conn_timing_parameters
+*
+* This command can be used to set the default Bluetooth connection parameters. The configured values are valid for all subsequent connections that will              be established. For changing the parameters of an already established connection use the command "le_connection_set_timing_parameters".              
+*
+* @param min_interval   Minimum value for the connection event interval. This must be set be less than or equal to max_interval.
+*  - Time = Value x 1.25 ms
+*  - Range: 0x0006 to 0x0c80
+*  - Time Range: 7.5 ms to 4 s
+* Default value: 20 ms                 
+* @param max_interval   Maximum value for the connection event interval. This must be set greater than or equal to min_interval.
+*  - Time = Value x 1.25 ms
+*  - Range: 0x0006 to 0x0c80
+*  - Time Range: 7.5 ms to 4 s
+* Default value: 50 ms                 
+* @param latency   Slave latency. This parameter defines how many connection intervals the slave can skip if it has no data to send
+*  - Range: 0x0000 to 0x01f4
+* Default value: 0                 
+* @param timeout   Supervision timeout. The supervision timeout defines for how long the connection is maintained despite the devices being unable to communicate at the currently configured  connection intervals.
+*  - Range: 0x000a to 0x0c80
+*  - Time = Value x 10 ms
+*  - Time Range: 100 ms to 32 s
+*  - The value in milliseconds must be larger than (1 + latency) * max_interval * 2, where max_interval is given in milliseconds
+* It is recommended that the supervision timeout is set at a value which allows communication attempts over at least a few connection intervals.
+* Default value: 1000 ms
+* 
+* @param min_ce_length   Minimum value for the connection event length. This must be set be less than or equal to max_ce_length.
+*  - Time = Value x 0.625 ms
+*  - Range: 0x0000 to 0xffff
+* Default value: 0x0000                 
+* @param max_ce_length   Maximum value for the connection event length. This must be set greater than or equal to min_ce_length.
+*  - Time = Value x 0.625 ms
+*  - Range: 0x0000 to 0xffff
+* Default value: 0xffff                     
+*
+**/
+
+static inline struct gecko_msg_le_gap_set_conn_timing_parameters_rsp_t* gecko_cmd_le_gap_set_conn_timing_parameters(uint16 min_interval,uint16 max_interval,uint16 latency,uint16 timeout,uint16 min_ce_length,uint16 max_ce_length)
+{
+    
+    gecko_cmd_msg->data.cmd_le_gap_set_conn_timing_parameters.min_interval=min_interval;
+    gecko_cmd_msg->data.cmd_le_gap_set_conn_timing_parameters.max_interval=max_interval;
+    gecko_cmd_msg->data.cmd_le_gap_set_conn_timing_parameters.latency=latency;
+    gecko_cmd_msg->data.cmd_le_gap_set_conn_timing_parameters.timeout=timeout;
+    gecko_cmd_msg->data.cmd_le_gap_set_conn_timing_parameters.min_ce_length=min_ce_length;
+    gecko_cmd_msg->data.cmd_le_gap_set_conn_timing_parameters.max_ce_length=max_ce_length;
+    gecko_cmd_msg->header=((gecko_cmd_le_gap_set_conn_timing_parameters_id+((12)<<8)));
+    
+    gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
+    
+    return &gecko_rsp_msg->data.rsp_le_gap_set_conn_timing_parameters;
+}
+
+/** 
+*
 * gecko_cmd_sync_open
 *
-* This command can be used to establish a synchronization with periodic advertising from the specified             advertiser and begin receiving periodic advertising packets.          
+* This command can be used to establish a synchronization with a
+* periodic advertising from the specified             advertiser and
+* begin receiving periodic advertising packets. Note that
+* synchronization establishment can only             occur when scanning
+* is enabled. While scanning is disabled, no attempt to synchronize will
+* take place.
+* The application should decide skip and timeout values based on the
+* periodic advertising interval provided by             the advertiser.
+* It is recommended to set skip and timeout at the values that allow a
+* few receiving attempts.             Periodic advertising intervals are
+* reported in event             "le_gap_extended_scan_response".
+*  
 *
 * @param adv_sid   Advertising set identifier
-* @param skip   The number of periodic advertising packets that can be skipped after a successful receive.                     Range: 0x0000 to 0x01F3                  
-* @param timeout   Synchronization timeout for the periodic advertising. Unit: 10 ms.                      
+* @param skip   The maximum number of periodic advertising packets that can be skipped after a successful receive.                     Range: 0x0000 to 0x01F3                  
+* @param timeout   The maximum permitted time between successful receives. If this time is exceeded, synchronization is lost. Unit: 10 ms.                      
 *  - Range: 0x06 to 0xFFFF
 *  - Unit: 10 ms
 *  - Time range: 100 ms ms to 163.84 s
@@ -4216,7 +4481,10 @@ static inline struct gecko_msg_sync_close_rsp_t* gecko_cmd_sync_close(uint8 sync
 *
 * gecko_cmd_le_connection_set_parameters
 *
-* This command can be used to request a change in the connection parameters of a Bluetooth  connection. 
+* Deprecated. Replacement is "le_connection_set_timing_parameters" command for setting timing parameters.
+* This command can be used to request a change in the connection
+* parameters of a Bluetooth connection.
+*  
 *
 * @param connection   Connection Handle
 * @param min_interval   Minimum value for the connection event interval. This must be set be less than or equal to max_interval.
@@ -4244,7 +4512,7 @@ static inline struct gecko_msg_sync_close_rsp_t* gecko_cmd_sync_close(uint8 sync
 * gecko_evt_le_connection_parameters - This event is triggered after new connection parameters has been applied on the connection.    
 *
 **/
-
+BGLIB_DEPRECATED_API 
 static inline struct gecko_msg_le_connection_set_parameters_rsp_t* gecko_cmd_le_connection_set_parameters(uint8 connection,uint16 min_interval,uint16 max_interval,uint16 latency,uint16 timeout)
 {
     
@@ -4369,9 +4637,67 @@ static inline struct gecko_msg_le_connection_close_rsp_t* gecko_cmd_le_connectio
 
 /** 
 *
+* gecko_cmd_le_connection_set_timing_parameters
+*
+* This command can be used to request a change in the connection parameters of a Bluetooth  connection.              
+*
+* @param connection   Connection Handle
+* @param min_interval   Minimum value for the connection event interval. This must be set be less than or equal to max_interval.
+*  - Time = Value x 1.25 ms
+*  - Range: 0x0006 to 0x0c80
+*  - Time Range: 7.5 ms to 4 s
+* 
+* @param max_interval   Maximum value for the connection event interval. This must be set greater than or equal to min_interval.
+*  - Time = Value x 1.25 ms
+*  - Range: 0x0006 to 0x0c80
+*  - Time Range: 7.5 ms to 4 s
+* 
+* @param latency   Slave latency. This parameter defines how many connection intervals the slave can skip if it has no data to send
+*  - Range: 0x0000 to 0x01f4
+* Use 0x0000 for default value                 
+* @param timeout   Supervision timeout. The supervision timeout defines for how long the connection is maintained despite the devices being unable to communicate at the currently configured  connection intervals.
+*  - Range: 0x000a to 0x0c80
+*  - Time = Value x 10 ms
+*  - Time Range: 100 ms to 32 s
+*  - The value in milliseconds must be larger than (1 + latency) * max_interval * 2, where max_interval is given in milliseconds
+* It is recommended that the supervision timeout is set at a value which allows communication attempts over at least a few connection intervals.                 
+* @param min_ce_length   Minimum value for the connection event length. This must be set be less than or equal to max_ce_length.
+*  - Time = Value x 0.625 ms
+*  - Range: 0x0000 to 0xffff
+* 
+* @param max_ce_length   Maximum value for the connection event length. This must be set greater than or equal to min_ce_length.
+*  - Time = Value x 0.625 ms
+*  - Range: 0x0000 to 0xffff
+* 
+*
+* Events generated
+*
+* gecko_evt_le_connection_parameters - This event is triggered after new connection parameters has been applied on the connection.    
+*
+**/
+
+static inline struct gecko_msg_le_connection_set_timing_parameters_rsp_t* gecko_cmd_le_connection_set_timing_parameters(uint8 connection,uint16 min_interval,uint16 max_interval,uint16 latency,uint16 timeout,uint16 min_ce_length,uint16 max_ce_length)
+{
+    
+    gecko_cmd_msg->data.cmd_le_connection_set_timing_parameters.connection=connection;
+    gecko_cmd_msg->data.cmd_le_connection_set_timing_parameters.min_interval=min_interval;
+    gecko_cmd_msg->data.cmd_le_connection_set_timing_parameters.max_interval=max_interval;
+    gecko_cmd_msg->data.cmd_le_connection_set_timing_parameters.latency=latency;
+    gecko_cmd_msg->data.cmd_le_connection_set_timing_parameters.timeout=timeout;
+    gecko_cmd_msg->data.cmd_le_connection_set_timing_parameters.min_ce_length=min_ce_length;
+    gecko_cmd_msg->data.cmd_le_connection_set_timing_parameters.max_ce_length=max_ce_length;
+    gecko_cmd_msg->header=((gecko_cmd_le_connection_set_timing_parameters_id+((13)<<8)));
+    
+    gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
+    
+    return &gecko_rsp_msg->data.rsp_le_connection_set_timing_parameters;
+}
+
+/** 
+*
 * gecko_cmd_gatt_set_max_mtu
 *
-* This command can be used to set the maximum size of ATT Message Transfer Units (MTU). If the given value is too large according to the maximum BGAPI payload size, the system will select the maximal possible value as the maximum ATT_MTU. If maximum ATT_MTU is larger than 23, MTU is exchanged automatically after a Bluetooth connection has been established. 
+* This command can be used to set the maximum size of ATT Message Transfer Units (MTU).             Functionality is the same as "gatt_server_set_max_mtu", and this setting applies to both GATT client and server.             If the given value is too large according to the maximum BGAPI payload size, the system will select the maximal possible             value as the maximum ATT_MTU. If maximum ATT_MTU is larger than 23, the GATT client in stack will automatically             send an MTU exchange request after a Bluetooth connection has been established.              
 *
 * @param max_mtu   Maximum size of Message Transfer Units (MTU) allowed
 *  - Range:  23 to 250
@@ -4907,14 +5233,27 @@ static inline struct gecko_msg_gatt_find_included_services_rsp_t* gecko_cmd_gatt
 *
 * gecko_cmd_gatt_read_multiple_characteristic_values
 *
-* This command can be used to read the values of multiple characteristics from a remote GATT database at once.              "gatt_characteristic_value" events are generated as the values are returned by the remote GATT server.             A received "gatt_procedure_completed" event indicates that either all data has been read successfully or that an error response has been received. 
+* This command can be used to read the values of multiple
+* characteristics from a remote GATT database at once.              The
+* GATT server will return the values in one ATT PDU as the response. If
+* the total set of values is greater than             (ATT_MTU - 1)
+* bytes in length, only the first (ATT_MTU - 1) bytes are included. A
+* single             "gatt_characteristic_value" event is generated, in
+* which the             characteristic is set to 0 and the data in value
+* parameter is a concatenation of characteristic values in the order
+* they were requested.             Received "gatt_procedure_completed"
+* event indicates that this GATT procedure              has successfully
+* completed or failed with error.
+* This command should be used only for characteristics values that have
+* known fixed size, except the last one that could have variable length.
+*  
 *
 * @param connection   
 * @param characteristic_list   Little endian encoded uint16 list of characteristics to be read.
 *
 * Events generated
 *
-* gecko_evt_gatt_characteristic_value - This event contains the data belonging to a characteristic sent by the GATT Server.
+* gecko_evt_gatt_characteristic_value - A concatenation of characteristic values in the order they were requested
 * gecko_evt_gatt_procedure_completed - Procedure has been successfully completed or failed with error.    
 *
 **/
@@ -5269,6 +5608,29 @@ static inline struct gecko_msg_gatt_server_set_capabilities_rsp_t* gecko_cmd_gat
 
 /** 
 *
+* gecko_cmd_gatt_server_set_max_mtu
+*
+* This command can be used to set the maximum size of ATT Message Transfer Units (MTU).             Functionality is the same as "gatt_set_max_mtu", and this setting applies to both GATT client and server.             If the given value is too large according to the maximum BGAPI payload size, the system will select the maximal possible             value as the maximum ATT_MTU. If maximum ATT_MTU is larger than 23, the GATT client in stack will automatically             send an MTU exchange request after a Bluetooth connection has been established.              
+*
+* @param max_mtu   Maximum size of Message Transfer Units (MTU) allowed
+*  - Range:  23 to 250
+* Default: 247    
+*
+**/
+
+static inline struct gecko_msg_gatt_server_set_max_mtu_rsp_t* gecko_cmd_gatt_server_set_max_mtu(uint16 max_mtu)
+{
+    
+    gecko_cmd_msg->data.cmd_gatt_server_set_max_mtu.max_mtu=max_mtu;
+    gecko_cmd_msg->header=((gecko_cmd_gatt_server_set_max_mtu_id+((2)<<8)));
+    
+    gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
+    
+    return &gecko_rsp_msg->data.rsp_gatt_server_set_max_mtu;
+}
+
+/** 
+*
 * gecko_cmd_hardware_set_soft_timer
 *
 * This command can be used to start a software timer. Multiple concurrent timers can be running simultaneously. There are 256 unique timer IDs available.             The maximum number of concurrent timers is configurable at device initialization. Up to 16 concurrent timers can be configured. The default configuration is 4. As the RAM for storing timer data is pre-allocated at initialization, an application should not configure the amount more than it needs for minimizing RAM usage. 
@@ -5436,7 +5798,7 @@ static inline struct gecko_msg_flash_ps_load_rsp_t* gecko_cmd_flash_ps_load(uint
 *
 * gecko_cmd_flash_ps_erase
 *
-* This command can be used to erase a single PS key and its value from the persistent store.. 
+* This command can be used to erase a single PS key and its value from the persistent store. 
 *
 * @param key   PS key to erase    
 *
@@ -5586,19 +5948,25 @@ static inline struct gecko_msg_sm_set_bondable_mode_rsp_t* gecko_cmd_sm_set_bond
 *
 * This command can be used to configure security requirements and I/O capabilities of the system. 
 *
-* @param flags   Security requirement bitmask.{br}Bit 0: 
+* @param flags   Security requirement bitmask.                     
+* Bit 0:
 *  - 0: Allow bonding without MITM protection
 *  - 1: Bonding requires MITM protection
-* Bit 1: 
+* Bit 1:
 *  - 0: Allow encryption without bonding
 *  - 1: Encryption requires bonding. Note that this setting will also enable bonding.
-* Bit 2: 
+* Bit 2:
 *  - 0: Allow bonding with legacy pairing
 *  - 1: Secure connections only
-* Bit 3: 
+* Bit 3:
 *  - 0: Bonding request does not need to be confirmed
 *  - 1: Bonding requests need to be confirmed. Received bonding requests are notified with "sm_confirm_bonding events."
-* Bit 4 to 7: Reserved{br}{br}Default value: 0x00
+* Bit 4:
+*  - 0: Allow all connections
+*  - 1: Allow connections only from bonded devices
+* Bit 5 to 7: Reserved
+* Default value: 0x00
+* 
 * @param io_capabilities   I/O Capabilities. See link    
 *
 **/
@@ -5619,9 +5987,9 @@ static inline struct gecko_msg_sm_configure_rsp_t* gecko_cmd_sm_configure(uint8 
 *
 * gecko_cmd_sm_store_bonding_configuration
 *
-* This command can be used to set maximum allowed bonding count and bonding policy. The default value is maximum number of bondings supported. 
+* This command can be used to set maximum allowed bonding count and bonding policy. The actual maximum number of bondings that can be supported depends on how much user data is stored in the NVM and the NVM size. The default value is 14. 
 *
-* @param max_bonding_count   Maximum allowed bonding count. Range: 1 to 14
+* @param max_bonding_count   Maximum allowed bonding count. Range: 1 to 32
 * @param policy_flags   Bonding policy. Values: 
 *  - 0: If database is full, new bonding attempts will fail
 *  - 1: New bonding will overwrite the oldest existing bonding
@@ -5949,6 +6317,27 @@ static inline struct gecko_msg_sm_add_to_whitelist_rsp_t* gecko_cmd_sm_add_to_wh
     gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
     
     return &gecko_rsp_msg->data.rsp_sm_add_to_whitelist;
+}
+
+/** 
+*
+* gecko_cmd_sm_set_minimum_key_size
+*
+* This command can be used to set the mimimun allowed key size used for bonding. The default value is 16 bytes.              
+*
+* @param minimum_key_size   Minimum allowed key size for bonding. Range: 7 to 16    
+*
+**/
+
+static inline struct gecko_msg_sm_set_minimum_key_size_rsp_t* gecko_cmd_sm_set_minimum_key_size(uint8 minimum_key_size)
+{
+    
+    gecko_cmd_msg->data.cmd_sm_set_minimum_key_size.minimum_key_size=minimum_key_size;
+    gecko_cmd_msg->header=((gecko_cmd_sm_set_minimum_key_size_id+((1)<<8)));
+    
+    gecko_handle_command(gecko_cmd_msg->header,&gecko_cmd_msg->data.payload);
+    
+    return &gecko_rsp_msg->data.rsp_sm_set_minimum_key_size;
 }
 
 /** 
