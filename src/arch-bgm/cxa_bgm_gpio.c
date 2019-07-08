@@ -262,7 +262,6 @@ static void handleInterrupt(uint32_t flagsIn)
 		{
 			bool currVal = scm_getValue(&(*currGpio)->super);
 			if( (*currGpio)->cb_interrupt != NULL ) (*currGpio)->cb_interrupt(&(*currGpio)->super,
-															currVal ? CXA_GPIO_INTERRUPTTYPE_RISING_EDGE : CXA_GPIO_INTERRUPTTYPE_FALLING_EDGE,
 															currVal,
 															(*currGpio)->cb_interrupt_userVar);
 		}
