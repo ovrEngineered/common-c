@@ -24,12 +24,19 @@
 
 
 // ******** includes ********
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 #include <gecko_bglib.h>
+#else
+#include "bg_types.h"
+#include "native_gecko.h"
+#include "infrastructure.h"
+#endif
 
 #include <cxa_assert.h>
 #include <cxa_ioStream_peekable.h>
 #include <cxa_siLabsBgApi_btle_central.h>
 #include <cxa_siLabsBgApi_btle_peripheral.h>
+#include <cxa_runLoop.h>
 #include <cxa_stateMachine.h>
 
 #define CXA_LOG_LEVEL				CXA_LOG_LEVEL_DEBUG
@@ -37,7 +44,9 @@
 
 
 // ******** local macro definitions ********
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 BGLIB_DEFINE();							// needs to be defined to use bglib functions
+#endif
 
 #define WAIT_BOOT_TIME_MS				4000
 
@@ -57,20 +66,27 @@ typedef enum
 // ******** local function prototypes ********
 static void appHandleEvents(struct gecko_cmd_packet *evt);
 
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 static void stateCb_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+#endif
 static void stateCb_waitForBoot_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_waitBoot_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void stateCb_ready_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 static void stateCb_xxx_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 static void bglib_cb_output(uint32_t numBytesIn, uint8_t* dataIn);
 static int32_t bglib_cb_input(uint32_t numBytesToReadIn, uint8_t* dataOut);
 static int32_t bglib_cb_peek(void);
+#endif
 
 
 // ********  local variable declarations *********
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 static cxa_ioStream_peekable_t ios_usart;
+#endif
+
 static bool hasBootFailed;
 
 static cxa_siLabsBgApi_btle_central_t btlec;
@@ -81,6 +97,7 @@ static cxa_stateMachine_t stateMachine;
 
 
 // ******** global function implementations ********
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdIn)
 {
 	cxa_assert(ioStreamIn);
@@ -104,6 +121,25 @@ void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdI
 	cxa_siLabsBgApi_btle_central_init(&btlec, threadIdIn);
 	cxa_siLabsBgApi_btle_peripheral_init(&btlep, threadIdIn);
 }
+
+#else
+
+void cxa_siLabsBgApi_module_init(void)
+{
+	// save our references and setup our internal state
+	cxa_logger_init(&logger, "bgApiModule");
+
+	// setup our state machine
+	cxa_stateMachine_init(&stateMachine, "bgApiBtleC", CXA_RUNLOOP_THREADID_DEFAULT);
+	cxa_stateMachine_addState(&stateMachine, RADIOSTATE_WAIT_BOOT, "waitBoot", stateCb_waitForBoot_enter, stateCb_xxx_state, stateCb_waitBoot_leave, NULL);
+	cxa_stateMachine_addState(&stateMachine, RADIOSTATE_READY, "ready", stateCb_ready_enter, stateCb_xxx_state, NULL, NULL);
+	cxa_stateMachine_setInitialState(&stateMachine, RADIOSTATE_WAIT_BOOT);
+
+	// setup our btle client and peripheral
+	cxa_siLabsBgApi_btle_central_init(&btlec, CXA_RUNLOOP_THREADID_DEFAULT);
+	cxa_siLabsBgApi_btle_peripheral_init(&btlep, CXA_RUNLOOP_THREADID_DEFAULT);
+}
+#endif
 
 
 cxa_siLabsBgApi_btle_central_t* cxa_siLabsBgApi_module_getBtleCentral(void)
@@ -169,12 +205,17 @@ static void appHandleEvents(struct gecko_cmd_packet *evt)
 		case gecko_evt_gatt_characteristic_id:
 		case gecko_evt_gatt_characteristic_value_id:
 		case gecko_evt_le_gap_scan_response_id:
+		case gecko_evt_gatt_server_characteristic_status_id:
 			if( !cxa_siLabsBgApi_btle_central_handleBgEvent(&btlec, evt) ) cxa_siLabsBgApi_btle_peripheral_handleBgEvent(&btlep, evt);
 			break;
 
 		case gecko_evt_gatt_server_user_read_request_id:
 		case gecko_evt_gatt_server_user_write_request_id:
 			cxa_siLabsBgApi_btle_peripheral_handleBgEvent(&btlep, evt);
+			break;
+
+
+			cxa_logger_debug(&logger, "chst: %X  %X", evt->data.evt_gatt_server_characteristic_status.client_config_flags, evt->data.evt_gatt_server_characteristic_status.status_flags);
 			break;
 
 		case gecko_evt_le_connection_parameters_id:
@@ -189,6 +230,7 @@ static void appHandleEvents(struct gecko_cmd_packet *evt)
 }
 
 
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 static void stateCb_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_logger_info(&logger, "resetting radio");
@@ -199,6 +241,7 @@ static void stateCb_reset_enter(cxa_stateMachine_t *const smIn, int prevStateIdI
 	// start waiting for the boot event
 	cxa_stateMachine_transition(&stateMachine, RADIOSTATE_WAIT_BOOT);
 }
+#endif
 
 
 static void stateCb_waitForBoot_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
@@ -235,10 +278,15 @@ static void stateCb_ready_enter(cxa_stateMachine_t *const smIn, int prevStateIdI
 
 static void stateCb_xxx_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 	appHandleEvents(gecko_peek_event());
+#else
+	appHandleEvents(gecko_wait_event());
+#endif
 }
 
 
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 static void bglib_cb_output(uint32_t numBytesIn, uint8_t* dataIn)
 {
 	cxa_logger_trace_memDump(&logger, "write to bgm121: ", dataIn, numBytesIn, NULL);
@@ -281,3 +329,4 @@ static int32_t bglib_cb_peek(void)
 {
 	return cxa_ioStream_peekable_hasBytesAvailable(&ios_usart);
 }
+#endif

@@ -17,8 +17,6 @@
 
 
 // ******** includes ********
-#include <gecko_bglib.h>
-
 #include <cxa_array.h>
 #include <cxa_assert.h>
 #include <cxa_ioStream_peekable.h>

@@ -19,7 +19,14 @@
 
 
 // ******** includes ********
+#include <cxa_config.h>
+#ifndef CXA_SILABSBGAPI_MODE_SOC
 #include <gecko_bglib.h>
+#else
+#include "bg_types.h"
+#include "native_gecko.h"
+#include "infrastructure.h"
+#endif
 
 #include <cxa_btle_central.h>
 #include <cxa_btle_uuid.h>

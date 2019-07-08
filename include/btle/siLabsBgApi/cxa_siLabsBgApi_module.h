@@ -25,6 +25,7 @@
 
 
 // ******** includes ********
+#include <cxa_config.h>
 #include <cxa_siLabsBgApi_btle_central.h>
 #include <cxa_siLabsBgApi_btle_peripheral.h>
 #include <cxa_ioStream.h>
@@ -37,10 +38,22 @@
 
 
 // ******** global function prototypes ********
+#ifndef CXA_SILABSBGAPI_MODE_SOC
+
 /**
  * @public
+ * Used to configure a SiliconLabs BGAPI module in a NCP configuration
  */
 void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdIn);
+
+#else
+
+/**
+ * @public
+ * Used to configure a SiliconLabs BGAPI module in a SOC configuration
+ */
+void cxa_siLabsBgApi_module_init(void);
+#endif
 
 
 /**

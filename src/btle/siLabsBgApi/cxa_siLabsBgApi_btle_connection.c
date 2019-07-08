@@ -17,8 +17,6 @@
 
 
 // ******** includes ********
-#include <gecko_bglib.h>
-
 #include <cxa_assert.h>
 
 #define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
