@@ -339,6 +339,13 @@ void cxa_btle_peripheral_notify_connectionClosed(cxa_btle_peripheral_t *const bt
 	cxa_assert(btlepIn);
 	cxa_assert(targetAddrIn);
 
+	cxa_array_iterate(&btlepIn->listeners, currListener, cxa_btle_peripheral_listener_entry_t)
+	{
+		if( currListener == NULL ) continue;
+
+		if( currListener->cb_onConnectionClosed != NULL ) currListener->cb_onConnectionClosed(targetAddrIn, currListener->userVar);
+	}
+
 	if( btlepIn->scms.startAdvertising != NULL ) btlepIn->scms.startAdvertising(btlepIn);
 }
 

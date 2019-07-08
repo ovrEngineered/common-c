@@ -140,6 +140,8 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 				cxa_array_remove(&btlepIn->handleMacMap, macMapEntry);
 				cxa_logger_info(&btlepIn->super.logger, "connection closed handle %d",
 								evt->data.evt_le_connection_closed.connection);
+
+				cxa_btle_peripheral_notify_connectionClosed(&btlepIn->super, &macMapEntry->macAddress);
 			}
 
 			retVal = true;
