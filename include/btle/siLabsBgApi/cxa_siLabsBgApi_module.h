@@ -35,6 +35,10 @@
 
 
 // ******** global type definitions *********
+/**
+ * @public
+ */
+typedef void (*cxa_siLabsBgApi_cb_onTimer_t)(void *const userVarIn);
 
 
 // ******** global function prototypes ********
@@ -66,6 +70,18 @@ cxa_siLabsBgApi_btle_central_t* cxa_siLabsBgApi_module_getBtleCentral(void);
  * @public
  */
 cxa_siLabsBgApi_btle_peripheral_t* cxa_siLabsBgApi_module_getBtlePeripheral(void);
+
+
+/**
+ * @public
+ */
+void cxa_siLabsBgApi_module_startSoftTimer_repeat(float period_msIn, cxa_siLabsBgApi_cb_onTimer_t cbIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+void cxa_siLabsBgApi_module_stopSoftTimer(cxa_siLabsBgApi_cb_onTimer_t cbIn, void* userVarIn);
 
 
 /**

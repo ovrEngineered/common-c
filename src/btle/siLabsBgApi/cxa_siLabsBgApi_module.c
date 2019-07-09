@@ -48,6 +48,11 @@
 BGLIB_DEFINE();							// needs to be defined to use bglib functions
 #endif
 
+#ifndef CXA_SILABSBGAPI_MAX_NUM_TIMERS
+#define CXA_SILABSBGAPI_MAX_NUM_TIMERS				4
+#endif
+
+
 #define WAIT_BOOT_TIME_MS				4000
 
 #define ADVERT_PERIOD_SLOW_MS			1000
@@ -61,6 +66,15 @@ typedef enum
 	RADIOSTATE_WAIT_BOOT,
 	RADIOSTATE_READY,
 }radioState_t;
+
+
+typedef struct
+{
+	bool isUsed;
+
+	cxa_siLabsBgApi_cb_onTimer_t cb;
+	void* userVarIn;
+}timerCallbackEntry_t;
 
 
 // ******** local function prototypes ********
@@ -92,6 +106,8 @@ static bool hasBootFailed;
 static cxa_siLabsBgApi_btle_central_t btlec;
 static cxa_siLabsBgApi_btle_peripheral_t btlep;
 
+static timerCallbackEntry_t timerCallbackEntries[CXA_SILABSBGAPI_MAX_NUM_TIMERS];
+
 static cxa_logger_t logger;
 static cxa_stateMachine_t stateMachine;
 
@@ -106,6 +122,8 @@ void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdI
 	cxa_ioStream_peekable_init(&ios_usart, ioStreamIn);
 	hasBootFailed = false;
 	cxa_logger_init(&logger, "bgApiModule");
+
+	memset(timerCallbackEntries, 0, sizeof(timerCallbackEntries));
 
 	// setup our state machine
 	cxa_stateMachine_init(&stateMachine, "bgApiBtleC", threadIdIn);
@@ -129,6 +147,8 @@ void cxa_siLabsBgApi_module_init(void)
 	// save our references and setup our internal state
 	cxa_logger_init(&logger, "bgApiModule");
 
+	memset(timerCallbackEntries, 0, sizeof(timerCallbackEntries));
+
 	// setup our state machine
 	cxa_stateMachine_init(&stateMachine, "bgApiBtleC", CXA_RUNLOOP_THREADID_DEFAULT);
 	cxa_stateMachine_addState(&stateMachine, RADIOSTATE_WAIT_BOOT, "waitBoot", stateCb_waitForBoot_enter, stateCb_xxx_state, stateCb_waitBoot_leave, NULL);
@@ -151,6 +171,42 @@ cxa_siLabsBgApi_btle_central_t* cxa_siLabsBgApi_module_getBtleCentral(void)
 cxa_siLabsBgApi_btle_peripheral_t* cxa_siLabsBgApi_module_getBtlePeripheral(void)
 {
 	return &btlep;
+}
+
+
+void cxa_siLabsBgApi_module_startSoftTimer_repeat(float period_msIn, cxa_siLabsBgApi_cb_onTimer_t cbIn, void* userVarIn)
+{
+	for( size_t i = 0; i < sizeof(timerCallbackEntries)/sizeof(*timerCallbackEntries); i++ )
+	{
+		if( !timerCallbackEntries[i].isUsed )
+		{
+			timerCallbackEntries[i].isUsed = true;
+			timerCallbackEntries[i].cb = cbIn;
+			timerCallbackEntries[i].userVarIn = userVarIn;
+
+			gecko_cmd_hardware_set_soft_timer(period_msIn * 32768, i, false);
+			return;
+		}
+	}
+
+	// if we made it here, we don't have any free timers
+	cxa_assert(0);
+}
+
+
+void cxa_siLabsBgApi_module_stopSoftTimer(cxa_siLabsBgApi_cb_onTimer_t cbIn, void* userVarIn)
+{
+	for( size_t i = 0; i < sizeof(timerCallbackEntries)/sizeof(*timerCallbackEntries); i++ )
+	{
+		if( timerCallbackEntries[i].isUsed &&
+			(timerCallbackEntries[i].cb == cbIn) &&
+			(timerCallbackEntries[i].userVarIn == userVarIn) )
+		{
+			// found our target entrie
+			gecko_cmd_hardware_set_soft_timer(0, i, false);
+			return;
+		}
+	}
 }
 
 
@@ -221,6 +277,17 @@ static void appHandleEvents(struct gecko_cmd_packet *evt)
 		case gecko_evt_le_connection_parameters_id:
 		case gecko_evt_le_connection_phy_status_id:
 		case gecko_evt_gatt_mtu_exchanged_id:
+			break;
+
+		case gecko_evt_hardware_soft_timer_id:
+			for( size_t i = 0; i < sizeof(timerCallbackEntries)/sizeof(*timerCallbackEntries); i++ )
+			{
+				if( (i == evt->data.evt_hardware_soft_timer.handle) &&
+					timerCallbackEntries[i].isUsed )
+				{
+					if( timerCallbackEntries[i].cb != NULL ) timerCallbackEntries[i].cb(timerCallbackEntries[i].userVarIn);
+				}
+			}
 			break;
 
 		default:
