@@ -186,7 +186,8 @@ void cxa_siLabsBgApi_module_stopSoftTimer(cxa_siLabsBgApi_cb_onTimer_t cbIn, voi
 			(timerCallbackEntries[i].cb == cbIn) &&
 			(timerCallbackEntries[i].userVarIn == userVarIn) )
 		{
-			// found our target entrie
+			// found our target entry
+			timerCallbackEntries[i].isUsed = false;
 			gecko_cmd_hardware_set_soft_timer(0, i, false);
 			return;
 		}
