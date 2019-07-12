@@ -259,28 +259,4 @@ void cxa_array_clear(cxa_array_t *const arrIn)
 }
 
 
-#ifndef CXA_FILE_DISABLE
-bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, const char *const tagIn, FILE *fileIn)
-{
-	cxa_assert(arrIn);
-	cxa_assert(fileIn);
-
-	if( fprintf(fileIn, "array @ %p [%s]" CXA_LINE_ENDING, arrIn, ((tagIn == NULL) ? "" : tagIn)) < 0) return false;
-	if( fprintf(fileIn, "{" CXA_LINE_ENDING) < 0 ) return false;
-	for( size_t i = 0; i < cxa_array_getSize_elems(arrIn); i++ )
-	{
-		if( fprintf(fileIn, "   %u::0x", i) < 0 ) return false;
-		for( size_t byteOffset = 0; byteOffset < arrIn->datatypeSize_bytes; byteOffset++ )
-		{
-			if( fprintf(fileIn, "%02X", ((uint8_t*)arrIn->bufferLoc)[(i * arrIn->datatypeSize_bytes) + byteOffset]) < 0 ) return false;
-		}
-		if( fputs(CXA_LINE_ENDING, fileIn) < 0 ) return false;
-	}
-	if( fputs("}" CXA_LINE_ENDING, fileIn) < 0 ) return false;
-
-	return true;
-}
-#endif
-
-
 // ******** local function implementations ********

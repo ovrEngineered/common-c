@@ -358,21 +358,4 @@ bool cxa_array_isEmpty(cxa_array_t *const arrIn);
 void cxa_array_clear(cxa_array_t *const arrIn);
 
 
-#ifndef CXA_FILE_DISABLE
-/**
- * @public
- * @brief Writes a human-friendly representation of the bytes contained within this array (excluding unused bytes)
- * to the file descriptor.
- * <b>Example:</b>
- * @code {0x00, 0x01} @endcode
- *
- * @param[in] arrIn pointer to the pre-initialized cxa_array_t object
- * @param[in] tagIn textual tag to identify this particular print (can be NULL)
- * @param[in] fileIn pointer to an open file descriptor to which the bytes will be written
- *
- * @return true on success, false on failure
- */
-bool cxa_array_writeToFile_asciiHexRep(cxa_array_t *const arrIn, const char *const tagIn, FILE *fileIn);
-#endif
-
 #endif // CXA_ARRAY_H_

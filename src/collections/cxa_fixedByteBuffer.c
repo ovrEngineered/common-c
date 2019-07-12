@@ -414,49 +414,4 @@ void cxa_fixedByteBuffer_clear(cxa_fixedByteBuffer_t *const fbbIn)
 }
 
 
-#ifndef CXA_FILE_DISABLE
-bool cxa_fixedByteBuffer_writeToFile_bytes(cxa_fixedByteBuffer_t *const fbbIn, FILE *fileIn)
-{
-	cxa_assert(fbbIn);
-	cxa_assert(fileIn);
-
-	for( size_t i = 0; i < cxa_fixedByteBuffer_getSize_bytes(fbbIn); i++ )
-	{
-		uint8_t currByte;
-		if( !cxa_fixedByteBuffer_get_uint8(fbbIn, i, currByte) ) return false;
-
-		if( fputc(currByte, fileIn) < 0 ) return false;
-	}
-
-	return true;
-}
-#endif
-
-
-#ifndef CXA_FILE_DISABLE
-bool cxa_fixedByteBuffer_writeToFile_asciiHexRep(cxa_fixedByteBuffer_t *const fbbIn, FILE *fileIn)
-{
-	cxa_assert(fbbIn);
-	cxa_assert(fileIn);
-
-	if( fprintf(fileIn, "fixedByteBuffer @ %p { ", fbbIn) < 0 ) return false;
-	for( size_t i = 0; i < cxa_fixedByteBuffer_getSize_bytes(fbbIn); i++ )
-	{
-		uint8_t currByte;
-		if( !cxa_fixedByteBuffer_get_uint8(fbbIn, i, currByte) ) return false;
-
-		if( fprintf(fileIn, "%02X", currByte) < 0 ) return false;
-
-		if( i != (cxa_fixedByteBuffer_getSize_bytes(fbbIn)-1))
-		{
-			if( fputs(" ", fileIn) < 0 ) return false;
-		}
-	}
-	if( fputs(" }" CXA_LINE_ENDING, fileIn) < 0 ) return false;
-
-	return true;
-}
-#endif
-
-
 // ******** local function implementations ********
