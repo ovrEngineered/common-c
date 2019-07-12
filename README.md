@@ -25,32 +25,32 @@ There are a lot of hardware platforms out there, a lot of which have their own b
 
 
 ## Modules / Features
-#### Bluetooth Low Energy (BTLE)
+**Bluetooth Low Energy (BTLE)**  
 This module provides support for Bluetooth Low Energy in the form of full-featured, hardware-agnostic, [central and peripheral](https://learn.adafruit.com/introduction-to-bluetooth-low-energy/gatt#connected-network-topology-3-2) classes.
 
-#### Collections
+**Collections**  
 This module provides the basic collections classes present in most modern languages including:
  * **Array** - Array of a single element type utilizing a statically allocated buffer
  * **Fixed Byte Buffer** - Array of bytes utilizing a statically allocated buffer with convenience functions for byte-oriented operations.
  * **Fixed Fifo** - First in, first out queue utilizing a statically allocated Buffer
  * **Linked Field** - Construct for breaking down an array of bytes into "fields" an manipulating them individually
 
-#### Command Line Parser
+**Command Line Parser**  
 This module is targeted at POSIX hardware platforms and provides a standardized mechanism for processing command-line arguments (arguments passed to the executable from the linux command line) similar to the [GLib CommandLine Option Parser](https://developer.gnome.org/glib/stable/glib-Commandline-option-parser.html).
 
-#### Console
+**Console**  
 This module provides a _basic_ interactive console which can be used to execute commands. Common use-cases involve a debugging console bound to the serial port (USART) of an embedded target.
 
-#### Logger
+**Logger**  
 This module provides logging capabilities in a similar manner to [Log4J](https://logging.apache.org/log4j/2.x/manual/usage.html). Common use-cases involve logging to a serial port (USART) of an embedded target.
 
-#### MQTT
+**MQTT**  
 This module provided basic [MQTT](http://mqtt.org/) support through the use of a custom MQTT client and connection manager. This module is compatible with [AWS IoT](https://aws.amazon.com/iot/).
 
-#### MQTT-RPC
+**MQTT-RPC**  
 This module is located within the MQTT module and provides a framework for organizing MQTT topics to support basic [RPC](https://en.wikipedia.org/wiki/Remote_procedure_call) for many connected devices. This module is compatible with [AWS IoT](https://aws.amazon.com/iot/).
 
-#### Net
+**Net**  
 This module provides abstract implementations of:
  * Ethernet interfaces
  * Wi-Fi interfaces
@@ -64,16 +64,16 @@ It provides concrete implementations of the TCP clients and servers for the foll
 
 It also provides a stack-agnostic implementation of a HTTP Client.
 
-#### RunLoop
+**RunLoop**  
 This module, in many ways, is the heart of the whole library. It provides mechanisms to register for execution within a managed runloop, similiar to the [GLib Main Event Loop](https://developer.gnome.org/glib/stable/glib-The-Main-Event-Loop.html). The runloop can be serviced by one or more threads, allowing for implementations to work on "bare metal" hardware platforms OR hardware platforms utilizing a basic OS such as [FreeRTOS](https://www.freertos.org/). It also provides convenience classes for modifying program execution such as a `oneShotTimer` and `softWatchdog`.
 
-#### Serial
+**Serial**  
 This module operates around the concept of an `ioStream`: a class which ultimately provides a single function to write bytes, and a single function to read bytes. There are many types of `ioStreams` to support routing bytes from one destination to another, but the most common use-case is for reading/writing bytes to a USART.
 
-#### State Machine
+**State Machine**  
 This module provides an implementation of a [finite state machine](https://en.wikipedia.org/wiki/Finite-state_machine). It is used throughout the rest of the library to maintain the internal state of the various modules.
 
-#### Time Utils
+**Time Utils**  
 This module provides a number of time-related functions, most important of which is a `timeDiff`. The `timeDiff` allows for the asynchronous implementation of timeouts (executing code after a certain amount of time has passed).
 
 
