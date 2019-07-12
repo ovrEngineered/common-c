@@ -43,14 +43,13 @@ static bool scm_getValue(cxa_gpio_t *const superIn);
 
 
 // ******** global function implementations ********
-void cxa_dummy_gpio_init_input(cxa_dummy_gpio_t *const gpioIn, const char *const nameIn, const cxa_gpio_polarity_t polarityIn)
+void cxa_dummy_gpio_init_input(cxa_dummy_gpio_t *const gpioIn, const cxa_gpio_polarity_t polarityIn)
 {
 	cxa_assert(gpioIn);
-	cxa_assert(nameIn);
 
 	// save our references / internal state
 	gpioIn->polarity = polarityIn;
-	cxa_logger_init_formattedString(&gpioIn->logger, "gpio-%s", nameIn);
+	cxa_logger_init(&gpioIn->logger, "gpio");
 
 	// initialize our super class
 	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
@@ -60,14 +59,13 @@ void cxa_dummy_gpio_init_input(cxa_dummy_gpio_t *const gpioIn, const char *const
 }
 
 
-void cxa_dummy_gpio_init_output(cxa_dummy_gpio_t *const gpioIn, const char *const nameIn, const cxa_gpio_polarity_t polarityIn, const bool initValIn)
+void cxa_dummy_gpio_init_output(cxa_dummy_gpio_t *const gpioIn, const cxa_gpio_polarity_t polarityIn, const bool initValIn)
 {
 	cxa_assert(gpioIn);
-	cxa_assert(nameIn);
 
 	// save our references / internal state
 	gpioIn->polarity = polarityIn;
-	cxa_logger_init_formattedString(&gpioIn->logger, "gpio-%s", nameIn);
+	cxa_logger_init(&gpioIn->logger, "gpio");
 
 	// initialize our super class
 	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
