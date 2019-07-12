@@ -1,24 +1,10 @@
-/**
- * Copyright 2013 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_stateMachine.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_stateMachine.h"
 
 
 // ******** includes ********
@@ -50,20 +36,20 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, i
 {
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
-	
+
 	// set some sensible defaults
 	smIn->currState = NULL;
 	smIn->nextState = NULL;
 	smIn->hasStarted = false;
-	
+
 	// setup our internal state
 	cxa_array_init(&smIn->states, sizeof(*smIn->states_raw), (void*)smIn->states_raw, sizeof(smIn->states_raw));
-	
+
 	// setup our logger if it's enabled
 	#ifdef CXA_STATE_MACHINE_ENABLE_LOGGING
 	cxa_logger_init_formattedString(&smIn->logger, "fsm::%s", nameIn);
 	#endif
-	
+
 	// a timediff was _not_ supplied so we cannot do timed states
 	// even if they are enabled
 	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
@@ -147,11 +133,11 @@ void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn)
 #else
 	cxa_assert_msg(smIn->hasStarted, "attempt to transition before runLoop has started");
 #endif
-	
+
 	// get our next state
 	cxa_stateMachine_state_t *newNextState = getState_byId(smIn, stateIdIn);
 	cxa_assert(newNextState != NULL);
-	
+
 	// we have a valid new state...mark for transition
 	smIn->nextState = newNextState;
 }
@@ -170,7 +156,7 @@ void cxa_stateMachine_transitionNow(cxa_stateMachine_t *const smIn, int stateIdI
 int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn)
 {
 	cxa_assert(smIn);
-	
+
 	return (smIn->currState != NULL) ? smIn->currState->stateId : CXA_STATE_MACHINE_STATE_UNKNOWN;
 }
 
@@ -180,7 +166,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 {
 	cxa_stateMachine_t* smIn = (cxa_stateMachine_t*)userVarIn;
 	cxa_assert(smIn);
-	
+
 	// make sure we've been marked as started
 	if( !smIn->hasStarted ) smIn->hasStarted = true;
 
@@ -194,18 +180,18 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			prevStateId = smIn->currState->stateId;
 			if( smIn->currState->cb_leave != NULL ) smIn->currState->cb_leave(smIn, smIn->nextState->stateId, smIn->currState->userVar);
 		}
-				
+
 		// actually do our transition
 		smIn->currState = smIn->nextState;
 		smIn->nextState = NULL;
-		
+
 		#ifdef CXA_STATE_MACHINE_ENABLE_LOGGING
 			cxa_logger_info(&smIn->logger, "new state: '%s'", smIn->currState->stateName);
 		#endif
-				
+
 		// call the enter function of our new state
 		if( smIn->currState->cb_enter != NULL ) smIn->currState->cb_enter(smIn, prevStateId, smIn->currState->userVar);
-		
+
 		#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
 			if( smIn->timedStatesEnabled && (smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) ) cxa_timeDiff_setStartTime_now(&smIn->td_timedTransition);
 		#endif
@@ -232,14 +218,14 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 static cxa_stateMachine_state_t* getState_byId(cxa_stateMachine_t *const smIn, int idIn)
 {
 	cxa_assert(smIn);
-	
+
 	for( size_t i = 0; i < cxa_array_getSize_elems(&smIn->states); i++ )
 	{
 		cxa_stateMachine_state_t* currState = (cxa_stateMachine_state_t*)cxa_array_get(&smIn->states, i);
 		if( currState == NULL ) continue;
-		
+
 		if( currState->stateId == idIn ) return currState;
 	}
-	
+
 	return NULL;
 }

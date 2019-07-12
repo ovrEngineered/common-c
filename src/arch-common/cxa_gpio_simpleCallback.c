@@ -1,24 +1,10 @@
-/**
- * Copyright 2016 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_gpio_simpleCallback.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_gpio_simpleCallback.h"
 
 
 // ******** includes ********
@@ -45,7 +31,7 @@ static bool scm_getValue(cxa_gpio_t *const superIn);
 
 
 // ******** global function implementations ********
-void cxa_gpio_simpleCallback_init_input(cxa_gpio_simpleCallback_t *const gpioIn, const int userIdIn, 
+void cxa_gpio_simpleCallback_init_input(cxa_gpio_simpleCallback_t *const gpioIn, const int userIdIn,
                                         cxa_gpio_simpleCallback_getValue_t cb_getValueIn,
                                         cxa_gpio_simpleCallback_setValue_t cb_setValueIn,
                                         const cxa_gpio_polarity_t polarityIn)
@@ -59,9 +45,9 @@ void cxa_gpio_simpleCallback_init_input(cxa_gpio_simpleCallback_t *const gpioIn,
 	gpioIn->polarity = polarityIn;
     gpioIn->cb_getValue = cb_getValueIn;
     gpioIn->cb_setValue = cb_setValueIn;
-    
+
     gpioIn->dir = CXA_GPIO_DIR_INPUT;
-    
+
     cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 }
 
@@ -71,10 +57,10 @@ static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction
 {
 	cxa_gpio_simpleCallback_t *const gpioIn = (cxa_gpio_simpleCallback_t *const)superIn;
     cxa_assert(gpioIn);
-    
+
 	cxa_assert( (dirIn == CXA_GPIO_DIR_INPUT) ||
 				(dirIn == CXA_GPIO_DIR_OUTPUT) );
-	
+
 	cxa_assert_msg(false, "unimplemented");
 }
 
@@ -83,7 +69,7 @@ static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn)
 {
     cxa_gpio_simpleCallback_t *const gpioIn = (cxa_gpio_simpleCallback_t *const)superIn;
     cxa_assert(gpioIn);
-	
+
 	return gpioIn->dir;
 }
 
@@ -92,10 +78,10 @@ static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t
 {
 	cxa_gpio_simpleCallback_t *const gpioIn = (cxa_gpio_simpleCallback_t *const)superIn;
     cxa_assert(gpioIn);
-    
+
 	cxa_assert( (polarityIn == CXA_GPIO_POLARITY_NONINVERTED) ||
 				(polarityIn == CXA_GPIO_POLARITY_INVERTED) );
-    
+
     gpioIn->polarity = polarityIn;
 }
 
@@ -104,7 +90,7 @@ static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn)
 {
     cxa_gpio_simpleCallback_t *const gpioIn = (cxa_gpio_simpleCallback_t *const)superIn;
     cxa_assert(gpioIn);
-	
+
 	return gpioIn->polarity;
 }
 
@@ -125,7 +111,7 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 	cxa_gpio_simpleCallback_t *const gpioIn = (cxa_gpio_simpleCallback_t *const)superIn;
     cxa_assert(gpioIn);
     cxa_assert(gpioIn->cb_getValue);
-    
+
     bool retVal = (gpioIn->dir == CXA_GPIO_DIR_INPUT) ? gpioIn->cb_getValue(&gpioIn->super, gpioIn->userId) : gpioIn->lastVal;
     return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal : retVal;
 }

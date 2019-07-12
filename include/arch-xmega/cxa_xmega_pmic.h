@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+
 /**
  * @file
  * This file contains functions for configuring the Programmable Multi-level Interrupt Controller (PMIC)
@@ -17,7 +24,7 @@
  * cxa_xmega_pmic_enableInterruptLevel(CXA_XMEGA_PMIC_INTLEVEL_HIGH);
  *
  * // setup our USART (for example)
- * 
+ *
  * // enable global interrupts
  * cxa_xmega_pmic_enableGlobalInterrupts();
  *
@@ -29,21 +36,6 @@
  *    // receive a byte
  * }CXA_XMEGA_ISR_END
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_XMEGA_PMIC_H_
 #define CXA_XMEGA_PMIC_H_

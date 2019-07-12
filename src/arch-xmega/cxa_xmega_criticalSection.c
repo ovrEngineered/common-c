@@ -1,24 +1,10 @@
-/**
- * Copyright 2013 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_criticalSection.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_criticalSection.h"
 
 
 // ******** includes ********
@@ -37,11 +23,11 @@
 
 
 // ******** local type definitions ********
-typedef struct  
+typedef struct
 {
 	cxa_criticalSection_cb_t preEnter;
 	cxa_criticalSection_cb_t postExit;
-	
+
 	void *userVar;
 }callback_entry_t;
 
@@ -63,10 +49,10 @@ void cxa_criticalSection_enter(void)
 {
 	// immediately increment our nesting levels (to mark that we're in a crit section)
 	nestLevels++;
-	
+
 	// now if we're nested (or a second caller to this function) don't do anything
 	if( nestLevels > 1 ) return;
-	
+
 	// if we made it here, we're the first caller...call our pre-entry callbacks
 	if( isInitialized )
 	{
@@ -84,10 +70,10 @@ void cxa_criticalSection_enter(void)
 
 
 void cxa_criticalSection_exit(void)
-{	
+{
 	// immediately mark us as de-nesting (so we don't turn away people thinking we're in a critical section)
 	nestLevels--;
-	
+
 	// only re-enable interrupts if we're the last ones out
 	if( nestLevels == 0 )
 	{
@@ -95,7 +81,7 @@ void cxa_criticalSection_exit(void)
 		// the interrupt-enabled state to whichever state it was in BEFORE calling
 		// cxa_criticalSection_enter()
 		SREG = storedSreg;
-	
+
 		// now, we need to call our post-exit callbacks...but be sure to keep checking our
 		// nest levels in case somebody calls enter while we're still processing
 		if( isInitialized && (nestLevels == 0) )
@@ -103,14 +89,14 @@ void cxa_criticalSection_exit(void)
 			cxa_array_iterate(&callbackEntries, currEntry, callback_entry_t)
 			{
 				if( currEntry == NULL ) continue;
-				
+
 				// if somebody tries to enter a critical section while we're still here, bail
 				if( nestLevels != 0 ) return;
-				
+
 				if( currEntry->postExit != NULL ) currEntry->postExit(currEntry->userVar);
 			}
 		}
-	}	
+	}
 }
 
 
@@ -121,7 +107,7 @@ void cxa_criticalSection_addCallback(cxa_criticalSection_cb_t cb_preEnterIn, cxa
 		cxa_array_initStd(&callbackEntries, callbackEntries_raw);
 		isInitialized = true;
 	}
-	
+
 	callback_entry_t newEntry = {.preEnter=cb_preEnterIn, .postExit=cb_postExitIn, .userVar=userVarIn};
 	cxa_assert(cxa_array_append(&callbackEntries, &newEntry));
 }
@@ -131,10 +117,10 @@ void cxa_criticalSection_notifyExternal_enter(void)
 {
 	// immediately increment our nesting levels (to mark that we're in a crit section)
 	nestLevels++;
-	
+
 	// now if we're nested (or a second caller to this function) don't do anything
 	if( nestLevels > 1 ) return;
-	
+
 	// if we made it here, we're the first caller...call our pre-entry callbacks
 	if( isInitialized )
 	{
@@ -154,13 +140,13 @@ void cxa_criticalSection_notifyExternal_exit(void)
 {
 	// immediately mark us as de-nesting (so we don't turn away people thinking we're in a critical section)
 	nestLevels--;
-		
+
 	// only re-enable interrupts if we're the last ones out
 	if( nestLevels == 0 )
 	{
 		// since this was an external trigger (maybe an interrupt) we
 		// dont' actually want to re-enable interrupts (since we didn't disable them in the first place)
-			
+
 		// now, we need to call our post-exit callbacks...but be sure to keep checking our
 		// nest levels in case somebody calls enter while we're still processing
 		if( isInitialized && (nestLevels == 0) )
@@ -168,10 +154,10 @@ void cxa_criticalSection_notifyExternal_exit(void)
 			cxa_array_iterate(&callbackEntries, currEntry, callback_entry_t)
 			{
 				if( currEntry == NULL ) continue;
-					
+
 				// if somebody tries to enter a critical section while we're still here, bail
 				if( nestLevels != 0 ) return;
-					
+
 				if( currEntry->postExit != NULL ) currEntry->postExit(currEntry->userVar);
 			}
 		}
@@ -180,4 +166,3 @@ void cxa_criticalSection_notifyExternal_exit(void)
 
 
 // ******** local function implementations ********
-

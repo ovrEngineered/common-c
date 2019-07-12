@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+ 
 /**
  * @file
  * This file contains a platform-independent implementation of a console-based menu. The console
@@ -22,21 +29,6 @@
  *
  * // see cxa_consoleMenu_menu.h for adding menu items
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_CONSOLE_MENU_H_
 #define CXA_CONSOLE_MENU_H_
@@ -67,13 +59,13 @@ typedef struct cxa_consoleMenu cxa_consoleMenu_t;
 struct cxa_consoleMenu
 {
 	FILE *fd;
-	
+
 	bool hasRenderedMenu;
 	char *errorMsg;
-	
+
 	cxa_consoleMenu_menu_t rootMenu;
 	cxa_consoleMenu_menu_t *activeMenu;
-	
+
 	uint8_t lineParserBuffer[CXA_CONSOLE_MENU_MAX_USER_INPUT_LEN_CHARS];
 	cxa_fdLineParser_t lineParser;
 };
@@ -110,7 +102,7 @@ cxa_consoleMenu_menu_t* cxa_consoleMenu_getRootMenu(cxa_consoleMenu_t *const cmI
 /**
  * @public
  * @brief <b>MUST be called on a regular basis</b> to parse user input.
- * All callbacks/printing are executed within this function, therefore, 
+ * All callbacks/printing are executed within this function, therefore,
  * you should not count on this function returning in a timely manner.
  * However, this function is explicitly non-blocking (ie. will not block
  * waiting for user input).

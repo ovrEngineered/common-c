@@ -1,24 +1,10 @@
-/**
- * Copyright 2013 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_xmega_usart.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_xmega_usart.h"
 
 
 // ******** includes ********
@@ -120,13 +106,13 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 {
 	cxa_assert(usartIn);
 	cxa_assert(avrUsartIn);
-	
+
 	// save our references
 	usartIn->avrUsart = avrUsartIn;
 	usartIn->cts = ctsIn;
 	usartIn->rts = rtsIn;
 	usartIn->txEnable = txEnableIn;
-	
+
 	// setup our handshaking pins
 	usartIn->isHandshakingEnabled = (usartIn->cts != NULL) && (usartIn->rts != NULL);
 	if( usartIn->isHandshakingEnabled )
@@ -137,7 +123,7 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 		cxa_gpio_setValue(usartIn->rts, RTS_CTS_STOP);
 		cxa_gpio_setDirection(usartIn->rts, CXA_GPIO_DIR_OUTPUT);
 	}
-	
+
 	// setup our txEnable pin
 	usartIn->isTxEnableEnabled = (usartIn->txEnable != NULL);
 	if( usartIn->isTxEnableEnabled )
@@ -149,29 +135,29 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 	// setup our fifos
 	cxa_fixedFifo_init(&usartIn->rxFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->rxFifo_raw), (void *const)usartIn->rxFifo_raw, sizeof(usartIn->rxFifo_raw));
 	cxa_fixedFifo_init(&usartIn->txFifo, CXA_FF_ON_FULL_DROP, sizeof(*usartIn->txFifo_raw), (void *const)usartIn->txFifo_raw, sizeof(usartIn->txFifo_raw));
-	
+
 	// enable power to our module
 	usart_moduleClock_enable(usartIn);
-	
+
 	// asynchronous, 8,n,1...set baud rate
 	usartIn->avrUsart->CTRLC = USART_CHSIZE_8BIT_gc;
 	cxa_assert(usart_set_baudrate(usartIn, baudRate_bpsIn));
-	
+
 	// associate this cxa usart with the avrUsart (for interrupts)
 	avrCxaUsartMap_setCxaUsart(usartIn->avrUsart, usartIn);
-	
+
 	// setup the usart subsystem to handle critical section events
 	// so we can trigger CTS/RTS appropriately
 	if( usartIn->isHandshakingEnabled ) cxa_criticalSection_addCallback(criticalSection_cb_preEnter, criticalSection_cb_postExit, NULL);
-	
+
 	// now enable our transmitter and receiver and connect to output pins!
 	usart_connectToPort(usartIn);
 	usartIn->avrUsart->CTRLB |= USART_TXEN_bm | USART_RXEN_bm;
-	
+
 	// finally, clear and enable rx interrupt (disable tx interrupt)
 	usartIn->avrUsart->STATUS = 0;
 	usartIn->avrUsart->CTRLA = (usartIn->avrUsart->CTRLA & 0xCCF) | CXA_XMEGA_USART_RX_INT_LEVEL;
-	
+
 	// setup our ioStream (last once everything is setup)
 	cxa_ioStream_init(&usartIn->super.ioStream);
 	cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
@@ -184,7 +170,7 @@ static void commonInit(cxa_xmega_usart_t *const usartIn, USART_t *avrUsartIn, co
 static void usart_moduleClock_enable(cxa_xmega_usart_t *const usartIn)
 {
 	cxa_criticalSection_enter();
-	
+
 	     if( usartIn->avrUsart == &USARTC0 ) PR.PRPC &= ~(1 << PR_USART0_bp);
 	else if( usartIn->avrUsart == &USARTC1 ) PR.PRPC &= ~(1 << PR_USART1_bp);
 	else if( usartIn->avrUsart == &USARTD0 ) PR.PRPD &= ~(1 << PR_USART0_bp);
@@ -198,7 +184,7 @@ static void usart_moduleClock_enable(cxa_xmega_usart_t *const usartIn)
 	else if( usartIn->avrUsart == &USARTF1 ) PR.PRPF &= ~(1 << PR_USART1_bp);
 #endif
 	else cxa_assert(0);
-	
+
 	cxa_criticalSection_exit();
 }
 
@@ -206,7 +192,7 @@ static void usart_moduleClock_enable(cxa_xmega_usart_t *const usartIn)
 static void usart_connectToPort(cxa_xmega_usart_t *const usartIn)
 {
 	cxa_assert(usartIn);
-	
+
 	if( usartIn->avrUsart == &USARTC0 ) PORTC.DIR = (PORTC.DIR & ~(1 << USART0_RX_PIN)) | (1 << USART0_TX_PIN);
 	else if( usartIn->avrUsart == &USARTC1 ) PORTC.DIR = (PORTC.DIR & ~(1 << USART1_RX_PIN)) | (1 << USART1_TX_PIN);
 	else if( usartIn->avrUsart == &USARTD0 ) PORTD.DIR = (PORTD.DIR & ~(1 << USART0_RX_PIN)) | (1 << USART0_TX_PIN);
@@ -325,7 +311,7 @@ static void avrCxaUsartMap_setCxaUsart(USART_t *const avrUsartIn, cxa_xmega_usar
 {
 	cxa_assert(avrUsartIn);
 	cxa_assert(cxaUsartIn);
-	
+
 	// iterate through our map to find our avrUsart
 	for( size_t i = 0; i < (sizeof(avrCxaUsartMap)/sizeof(*avrCxaUsartMap)); i++ )
 	{
@@ -337,7 +323,7 @@ static void avrCxaUsartMap_setCxaUsart(USART_t *const avrUsartIn, cxa_xmega_usar
 			return;
 		}
 	}
-	
+
 	// if we made it here, we couldn't find a matching avrUsart
 	cxa_assert(0);
 }
@@ -346,14 +332,14 @@ static void avrCxaUsartMap_setCxaUsart(USART_t *const avrUsartIn, cxa_xmega_usar
 static cxa_xmega_usart_t* avrCxaUsartMap_getCxaUsart_fromAvrUsart(USART_t *const avrUsartIn)
 {
 	cxa_assert(avrUsartIn);
-	
+
 	// iterate through our map to find our avrUsart
 	for( size_t i = 0; i < (sizeof(avrCxaUsartMap)/sizeof(*avrCxaUsartMap)); i++ )
 	{
 		avrUsart_cxaUsart_map_entry_t *const currEntry = &avrCxaUsartMap[i];
 		if( currEntry->avrUsart == avrUsartIn ) return currEntry->cxaUsart;
 	}
-	
+
 	// if we made it here, we couldn't find a matching avrUsart
 	cxa_assert(0);
 	return NULL;
@@ -364,7 +350,7 @@ static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, vo
 {
 	cxa_xmega_usart_t* usartIn = (cxa_xmega_usart_t*)userVarIn;
 	cxa_assert(usartIn);
-	
+
 	return cxa_fixedFifo_dequeue(&usartIn->rxFifo, (void*)byteOut) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_NODATA;
 }
 
@@ -424,7 +410,7 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 
 
 static void criticalSection_cb_preEnter(void *userVar)
-{	
+{
 	// iterate through our map to find USARTS with handshaking enabled
 	for( size_t i = 0; i < (sizeof(avrCxaUsartMap)/sizeof(*avrCxaUsartMap)); i++ )
 	{
@@ -458,7 +444,7 @@ static inline void rxIsr(USART_t *const avrUsartIn)
 	cxa_assert(avrUsartIn);
 	cxa_xmega_usart_t *const cxaUsartIn = avrCxaUsartMap_getCxaUsart_fromAvrUsart(avrUsartIn);
 	cxa_assert(cxaUsartIn);
-	
+
 	char rxChar = cxaUsartIn->avrUsart->DATA;
 	cxa_fixedFifo_queue(&cxaUsartIn->rxFifo, (void*)&rxChar);
 }

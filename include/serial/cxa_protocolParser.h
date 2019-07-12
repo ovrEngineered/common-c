@@ -1,26 +1,6 @@
-/**
- * @file
- *
- * @note This object should work across all architecture-specific implementations
- *
- *
- * #### Example Usage: ####
- *
- * @code
- * @endcode
- *
- *
- * @copyright 2015 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
  * @author Christopher Armenio
  */
@@ -128,7 +108,7 @@ typedef struct
 {
 	cxa_protocolParser_cb_ioExceptionOccurred_t cb_exception;
 	cxa_protocolParser_cb_receptionTimeout_t cb_receptionTimeout;
-	
+
 	void *userVar;
 }cxa_protocolParser_protocolListener_entry_t;
 
@@ -139,7 +119,7 @@ typedef struct
 typedef struct
 {
 	cxa_protocolParser_cb_packetReceived_t cb;
-	
+
 	void *userVar;
 }cxa_protocolParser_packetListener_entry_t;
 
@@ -160,7 +140,7 @@ struct cxa_protocolParser
 	cxa_timeDiff_t td_timeout;
 
 	cxa_ioStream_t* ioStream;
-	
+
 	cxa_fixedByteBuffer_t* currBuffer;
 
 	cxa_protocolParser_scm_isInErrorState_t scm_isInError;

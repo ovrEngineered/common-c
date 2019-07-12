@@ -1,17 +1,6 @@
-/**
- * Copyright 2016 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
  * @author Christopher Armenio
  */
@@ -150,23 +139,23 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 
 		// basic initialization
         wolfSSL_Init();
-    
+
         #if CXA_LOG_LEVEL == CXA_LOG_LEVEL_TRACE
         wolfSSL_Debugging_ON();
         wolfSSL_SetLoggingCb(wolfSsl_cb_logging);
         #endif
-    
+
         // Create and initialize WOLFSSL_CTX
         if( (netClientIn->tls.ctx = wolfSSL_CTX_new(wolfTLSv1_2_client_method())) == NULL)
         {
             cxa_logger_warn(&netClientIn->super.logger, "ERROR: failed to create WOLFSSL_CTX");
             return false;
         }
-    
+
         // set io functions
         wolfSSL_SetIORecv(netClientIn->tls.ctx, wolfSsl_ioRx);
         wolfSSL_SetIOSend(netClientIn->tls.ctx, wolfSsl_ioTx);
-    
+
         // put ourselves in the verification flow
         wolfSSL_CTX_set_verify(netClientIn->tls.ctx, SSL_VERIFY_NONE, wolfSsl_cb_verifyCert);
 
@@ -183,7 +172,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
             cxa_logger_warn(&netClientIn->super.logger, "failed to parse server CA cert: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
             return false;
         }
-        
+
 	    netClientIn->tls.initState.crc_serverRootCert = tmpCrc;
 	}
 
@@ -197,7 +186,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
             cxa_logger_warn(&netClientIn->super.logger, "failed to parse client cert: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 			return false;
         }
-        
+
 		netClientIn->tls.initState.crc_clientCert = tmpCrc;
 	}
 
@@ -211,7 +200,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
             cxa_logger_warn(&netClientIn->super.logger, "failed to parse client private key: %s0x%x", tmpRet<0?"-":"", tmpRet<0?-(unsigned)tmpRet:tmpRet);
 			return false;
         }
-        
+
 		netClientIn->tls.initState.crc_clientPrivateKey = tmpCrc;
 	}
 
@@ -222,7 +211,7 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
 	    if( !cxa_stringUtils_copy(netClientIn->targetHostName, hostNameIn, sizeof(netClientIn->targetHostName)) )
         {
             cxa_logger_warn(&netClientIn->super.logger, "hostname too long, increase 'CXA_WOLFSSLDIALSOCKET_NETWORK_TCPCLIENT_MAXHOSTNAMELEN_BYTES'");
-            return false;    
+            return false;
         }
 	}
     netClientIn->targetPortNum = portNumIn;
@@ -236,13 +225,13 @@ static bool scm_connectToHost_clientCert(cxa_network_tcpClient_t *const superIn,
     }
     wolfSSL_SetIOReadCtx(netClientIn->tls.ssl, (void*)netClientIn);
     wolfSSL_SetIOWriteCtx(netClientIn->tls.ssl, (void*)netClientIn);
-    
+
 	// make sure we record other useful information
 	netClientIn->useClientCert = true;
 
 	// start the connection
 	cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECTING);
-    
+
 	return true;
 }
 
@@ -271,7 +260,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevSta
 	cxa_assert(netClientIn);
 
     cxa_logger_info(&netClientIn->super.logger, "connecting to '%s:%d", netClientIn->targetHostName, netClientIn->targetPortNum);
-        
+
     // start our modem connecting
     if( !aq_telitTsvgModem_openSocket(netClientIn->modem, netClientIn->targetHostName, netClientIn->targetPortNum, cb_modem_onSocketConnected, (void*)netClientIn) )
     {
@@ -342,10 +331,10 @@ static cxa_ioStream_readStatus_t cb_ioStream_readByte(uint8_t *const byteOut, vo
 	cxa_assert(netClientIn);
 
     int tmpRet = wolfSSL_read(netClientIn->tls.ssl, byteOut, 1);
-    
+
     cxa_logger_trace(&netClientIn->super. logger, "read retVal: %d", tmpRet);
-    
-    return  ((tmpRet == SSL_ERROR_WANT_READ) || (tmpRet == 0)) ? 
+
+    return  ((tmpRet == SSL_ERROR_WANT_READ) || (tmpRet == 0)) ?
             CXA_IOSTREAM_READSTAT_NODATA :
             ((tmpRet == 1) ? CXA_IOSTREAM_READSTAT_GOTDATA : CXA_IOSTREAM_READSTAT_ERROR);
 }
@@ -375,14 +364,14 @@ static int wolfSsl_ioRx(WOLFSSL *ssl, char *buf, int sz, void *ctx)
 {
     cxa_wolfSslDialSocket_network_tcpClient_t* netClientIn = (cxa_wolfSslDialSocket_network_tcpClient_t*)ctx;
 	cxa_assert(netClientIn);
-    
+
     uint8_t rxByte;
     int numRxBytes = 0;
-    
+
     // only try for a short time before yielding to others
     cxa_timeDiff_t td_timeout;
     cxa_timeDiff_init(&td_timeout);
-    
+
     while( numRxBytes < sz )
     {
         if( cxa_ioStream_readByte(netClientIn->modemIoStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
@@ -395,7 +384,7 @@ static int wolfSsl_ioRx(WOLFSSL *ssl, char *buf, int sz, void *ctx)
 //            if( cxa_timeDiff_isElapsed_ms(&td_timeout, 1000) ) break;
         }
     }
-    
+
     cxa_logger_trace(&netClientIn->super.logger, "read %d / %d bytes", numRxBytes, sz);
 
     return numRxBytes;
@@ -406,15 +395,15 @@ static int wolfSsl_ioTx(WOLFSSL *ssl, char *buf, int sz, void *ctx)
 {
     cxa_wolfSslDialSocket_network_tcpClient_t* netClientIn = (cxa_wolfSslDialSocket_network_tcpClient_t*)ctx;
 	cxa_assert(netClientIn);
-    
+
     if( !cxa_ioStream_writeBytes(netClientIn->modemIoStream, buf, sz) )
     {
         cxa_logger_warn(&netClientIn->super.logger, "write to ioStream failed", sz);
         return WOLFSSL_CBIO_ERR_GENERAL;
     }
-    
+
     cxa_logger_trace(&netClientIn->super.logger, "wrote %d bytes", sz);
-    
+
     return sz;
 }
 
@@ -424,7 +413,7 @@ static void wolfSsl_cb_logging(const int logLevel, const char *const logMessage)
     static cxa_logger_t logger;
     static bool isLoggerInit = false;
     if( !isLoggerInit ) { cxa_logger_init(&logger, "wolfSSL"); isLoggerInit = true; }
-    
+
     cxa_logger_debug(&logger, "lvl:%d   msg:%s", logLevel, logMessage);
 }
 
@@ -439,14 +428,14 @@ static void cb_modem_onSocketConnected(cxa_ioStream_t *const socketIoStreamIn, v
 {
     cxa_wolfSslDialSocket_network_tcpClient_t* netClientIn = (cxa_wolfSslDialSocket_network_tcpClient_t*)userVarIn;
 	cxa_assert(netClientIn);
-    
+
     // save our ioStream
     netClientIn->modemIoStream = socketIoStreamIn;
-    
+
     if( netClientIn->useClientCert )
 	{
         int tmpRet;
-        
+
         cxa_logger_trace(&netClientIn->super.logger, "performing tls handshake...");
         if( (tmpRet = wolfSSL_connect(netClientIn->tls.ssl)) != SSL_SUCCESS )
         {
@@ -454,7 +443,7 @@ static void cb_modem_onSocketConnected(cxa_ioStream_t *const socketIoStreamIn, v
             cxa_stateMachine_transition(&netClientIn->stateMachine, STATE_CONNECT_FAIL);
             return;
         }
-        
+
         cxa_logger_trace(&netClientIn->super.logger, "tls handshake successful");
 	}
 	else cxa_assert(false);

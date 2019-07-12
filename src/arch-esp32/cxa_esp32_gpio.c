@@ -1,24 +1,10 @@
-/**
- * Copyright 2016 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_esp32_gpio.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_esp32_gpio.h"
 
 
 // ******** includes ********
@@ -128,7 +114,7 @@ static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction
 
 	// get a pointer to our class
 	cxa_esp32_gpio_t *const gpioIn = (cxa_esp32_gpio_t *const)superIn;
-	
+
 	gpio_set_direction(gpioIn->pinNum, (dirIn == CXA_GPIO_DIR_OUTPUT) ? GPIO_MODE_OUTPUT : GPIO_MODE_INPUT);
 	gpioIn->dir = dirIn;
 }
@@ -140,7 +126,7 @@ static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn)
 
 	// get a pointer to our class
 	cxa_esp32_gpio_t *const gpioIn = (cxa_esp32_gpio_t *const)superIn;
-	
+
 	return gpioIn->dir;
 }
 
@@ -153,7 +139,7 @@ static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t
 
 	// get a pointer to our class
 	cxa_esp32_gpio_t *const gpioIn = (cxa_esp32_gpio_t *const)superIn;
-				
+
 	gpioIn->polarity = polarityIn;
 }
 
@@ -161,10 +147,10 @@ static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t
 static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn)
 {
 	cxa_assert(superIn);
-	
+
 	// get a pointer to our class
 	cxa_esp32_gpio_t *const gpioIn = (cxa_esp32_gpio_t *const)superIn;
-	
+
 	return gpioIn->polarity;
 }
 
@@ -244,4 +230,3 @@ static void esp32GpioIsr(void* userVarIn)
 
 	cxa_gpio_notify_onInterrupt(&gpioIn->super);
 }
-

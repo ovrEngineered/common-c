@@ -1,17 +1,8 @@
-/**
- * Copyright 2018 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @author Christopher Armenio
  */
 #include "cxa_delay.h"
 
@@ -34,7 +25,7 @@
 
 // ******** global function implementations ********
 void cxa_delay_ms(uint16_t delay_msIn)
-{	
+{
 	uint32_t delay_ticks = (F_CPU / 1000) * delay_msIn;
 
 	while( delay_ticks >= 10000 )
@@ -61,4 +52,3 @@ void cxa_delay_ms(uint16_t delay_msIn)
 
 
 // ******** local function implementations ********
-

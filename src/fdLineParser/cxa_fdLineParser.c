@@ -1,24 +1,10 @@
-/**
- * Copyright 2013 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_fdLineParser.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_fdLineParser.h"
 
 
 // ******** includes ********
@@ -45,13 +31,13 @@ void cxa_fdLineParser_init(cxa_fdLineParser_t *const fdlpIn, FILE *fdIn, bool ec
 	cxa_assert(fdIn);
 	cxa_assert(bufferIn);
 	cxa_assert(bufferSize_bytesIn >= 2);
-	
+
 	// save our references
 	fdlpIn->fd = fdIn;
 	fdlpIn->echoUser = echoUserIn;
 	fdlpIn->cb = cbIn;
 	fdlpIn->userVar = userVarIn;
-	
+
 	// setup our internal state
 	cxa_array_init(&fdlpIn->lineBuffer, 1, bufferIn, bufferSize_bytesIn);
 	fdlpIn->wasLastByteCr = false;
@@ -61,18 +47,18 @@ void cxa_fdLineParser_init(cxa_fdLineParser_t *const fdlpIn, FILE *fdIn, bool ec
 bool cxa_fdLineParser_update(cxa_fdLineParser_t *const fdlpIn)
 {
 	cxa_assert(fdlpIn);
-	
+
 	bool retVal = true;
-	
+
 	// limit how long we'll be in this function
 	for( uint8_t i = 0; i < MAX_READ_BYTES_PER_UPDATE; i++ )
 	{
 		// get a byte from the file descriptor
 		int newChar = fgetc(fdlpIn->fd);
 		if( newChar == EOF ) break;
-		
+
 		size_t bufferSize_bytes = cxa_array_getSize_elems(&fdlpIn->lineBuffer);
-		
+
 		// we've got a valid byte...see if it's a line delimiter
 		if( (newChar == '\r') || ((newChar == '\n') && !fdlpIn->wasLastByteCr) )
 		{
@@ -80,14 +66,14 @@ bool cxa_fdLineParser_update(cxa_fdLineParser_t *const fdlpIn)
 			// successful since we are carefully watching our size during appends
 			uint8_t nullChar = 0;
 			cxa_assert(cxa_array_append(&fdlpIn->lineBuffer, &nullChar));
-			
+
 			// call our callback
 			if( fdlpIn->cb != NULL ) fdlpIn->cb((uint8_t*)cxa_array_get(&fdlpIn->lineBuffer, 0), bufferSize_bytes, fdlpIn->userVar);
-			
+
 			// clear our buffer
 			cxa_array_clear(&fdlpIn->lineBuffer);
 			fdlpIn->wasLastByteCr = (newChar == '\r');
-			
+
 			// exit the loop since the callback may have taken some time...
 			break;
 		}
@@ -106,10 +92,9 @@ bool cxa_fdLineParser_update(cxa_fdLineParser_t *const fdlpIn)
 			else if( fdlpIn->echoUser ) fputc(newChar, fdlpIn->fd);
 		}
 	}
-	
+
 	return retVal;
 }
 
 
 // ******** local function implementations ********
-

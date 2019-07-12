@@ -1,24 +1,10 @@
-/**
- * Copyright 2013 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_consoleMenu.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_consoleMenu.h"
 
 
 // ******** includes ********
@@ -45,10 +31,10 @@ void cxa_consoleMenu_init(cxa_consoleMenu_t *const cmIn, FILE *fdIn)
 {
 	cxa_assert(cmIn);
 	cxa_assert(fdIn);
-	
+
 	// save our references
 	cmIn->fd = fdIn;
-	
+
 	// setup our internal state
 	cxa_fdLineParser_init(&cmIn->lineParser, fdIn, true, (void*)cmIn->lineParserBuffer, sizeof(cmIn->lineParserBuffer), lineParser_cb, (void*)cmIn);
 	cxa_consoleMenu_menu_init(&cmIn->rootMenu);
@@ -61,7 +47,7 @@ void cxa_consoleMenu_init(cxa_consoleMenu_t *const cmIn, FILE *fdIn)
 cxa_consoleMenu_menu_t* cxa_consoleMenu_getRootMenu(cxa_consoleMenu_t *const cmIn)
 {
 	cxa_assert(cmIn);
-	
+
 	return &cmIn->rootMenu;
 }
 
@@ -69,7 +55,7 @@ cxa_consoleMenu_menu_t* cxa_consoleMenu_getRootMenu(cxa_consoleMenu_t *const cmI
 void cxa_consoleMenu_update(cxa_consoleMenu_t *const cmIn)
 {
 	cxa_assert(cmIn);
-	
+
 	// make sure we only render the menu once
 	if( !cmIn->hasRenderedMenu )
 	{
@@ -79,16 +65,16 @@ void cxa_consoleMenu_update(cxa_consoleMenu_t *const cmIn)
 		{
 			cxa_consoleMenu_menu_itemEntry_t *currEntry = (cxa_consoleMenu_menu_itemEntry_t*)cxa_array_get(&cmIn->activeMenu->entries, i);
 			if( currEntry == NULL ) continue;
-		
+
 			fprintf(cmIn->fd, "  %2lu.  %s\r\n", i+1, currEntry->name);
 		}
-	
+
 		if( cmIn->errorMsg != NULL ) fprintf(cmIn->fd, "Error: %s\r\n", cmIn->errorMsg);
-		
-		fputs("> ", cmIn->fd);	
+
+		fputs("> ", cmIn->fd);
 		cmIn->hasRenderedMenu = true;
 	}
-	
+
 	// keep parsing our user's input
 	if( !cxa_fdLineParser_update(&cmIn->lineParser) )
 	{
@@ -104,7 +90,7 @@ static void lineParser_cb(uint8_t *lineStartIn, size_t numBytesInLineIn, void *u
 {
 	cxa_consoleMenu_t *cmIn = (cxa_consoleMenu_t*)userVarIn;
 	cxa_assert(cmIn);
-	
+
 	unsigned int choice;
 	if( (cmIn->activeMenu != &cmIn->rootMenu) && (strcmp((char*)lineStartIn, "^") == 0) )
 	{
@@ -129,18 +115,18 @@ static void lineParser_cb(uint8_t *lineStartIn, size_t numBytesInLineIn, void *u
 				fputs("\r\n", cmIn->fd);
 				if( currEntry->cb != NULL ) currEntry->cb(currEntry->userVar);
 				break;
-				
+
 				case CXA_CM_MENU_ITEM_TYPE_SUBMENU:
 				if( currEntry->subMenu != NULL ) cmIn->activeMenu = currEntry->subMenu;
 				break;
 			}
-			
+
 			// reset our error message marker
 			cmIn->errorMsg = NULL;
 		}
 	}
 	else cmIn->errorMsg = "invalid input";
-	
+
 	// no matter what, re-render the menu
 	cmIn->hasRenderedMenu = false;
 }

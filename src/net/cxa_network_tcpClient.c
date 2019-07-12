@@ -1,17 +1,6 @@
-/**
- * Copyright 2015 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
  * @author Christopher Armenio
  */
@@ -130,7 +119,7 @@ cxa_ioStream_t* cxa_network_tcpClient_getIoStream(cxa_network_tcpClient_t *const
 void cxa_network_tcpClient_notify_connect(cxa_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
-	
+
 	cxa_array_iterate(&netClientIn->listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 	{
 		if( currListener == NULL ) continue;
@@ -142,7 +131,7 @@ void cxa_network_tcpClient_notify_connect(cxa_network_tcpClient_t *const netClie
 void cxa_network_tcpClient_notify_connectFail(cxa_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
-	
+
 	cxa_array_iterate(&netClientIn->listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 	{
 		if( currListener == NULL ) continue;
@@ -154,7 +143,7 @@ void cxa_network_tcpClient_notify_connectFail(cxa_network_tcpClient_t *const net
 void cxa_network_tcpClient_notify_disconnect(cxa_network_tcpClient_t *const netClientIn)
 {
 	cxa_assert(netClientIn);
-	
+
 	cxa_array_iterate(&netClientIn->listeners, currListener, cxa_network_tcpClient_listenerEntry_t)
 	{
 		if( currListener == NULL ) continue;

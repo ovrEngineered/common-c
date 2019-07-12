@@ -1,26 +1,11 @@
-/**
- * Copyright 2013 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @author Christopher Armenio
  */
 #ifndef CXA_FD_LINEPARSER_H_
 #define CXA_FD_LINEPARSER_H_
-
-
-/**
- * @file <description>
- * @author Christopher Armenio
- */
 
 
 // ******** includes ********
@@ -35,14 +20,14 @@
 // ******** global type definitions *********
 typedef void (*cxa_fdLineParser_lineCb_t)(uint8_t *lineStartIn, size_t numBytesInLineIn, void *userVarIn);
 
-typedef struct 
+typedef struct
 {
 	FILE *fd;
 	bool echoUser;
-	
+
 	cxa_fdLineParser_lineCb_t cb;
 	void *userVar;
-	
+
 	bool wasLastByteCr;
 	cxa_array_t lineBuffer;
 }cxa_fdLineParser_t;

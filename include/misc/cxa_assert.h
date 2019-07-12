@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+ 
 /**
  * @file
  * This file contains an implementation of a mPutF compliant assert framework.
@@ -18,21 +25,6 @@
  * // halts execution and optionally prints location/cause
  * cxa_assert(false);
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_ASSERT_H_
 #define CXA_ASSERT_H_
@@ -101,7 +93,7 @@ extern "C" {
      * @public
      * @brief Immediately asserts and prints a message with same format
      *      as @ref cxa_assert_msg
-     * 
+     *
      * @param[in] msgIn the message that should be displayed
      */
 	#ifdef CXA_ASSERT_MSG_ENABLE
@@ -143,7 +135,7 @@ extern "C" {
      * @public
      * @brief Immediately asserts and prints a message with same format
      *      as @ref cxa_assert_msg
-     * 
+     *
      * @param[in] msgIn the message that should be displayed
      */
 	#ifdef CXA_ASSERT_MSG_ENABLE

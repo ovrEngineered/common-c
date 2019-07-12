@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+
 /**
  * @file
  * This file contains prototypes and a top-level implementation of a Universal Serial Asynchronous Receiver/Transmitter
@@ -6,8 +13,8 @@
  *
  * Once initialized, most serial input/output (I/O) is done using a file descriptor returned by ::cxa_usart_getFileDescriptor.
  * Most embedded libcs have support for a "virtual" file descriptor (newlib: fopen_cookie, avrlibc: fdev_setup_stream).
- * These "virtual" file descriptors route serial data to/from internal callbacks to actually send/receive data using the 
- * underlying implementation. This option was chosen because of the inherent added functionality of features like printf, 
+ * These "virtual" file descriptors route serial data to/from internal callbacks to actually send/receive data using the
+ * underlying implementation. This option was chosen because of the inherent added functionality of features like printf,
  * scanf, fgetc, and fputc. <b>All serial I/O should be performed using the returned file descriptor.</b>
  *
  * @note This file contains the base functionality for a USART object available across all architectures. Additional
@@ -37,21 +44,6 @@
  *    }
  * }
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_USART_H_
 #define CXA_USART_H_

@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+ 
 /**
  * @file
  * This file contains prototypes and an architecture-specific implementation of a general-purpose
@@ -7,7 +14,7 @@
  * @note This file contains functionality restricted to the CXA Atmel XMega implementation.
  *
  * @note This file contains functionality in addition to that already provided in @ref cxa_gpio.h
- *		
+ *
  *
  *
  * #### Example Usage: ####
@@ -22,21 +29,6 @@
  * // now use the cxa_gpio.h common functionality to set its value
  * cxa_gpio_setValue(&myGpio.super, 1);
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_XMEGA_GPIO_H_
 #define CXA_XMEGA_GPIO_H_
@@ -64,7 +56,7 @@ typedef struct cxa_xmega_gpio cxa_xmega_gpio_t;
 struct cxa_xmega_gpio
 {
 	cxa_gpio_t super;
-	
+
 	cxa_gpio_polarity_t polarity;
 
 	PORT_t *port;

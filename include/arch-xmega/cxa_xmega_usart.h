@@ -1,13 +1,20 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+ 
 /**
  * @file
- * This file contains prototypes and an architecture-specific implementation of a 
+ * This file contains prototypes and an architecture-specific implementation of a
  * Universal Serial Asynchronous Receiver/Transmitter (USART) object. This USART object
  * is used to send and receive serial data via dedicated hardware on the XMega processor.
  *
  * @note This file contains functionality restricted to the CXA Atmel XMega implementation.
  *
  * @note This file contains functionality in addition to that already provided in @ref cxa_usart.h
- *		
+ *
  *
  *
  * #### Example Usage: ####
@@ -23,21 +30,6 @@
  * // finally, print a message
  * printf("hello world\r\n");
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_XMEGA_USART_H_
 #define CXA_XMEGA_USART_H_
@@ -76,12 +68,12 @@ typedef struct cxa_xmega_usart cxa_xmega_usart_t;
 struct cxa_xmega_usart
 {
 	cxa_usart_t super;
-	
+
 	USART_t *avrUsart;
-	
+
 	cxa_fixedFifo_t rxFifo;
 	uint8_t rxFifo_raw[CXA_XMEGA_USART_RX_FIFO_SIZE_BYTES];
-	
+
 	cxa_fixedFifo_t txFifo;
 	uint8_t txFifo_raw[CXA_XMEGA_USART_TX_FIFO_SIZE_BYTES];
 

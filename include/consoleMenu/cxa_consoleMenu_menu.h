@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+ 
 /**
  * @file
  * This file contains a prototypes for actually inserting menu items into
@@ -29,21 +36,6 @@
  * static void menu_cb_doSomething(void *userVarIn){ ... }
  * static void menu_cb_doAnotherThing(void *userVarIn){ ... }
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_CONSOLE_MENU_MENU_H_
 #define CXA_CONSOLE_MENU_MENU_H_
@@ -91,15 +83,15 @@ typedef enum
  * @private
  */
 typedef struct
-{	
+{
 	const char *name;
 	cxa_consoleMenu_menu_itemType_t type;
 	union
 	{
-		cxa_consoleMenu_menu_itemCb_t cb;	
+		cxa_consoleMenu_menu_itemCb_t cb;
 		cxa_consoleMenu_menu_t *subMenu;
 	};
-		
+
 	void *userVar;
 }cxa_consoleMenu_menu_itemEntry_t;
 
@@ -110,7 +102,7 @@ typedef struct
 struct cxa_consoleMenu_menu
 {
 	void *parentMenu;
-	
+
 	cxa_array_t entries;
 	cxa_consoleMenu_menu_itemEntry_t entries_raw[CXA_CONSOLE_MENU_MAX_MENU_ITEMS];
 };
@@ -131,7 +123,7 @@ void cxa_consoleMenu_menu_init(cxa_consoleMenu_menu_t *const cmmIn);
 
 /**
  * @public
- * @brief Adds a menu item to the provided menu. When selected the 
+ * @brief Adds a menu item to the provided menu. When selected the
  * consoleMenu subsystem will call the provided callback.
  *
  * @param[in] cmmIn pointer to the pre-initialized consoleMenu_menu object
@@ -146,7 +138,7 @@ void cxa_consoleMenu_menu_addItem_callback(cxa_consoleMenu_menu_t *const cmmIn, 
 
 /**
  * @public
- * @brief Adds a subMenu item to the provided menu. When selected the 
+ * @brief Adds a subMenu item to the provided menu. When selected the
  * consoleMenu subsystem will display the provided menu in place of
  * the previously displayed menu.
  *

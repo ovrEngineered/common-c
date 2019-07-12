@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+
 /**
  * @file
  * This file contains prototypes and a top-level implementation of a general-purpose input/output (GPIO) object.
@@ -42,21 +49,6 @@
  * '1' --> electrical '1'). For situations where an electrical '0' is required
  * to actually reset the peripheral device, we'd use the inverted mapping of
  * ::CXA_GPIO_POLARITY_INVERTED (eg. logical '1' --> electrical '0').
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_GPIO_H_
 #define CXA_GPIO_H_
@@ -269,7 +261,7 @@ void cxa_gpio_setValue(cxa_gpio_t *const gpioIn, const bool valIn);
  * value will be inverted, then returned.
  *
  * @param[in] gpioIn pointer to a pre-initialized GPIO object
- * 
+ *
  * @return the logical boolean value of GPIO object/pin
  */
 bool cxa_gpio_getValue(cxa_gpio_t *const gpioIn);
@@ -279,7 +271,7 @@ bool cxa_gpio_getValue(cxa_gpio_t *const gpioIn);
  * @public
  * @brief Toggles the output value of the GPIO object/pin
  * This is essentially a convenience function for the following code:
- * @code 
+ * @code
  * cxa_gpio_setValue(gpioIn, !cxa_gpio_getValue(gpioIn));
  * @endcode
  *

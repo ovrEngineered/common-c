@@ -1,24 +1,10 @@
-/**
- * Copyright 2015 opencxa.org
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "cxa_protocolParser.h"
-
-
-/**
  * @author Christopher Armenio
  */
+#include "cxa_protocolParser.h"
 
 
 // ******** includes ********
@@ -54,7 +40,7 @@ void cxa_protocolParser_init(cxa_protocolParser_t *const ppIn, cxa_ioStream_t *c
 	cxa_assert(scm_gotoIdleIn);
 	cxa_assert(scm_resetIn);
 	cxa_assert(scm_writeBytesIn);
-	
+
 	// save our references
 	ppIn->ioStream = ioStreamIn;
 	ppIn->currBuffer = buffIn;
@@ -175,7 +161,7 @@ void cxa_protocolParser_resetError(cxa_protocolParser_t *const ppIn)
 void cxa_protocolParser_notify_ioException(cxa_protocolParser_t *const ppIn)
 {
 	cxa_assert(ppIn);
-	
+
 	cxa_logger_error(&ppIn->logger, "underlying serial device is broken, protocol parser is inoperable");
 
 	// notify our protocol listeners
@@ -191,7 +177,7 @@ void cxa_protocolParser_notify_ioException(cxa_protocolParser_t *const ppIn)
 void cxa_protocolParser_notify_receptionTimeout(cxa_protocolParser_t *const ppIn)
 {
 	cxa_assert(ppIn);
-	
+
 	cxa_logger_warn(&ppIn->logger, "reception timeout");
 
 	// notify our protocol listeners

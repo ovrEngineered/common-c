@@ -1,3 +1,10 @@
+/*
+ * This file is subject to the terms and conditions defined in
+ * file 'LICENSE', which is part of this source code package.
+ *
+ * @author Christopher Armenio
+ */
+ 
 /**
  * @file
  * This file contains prototypes and an implementation of Timer Capture Channel for a
@@ -24,21 +31,6 @@
  * cxa_xmega_eventSystem_triggerEvents(CXA_XMEGA_EVENT_CHAN_0);
  * uint16_t value = uint16_t cxa_xmega_timer16_captureChannel_getLastCaptureVal(&myCaptureChannel);
  * @endcode
- *
- *
- * @copyright 2013-2014 opencxa.org
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @author Christopher Armenio
  */
 #ifndef CXA_XMEGA_TIMER16_CAPTURE_CHANNEL_H_
 #define CXA_XMEGA_TIMER16_CAPTURE_CHANNEL_H_
@@ -108,7 +100,7 @@ void cxa_xmega_timer16_captureChannel_init(cxa_xmega_timer16_captureChannel_t *c
 /**
  * @public
  * @brief Returns the event channel used to trigger this capture.
- * 
+ *
  * @param[in] ccIn pointer to the pre-initialized capture channel object
  *
  * @return the event channel which is currently being used to trigger this capture
