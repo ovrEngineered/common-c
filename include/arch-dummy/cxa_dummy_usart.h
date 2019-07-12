@@ -1,6 +1,6 @@
 /**
  * @file
- * @copyright 2017 opencxa.org
+ * @copyright 2016 opencxa.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,17 @@
  *
  * @author Christopher Armenio
  */
-#ifndef CXA_DUMMY_GPIO_H_
-#define CXA_DUMMY_GPIO_H_
+#ifndef CXA_DUMMY_USART_H_
+#define CXA_DUMMY_USART_H_
 
 
 // ******** includes ********
 #include <stdbool.h>
-
+#include <stdio.h>
+#include <cxa_config.h>
+#include <cxa_usart.h>
+#include <cxa_fixedFifo.h>
 #include <cxa_gpio.h>
-#include <cxa_logger_header.h>
 
 
 // ******** global macro definitions ********
@@ -31,28 +33,29 @@
 // ******** global type definitions *********
 /**
  * @public
+ * @brief "Forward" declaration of the cxa_dummy_usart_t object
  */
-typedef struct cxa_dummy_gpio cxa_dummy_gpio_t;
+typedef struct cxa_dummy_usart cxa_dummy_usart_t;
 
 
 /**
- * @public
+ * @private
  */
-struct cxa_dummy_gpio
+struct cxa_dummy_usart
 {
-	cxa_gpio_t super;
-
-	cxa_gpio_polarity_t polarity;
-	cxa_gpio_direction_t dir;
-
-	cxa_logger_t logger;
+	cxa_usart_t super;
 };
 
 
 // ******** global function prototypes ********
-void cxa_dummy_gpio_init_input(cxa_dummy_gpio_t *const gpioIn, const cxa_gpio_polarity_t polarityIn);
-
-void cxa_dummy_gpio_init_output(cxa_dummy_gpio_t *const gpioIn, const cxa_gpio_polarity_t polarityIn, const bool initValIn);
+/**
+ * @public
+ * @brief Initializes the specified USART for no hardware handshaking using the specified baud rate.
+ *
+ * @param[in] usartIn pointer to a pre-allocated USART object
+ * @param[in] baudRate_bpsIn the desired baud rate, in bits-per-second
+ */
+void cxa_dummy_usart_init_noHH(cxa_dummy_usart_t *const usartIn, const uint32_t baudRate_bpsIn);
 
 
 #endif

@@ -92,6 +92,8 @@ static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction
 
 	cxa_logger_trace(&gpioIn->logger, "new direction: %s", (dirIn == CXA_GPIO_DIR_INPUT) ? "input" : "output");
 	gpioIn->dir = dirIn;
+
+	// TODO: set your direction here
 }
 
 
@@ -138,7 +140,8 @@ static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	cxa_dummy_gpio_t *const gpioIn = (cxa_dummy_gpio_t *const)superIn;
 
 	cxa_logger_trace(&gpioIn->logger, "new logic value: %d", valIn);
-	gpioIn->lastVal = valIn;
+
+	// TODO: set your value here
 }
 
 
@@ -149,7 +152,9 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 	// get a pointer to our class
 	cxa_dummy_gpio_t *const gpioIn = (cxa_dummy_gpio_t *const)superIn;
 
-	return gpioIn->lastVal;
+	// TODO: return your GPIO logic value (don't forget to adjust for polarity)
+
+	return 0;
 }
 
 
