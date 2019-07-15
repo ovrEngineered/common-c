@@ -352,9 +352,6 @@ static bool scm_handleRequest_downstream(cxa_mqtt_rpc_node_t *const superIn,
 
 	cxa_logger_trace_untermString(&superIn->logger, ">> '", remainingTopicIn, remainingTopicLen_bytesIn, "'");
 
-	char *methodName, *id;
-	size_t methodNameLen_bytes, idLen_bytes;
-
 	// make sure that the topic starts with our name (handle the special "localroot" case)
 	size_t nodeNameLen_bytes = strlen(superIn->name);
 	if( superIn->parentNode != NULL )
