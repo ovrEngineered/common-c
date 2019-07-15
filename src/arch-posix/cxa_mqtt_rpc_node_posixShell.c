@@ -29,9 +29,6 @@
 static cxa_mqtt_rpc_methodRetVal_t mqttRpcCb_onExecShellCmd(cxa_mqtt_rpc_node_t *const superIn,
 															cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const returnParamsOut,
 															void* userVarIn);
-static cxa_mqtt_rpc_methodRetVal_t mqttRpcCb_onExecShellCmd_root(cxa_mqtt_rpc_node_t *const superIn,
-																 cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const returnParamsOut,
-																 void* userVarIn);
 
 
 // ********  local variable declarations *********
@@ -48,7 +45,6 @@ void cxa_mqtt_rpc_node_posixShell_init(cxa_mqtt_rpc_node_posixShell_t *const nod
 
 	// setup our methods
 	cxa_mqtt_rpc_node_addMethod(&nodeIn->super, "exec", mqttRpcCb_onExecShellCmd, (void*)nodeIn);
-	cxa_mqtt_rpc_node_addMethod(&nodeIn->super, "execAsRoot", mqttRpcCb_onExecShellCmd_root, (void*)nodeIn);
 }
 
 
@@ -96,16 +92,6 @@ static cxa_mqtt_rpc_methodRetVal_t mqttRpcCb_onExecShellCmd(cxa_mqtt_rpc_node_t 
 	cxa_linkedField_append_cString(returnParamsOut, procOutputBuffer);
 	cxa_linkedField_append_cString(returnParamsOut, "'");
 
-
-	return CXA_MQTT_RPC_METHODRETVAL_SUCCESS;
-}
-
-
-static cxa_mqtt_rpc_methodRetVal_t mqttRpcCb_onExecShellCmd_root(cxa_mqtt_rpc_node_t *const superIn,
-																 cxa_linkedField_t *const paramsIn, cxa_linkedField_t *const returnParamsOut,
-																 void* userVarIn)
-{
-//	FILE* stdStream = popen("echo gordonSquare14 | sudo -S -n cat target.txt", "r");
 
 	return CXA_MQTT_RPC_METHODRETVAL_SUCCESS;
 }
