@@ -290,12 +290,21 @@ size_t cxa_stringUtils_countOccurences(const char* targetStringIn, const char* e
 	size_t strLength_target_bytes = strlen(targetStringIn);
 	size_t strLength_element_bytes = strlen(elementIn);
 
-	if( strLength_element_bytes > strLength_target_bytes ) return 0;
+	return cxa_stringUtils_countOccurences_withLengths(targetStringIn, strLength_target_bytes, elementIn, strLength_element_bytes);
+}
+
+
+size_t cxa_stringUtils_countOccurences_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementStringLen_bytesIn)
+{
+	cxa_assert(targetStringIn);
+	cxa_assert(elementIn);
+
+	if( elementStringLen_bytesIn > targetStringLen_bytesIn ) return 0;
 
 	size_t retVal = 0;
-	for( size_t i = 0; i < strLength_target_bytes - strLength_element_bytes; i++ )
+	for( size_t i = 0; i < targetStringLen_bytesIn - elementStringLen_bytesIn; i++ )
 	{
-		if( cxa_stringUtils_equals_withLengths(&targetStringIn[i], strLength_target_bytes-i, elementIn, strLength_target_bytes) ) retVal++;
+		if( cxa_stringUtils_equals_withLengths(&targetStringIn[i], elementStringLen_bytesIn, elementIn, elementStringLen_bytesIn) ) retVal++;
 	}
 
 	return retVal;
@@ -377,6 +386,27 @@ bool cxa_stringUtils_replaceFirstOccurence_withLengths(const char *targetStringI
 		firstOccurrence[i] = replacementStringIn[i];
 	}
 	return true;
+}
+
+
+void cxa_stringUtils_trim(char *const targetStringIn)
+{
+	cxa_assert(targetStringIn);
+
+	size_t strLen_bytes = strlen(targetStringIn);
+	for( size_t i = 0; i < strLen_bytes; i++ )
+	{
+		size_t currIndex = strLen_bytes - i - 1;
+		if( isspace(targetStringIn[currIndex]) )
+		{
+			targetStringIn[currIndex] = 0;
+		}
+		else
+		{
+			// we're done
+			break;
+		}
+	}
 }
 
 

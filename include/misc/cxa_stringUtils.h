@@ -84,6 +84,7 @@ bool cxa_stringUtils_equals_withLengths(const char* str1In, size_t str1Len_bytes
 bool cxa_stringUtils_equals_ignoreCase(const char* str1In, const char* str2In);
 
 size_t cxa_stringUtils_countOccurences(const char* targetStringIn, const char* elementIn);
+size_t cxa_stringUtils_countOccurences_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementStringLen_bytesIn);
 ssize_t cxa_stringUtils_indexOfFirstOccurence_withLengths(const char* targetStringIn, size_t targetStringLen_bytesIn, const char* elementIn, size_t elementLen_bytesIn);
 
 char* cxa_stringUtils_getLastCharacters(const char* targetStringIn, size_t numCharsIn);
@@ -92,6 +93,8 @@ bool cxa_stringUtils_replaceFirstOccurence(const char *targetStringIn, const cha
 bool cxa_stringUtils_replaceFirstOccurence_withLengths(const char *targetStringIn, size_t targetStringLen_bytesIn,
 													   const char *stringToReplaceIn, size_t stringToReplaceLen_bytesIn,
 													   const char *replacementStringIn, size_t replacementStringLen_bytesIn);
+
+void cxa_stringUtils_trim(char *const targetStringIn);
 
 bool cxa_stringUtils_bytesToHexString(uint8_t* bytesIn, size_t numBytesIn, bool transposeIn, char* hexStringOut, size_t maxLenHexString_bytesIn);
 bool cxa_stringUtils_hexStringToBytes(const char *const hexStringIn, size_t numBytesIn, bool transposeIn, uint8_t* bytesOut);
