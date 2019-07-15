@@ -59,7 +59,7 @@ void cxa_mqtt_rpc_node_root_init(cxa_mqtt_rpc_node_root_t *const nodeIn, cxa_mqt
 	// initialize our super class
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
-	cxa_mqtt_rpc_node_vinit(&nodeIn->super, NULL,
+	cxa_mqtt_rpc_node_vinit2(&nodeIn->super, NULL,
 							scm_handleMessage_upstream, NULL, scm_getClient,
 							nameFmtIn, varArgs);
 	va_end(varArgs);

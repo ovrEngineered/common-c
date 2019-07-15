@@ -166,7 +166,14 @@ void cxa_mqtt_rpc_node_init_formattedString(cxa_mqtt_rpc_node_t *const nodeIn, c
 /**
  * @protected
  */
-void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+void cxa_mqtt_rpc_node_vinit1(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+							  const char *nameFmtIn, va_list varArgsIn);
+
+
+/**
+ * @protected
+ */
+void cxa_mqtt_rpc_node_vinit2(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
 							 cxa_mqtt_rpc_node_scm_handleMessage_upstream_t scm_handleMessage_upstreamIn,
 							 cxa_mqtt_rpc_node_scm_handleMessage_downstream_t scm_handleMessage_downstreamIn,
 							 cxa_mqtt_rpc_node_scm_getClient_t scm_getClientIn,

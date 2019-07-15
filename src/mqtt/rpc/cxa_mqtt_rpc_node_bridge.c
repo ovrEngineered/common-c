@@ -54,7 +54,7 @@ void cxa_mqtt_rpc_node_bridge_vinit(cxa_mqtt_rpc_node_bridge_t *const nodeIn, cx
 	cxa_assert(nameFmtIn);
 
 	// initialize our super class
-	cxa_mqtt_rpc_node_vinit(&nodeIn->super, parentNodeIn,
+	cxa_mqtt_rpc_node_vinit2(&nodeIn->super, parentNodeIn,
 							NULL, NULL, NULL,
 							nameFmtIn, varArgsIn);
 

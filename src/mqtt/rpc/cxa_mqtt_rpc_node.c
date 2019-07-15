@@ -55,14 +55,27 @@ void cxa_mqtt_rpc_node_init_formattedString(cxa_mqtt_rpc_node_t *const nodeIn, c
 
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
-	cxa_mqtt_rpc_node_vinit(nodeIn, parentNodeIn,
+	cxa_mqtt_rpc_node_vinit2(nodeIn, parentNodeIn,
 							scm_handleMessage_upstream, scm_handleRequest_downstream, scm_getClient,
 							nameFmtIn, varArgs);
 	va_end(varArgs);
 }
 
 
-void cxa_mqtt_rpc_node_vinit(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+void cxa_mqtt_rpc_node_vinit1(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
+							  const char *nameFmtIn, va_list varArgsIn)
+{
+	cxa_assert(nodeIn);
+	cxa_assert(parentNodeIn);
+	cxa_assert(nameFmtIn);
+
+	cxa_mqtt_rpc_node_vinit2(nodeIn, parentNodeIn,
+							 scm_handleMessage_upstream, scm_handleRequest_downstream, scm_getClient,
+							 nameFmtIn, varArgsIn);
+}
+
+
+void cxa_mqtt_rpc_node_vinit2(cxa_mqtt_rpc_node_t *const nodeIn, cxa_mqtt_rpc_node_t *const parentNodeIn,
 							 cxa_mqtt_rpc_node_scm_handleMessage_upstream_t scm_handleMessage_upstreamIn,
 							 cxa_mqtt_rpc_node_scm_handleMessage_downstream_t scm_handleMessage_downstreamIn,
 							 cxa_mqtt_rpc_node_scm_getClient_t scm_getClientIn,
@@ -371,7 +384,7 @@ static bool scm_handleRequest_downstream(cxa_mqtt_rpc_node_t *const superIn,
 	}
 
 	// count our remaining separators to tell us if the message is bound for one of our methods
-	if( cxa_stringUtils_countOccurences(currTopic, "/") == 0 )
+	if( cxa_stringUtils_countOccurences_withLengths(currTopic, currTopicLen_bytes, "/", 1) == 0 )
 	{
 		// no more separators...start looking for a method
 		cxa_array_iterate(&superIn->methods, currMethodEntry, cxa_mqtt_rpc_node_methodEntry_t)
