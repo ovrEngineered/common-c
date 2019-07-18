@@ -84,9 +84,13 @@ static cxa_mqtt_rpc_methodRetVal_t mqttRpcCb_onExecShellCmd(cxa_mqtt_rpc_node_t 
 	int procExitStatus = pclose(procStdOutStream);
 	cxa_stringUtils_trim(procOutputBuffer);
 
-	// setup our result
+	// get our exit status
 	char procExitStatus_str[64];
+	memset(procExitStatus_str, 0, sizeof(procExitStatus_str));
 	cxa_stringUtils_concat_formattedString(procExitStatus_str, sizeof(procExitStatus_str), "exitStat: %d", procExitStatus);
+
+	// compile our result
+//	memset(cxa_linkedField_get_pointerToIndex(returnParamsOut, 0), 0, cxa_linkedField_getMaxSize_bytes(returnParamsOut));
 	cxa_linkedField_append_cString(returnParamsOut, procExitStatus_str);
 	cxa_linkedField_append_cString(returnParamsOut, "\r\noutput: '");
 	cxa_linkedField_append_cString(returnParamsOut, procOutputBuffer);
