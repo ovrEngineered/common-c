@@ -11,7 +11,7 @@
 #include <string.h>
 
 #include "esp_event_loop.h"
-#include "esp_smartConfig.h"
+#include "esp_smartconfig.h"
 #include "esp_wifi.h"
 
 #include <cxa_assert.h>
