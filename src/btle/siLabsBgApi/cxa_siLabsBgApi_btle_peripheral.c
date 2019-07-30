@@ -54,6 +54,7 @@ void cxa_siLabsBgApi_btle_peripheral_init(cxa_siLabsBgApi_btle_peripheral_t *con
 	// save our references and setup our internal state
 	cxa_array_initStd(&btlepIn->handleCharMap, btlepIn->handleCharMap_raw);
 	cxa_array_initStd(&btlepIn->handleMacMap, btlepIn->handleMacMap_raw);
+	btlepIn->hasUserAdvertDataSet = false;
 
 	// initialize our super class
 	cxa_btle_peripheral_init(&btlepIn->super, scm_sendNotification, scm_sendDeferredReadResponse, scm_sendDeferredWriteResponse, scm_setAdvertisingInfo, scm_startAdvertising);
@@ -332,6 +333,24 @@ static void scm_setAdvertisingInfo(cxa_btle_peripheral_t *const superIn, uint32_
 		cxa_logger_warn(&btlepIn->super.logger, "error setting advertising data: %d", rsp_advData->result);
 		return;
 	}
+
+	// keep track of the fact that we have user data set
+	btlepIn->hasUserAdvertDataSet = true;
+
+	struct gecko_msg_le_gap_stop_advertising_rsp_t* rsp_advStop = gecko_cmd_le_gap_stop_advertising(0);
+	if( rsp_advStop->result != 0 )
+	{
+		cxa_logger_warn(&btlepIn->super.logger, "error stopping previous advertising");
+		return;
+	}
+
+	// restart advertising
+	struct gecko_msg_le_gap_start_advertising_rsp_t* rsp_advStart = gecko_cmd_le_gap_start_advertising(0, le_gap_user_data, le_gap_connectable_scannable);
+	if( rsp_advStart->result != 0 )
+	{
+		cxa_logger_warn(&btlepIn->super.logger, "error starting advertising: %d", rsp_advStart->result);
+		return;
+	}
 }
 
 
@@ -343,7 +362,7 @@ static void scm_startAdvertising(cxa_btle_peripheral_t *const superIn)
 	cxa_logger_debug(&btlepIn->super.logger, "starting advertising");
 
 	// start advertising
-	struct gecko_msg_le_gap_start_advertising_rsp_t* rsp_advStart = gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
+	struct gecko_msg_le_gap_start_advertising_rsp_t* rsp_advStart = gecko_cmd_le_gap_start_advertising(0, (btlepIn->hasUserAdvertDataSet ? le_gap_user_data : le_gap_general_discoverable), le_gap_connectable_scannable);
 	if( rsp_advStart->result != 0 )
 	{
 		cxa_logger_warn(&btlepIn->super.logger, "error starting advertising: %d", rsp_advStart->result);

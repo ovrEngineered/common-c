@@ -69,6 +69,8 @@ struct cxa_siLabsBgApi_btle_peripheral
 
 	cxa_array_t handleMacMap;
 	cxa_siLabsBgApi_btle_handleMacMapEntry_t handleMacMap_raw[CXA_SILABSBGAPI_BTLE_MAXNUM_CONNS];
+
+	bool hasUserAdvertDataSet;
 };
 
 
