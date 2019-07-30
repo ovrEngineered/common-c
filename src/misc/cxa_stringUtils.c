@@ -397,7 +397,7 @@ void cxa_stringUtils_trim(char *const targetStringIn)
 	for( size_t i = 0; i < strLen_bytes; i++ )
 	{
 		size_t currIndex = strLen_bytes - i - 1;
-		if( isspace(targetStringIn[currIndex]) )
+		if( isspace((int)targetStringIn[currIndex]) )
 		{
 			targetStringIn[currIndex] = 0;
 		}
