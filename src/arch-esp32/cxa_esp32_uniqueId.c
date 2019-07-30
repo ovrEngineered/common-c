@@ -10,6 +10,7 @@
 // ******** includes ********
 #include <stdio.h>
 #include <esp_wifi.h>
+#include <esp_eth.h>
 
 
 // ******** local macro definitions ********
@@ -49,7 +50,10 @@ char* cxa_uniqueId_getHexString(void)
 // ******** local function implementations ********
 static void init(void)
 {
-	esp_wifi_get_mac(WIFI_IF_STA, id_bytes);
+	if( esp_wifi_get_mac(WIFI_IF_STA, id_bytes) != ESP_OK )
+	{
+		esp_eth_get_mac(id_bytes);
+	}
 
 	sprintf(id_str, "%02X:%02X:%02X:%02X:%02X:%02X", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3], id_bytes[4], id_bytes[5]);
 	id_str[sizeof(id_str)-1] = 0;
