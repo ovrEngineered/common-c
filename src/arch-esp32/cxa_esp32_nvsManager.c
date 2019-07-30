@@ -83,6 +83,26 @@ bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 }
 
 
+bool cxa_nvsManager_get_uint8(const char *const keyIn, uint8_t *const valueOut)
+{
+	if( !isInit ) init();
+
+	esp_err_t retVal = nvs_get_u8(handle, keyIn, valueOut);
+	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
+	return (retVal == ESP_OK);
+}
+
+
+bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
+{
+	if( !isInit ) init();
+
+	esp_err_t retVal = nvs_set_u8(handle, keyIn, valueIn);
+	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+	return (retVal == ESP_OK);
+}
+
+
 bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut)
 {
 	if( !isInit ) init();
@@ -136,6 +156,16 @@ bool cxa_nvsManager_erase(const char *const keyIn)
 	if( !isInit ) init();
 
 	esp_err_t retVal = nvs_erase_key(handle, keyIn);
+	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
+	return (retVal == ESP_OK);
+}
+
+
+bool cxa_nvsManager_eraseAll(void)
+{
+	if( !isInit ) init();
+
+	esp_err_t retVal = nvs_erase_all(handle);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
 	return (retVal == ESP_OK);
 }
