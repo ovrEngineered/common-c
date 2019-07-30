@@ -31,6 +31,9 @@
 #endif
 
 
+#define CXA_BTLE_PERIPHERAL_ADVERT_MAX_SIZE_BYTES				31
+
+
 // ******** global type definitions *********
 /**
  * @public
@@ -285,6 +288,15 @@ void cxa_btle_peripheral_registerCharacteristicHandler_deferredWrite(cxa_btle_pe
 void cxa_btle_peripheral_setAdvertisingInfo(cxa_btle_peripheral_t *const btlepIn,
 										  	uint32_t advertPeriod_msIn,
 											cxa_fixedByteBuffer_t *const fbbAdvertDataIn);
+
+
+/**
+ * @public
+ */
+void cxa_btle_peripheral_setAdvertisingInfo_manSpecific(cxa_btle_peripheral_t *const btlepIn,
+	  													uint32_t advertPeriod_msIn,
+														uint16_t manSpecificCodeIn,
+														cxa_fixedByteBuffer_t *const fbbManSpecificDataIn);
 
 
 /**

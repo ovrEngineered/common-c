@@ -197,6 +197,31 @@ void cxa_btle_peripheral_setAdvertisingInfo(cxa_btle_peripheral_t *const btlepIn
 }
 
 
+void cxa_btle_peripheral_setAdvertisingInfo_manSpecific(cxa_btle_peripheral_t *const btlepIn,
+	  													uint32_t advertPeriod_msIn,
+														uint16_t manSpecificCodeIn,
+														cxa_fixedByteBuffer_t *const fbbManSpecificDataIn)
+{
+	cxa_assert(btlepIn);
+
+	cxa_fixedByteBuffer_t fbbAdvertData;
+	uint8_t fbbAdvertData_raw[CXA_BTLE_PERIPHERAL_ADVERT_MAX_SIZE_BYTES];
+	cxa_fixedByteBuffer_initStd(&fbbAdvertData, fbbAdvertData_raw);
+
+	cxa_fixedByteBuffer_append_uint8(&fbbAdvertData, 0x02);															// length of first btle advert. field
+	cxa_fixedByteBuffer_append_uint8(&fbbAdvertData, 0x01);															// btle advert. field type: flags
+	cxa_fixedByteBuffer_append_uint8(&fbbAdvertData, 0x06);															// btle advert flags: connectable / undirected
+
+	cxa_fixedByteBuffer_append_uint8(&fbbAdvertData, 3 + cxa_fixedByteBuffer_getSize_bytes(fbbManSpecificDataIn));	// length of second btle advert.field
+	cxa_fixedByteBuffer_append_uint8(&fbbAdvertData, 0xFF);															// btle advert. field type: manufacturer specific
+	cxa_fixedByteBuffer_append_uint16LE(&fbbAdvertData, manSpecificCodeIn);											// company code
+	cxa_fixedByteBuffer_append_fbb(&fbbAdvertData, fbbManSpecificDataIn);											// actual data
+
+	cxa_assert(btlepIn->scms.setAdvertisingInfo);
+	btlepIn->scms.setAdvertisingInfo(btlepIn, advertPeriod_msIn, &fbbAdvertData);
+}
+
+
 void cxa_btle_peripheral_sendNotification(cxa_btle_peripheral_t *const btlepIn,
 										  const char *const serviceUuidStrIn,
 										  const char *const charUuidStrIn,
@@ -264,16 +289,6 @@ void cxa_btle_peripheral_completeDeferredWrite(cxa_btle_peripheral_t *const btle
 
 	// free our deferred operation entry
 	doeIn->isInUse = false;
-}
-
-
-void cxa_btle_peripheral_startAdvertising(cxa_btle_peripheral_t *const btlepIn,
-										  uint32_t advertPeriod_msIn,
-										  cxa_fixedByteBuffer_t *const fbbAdvertDataIn)
-{
-	cxa_assert(btlepIn);
-
-
 }
 
 
