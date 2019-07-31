@@ -168,7 +168,7 @@ void cxa_siLabsBgApi_module_startSoftTimer_repeat(float period_msIn, cxa_siLabsB
 			timerCallbackEntries[i].cb = cbIn;
 			timerCallbackEntries[i].userVarIn = userVarIn;
 
-			gecko_cmd_hardware_set_soft_timer(period_msIn * 32768, i, false);
+			gecko_cmd_hardware_set_soft_timer((period_msIn / 1000.0) * 32768, i, false);
 			return;
 		}
 	}
