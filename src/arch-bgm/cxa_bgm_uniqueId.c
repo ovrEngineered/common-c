@@ -57,7 +57,11 @@ static void init(void)
 {
 	struct gecko_msg_system_get_bt_address_rsp_t* resp = gecko_cmd_system_get_bt_address();
 	cxa_assert(resp);
-	memcpy(id_bytes, resp->address.addr, sizeof(id_bytes));
+	// reverse the bytes to get the right mac address order
+	for( size_t i = 0; i < sizeof(id_bytes); i++ )
+	{
+		id_bytes[i] = resp->address.addr[sizeof(id_bytes) - i -1];
+	}
 
 	sprintf(id_str, "%02X:%02X:%02X:%02X:%02X:%02X", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3], id_bytes[4], id_bytes[5]);
 	id_str[sizeof(id_str)-1] = 0;
