@@ -39,9 +39,11 @@ typedef struct cxa_stateMachine cxa_stateMachine_t;
 /**
  * @public
  */
-typedef void (*cxa_stateMachine_cb_enter_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, void* userVarIn);
+typedef void (*cxa_stateMachine_cb_entering_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, void* userVarIn);
+typedef void (*cxa_stateMachine_cb_entered_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, void* userVarIn);
 typedef void (*cxa_stateMachine_cb_state_t)(cxa_stateMachine_t *const smIn, void *userVarIn);
-typedef void (*cxa_stateMachine_cb_leave_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn);
+typedef void (*cxa_stateMachine_cb_leaving_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn);
+typedef void (*cxa_stateMachine_cb_left_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn);
 
 
 /**
@@ -66,9 +68,11 @@ typedef struct
 	int stateId;
 	const char* stateName;
 
-	cxa_stateMachine_cb_enter_t cb_enter;
+	cxa_stateMachine_cb_entering_t cb_entering;
+	cxa_stateMachine_cb_entered_t cb_entered;
 	cxa_stateMachine_cb_state_t cb_state;
-	cxa_stateMachine_cb_leave_t cb_leave;
+	cxa_stateMachine_cb_leaving_t cb_leaving;
+	cxa_stateMachine_cb_left_t cb_left;
 	void *userVar;
 
 	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
@@ -106,12 +110,24 @@ struct cxa_stateMachine
 void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, int threadIdIn);
 
 void cxa_stateMachine_addState(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,
-	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn,
+	cxa_stateMachine_cb_entered_t cb_enteredIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leaving_t cb_leavingIn,
 	void *userVarIn);
+
+void cxa_stateMachine_addState_full(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn,
+		cxa_stateMachine_cb_entering_t cb_enteringIn, cxa_stateMachine_cb_entered_t cb_enteredIn,
+		cxa_stateMachine_cb_state_t cb_stateIn,
+		cxa_stateMachine_cb_leaving_t cb_leavingIn, cxa_stateMachine_cb_left_t cb_leftIn,
+		void *userVarIn);
 
 #ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
 void cxa_stateMachine_addState_timed(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn, int nextStateIdIn, uint32_t stateTime_msIn,
-	cxa_stateMachine_cb_enter_t cb_enterIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leave_t cb_leaveIn, void *userVarIn);
+		cxa_stateMachine_cb_entered_t cb_enteredIn, cxa_stateMachine_cb_state_t cb_stateIn, cxa_stateMachine_cb_leaving_t cb_leavingIn, void *userVarIn);
+
+void cxa_stateMachine_addState_timed_full(cxa_stateMachine_t *const smIn, int idIn, const char* nameIn, int nextStateIdIn, uint32_t stateTime_msIn,
+		cxa_stateMachine_cb_entering_t cb_enteringIn, cxa_stateMachine_cb_entered_t cb_enteredIn,
+		cxa_stateMachine_cb_state_t cb_stateIn,
+		cxa_stateMachine_cb_leaving_t cb_leavingIn, cxa_stateMachine_cb_left_t cb_leftIn,
+		void *userVarIn);
 #endif
 
 void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateIdIn);
