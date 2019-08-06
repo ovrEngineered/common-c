@@ -44,12 +44,12 @@ static void btleCb_onConnectionClosed(cxa_btle_connection_disconnectReason_t rea
 static void btleCb_onNotiIndiSubscriptionChanged(const char *const serviceUuidIn, const char *const characteristicUuidIn, bool wasSuccessfulIn, void* userVarIn);
 static void btleCb_onNotiIndiRx(const char *const serviceUuidIn, const char *const characteristicUuidIn, cxa_fixedByteBuffer_t *fbb_readDataIn, void* userVarIn);
 
-static void stateCb_waitForBtlecReady_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_waitForBtlecReady_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_waitForBtlecReady_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
-static void stateCb_disconnecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connecting_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connected_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
+static void stateCb_connected_left(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
+static void stateCb_disconnecting_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
@@ -70,10 +70,10 @@ void cxa_btle_connectionManager_init(cxa_btle_connectionManager_t *const btleCmI
 	// setup our stateMachine
 	cxa_stateMachine_init(&btleCmIn->stateMachine, "btlecm", threadIdIn);
 	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_STOPPED, "stopped", NULL, NULL, NULL, (void*)btleCmIn);
-	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_WAIT_FOR_BTLEC_READY, "waitForBtleC", stateCb_waitForBtlecReady_enter, stateCb_waitForBtlecReady_state, NULL, (void*)btleCmIn);
-	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_CONNECTING, "connecting", stateCb_connecting_enter, NULL, NULL, (void*)btleCmIn);
-	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_CONNECTED, "connected", stateCb_connected_enter, NULL, stateCb_connected_leave, (void*)btleCmIn);
-	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_DISCONNECTING, "disconnecting", stateCb_disconnecting_enter, NULL, NULL, (void*)btleCmIn);
+	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_WAIT_FOR_BTLEC_READY, "waitForBtleC", stateCb_waitForBtlecReady_entered, stateCb_waitForBtlecReady_state, NULL, (void*)btleCmIn);
+	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_CONNECTING, "connecting", stateCb_connecting_entered, NULL, NULL, (void*)btleCmIn);
+	cxa_stateMachine_addState_full(&btleCmIn->stateMachine, STATE_CONNECTED, "connected", NULL, stateCb_connected_entered, NULL, NULL, stateCb_connected_left, (void*)btleCmIn);
+	cxa_stateMachine_addState(&btleCmIn->stateMachine, STATE_DISCONNECTING, "disconnecting", stateCb_disconnecting_entered, NULL, NULL, (void*)btleCmIn);
 	cxa_stateMachine_addState_timed(&btleCmIn->stateMachine, STATE_CONNECT_STANDOFF, "connStandoff", STATE_CONNECTING, CONNECT_STANDOFF_MS, NULL, NULL, NULL, (void*)btleCmIn);
 	cxa_stateMachine_setInitialState(&btleCmIn->stateMachine, STATE_STOPPED);
 }
@@ -496,7 +496,7 @@ static void btleCb_onNotiIndiRx(const char *const serviceUuidIn, const char *con
 }
 
 
-static void stateCb_waitForBtlecReady_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_waitForBtlecReady_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
@@ -518,7 +518,7 @@ static void stateCb_waitForBtlecReady_state(cxa_stateMachine_t *const smIn, void
 }
 
 
-static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_connecting_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
@@ -550,7 +550,7 @@ static void stateCb_connecting_enter(cxa_stateMachine_t *const smIn, int prevSta
 }
 
 
-static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_connected_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
@@ -583,7 +583,7 @@ static void stateCb_connected_enter(cxa_stateMachine_t *const smIn, int prevStat
 }
 
 
-static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
+static void stateCb_connected_left(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
@@ -593,7 +593,7 @@ static void stateCb_connected_leave(cxa_stateMachine_t *const smIn, int nextStat
 }
 
 
-static void stateCb_disconnecting_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
+static void stateCb_disconnecting_entered(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn)
 {
 	cxa_btle_connectionManager_t *const btleCmIn = (cxa_btle_connectionManager_t *const)userVarIn;
 	cxa_assert(btleCmIn);
