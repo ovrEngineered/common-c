@@ -173,6 +173,16 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 			}
 			break;
 		}
+
+		case gecko_evt_gatt_server_characteristic_status_id:
+		{
+			cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byHandle(btlepIn, evt->data.evt_gatt_server_user_write_request.characteristic);
+			if( charMapEntry != NULL )
+			{
+				cxa_btle_peripheral_notify_subscriptionChanged(&btlepIn->super, &charMapEntry->serviceUuid, &charMapEntry->charUuid, (evt->data.evt_gatt_server_characteristic_status.client_config_flags != 0));
+			}
+			break;
+		}
 	}
 
 	return retVal;

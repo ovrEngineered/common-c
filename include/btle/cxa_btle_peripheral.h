@@ -122,6 +122,12 @@ typedef cxa_btle_peripheral_writeRetVal_t (*cxa_btle_peripheral_cb_onDeferredWri
 
 
 /**
+ * @public
+ */
+typedef void (*cxa_btle_peripheral_cb_onSubscriptionChanged_t)(bool isSubscribedIn, void* userVarIn);
+
+
+/**
  * @protected
  */
 typedef void (*cxa_btle_peripheral_scm_sendNotification_t)(cxa_btle_peripheral_t *const superIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_fixedByteBuffer_t *const fbb_dataIn);
@@ -181,6 +187,9 @@ typedef struct
 		cxa_btle_peripheral_cb_onWriteRequest_t onWriteRequest;
 		cxa_btle_peripheral_cb_onDeferredWriteRequest_t onDeferredWriteRequest;
 		void* userVar_write;
+
+		cxa_btle_peripheral_cb_onSubscriptionChanged_t onSubscriptionChanged;
+		void* userVar_subChanged;
 	}cbs;
 
 }cxa_btle_peripheral_charEntry_t;
@@ -285,6 +294,15 @@ void cxa_btle_peripheral_registerCharacteristicHandler_deferredWrite(cxa_btle_pe
 /**
  * @public
  */
+void cxa_btle_peripheral_registerSubscriptionChangedHandler(cxa_btle_peripheral_t *const btlepIn,
+															const char *const serviceUuidStrIn,
+															const char *const charUuidStrIn,
+															cxa_btle_peripheral_cb_onSubscriptionChanged_t cb_onSubChangedIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
 void cxa_btle_peripheral_setAdvertisingInfo(cxa_btle_peripheral_t *const btlepIn,
 										  	uint32_t advertPeriod_msIn,
 											cxa_fixedByteBuffer_t *const fbbAdvertDataIn);
@@ -381,5 +399,13 @@ bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepI
 											 cxa_btle_uuid_t *const charUuidIn,
 											 cxa_fixedByteBuffer_t *const dataIn,
 											 cxa_btle_peripheral_writeRetVal_t *const retValOut);
+
+/**
+ * @protected
+ */
+void cxa_btle_peripheral_notify_subscriptionChanged(cxa_btle_peripheral_t *const btlepIn,
+													cxa_btle_uuid_t *const serviceUuidIn,
+													cxa_btle_uuid_t *const charUuidIn,
+													bool isSubscribedIn);
 
 #endif

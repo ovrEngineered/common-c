@@ -186,6 +186,31 @@ void cxa_btle_peripheral_registerCharacteristicHandler_deferredWrite(cxa_btle_pe
 }
 
 
+void cxa_btle_peripheral_registerSubscriptionChangedHandler(cxa_btle_peripheral_t *const btlepIn,
+															const char *const serviceUuidStrIn,
+															const char *const charUuidStrIn,
+															cxa_btle_peripheral_cb_onSubscriptionChanged_t cb_onSubChangedIn, void* userVarIn)
+{
+	cxa_assert(btlepIn);
+	cxa_assert(serviceUuidStrIn);
+	cxa_assert(charUuidStrIn);
+
+	cxa_btle_uuid_t tmpServiceUuid;
+	cxa_btle_uuid_t tmpCharUuid;
+	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
+	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
+
+	cxa_btle_peripheral_charEntry_t* targetEntry = getCharEntry(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	if( targetEntry == NULL ) targetEntry = cxa_array_append_empty(&btlepIn->charEntries);
+	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
+
+	cxa_btle_uuid_initFromUuid(&targetEntry->serviceUuid, &tmpServiceUuid, false);
+	cxa_btle_uuid_initFromUuid(&targetEntry->charUuid, &tmpCharUuid, false);
+	targetEntry->cbs.onSubscriptionChanged = cb_onSubChangedIn;
+	targetEntry->cbs.userVar_subChanged = userVarIn;
+}
+
+
 void cxa_btle_peripheral_setAdvertisingInfo(cxa_btle_peripheral_t *const btlepIn,
 										  	uint32_t advertPeriod_msIn,
 											cxa_fixedByteBuffer_t *const fbbAdvertDataIn)
@@ -460,6 +485,24 @@ bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepI
 
 	if( retValOut != NULL ) *retValOut = retVal;
 	return shouldSendResponse;
+}
+
+
+void cxa_btle_peripheral_notify_subscriptionChanged(cxa_btle_peripheral_t *const btlepIn,
+													cxa_btle_uuid_t *const serviceUuidIn,
+													cxa_btle_uuid_t *const charUuidIn,
+													bool isSubscribedIn)
+{
+	cxa_assert(btlepIn);
+	cxa_assert(serviceUuidIn);
+	cxa_assert(charUuidIn);
+
+	// check our registered write requests first
+	cxa_btle_peripheral_charEntry_t* charEntry = getCharEntry(btlepIn, serviceUuidIn, charUuidIn);
+	if( charEntry != NULL )
+	{
+		if( charEntry->cbs.onSubscriptionChanged != NULL ) charEntry->cbs.onSubscriptionChanged(isSubscribedIn, charEntry->cbs.userVar_subChanged);
+	}
 }
 
 

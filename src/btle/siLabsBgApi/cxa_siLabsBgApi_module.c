@@ -255,10 +255,6 @@ static void appHandleEvents(struct gecko_cmd_packet *evt)
 			cxa_siLabsBgApi_btle_peripheral_handleBgEvent(&btlep, evt);
 			break;
 
-
-			cxa_logger_debug(&logger, "chst: %X  %X", evt->data.evt_gatt_server_characteristic_status.client_config_flags, evt->data.evt_gatt_server_characteristic_status.status_flags);
-			break;
-
 		case gecko_evt_le_connection_parameters_id:
 		case gecko_evt_le_connection_phy_status_id:
 		case gecko_evt_gatt_mtu_exchanged_id:
