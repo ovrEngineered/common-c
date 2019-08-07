@@ -10,6 +10,7 @@
 
 // ******** includes ********
 #include <cxa_btle_uuid.h>
+#include <cxa_config.h>
 #include <cxa_eui48.h>
 #include <cxa_fixedByteBuffer.h>
 

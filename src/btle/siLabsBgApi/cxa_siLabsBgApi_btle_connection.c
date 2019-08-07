@@ -604,6 +604,7 @@ static void scm_changeNotifications(cxa_btle_connection_t *const superIn, const 
 	// save our intent
 	connIn->procEnableNotifications = enableNotificationsIn;
 
+
 	// see if we have a cached entry for this characteristic
 	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, &connIn->targetCharacteristicUuid);
 	if( cachedCharEntry == NULL )
@@ -704,10 +705,21 @@ static void stateCb_connResolveService_enter(cxa_stateMachine_t *const smIn, int
 	cxa_logger_debug(&connIn->logger, "resolving service '%s'", str_uuid.str);
 
 	// resolve our service
-	cxa_btle_uuid_t uuid_transposed;
-	cxa_btle_uuid_initFromUuid(&uuid_transposed, &connIn->targetServiceUuid, true);
-	uint8_t uuidLen = (uuid_transposed.type == CXA_BTLE_UUID_TYPE_16BIT) ? (16/8) : (128/8);
-	uint8_t* uuidBytes = (uuid_transposed.type == CXA_BTLE_UUID_TYPE_16BIT) ? (uint8_t*)&uuid_transposed.as16Bit : uuid_transposed.as128Bit.bytes;
+	uint8_t uuidLen;
+	uint8_t* uuidBytes;
+	if( connIn->targetServiceUuid.type == CXA_BTLE_UUID_TYPE_128BIT )
+	{
+		cxa_btle_uuid_t uuid_transposed;
+		cxa_btle_uuid_initFromUuid(&uuid_transposed, &connIn->targetServiceUuid, true);
+
+		uuidLen = 128 / 8;
+		uuidBytes = uuid_transposed.as128Bit.bytes;
+	}
+	else
+	{
+		uuidLen = 16 / 8;
+		uuidBytes = &connIn->targetServiceUuid.as16Bit;
+	}
 
 	struct gecko_msg_gatt_discover_primary_services_by_uuid_rsp_t* rsp = gecko_cmd_gatt_discover_primary_services_by_uuid(connIn->connHandle, uuidLen, uuidBytes);
 	if( rsp->result != 0 )
@@ -739,10 +751,21 @@ static void stateCb_connResolveChar_enter(cxa_stateMachine_t *const smIn, int pr
 	cxa_logger_debug(&connIn->logger, "resolving characteristic '%s'", str_uuid.str);
 
 	// resolve our characteristic
-	cxa_btle_uuid_t uuid_transposed;
-	cxa_btle_uuid_initFromUuid(&uuid_transposed, &connIn->targetCharacteristicUuid, true);
-	uint8_t uuidLen = (uuid_transposed.type == CXA_BTLE_UUID_TYPE_16BIT) ? (16/8) : (128/8);
-	uint8_t* uuidBytes = (uuid_transposed.type == CXA_BTLE_UUID_TYPE_16BIT) ? (uint8_t*)&uuid_transposed.as16Bit : uuid_transposed.as128Bit.bytes;
+	uint8_t uuidLen;
+	uint8_t* uuidBytes;
+	if( connIn->targetCharacteristicUuid.type == CXA_BTLE_UUID_TYPE_128BIT )
+	{
+		cxa_btle_uuid_t uuid_transposed;
+		cxa_btle_uuid_initFromUuid(&uuid_transposed, &connIn->targetCharacteristicUuid, true);
+
+		uuidLen = 128 / 8;
+		uuidBytes = uuid_transposed.as128Bit.bytes;
+	}
+	else
+	{
+		uuidLen = 16 / 8;
+		uuidBytes = &connIn->targetCharacteristicUuid.as16Bit;
+	}
 
 	struct gecko_msg_gatt_discover_characteristics_by_uuid_rsp_t* rsp = gecko_cmd_gatt_discover_characteristics_by_uuid(connIn->connHandle, cachedServiceEntry->handle, uuidLen, uuidBytes);
 	if( rsp->result != 0 )
