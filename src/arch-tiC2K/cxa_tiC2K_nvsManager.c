@@ -4,17 +4,21 @@
  *
  * @author Christopher Armenio
  */
+#include "cxa_nvsManager.h"
+
+
+// ******** includes ********
 #include <stdio.h>
 
+//ESP32
 //#include "nvs.h"
 //#include "nvs_flash.h"
-#include "cxa_tiC2K_nvsManager.h"
 
+//TIC2K
 #include <AT25M02.h>
 #include <cxa_assert.h>
 #include <Externals.h>
 #include <cxa_stringUtils.h>
-
 
 
 #define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
@@ -40,15 +44,14 @@ static void init(void);
 
 
 // ******** global function implementations ********
-bool cxa_esp32_nvsManager_init(void)
-{
+//bool cxa_esp32_nvsManager_init(void)
+//{
 //	return (nvs_flash_init() == ESP_OK);
-    return 0;
-}
+//}
 
 
-bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
-{
+//bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
+//{
 //	if( !isInit ) init();
 //
 //	uint8_t tmpStr;
@@ -61,51 +64,67 @@ bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 //	if( retVal != ESP_ERR_NVS_NOT_FOUND ) return true;
 //
 //	return false;
-    return 0;
-}
+//}
 
 
-bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes)
-{
+//bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes)
+//{
 //	if( !isInit ) init();
 //
 //	// first, determine the size of the stored string
 //	esp_err_t retVal = nvs_get_str(handle, keyIn, valueOut, &maxOutputSize_bytes);
 //	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
 //	return (retVal == ESP_OK);
-    return 0;
-}
+//}
 
 
-bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
-{
+//bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
+//{
 //	if( !isInit ) init();
 //
 //	esp_err_t retVal = nvs_set_str(handle, keyIn, valueIn);
 //	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
 //	return (retVal == ESP_OK);
-    return 0;
-}
+//}
 
 
-bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut)
-{
+//bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut)
+//{
 //	if( !isInit ) init();
 //
 //	esp_err_t retVal = nvs_get_u32(handle, keyIn, valueOut);
 //	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
 //	return (retVal == ESP_OK);
-    return 0;
-}
+//}
 
 
-bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
-{
+//bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
+//{
 //	if( !isInit ) init();
 //
 //	esp_err_t retVal = nvs_set_u32(handle, keyIn, valueIn);
 //	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
 //	return (retVal == ESP_OK);
+//}
+
+bool cxa_nvsManager_get_uint8(const char *const keyIn, uint8_t *const valueOut)
+{
+//    if( !isInit ) init();
+//
+//    esp_err_t retVal = nvs_get_u8(handle, keyIn, valueOut);
+//    if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
+//    return (retVal == ESP_OK);
+    return 0;
+}
+
+
+bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
+{
+//    if( !isInit ) init();
+//
+//    esp_err_t retVal = nvs_set_u8(handle, keyIn, valueIn);
+//    if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+//    return (retVal == ESP_OK);
     return 0;
 }
 
@@ -365,20 +384,19 @@ bool cxa_nvsManager_erase(const char *const keyIn)
 }
 
 
-bool cxa_nvsManager_commit(void)
-{
+//bool cxa_nvsManager_commit(void)
+//{
 //	if( !isInit ) init();
 //
 //	esp_err_t retVal = nvs_commit(handle);
 //	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "commit error: %d", retVal);
 //	return (retVal == ESP_OK);
-    return 0;
-}
+//}
 
 
 // ******** local function implementations ********
-static void init(void)
-{
+//static void init(void)
+//{
 //	if( isInit ) return;
 //
 //	nvs_flash_init();
@@ -388,4 +406,4 @@ static void init(void)
 //	cxa_logger_init(&logger, "nvsManager");
 //
 //	isInit = true;
-}
+//}

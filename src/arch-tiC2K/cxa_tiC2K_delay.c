@@ -7,7 +7,7 @@
 #include "cxa_delay.h"
 
 // ******** includes ********
-
+#include <device.h>
 
 // ******** local macro definitions ********
 
