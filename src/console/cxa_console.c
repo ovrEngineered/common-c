@@ -16,7 +16,7 @@
 #include <cxa_stringUtils.h>
 #include <string.h>
 
-#ifdef __XC
+#if defined(__XC) || defined(__TI_COMPILER_VERSION__)
 #include <strtok.h>
 #endif
 
@@ -207,7 +207,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 					// we have a matching command...get ready to parse the arguments
 					// (if we have them)
 					cxa_array_t args;
-					cxa_stringUtils_parseResult_t args_raw[currEntry->numArgs];
+					cxa_stringUtils_parseResult_t args_raw[CXA_CONSOLE_MAXNUM_ARGS];
 					if( currEntry->numArgs > 0 ) cxa_array_initStd(&args, args_raw);
 
 					// parse the arguments

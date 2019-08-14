@@ -47,7 +47,13 @@ extern "C" {
 #define PACKSTRUCT( decl ) __pragma( pack(push, 1) ) decl __pragma( pack(pop) )
 #define ALIGNED
 #else 
-#define PACKSTRUCT(a) a PACKED 
+
+#ifdef __TI_COMPILER_VERSION__
+#define PACKSTRUCT(a) a
+#else
+#define PACKSTRUCT(a) a PACKED
+#endif
+
 #endif
 #endif
 
