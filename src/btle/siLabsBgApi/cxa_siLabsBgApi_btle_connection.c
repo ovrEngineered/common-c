@@ -718,7 +718,7 @@ static void stateCb_connResolveService_enter(cxa_stateMachine_t *const smIn, int
 	else
 	{
 		uuidLen = 16 / 8;
-		uuidBytes = &connIn->targetServiceUuid.as16Bit;
+		uuidBytes = (uint8_t*)&connIn->targetServiceUuid.as16Bit;
 	}
 
 	struct gecko_msg_gatt_discover_primary_services_by_uuid_rsp_t* rsp = gecko_cmd_gatt_discover_primary_services_by_uuid(connIn->connHandle, uuidLen, uuidBytes);
@@ -764,7 +764,7 @@ static void stateCb_connResolveChar_enter(cxa_stateMachine_t *const smIn, int pr
 	else
 	{
 		uuidLen = 16 / 8;
-		uuidBytes = &connIn->targetCharacteristicUuid.as16Bit;
+		uuidBytes = (uint8_t*)&connIn->targetCharacteristicUuid.as16Bit;
 	}
 
 	struct gecko_msg_gatt_discover_characteristics_by_uuid_rsp_t* rsp = gecko_cmd_gatt_discover_characteristics_by_uuid(connIn->connHandle, cachedServiceEntry->handle, uuidLen, uuidBytes);
