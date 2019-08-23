@@ -213,6 +213,8 @@ struct cxa_btle_peripheral_deferredOperationEntry
  */
 struct cxa_btle_peripheral
 {
+	bool isReady;
+
 	struct
 	{
 		cxa_btle_peripheral_scm_sendNotification_t sendNotification;

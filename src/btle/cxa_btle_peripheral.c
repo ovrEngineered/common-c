@@ -42,6 +42,7 @@ void cxa_btle_peripheral_init(cxa_btle_peripheral_t *const btlepIn,
 	cxa_assert(btlepIn);
 
 	// save our references and setup our internal state
+	btlepIn->isReady = false;
 	btlepIn->scms.sendNotification = scm_sendNotificationIn;
 	btlepIn->scms.sendDeferredReadResponse = scm_sendDeferredReadResponseIn;
 	btlepIn->scms.sendDeferredWriteResponse = scm_sendDeferredWriteResponseIn;
@@ -80,6 +81,7 @@ void cxa_btle_peripheral_addListener(cxa_btle_peripheral_t *const btlepIn,
 	};
 	cxa_assert(cxa_array_append(&btlepIn->listeners, &newEntry));
 }
+
 
 
 void cxa_btle_peripheral_registerCharacteristicHandler_read(cxa_btle_peripheral_t *const btlepIn,
@@ -217,6 +219,12 @@ void cxa_btle_peripheral_setAdvertisingInfo(cxa_btle_peripheral_t *const btlepIn
 {
 	cxa_assert(btlepIn);
 
+	if( !btlepIn->isReady )
+	{
+		cxa_logger_warn(&btlepIn->logger, "not ready");
+		return;
+	}
+
 	cxa_assert(btlepIn->scms.setAdvertisingInfo);
 	btlepIn->scms.setAdvertisingInfo(btlepIn, advertPeriod_msIn, fbbAdvertDataIn);
 }
@@ -228,6 +236,12 @@ void cxa_btle_peripheral_setAdvertisingInfo_manSpecific(cxa_btle_peripheral_t *c
 														cxa_fixedByteBuffer_t *const fbbManSpecificDataIn)
 {
 	cxa_assert(btlepIn);
+
+	if( !btlepIn->isReady )
+	{
+		cxa_logger_warn(&btlepIn->logger, "not ready");
+		return;
+	}
 
 	cxa_fixedByteBuffer_t fbbAdvertData;
 	uint8_t fbbAdvertData_raw[CXA_BTLE_PERIPHERAL_ADVERT_MAX_SIZE_BYTES];
@@ -275,6 +289,12 @@ void cxa_btle_peripheral_sendNotification_fbb(cxa_btle_peripheral_t *const btlep
 	cxa_assert(charUuidStrIn);
 	cxa_assert(fbb_dataIn);
 
+	if( !btlepIn->isReady )
+	{
+		cxa_logger_warn(&btlepIn->logger, "not ready");
+		return;
+	}
+
 	cxa_assert(btlepIn->scms.sendNotification);
 	btlepIn->scms.sendNotification(btlepIn, serviceUuidStrIn, charUuidStrIn, fbb_dataIn);
 }
@@ -287,6 +307,12 @@ void cxa_btle_peripheral_completeDeferredRead(cxa_btle_peripheral_t *const btlep
 {
 	cxa_assert(btlepIn);
 	cxa_assert(doeIn);
+
+	if( !btlepIn->isReady )
+	{
+		cxa_logger_warn(&btlepIn->logger, "not ready");
+		return;
+	}
 
 	cxa_btle_uuid_string_t serviceUuidStr, charUuidStr;
 	cxa_btle_uuid_toString(&doeIn->serviceUuid, &serviceUuidStr);
@@ -306,6 +332,12 @@ void cxa_btle_peripheral_completeDeferredWrite(cxa_btle_peripheral_t *const btle
 	cxa_assert(btlepIn);
 	cxa_assert(doeIn);
 
+	if( !btlepIn->isReady )
+	{
+		cxa_logger_warn(&btlepIn->logger, "not ready");
+		return;
+	}
+
 	cxa_btle_uuid_string_t serviceUuidStr, charUuidStr;
 	cxa_btle_uuid_toString(&doeIn->serviceUuid, &serviceUuidStr);
 	cxa_btle_uuid_toString(&doeIn->charUuid, &charUuidStr);
@@ -320,6 +352,8 @@ void cxa_btle_peripheral_completeDeferredWrite(cxa_btle_peripheral_t *const btle
 void cxa_btle_peripheral_notify_onBecomesReady(cxa_btle_peripheral_t *const btlepIn)
 {
 	cxa_assert(btlepIn);
+
+	btlepIn->isReady = true;
 
 	cxa_array_iterate(&btlepIn->listeners, currListener, cxa_btle_peripheral_listener_entry_t)
 	{
