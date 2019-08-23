@@ -2804,11 +2804,11 @@ static inline struct gecko_msg_dfu_flash_set_address_rsp_t* gecko_cmd_dfu_flash_
 
 static inline struct gecko_msg_dfu_flash_upload_rsp_t* gecko_cmd_dfu_flash_upload(uint8 data_len, const uint8* data_data)
 {
-    if ((uint16_t)data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
-    {
-        gecko_rsp_msg->data.rsp_dfu_flash_upload.result = bg_err_command_too_long;
-        return &gecko_rsp_msg->data.rsp_dfu_flash_upload;
-    }
+//    if ((uint16_t)data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
+//    {
+//        gecko_rsp_msg->data.rsp_dfu_flash_upload.result = bg_err_command_too_long;
+//        return &gecko_rsp_msg->data.rsp_dfu_flash_upload;
+//    }
 
     
     gecko_cmd_msg->data.cmd_dfu_flash_upload.data.len=data_len;
@@ -3121,11 +3121,11 @@ static inline struct gecko_msg_system_get_counters_rsp_t* gecko_cmd_system_get_c
 
 static inline struct gecko_msg_system_data_buffer_write_rsp_t* gecko_cmd_system_data_buffer_write(uint8 data_len, const uint8* data_data)
 {
-    if ((uint16_t)data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
-    {
-        gecko_rsp_msg->data.rsp_system_data_buffer_write.result = bg_err_command_too_long;
-        return &gecko_rsp_msg->data.rsp_system_data_buffer_write;
-    }
+//    if ((uint16_t)data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
+//    {
+//        gecko_rsp_msg->data.rsp_system_data_buffer_write.result = bg_err_command_too_long;
+//        return &gecko_rsp_msg->data.rsp_system_data_buffer_write;
+//    }
 
     
     gecko_cmd_msg->data.cmd_system_data_buffer_write.data.len=data_len;
@@ -4096,11 +4096,11 @@ static inline struct gecko_msg_le_gap_start_discovery_rsp_t* gecko_cmd_le_gap_st
 
 static inline struct gecko_msg_le_gap_set_data_channel_classification_rsp_t* gecko_cmd_le_gap_set_data_channel_classification(uint8 channel_map_len, const uint8* channel_map_data)
 {
-    if ((uint16_t)channel_map_len > BGLIB_MSG_MAX_PAYLOAD - 1)
-    {
-        gecko_rsp_msg->data.rsp_le_gap_set_data_channel_classification.result = bg_err_command_too_long;
-        return &gecko_rsp_msg->data.rsp_le_gap_set_data_channel_classification;
-    }
+//    if ((uint16_t)channel_map_len > BGLIB_MSG_MAX_PAYLOAD - 1)
+//    {
+//        gecko_rsp_msg->data.rsp_le_gap_set_data_channel_classification.result = bg_err_command_too_long;
+//        return &gecko_rsp_msg->data.rsp_le_gap_set_data_channel_classification;
+//    }
 
     
     gecko_cmd_msg->data.cmd_le_gap_set_data_channel_classification.channel_map.len=channel_map_len;
@@ -6144,11 +6144,11 @@ static inline struct gecko_msg_sm_passkey_confirm_rsp_t* gecko_cmd_sm_passkey_co
 
 static inline struct gecko_msg_sm_set_oob_data_rsp_t* gecko_cmd_sm_set_oob_data(uint8 oob_data_len, const uint8* oob_data_data)
 {
-    if ((uint16_t)oob_data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
-    {
-        gecko_rsp_msg->data.rsp_sm_set_oob_data.result = bg_err_command_too_long;
-        return &gecko_rsp_msg->data.rsp_sm_set_oob_data;
-    }
+//    if ((uint16_t)oob_data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
+//    {
+//        gecko_rsp_msg->data.rsp_sm_set_oob_data.result = bg_err_command_too_long;
+//        return &gecko_rsp_msg->data.rsp_sm_set_oob_data;
+//    }
 
     
     gecko_cmd_msg->data.cmd_sm_set_oob_data.oob_data.len=oob_data_len;
@@ -6286,11 +6286,11 @@ static inline struct gecko_msg_sm_use_sc_oob_rsp_t* gecko_cmd_sm_use_sc_oob(uint
 
 static inline struct gecko_msg_sm_set_sc_remote_oob_data_rsp_t* gecko_cmd_sm_set_sc_remote_oob_data(uint8 oob_data_len, const uint8* oob_data_data)
 {
-    if ((uint16_t)oob_data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
-    {
-        gecko_rsp_msg->data.rsp_sm_set_sc_remote_oob_data.result = bg_err_command_too_long;
-        return &gecko_rsp_msg->data.rsp_sm_set_sc_remote_oob_data;
-    }
+//    if ((uint16_t)oob_data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
+//    {
+//        gecko_rsp_msg->data.rsp_sm_set_sc_remote_oob_data.result = bg_err_command_too_long;
+//        return &gecko_rsp_msg->data.rsp_sm_set_sc_remote_oob_data;
+//    }
 
     
     gecko_cmd_msg->data.cmd_sm_set_sc_remote_oob_data.oob_data.len=oob_data_len;
@@ -7277,11 +7277,11 @@ static inline struct gecko_msg_cte_receiver_clear_dtm_parameters_rsp_t* gecko_cm
 
 static inline struct gecko_msg_user_message_to_target_rsp_t* gecko_cmd_user_message_to_target(uint8 data_len, const uint8* data_data)
 {
-    if ((uint16_t)data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
-    {
-        gecko_rsp_msg->data.rsp_user_message_to_target.result = bg_err_command_too_long;
-        return &gecko_rsp_msg->data.rsp_user_message_to_target;
-    }
+//    if ((uint16_t)data_len > BGLIB_MSG_MAX_PAYLOAD - 1)
+//    {
+//        gecko_rsp_msg->data.rsp_user_message_to_target.result = bg_err_command_too_long;
+//        return &gecko_rsp_msg->data.rsp_user_message_to_target;
+//    }
 
     
     gecko_cmd_msg->data.cmd_user_message_to_target.data.len=data_len;
