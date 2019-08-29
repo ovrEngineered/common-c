@@ -21,10 +21,6 @@
 
 
 // ******** local function prototypes ********
-static cxa_btle_peripheral_charEntry_t* getCharEntry(cxa_btle_peripheral_t *const btlepIn,
-													 cxa_btle_uuid_t *const serviceUuidIn,
-													 cxa_btle_uuid_t *const charUuidIn);
-
 static cxa_btle_peripheral_deferredOperationEntry_t* reserveDeferredOpEntry(cxa_btle_peripheral_t *const btlepIn);
 
 
@@ -93,17 +89,12 @@ void cxa_btle_peripheral_registerCharacteristicHandler_read(cxa_btle_peripheral_
 	cxa_assert(serviceUuidStrIn);
 	cxa_assert(charUuidStrIn);
 
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
-
-	cxa_btle_peripheral_charEntry_t* targetEntry = getCharEntry(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_btle_peripheral_charEntry_t* targetEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( targetEntry == NULL ) targetEntry = cxa_array_append_empty(&btlepIn->charEntries);
 	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
 
-	cxa_btle_uuid_initFromUuid(&targetEntry->serviceUuid, &tmpServiceUuid, false);
-	cxa_btle_uuid_initFromUuid(&targetEntry->charUuid, &tmpCharUuid, false);
+	targetEntry->serviceUuid_str = serviceUuidStrIn;
+	targetEntry->charUuid_str = charUuidStrIn;
 	targetEntry->cbs.onReadRequest = cb_onReadIn;
 	targetEntry->cbs.onDeferredReadRequest = NULL;
 	targetEntry->cbs.userVar_read = userVarIn;
@@ -119,17 +110,12 @@ void cxa_btle_peripheral_registerCharacteristicHandler_deferredRead(cxa_btle_per
 	cxa_assert(serviceUuidStrIn);
 	cxa_assert(charUuidStrIn);
 
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
-
-	cxa_btle_peripheral_charEntry_t* targetEntry = getCharEntry(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_btle_peripheral_charEntry_t* targetEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( targetEntry == NULL ) targetEntry = cxa_array_append_empty(&btlepIn->charEntries);
 	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
 
-	cxa_btle_uuid_initFromUuid(&targetEntry->serviceUuid, &tmpServiceUuid, false);
-	cxa_btle_uuid_initFromUuid(&targetEntry->charUuid, &tmpCharUuid, false);
+	targetEntry->serviceUuid_str = serviceUuidStrIn;
+	targetEntry->charUuid_str = charUuidStrIn;
 	targetEntry->cbs.onReadRequest = NULL;
 	targetEntry->cbs.onDeferredReadRequest = cb_onReadIn;
 	targetEntry->cbs.userVar_read = userVarIn;
@@ -145,17 +131,12 @@ void cxa_btle_peripheral_registerCharacteristicHandler_write(cxa_btle_peripheral
 	cxa_assert(serviceUuidStrIn);
 	cxa_assert(charUuidStrIn);
 
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
-
-	cxa_btle_peripheral_charEntry_t* targetEntry = getCharEntry(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_btle_peripheral_charEntry_t* targetEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( targetEntry == NULL ) targetEntry = cxa_array_append_empty(&btlepIn->charEntries);
 	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
 
-	cxa_btle_uuid_initFromUuid(&targetEntry->serviceUuid, &tmpServiceUuid, false);
-	cxa_btle_uuid_initFromUuid(&targetEntry->charUuid, &tmpCharUuid, false);
+	targetEntry->serviceUuid_str = serviceUuidStrIn;
+	targetEntry->charUuid_str = charUuidStrIn;
 	targetEntry->cbs.onWriteRequest = cb_onWriteIn;
 	targetEntry->cbs.onDeferredWriteRequest = NULL;
 	targetEntry->cbs.userVar_write = userVarIn;
@@ -171,17 +152,12 @@ void cxa_btle_peripheral_registerCharacteristicHandler_deferredWrite(cxa_btle_pe
 	cxa_assert(serviceUuidStrIn);
 	cxa_assert(charUuidStrIn);
 
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
-
-	cxa_btle_peripheral_charEntry_t* targetEntry = getCharEntry(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_btle_peripheral_charEntry_t* targetEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( targetEntry == NULL ) targetEntry = cxa_array_append_empty(&btlepIn->charEntries);
 	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
 
-	cxa_btle_uuid_initFromUuid(&targetEntry->serviceUuid, &tmpServiceUuid, false);
-	cxa_btle_uuid_initFromUuid(&targetEntry->charUuid, &tmpCharUuid, false);
+	targetEntry->serviceUuid_str = serviceUuidStrIn;
+	targetEntry->charUuid_str = charUuidStrIn;
 	targetEntry->cbs.onWriteRequest = NULL;
 	targetEntry->cbs.onDeferredWriteRequest = cb_onWriteIn;
 	targetEntry->cbs.userVar_write = userVarIn;
@@ -197,17 +173,12 @@ void cxa_btle_peripheral_registerSubscriptionChangedHandler(cxa_btle_peripheral_
 	cxa_assert(serviceUuidStrIn);
 	cxa_assert(charUuidStrIn);
 
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
-
-	cxa_btle_peripheral_charEntry_t* targetEntry = getCharEntry(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_btle_peripheral_charEntry_t* targetEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( targetEntry == NULL ) targetEntry = cxa_array_append_empty(&btlepIn->charEntries);
 	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
 
-	cxa_btle_uuid_initFromUuid(&targetEntry->serviceUuid, &tmpServiceUuid, false);
-	cxa_btle_uuid_initFromUuid(&targetEntry->charUuid, &tmpCharUuid, false);
+	targetEntry->serviceUuid_str = serviceUuidStrIn;
+	targetEntry->charUuid_str = charUuidStrIn;
 	targetEntry->cbs.onSubscriptionChanged = cb_onSubChangedIn;
 	targetEntry->cbs.userVar_subChanged = userVarIn;
 }
@@ -314,11 +285,7 @@ void cxa_btle_peripheral_completeDeferredRead(cxa_btle_peripheral_t *const btlep
 		return;
 	}
 
-	cxa_btle_uuid_string_t serviceUuidStr, charUuidStr;
-	cxa_btle_uuid_toString(&doeIn->serviceUuid, &serviceUuidStr);
-	cxa_btle_uuid_toString(&doeIn->charUuid, &charUuidStr);
-
-	btlepIn->scms.sendDeferredReadResponse(btlepIn, &doeIn->sourceMac, serviceUuidStr.str, charUuidStr.str, retValIn, fbbReadDataIn);
+	btlepIn->scms.sendDeferredReadResponse(btlepIn, &doeIn->sourceMac, doeIn->serviceUuid_str, doeIn->charUuid_str, retValIn, fbbReadDataIn);
 
 	// free our deferred operation entry
 	doeIn->isInUse = false;
@@ -338,11 +305,7 @@ void cxa_btle_peripheral_completeDeferredWrite(cxa_btle_peripheral_t *const btle
 		return;
 	}
 
-	cxa_btle_uuid_string_t serviceUuidStr, charUuidStr;
-	cxa_btle_uuid_toString(&doeIn->serviceUuid, &serviceUuidStr);
-	cxa_btle_uuid_toString(&doeIn->charUuid, &charUuidStr);
-
-	btlepIn->scms.sendDeferredWriteResponse(btlepIn, &doeIn->sourceMac, serviceUuidStr.str, charUuidStr.str, retValIn);
+	btlepIn->scms.sendDeferredWriteResponse(btlepIn, &doeIn->sourceMac, doeIn->serviceUuid_str, doeIn->charUuid_str, retValIn);
 
 	// free our deferred operation entry
 	doeIn->isInUse = false;
@@ -410,15 +373,15 @@ void cxa_btle_peripheral_notify_connectionClosed(cxa_btle_peripheral_t *const bt
 
 bool cxa_btle_peripheral_notify_readRequest(cxa_btle_peripheral_t *const btlepIn,
 											cxa_eui48_t *const sourceMacAddrIn,
-											cxa_btle_uuid_t *const serviceUuidIn,
-											cxa_btle_uuid_t *const charUuidIn,
+											const char *const serviceUuidStrIn,
+											const char *const charUuidStrIn,
 											cxa_fixedByteBuffer_t *const dataOut,
 											cxa_btle_peripheral_readRetVal_t *const retValOut)
 {
 	cxa_assert(btlepIn);
 	cxa_assert(sourceMacAddrIn);
-	cxa_assert(serviceUuidIn);
-	cxa_assert(charUuidIn);
+	cxa_assert(serviceUuidStrIn);
+	cxa_assert(charUuidStrIn);
 	cxa_assert(dataOut);
 	cxa_assert(retValOut);
 
@@ -426,7 +389,7 @@ bool cxa_btle_peripheral_notify_readRequest(cxa_btle_peripheral_t *const btlepIn
 	cxa_btle_peripheral_readRetVal_t retVal = CXA_BTLE_PERIPHERAL_READRET_ATTRIBUTE_NOT_FOUND;
 
 	// check our registered read requests first
-	cxa_btle_peripheral_charEntry_t* charEntry = getCharEntry(btlepIn, serviceUuidIn, charUuidIn);
+	cxa_btle_peripheral_charEntry_t* charEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( charEntry != NULL )
 	{
 		if( charEntry->cbs.onReadRequest != NULL )
@@ -441,8 +404,8 @@ bool cxa_btle_peripheral_notify_readRequest(cxa_btle_peripheral_t *const btlepIn
 			{
 				// save our deferred information
 				cxa_eui48_initFromEui48(&doe->sourceMac, sourceMacAddrIn);
-				cxa_btle_uuid_initFromUuid(&doe->serviceUuid, serviceUuidIn, false);
-				cxa_btle_uuid_initFromUuid(&doe->charUuid, charUuidIn, false);
+				doe->serviceUuid_str = serviceUuidStrIn;
+				doe->charUuid_str = charUuidStrIn;
 
 				// call our callback
 				retVal = charEntry->cbs.onDeferredReadRequest(doe, charEntry->cbs.userVar_read);
@@ -467,15 +430,15 @@ bool cxa_btle_peripheral_notify_readRequest(cxa_btle_peripheral_t *const btlepIn
 
 bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepIn,
 											 cxa_eui48_t *const sourceMacAddrIn,
-											 cxa_btle_uuid_t *const serviceUuidIn,
-											 cxa_btle_uuid_t *const charUuidIn,
+											 const char *const serviceUuidStrIn,
+											 const char *const charUuidStrIn,
 											 cxa_fixedByteBuffer_t *const dataIn,
 											 cxa_btle_peripheral_writeRetVal_t *const retValOut)
 {
 	cxa_assert(btlepIn);
 	cxa_assert(sourceMacAddrIn);
-	cxa_assert(serviceUuidIn);
-	cxa_assert(charUuidIn);
+	cxa_assert(serviceUuidStrIn);
+	cxa_assert(charUuidStrIn);
 	cxa_assert(dataIn);
 	cxa_assert(retValOut);
 
@@ -483,7 +446,7 @@ bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepI
 	cxa_btle_peripheral_writeRetVal_t retVal = CXA_BTLE_PERIPHERAL_WRITERET_ATTRIBUTE_NOT_FOUND;
 
 	// check our registered write requests first
-	cxa_btle_peripheral_charEntry_t* charEntry = getCharEntry(btlepIn, serviceUuidIn, charUuidIn);
+	cxa_btle_peripheral_charEntry_t* charEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( charEntry != NULL )
 	{
 		if( charEntry->cbs.onWriteRequest != NULL )
@@ -498,8 +461,8 @@ bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepI
 			{
 				// save our deferred information
 				cxa_eui48_initFromEui48(&doe->sourceMac, sourceMacAddrIn);
-				cxa_btle_uuid_initFromUuid(&doe->serviceUuid, serviceUuidIn, false);
-				cxa_btle_uuid_initFromUuid(&doe->charUuid, charUuidIn, false);
+				doe->serviceUuid_str = serviceUuidStrIn;
+				doe->charUuid_str = charUuidStrIn;
 
 				// call our callback
 				retVal = charEntry->cbs.onDeferredWriteRequest(doe, dataIn, charEntry->cbs.userVar_write);
@@ -523,16 +486,16 @@ bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepI
 
 
 void cxa_btle_peripheral_notify_subscriptionChanged(cxa_btle_peripheral_t *const btlepIn,
-													cxa_btle_uuid_t *const serviceUuidIn,
-													cxa_btle_uuid_t *const charUuidIn,
+													const char *const serviceUuidStrIn,
+													const char *const charUuidStrIn,
 													bool isSubscribedIn)
 {
 	cxa_assert(btlepIn);
-	cxa_assert(serviceUuidIn);
-	cxa_assert(charUuidIn);
+	cxa_assert(serviceUuidStrIn);
+	cxa_assert(charUuidStrIn);
 
 	// check our registered write requests first
-	cxa_btle_peripheral_charEntry_t* charEntry = getCharEntry(btlepIn, serviceUuidIn, charUuidIn);
+	cxa_btle_peripheral_charEntry_t* charEntry = cxa_btle_peripheral_getCharEntry(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( charEntry != NULL )
 	{
 		if( charEntry->cbs.onSubscriptionChanged != NULL ) charEntry->cbs.onSubscriptionChanged(isSubscribedIn, charEntry->cbs.userVar_subChanged);
@@ -540,19 +503,28 @@ void cxa_btle_peripheral_notify_subscriptionChanged(cxa_btle_peripheral_t *const
 }
 
 
-// ******** local function implementations ********
-static cxa_btle_peripheral_charEntry_t* getCharEntry(cxa_btle_peripheral_t *const btlepIn,
-													 cxa_btle_uuid_t *const serviceUuidIn,
-													 cxa_btle_uuid_t *const charUuidIn)
+cxa_btle_peripheral_charEntry_t* cxa_btle_peripheral_getCharEntry(cxa_btle_peripheral_t *const btlepIn,
+		 	 	 	 	 	 	 	 	 	 	 	 	 	 	  const char *const serviceUuidStrIn,
+																  const char *const charUuidStrIn)
 {
 	cxa_assert(btlepIn);
 
+	cxa_btle_uuid_t targetServiceUuid;
+	cxa_btle_uuid_t targetCharUuid;
+	if( !cxa_btle_uuid_initFromString(&targetServiceUuid, serviceUuidStrIn) ||
+		!cxa_btle_uuid_initFromString(&targetCharUuid, charUuidStrIn) ) return NULL;
+
+	cxa_btle_uuid_t currServiceUuid;
+	cxa_btle_uuid_t currCharUuid;
 	cxa_array_iterate(&btlepIn->charEntries, currEntry, cxa_btle_peripheral_charEntry_t)
 	{
 		if( currEntry == NULL ) continue;
 
-		if( cxa_btle_uuid_isEqual(&currEntry->serviceUuid, serviceUuidIn) &&
-			cxa_btle_uuid_isEqual(&currEntry->charUuid, charUuidIn) )
+		if( !cxa_btle_uuid_initFromString(&currServiceUuid, currEntry->serviceUuid_str) ||
+			!cxa_btle_uuid_initFromString(&currCharUuid, currEntry->charUuid_str) ) continue;
+
+		if( cxa_btle_uuid_isEqual(&targetServiceUuid, &currServiceUuid) &&
+			cxa_btle_uuid_isEqual(&targetCharUuid, &currCharUuid) )
 		{
 			return currEntry;
 		}
@@ -562,6 +534,7 @@ static cxa_btle_peripheral_charEntry_t* getCharEntry(cxa_btle_peripheral_t *cons
 }
 
 
+// ******** local function implementations ********
 static cxa_btle_peripheral_deferredOperationEntry_t* reserveDeferredOpEntry(cxa_btle_peripheral_t *const btlepIn)
 {
 	cxa_assert(btlepIn);

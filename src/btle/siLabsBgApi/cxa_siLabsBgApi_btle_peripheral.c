@@ -25,8 +25,8 @@
 
 // ******** local function prototypes ********
 static cxa_siLabsBgApi_btle_handleCharMapEntry_t* getMappingEntry_byUuid(cxa_siLabsBgApi_btle_peripheral_t *const btlepIn,
-																		 cxa_btle_uuid_t* serviceUuidIn,
-																		 cxa_btle_uuid_t* charUuidIn);
+																		 const char *const serviceUuidStrIn,
+																		 const char *const charUuidStrIn);
 
 static cxa_siLabsBgApi_btle_handleCharMapEntry_t* getMappingEntry_byHandle(cxa_siLabsBgApi_btle_peripheral_t *const btlepIn,
 																		   uint16_t charHandleIn);
@@ -68,30 +68,16 @@ void cxa_siLabsBgApi_btle_peripheral_registerHandle(cxa_siLabsBgApi_btle_periphe
 {
 	cxa_assert(btlepIn);
 
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
-
-	cxa_siLabsBgApi_btle_handleCharMapEntry_t* targetEntry = getMappingEntry_byUuid(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_siLabsBgApi_btle_handleCharMapEntry_t* targetEntry = getMappingEntry_byUuid(btlepIn, serviceUuidStrIn, charUuidStrIn);
 	if( targetEntry == NULL )
 	{
 		targetEntry = cxa_array_append_empty(&btlepIn->handleCharMap);
 		targetEntry->charEntry = NULL;
 
 		// get a reference to the char entry in our parent's list
-		cxa_array_iterate(&btlepIn->super.charEntries, currEntry, cxa_btle_peripheral_charEntry_t)
-		{
-			if( currEntry == NULL ) continue;
-
-			if( cxa_btle_uuid_isEqual(&currEntry->serviceUuid, &tmpServiceUuid) &&
-				cxa_btle_uuid_isEqual(&currEntry->charUuid, &tmpCharUuid) )
-			{
-				targetEntry->charEntry = currEntry;
-				break;
-			}
-		}
-		cxa_assert_msg(targetEntry, "handler not registered for gatt handle");
+		cxa_btle_peripheral_charEntry_t* targetParentCharEntry = cxa_btle_peripheral_getCharEntry(&btlepIn->super, serviceUuidStrIn, charUuidStrIn);
+		cxa_assert_msg(targetParentCharEntry, "handler not registered for gatt handle");
+		targetEntry->charEntry = targetParentCharEntry;
 	}
 	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
 
@@ -160,7 +146,7 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 				cxa_fixedByteBuffer_initStd(&tmpFbb, tmpFbb_raw);
 
 				cxa_btle_peripheral_readRetVal_t retVal;
-				if( cxa_btle_peripheral_notify_readRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->charEntry->serviceUuid, &charMapEntry->charEntry->charUuid, &tmpFbb, &retVal) )
+				if( cxa_btle_peripheral_notify_readRequest(&btlepIn->super, &macMapEntry->macAddress, charMapEntry->charEntry->serviceUuid_str, charMapEntry->charEntry->charUuid_str, &tmpFbb, &retVal) )
 				{
 					// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
 					gecko_cmd_gatt_server_send_user_read_response(evt->data.evt_gatt_server_user_read_request.connection, charMapEntry->handle, (uint8_t)retVal, cxa_fixedByteBuffer_getSize_bytes(&tmpFbb), cxa_fixedByteBuffer_get_pointerToStartOfData(&tmpFbb));
@@ -181,7 +167,7 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 														  evt->data.evt_gatt_server_user_write_request.value.len);
 
 				cxa_btle_peripheral_writeRetVal_t retVal;
-				if( cxa_btle_peripheral_notify_writeRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->charEntry->serviceUuid, &charMapEntry->charEntry->charUuid, &tmpFbb, &retVal) )
+				if( cxa_btle_peripheral_notify_writeRequest(&btlepIn->super, &macMapEntry->macAddress, charMapEntry->charEntry->serviceUuid_str, charMapEntry->charEntry->charUuid_str, &tmpFbb, &retVal) )
 				{
 					// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
 					gecko_cmd_gatt_server_send_user_write_response(evt->data.evt_gatt_server_user_write_request.connection, evt->data.evt_gatt_server_user_write_request.characteristic, (uint8_t)retVal);
@@ -195,7 +181,7 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 			cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byHandle(btlepIn, evt->data.evt_gatt_server_user_write_request.characteristic);
 			if( charMapEntry != NULL )
 			{
-				cxa_btle_peripheral_notify_subscriptionChanged(&btlepIn->super, &charMapEntry->charEntry->serviceUuid, &charMapEntry->charEntry->charUuid, (evt->data.evt_gatt_server_characteristic_status.client_config_flags != 0));
+				cxa_btle_peripheral_notify_subscriptionChanged(&btlepIn->super, charMapEntry->charEntry->serviceUuid_str, charMapEntry->charEntry->charUuid_str, (evt->data.evt_gatt_server_characteristic_status.client_config_flags != 0));
 			}
 			break;
 		}
@@ -207,21 +193,32 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 
 // ******** local function implementations ********
 static cxa_siLabsBgApi_btle_handleCharMapEntry_t* getMappingEntry_byUuid(cxa_siLabsBgApi_btle_peripheral_t *const btlepIn,
-																 	 	 cxa_btle_uuid_t* serviceUuidIn,
-																		 cxa_btle_uuid_t* charUuidIn)
+																		 const char *const serviceUuidStrIn,
+																		 const char *const charUuidStrIn)
 {
 	cxa_assert(btlepIn);
 
+	cxa_btle_uuid_t targetServiceUuid;
+	cxa_btle_uuid_t targetCharUuid;
+	if( !cxa_btle_uuid_initFromString(&targetServiceUuid, serviceUuidStrIn) ||
+		!cxa_btle_uuid_initFromString(&targetCharUuid, charUuidStrIn) ) return NULL;
+
+	cxa_btle_uuid_t currServiceUuid;
+	cxa_btle_uuid_t currCharUuid;
 	cxa_array_iterate(&btlepIn->handleCharMap, currEntry, cxa_siLabsBgApi_btle_handleCharMapEntry_t)
 	{
 		if( currEntry == NULL ) continue;
 
-		if( cxa_btle_uuid_isEqual(&currEntry->charEntry->serviceUuid, serviceUuidIn) &&
-			cxa_btle_uuid_isEqual(&currEntry->charEntry->charUuid, charUuidIn) )
+		if( !cxa_btle_uuid_initFromString(&currServiceUuid, currEntry->charEntry->serviceUuid_str) ||
+			!cxa_btle_uuid_initFromString(&currCharUuid, currEntry->charEntry->charUuid_str) ) continue;
+
+		if( cxa_btle_uuid_isEqual(&targetServiceUuid, &currServiceUuid) &&
+			cxa_btle_uuid_isEqual(&targetCharUuid, &currCharUuid) )
 		{
 			return currEntry;
 		}
 	}
+
 	// if we made it here, we couldn't find the target entry
 	return NULL;
 }
@@ -280,13 +277,7 @@ static void scm_sendNotification(cxa_btle_peripheral_t *const superIn, const cha
 	cxa_siLabsBgApi_btle_peripheral_t *const btlepIn = (cxa_siLabsBgApi_btle_peripheral_t *const)superIn;
 	cxa_assert(btlepIn);
 
-	// convert our uuids
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, characteristicUuidStrIn));
-
-	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, serviceUuidStrIn, characteristicUuidStrIn);
 	if( charMapEntry != NULL )
 	{
 		// 0xFF is all devices
@@ -300,13 +291,7 @@ static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, c
 	cxa_siLabsBgApi_btle_peripheral_t *const btlepIn = (cxa_siLabsBgApi_btle_peripheral_t *const)superIn;
 	cxa_assert(btlepIn);
 
-	// convert our uuids
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, characteristicUuidStrIn));
-
-	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, serviceUuidStrIn, characteristicUuidStrIn);
 	cxa_siLabsBgApi_btle_handleMacMapEntry_t* macMapEntry = getHandleMacEntry_byMac(btlepIn, sourceAddrIn);
 	if( (charMapEntry != NULL) && (macMapEntry != NULL) )
 	{
@@ -321,13 +306,7 @@ static void scm_sendDeferredWriteResponse(cxa_btle_peripheral_t *const superIn, 
 	cxa_siLabsBgApi_btle_peripheral_t *const btlepIn = (cxa_siLabsBgApi_btle_peripheral_t *const)superIn;
 	cxa_assert(btlepIn);
 
-	// convert our uuids
-	cxa_btle_uuid_t tmpServiceUuid;
-	cxa_btle_uuid_t tmpCharUuid;
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpServiceUuid, serviceUuidStrIn));
-	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, characteristicUuidStrIn));
-
-	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, &tmpServiceUuid, &tmpCharUuid);
+	cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byUuid(btlepIn, serviceUuidStrIn, characteristicUuidStrIn);
 	cxa_siLabsBgApi_btle_handleMacMapEntry_t* macMapEntry = getHandleMacEntry_byMac(btlepIn, sourceAddrIn);
 	if( (charMapEntry != NULL) && (macMapEntry != NULL) )
 	{

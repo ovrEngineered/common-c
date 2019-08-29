@@ -175,8 +175,8 @@ typedef struct
  */
 typedef struct
 {
-	cxa_btle_uuid_t serviceUuid;
-	cxa_btle_uuid_t charUuid;
+	const char* serviceUuid_str;
+	const char* charUuid_str;
 
 	struct
 	{
@@ -203,8 +203,8 @@ struct cxa_btle_peripheral_deferredOperationEntry
 	bool isInUse;
 
 	cxa_eui48_t sourceMac;
-	cxa_btle_uuid_t serviceUuid;
-	cxa_btle_uuid_t charUuid;
+	const char* serviceUuid_str;
+	const char* charUuid_str;
 };
 
 
@@ -385,8 +385,8 @@ void cxa_btle_peripheral_notify_connectionClosed(cxa_btle_peripheral_t *const bt
  */
 bool cxa_btle_peripheral_notify_readRequest(cxa_btle_peripheral_t *const btlepIn,
 											cxa_eui48_t *const sourceMacAddrIn,
-											cxa_btle_uuid_t *const serviceUuidIn,
-											cxa_btle_uuid_t *const charUuidIn,
+											const char *const serviceUuidStrIn,
+											const char *const charUuidStrIn,
 											cxa_fixedByteBuffer_t *const dataOut,
 											cxa_btle_peripheral_readRetVal_t *const retValOut);
 
@@ -397,8 +397,8 @@ bool cxa_btle_peripheral_notify_readRequest(cxa_btle_peripheral_t *const btlepIn
  */
 bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepIn,
 											 cxa_eui48_t *const sourceMacAddrIn,
-											 cxa_btle_uuid_t *const serviceUuidIn,
-											 cxa_btle_uuid_t *const charUuidIn,
+											 const char *const serviceUuidStrIn,
+											 const char *const charUuidStrIn,
 											 cxa_fixedByteBuffer_t *const dataIn,
 											 cxa_btle_peripheral_writeRetVal_t *const retValOut);
 
@@ -406,8 +406,15 @@ bool cxa_btle_peripheral_notify_writeRequest(cxa_btle_peripheral_t *const btlepI
  * @protected
  */
 void cxa_btle_peripheral_notify_subscriptionChanged(cxa_btle_peripheral_t *const btlepIn,
-													cxa_btle_uuid_t *const serviceUuidIn,
-													cxa_btle_uuid_t *const charUuidIn,
+													const char *const serviceUuidStrIn,
+													const char *const charUuidStrIn,
 													bool isSubscribedIn);
+
+/**
+ * @protected
+ */
+cxa_btle_peripheral_charEntry_t* cxa_btle_peripheral_getCharEntry(cxa_btle_peripheral_t *const btlepIn,
+		 	 	 	 	 	 	 	 	 	 	 	 	 	 	  const char *const serviceUuidStrIn,
+																  const char *const charUuidStrIn);
 
 #endif
