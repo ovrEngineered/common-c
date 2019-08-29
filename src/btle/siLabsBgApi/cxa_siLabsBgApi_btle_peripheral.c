@@ -74,11 +74,27 @@ void cxa_siLabsBgApi_btle_peripheral_registerHandle(cxa_siLabsBgApi_btle_periphe
 	cxa_assert(cxa_btle_uuid_initFromString(&tmpCharUuid, charUuidStrIn));
 
 	cxa_siLabsBgApi_btle_handleCharMapEntry_t* targetEntry = getMappingEntry_byUuid(btlepIn, &tmpServiceUuid, &tmpCharUuid);
-	if( targetEntry == NULL ) targetEntry = cxa_array_append_empty(&btlepIn->handleCharMap);
+	if( targetEntry == NULL )
+	{
+		targetEntry = cxa_array_append_empty(&btlepIn->handleCharMap);
+		targetEntry->charEntry = NULL;
+
+		// get a reference to the char entry in our parent's list
+		cxa_array_iterate(&btlepIn->super.charEntries, currEntry, cxa_btle_peripheral_charEntry_t)
+		{
+			if( currEntry == NULL ) continue;
+
+			if( cxa_btle_uuid_isEqual(&currEntry->serviceUuid, &tmpServiceUuid) &&
+				cxa_btle_uuid_isEqual(&currEntry->charUuid, &tmpCharUuid) )
+			{
+				targetEntry->charEntry = currEntry;
+				break;
+			}
+		}
+		cxa_assert_msg(targetEntry, "handler not registered for gatt handle");
+	}
 	cxa_assert_msg(targetEntry, "increase CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES");
 
-	cxa_btle_uuid_initFromUuid(&targetEntry->serviceUuid, &tmpServiceUuid, false);
-	cxa_btle_uuid_initFromUuid(&targetEntry->charUuid, &tmpCharUuid, false);
 	targetEntry->handle = handleIn;
 }
 
@@ -144,7 +160,7 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 				cxa_fixedByteBuffer_initStd(&tmpFbb, tmpFbb_raw);
 
 				cxa_btle_peripheral_readRetVal_t retVal;
-				if( cxa_btle_peripheral_notify_readRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->serviceUuid, &charMapEntry->charUuid, &tmpFbb, &retVal) )
+				if( cxa_btle_peripheral_notify_readRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->charEntry->serviceUuid, &charMapEntry->charEntry->charUuid, &tmpFbb, &retVal) )
 				{
 					// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
 					gecko_cmd_gatt_server_send_user_read_response(evt->data.evt_gatt_server_user_read_request.connection, charMapEntry->handle, (uint8_t)retVal, cxa_fixedByteBuffer_getSize_bytes(&tmpFbb), cxa_fixedByteBuffer_get_pointerToStartOfData(&tmpFbb));
@@ -165,7 +181,7 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 														  evt->data.evt_gatt_server_user_write_request.value.len);
 
 				cxa_btle_peripheral_writeRetVal_t retVal;
-				if( cxa_btle_peripheral_notify_writeRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->serviceUuid, &charMapEntry->charUuid, &tmpFbb, &retVal) )
+				if( cxa_btle_peripheral_notify_writeRequest(&btlepIn->super, &macMapEntry->macAddress, &charMapEntry->charEntry->serviceUuid, &charMapEntry->charEntry->charUuid, &tmpFbb, &retVal) )
 				{
 					// I know the last parameter is a weird cast and loses precision...it's just how the BGAPI is written
 					gecko_cmd_gatt_server_send_user_write_response(evt->data.evt_gatt_server_user_write_request.connection, evt->data.evt_gatt_server_user_write_request.characteristic, (uint8_t)retVal);
@@ -179,7 +195,7 @@ bool cxa_siLabsBgApi_btle_peripheral_handleBgEvent(cxa_siLabsBgApi_btle_peripher
 			cxa_siLabsBgApi_btle_handleCharMapEntry_t* charMapEntry = getMappingEntry_byHandle(btlepIn, evt->data.evt_gatt_server_user_write_request.characteristic);
 			if( charMapEntry != NULL )
 			{
-				cxa_btle_peripheral_notify_subscriptionChanged(&btlepIn->super, &charMapEntry->serviceUuid, &charMapEntry->charUuid, (evt->data.evt_gatt_server_characteristic_status.client_config_flags != 0));
+				cxa_btle_peripheral_notify_subscriptionChanged(&btlepIn->super, &charMapEntry->charEntry->serviceUuid, &charMapEntry->charEntry->charUuid, (evt->data.evt_gatt_server_characteristic_status.client_config_flags != 0));
 			}
 			break;
 		}
@@ -200,8 +216,8 @@ static cxa_siLabsBgApi_btle_handleCharMapEntry_t* getMappingEntry_byUuid(cxa_siL
 	{
 		if( currEntry == NULL ) continue;
 
-		if( cxa_btle_uuid_isEqual(&currEntry->serviceUuid, serviceUuidIn) &&
-			cxa_btle_uuid_isEqual(&currEntry->charUuid, charUuidIn) )
+		if( cxa_btle_uuid_isEqual(&currEntry->charEntry->serviceUuid, serviceUuidIn) &&
+			cxa_btle_uuid_isEqual(&currEntry->charEntry->charUuid, charUuidIn) )
 		{
 			return currEntry;
 		}

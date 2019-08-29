@@ -40,9 +40,7 @@ typedef struct cxa_siLabsBgApi_btle_peripheral cxa_siLabsBgApi_btle_peripheral_t
  */
 typedef struct
 {
-	cxa_btle_uuid_t serviceUuid;
-	cxa_btle_uuid_t charUuid;
-
+	cxa_btle_peripheral_charEntry_t *charEntry;
 	uint16_t handle;
 }cxa_siLabsBgApi_btle_handleCharMapEntry_t;
 
@@ -83,6 +81,7 @@ void cxa_siLabsBgApi_btle_peripheral_init(cxa_siLabsBgApi_btle_peripheral_t *con
 
 /**
  * @public
+ * This needs to be done _after_ all characteristic handlers have been registered
  */
 void cxa_siLabsBgApi_btle_peripheral_registerHandle(cxa_siLabsBgApi_btle_peripheral_t *const btlepIn,
 													const char *const serviceUuidStrIn,
