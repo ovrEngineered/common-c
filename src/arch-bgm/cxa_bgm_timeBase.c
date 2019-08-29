@@ -4,7 +4,6 @@
  *
  * @author Christopher Armenio
  */
-#include <cxa_bgm_timeBase.h>
 
 
 // ******** includes ********
@@ -25,11 +24,6 @@
 
 
 // ******** global function implementations ********
-void cxa_bgm_timeBase_init(void)
-{
-}
-
-
 uint32_t cxa_timeBase_getCount_us(void)
 {
 	return (RTCC_CounterGet() / 32768.0) * 1E6;
