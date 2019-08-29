@@ -17,8 +17,8 @@
 #include <cxa_assert.h>
 #include <cxa_numberUtils.h>
 
-#ifdef __XC
-    // microchip
+#if defined(__XC) || defined(BGM_BUILD)
+    // for toolchains that don't have a native implementation
     #include <strtok.h>
 #endif
 
