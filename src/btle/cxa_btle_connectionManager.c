@@ -214,8 +214,8 @@ bool cxa_btle_connectionManager_addSubscriptionStateEntry_subscribed(cxa_btle_co
 
 	cxa_btle_connectionManager_subscriptionState_entry_t newEntry;
 	newEntry.isSubscribed = true;
-	if( !cxa_btle_uuid_initFromString(&newEntry.uuid_service, serviceUuidIn) ) return false;
-	if( !cxa_btle_uuid_initFromString(&newEntry.uuid_characteristic, characteristicUuidIn) ) return false;
+	newEntry.serviceUuid_str = serviceUuidIn;
+	newEntry.characteristicUuid_str = characteristicUuidIn;
 	newEntry.cb_onRx = cb_onRxIn;
 	newEntry.userVar = userVarIn;
 
@@ -231,8 +231,8 @@ bool cxa_btle_connectionManager_addSubscriptionStateEntry_unsubscribed(cxa_btle_
 
 	cxa_btle_connectionManager_subscriptionState_entry_t newEntry;
 	newEntry.isSubscribed = false;
-	if( !cxa_btle_uuid_initFromString(&newEntry.uuid_service, serviceUuidIn) ) return false;
-	if( !cxa_btle_uuid_initFromString(&newEntry.uuid_characteristic, characteristicUuidIn) ) return false;
+	newEntry.serviceUuid_str = serviceUuidIn;
+	newEntry.characteristicUuid_str = characteristicUuidIn;
 	newEntry.cb_onRx = NULL;
 	newEntry.userVar = NULL;
 
@@ -362,15 +362,12 @@ static void executeNextSubscriptionEntry(cxa_btle_connectionManager_t *const btl
 	// if we made it here, we have another subscription entry to process
 
 	cxa_logger_debug(&btleCmIn->logger, "executing subscription entry %d / %d", btleCmIn->targetSubState->currEntryIndex+1, cxa_array_getSize_elems(&btleCmIn->targetSubState->entries));
-	cxa_btle_uuid_string_t serviceUuidStr, charUuidStr;
-	cxa_btle_uuid_toString(&currEntry->uuid_service, &serviceUuidStr);
-	cxa_btle_uuid_toString(&currEntry->uuid_characteristic, &charUuidStr);
 
 	if( currEntry->isSubscribed )
 	{
 		cxa_btle_connection_subscribeToNotifications(btleCmIn->conn,
-													 serviceUuidStr.str,
-													 charUuidStr.str,
+													 currEntry->serviceUuid_str,
+													 currEntry->characteristicUuid_str,
 													 btleCb_onNotiIndiSubscriptionChanged,
 													 btleCb_onNotiIndiRx,
 													 (void*)btleCmIn);
@@ -378,8 +375,8 @@ static void executeNextSubscriptionEntry(cxa_btle_connectionManager_t *const btl
 	else
 	{
 		cxa_btle_connection_unsubscribeToNotifications(btleCmIn->conn,
-													   serviceUuidStr.str,
-													   charUuidStr.str,
+													   currEntry->serviceUuid_str,
+													   currEntry->characteristicUuid_str,
 													   btleCb_onNotiIndiSubscriptionChanged,
 													   (void*)btleCmIn);
 	}
@@ -480,13 +477,17 @@ static void btleCb_onNotiIndiRx(const char *const serviceUuidIn, const char *con
 	// make sure we have a target subscription state
 	if( btleCmIn->targetSubState == NULL ) return;
 
+	cxa_btle_uuid_t targetServiceUuid, targetCharUuid;
+	if( !cxa_btle_uuid_initFromString(&targetServiceUuid, serviceUuidIn) ||
+		!cxa_btle_uuid_initFromString(&targetCharUuid, characteristicUuidIn) ) return;
+
 	// now find our subscription entry
 	cxa_array_iterate(&btleCmIn->targetSubState->entries, currEntry, cxa_btle_connectionManager_subscriptionState_entry_t)
 	{
 		if( currEntry == NULL ) continue;
 
-		if( cxa_btle_uuid_isEqualToString(&currEntry->uuid_service, serviceUuidIn) &&
-			cxa_btle_uuid_isEqualToString(&currEntry->uuid_characteristic, characteristicUuidIn) &&
+		if( cxa_btle_uuid_isEqualToString(&targetServiceUuid, currEntry->serviceUuid_str) &&
+			cxa_btle_uuid_isEqualToString(&targetCharUuid, currEntry->characteristicUuid_str) &&
 			currEntry->isSubscribed &&
 			(currEntry->cb_onRx != NULL) )
 		{

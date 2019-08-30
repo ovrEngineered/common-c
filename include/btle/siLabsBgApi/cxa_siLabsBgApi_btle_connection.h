@@ -66,7 +66,7 @@ typedef enum
  */
 typedef struct
 {
-	cxa_btle_uuid_t uuid;
+	const char* uuid_str;
 	uint32_t handle;
 }cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t;
 
@@ -78,7 +78,7 @@ typedef struct
 {
 	cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* service;
 
-	cxa_btle_uuid_t uuid;
+	const char* uuid_str;
 	uint16_t handle;
 }cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t;
 
@@ -95,8 +95,8 @@ struct cxa_siLabsBgApi_btle_connection
 
 	cxa_siLabsBgApi_btle_connection_procType_t targetProcType;
 	bool procSuccessful;
-	cxa_btle_uuid_t targetServiceUuid;
-	cxa_btle_uuid_t targetCharacteristicUuid;
+	const char* targetServiceUuid_str;
+	const char* targetCharacteristicUuid_str;
 	bool procEnableNotifications;
 
 	cxa_array_t cachedServices;
@@ -127,8 +127,8 @@ void cxa_siLabsBgApi_btle_connection_startConnection(cxa_siLabsBgApi_btle_connec
 
 void cxa_siLabsBgApi_btle_connection_handleEvent_opened(cxa_siLabsBgApi_btle_connection_t *const connIn);
 void cxa_siLabsBgApi_btle_connection_handleEvent_closed(cxa_siLabsBgApi_btle_connection_t *const connIn, uint16_t reasonCodeIn);
-void cxa_siLabsBgApi_btle_connection_handleEvent_serviceResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuid, uint32_t handleIn);
-void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuid, uint16_t handleIn);
+void cxa_siLabsBgApi_btle_connection_handleEvent_serviceResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuidIn, uint32_t handleIn);
+void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuidIn, uint16_t handleIn);
 void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicValueUpdated(cxa_siLabsBgApi_btle_connection_t *const connIn, uint16_t handleIn, enum gatt_att_opcode opcodeIn, uint8_t *const dataIn, size_t dataLen_bytesIn);
 void cxa_siLabsBgApi_btle_connection_handleEvent_procedureComplete(cxa_siLabsBgApi_btle_connection_t *const connIn, uint16_t resultCodeIn);
 

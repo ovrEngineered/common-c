@@ -77,8 +77,8 @@ typedef struct
 {
 	bool isSubscribed;
 
-	cxa_btle_uuid_t uuid_service;
-	cxa_btle_uuid_t uuid_characteristic;
+	const char* serviceUuid_str;
+	const char* characteristicUuid_str;
 
 	cxa_btle_connection_cb_onNotiIndiRx_t cb_onRx;
 	void* userVar;

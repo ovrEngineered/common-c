@@ -39,8 +39,8 @@ typedef enum
 
 
 // ******** local function prototypes ********
-static cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* getCachedServiceByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const serviceUuidIn);
-static cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* getCachedCharacteristicByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const charUuidIn);
+static cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* getCachedServiceByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, const char *const serviceUuidStrIn);
+static cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* getCachedCharacteristicByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, const char *const charUuidStrIn);
 static cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* getCachedCharacteristicByHandle(cxa_siLabsBgApi_btle_connection_t *const connIn, uint16_t handleIn);
 
 static void handleProcedureComplete(cxa_siLabsBgApi_btle_connection_t *const connIn, bool wasSuccessfulIn);
@@ -165,9 +165,16 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_closed(cxa_siLabsBgApi_btle_con
 }
 
 
-void cxa_siLabsBgApi_btle_connection_handleEvent_serviceResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuid, uint32_t handleIn)
+void cxa_siLabsBgApi_btle_connection_handleEvent_serviceResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuidIn, uint32_t handleIn)
 {
 	cxa_assert(connIn);
+
+	// make sure the resolved uuid matches our target uuid
+	if( !cxa_btle_uuid_isEqualToString(uuidIn, connIn->targetServiceUuid_str) )
+	{
+		cxa_logger_warn(&connIn->logger, "resolution failed");
+		return;
+	}
 
 	cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* newEntry = cxa_array_append_empty(&connIn->cachedServices);
 	if( newEntry == NULL )
@@ -177,15 +184,22 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_serviceResolved(cxa_siLabsBgApi
 	}
 
 	newEntry->handle = handleIn;
-	cxa_btle_uuid_initFromUuid(&newEntry->uuid, uuid, false);
+	newEntry->uuid_str = connIn->targetServiceUuid_str;
 }
 
 
-void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuid, uint16_t handleIn)
+void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicResolved(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const uuidIn, uint16_t handleIn)
 {
 	cxa_assert(connIn);
 
-	cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* targetServiceEntry = getCachedServiceByUuid(connIn, &connIn->targetServiceUuid);
+	// make sure the resolved uuid matches our target uuid
+	if( !cxa_btle_uuid_isEqualToString(uuidIn, connIn->targetCharacteristicUuid_str) )
+	{
+		cxa_logger_warn(&connIn->logger, "resolution failed");
+		return;
+	}
+
+	cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* targetServiceEntry = getCachedServiceByUuid(connIn, connIn->targetServiceUuid_str);
 	if( targetServiceEntry == NULL )
 	{
 		cxa_logger_warn(&connIn->logger, "couldn't resolve service for characteristic");
@@ -200,7 +214,7 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicResolved(cxa_siLa
 	}
 
 	newEntry->handle = handleIn;
-	cxa_btle_uuid_initFromUuid(&newEntry->uuid, uuid, false);
+	newEntry->uuid_str = connIn->targetCharacteristicUuid_str;
 	newEntry->service = targetServiceEntry;
 }
 
@@ -243,14 +257,10 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_characteristicValueUpdated(cxa_
 			cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* updatedChar = getCachedCharacteristicByHandle(connIn, handleIn);
 			if( updatedChar != NULL )
 			{
-				cxa_btle_uuid_string_t str_serviceUuid;
-				cxa_btle_uuid_string_t str_charUuid;
-				cxa_btle_uuid_toString(&updatedChar->service->uuid, &str_serviceUuid);
-				cxa_btle_uuid_toString(&updatedChar->uuid, &str_charUuid);
 				cxa_fixedByteBuffer_t tmpBuffer;
 				cxa_fixedByteBuffer_init_inPlace(&tmpBuffer, dataLen_bytesIn, dataIn, dataLen_bytesIn);
 
-				cxa_btle_connection_notify_notiIndiRx(&connIn->super, str_serviceUuid.str, str_charUuid.str, &tmpBuffer);
+				cxa_btle_connection_notify_notiIndiRx(&connIn->super, updatedChar->service->uuid_str, updatedChar->uuid_str, &tmpBuffer);
 			}
 			break;
 		}
@@ -322,18 +332,24 @@ void cxa_siLabsBgApi_btle_connection_handleEvent_procedureComplete(cxa_siLabsBgA
 
 
 // ******** local function implementations ********
-static cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* getCachedServiceByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const serviceUuidIn)
+static cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* getCachedServiceByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, const char *const serviceUuidStrIn)
 {
 	cxa_assert(connIn);
-	cxa_assert(serviceUuidIn);
+	cxa_assert(serviceUuidStrIn);
+
+	cxa_btle_uuid_t targetServiceUuid;
+	if( !cxa_btle_uuid_initFromString(&targetServiceUuid, serviceUuidStrIn) ) return NULL;
 
 	cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* retVal = NULL;
 
+	cxa_btle_uuid_t currServiceUuid;
 	cxa_array_iterate(&connIn->cachedServices, currService, cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t)
 	{
 		if( currService == NULL ) continue;
 
-		if( cxa_btle_uuid_isEqual(&currService->uuid, serviceUuidIn) )
+		if( !cxa_btle_uuid_initFromString(&currServiceUuid, currService->uuid_str) ) continue;
+
+		if( cxa_btle_uuid_isEqual(&targetServiceUuid, &currServiceUuid) )
 		{
 			retVal = currService;
 			break;
@@ -344,18 +360,24 @@ static cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* getCachedServiceByU
 }
 
 
-static cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* getCachedCharacteristicByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, cxa_btle_uuid_t *const charUuidIn)
+static cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* getCachedCharacteristicByUuid(cxa_siLabsBgApi_btle_connection_t *const connIn, const char *const charUuidStrIn)
 {
 	cxa_assert(connIn);
-	cxa_assert(charUuidIn);
+	cxa_assert(charUuidStrIn);
+
+	cxa_btle_uuid_t targetCharUuid;
+	if( !cxa_btle_uuid_initFromString(&targetCharUuid, charUuidStrIn) ) return NULL;
 
 	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* retVal = NULL;
 
+	cxa_btle_uuid_t currCharUuid;
 	cxa_array_iterate(&connIn->cachedCharacteristics, currChar, cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t)
 	{
 		if( currChar == NULL ) continue;
 
-		if( cxa_btle_uuid_isEqual(&currChar->uuid, charUuidIn) )
+		if( !cxa_btle_uuid_initFromString(&currCharUuid, charUuidStrIn) ) continue;
+
+		if( cxa_btle_uuid_isEqual(&targetCharUuid, &currCharUuid) )
 		{
 			retVal = currChar;
 			break;
@@ -391,11 +413,6 @@ static void handleProcedureComplete(cxa_siLabsBgApi_btle_connection_t *const con
 {
 	cxa_assert(connIn);
 
-	cxa_btle_uuid_string_t str_serviceUuid;
-	cxa_btle_uuid_string_t str_charUuid;
-	cxa_btle_uuid_toString(&connIn->targetServiceUuid, &str_serviceUuid);
-	cxa_btle_uuid_toString(&connIn->targetCharacteristicUuid, &str_charUuid);
-
 	// record our previous procedure type
 	cxa_siLabsBgApi_btle_connection_procType_t prevProcType = connIn->targetProcType;
 	connIn->targetProcType = CXA_SILABSBGAPI_PROCTYPE_NONE;
@@ -407,15 +424,15 @@ static void handleProcedureComplete(cxa_siLabsBgApi_btle_connection_t *const con
 	switch( prevProcType )
 	{
 		case CXA_SILABSBGAPI_PROCTYPE_READ:
-			cxa_btle_connection_notify_readComplete(&connIn->super, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn, &connIn->fbb_read);
+			cxa_btle_connection_notify_readComplete(&connIn->super, connIn->targetServiceUuid_str, connIn->targetCharacteristicUuid_str, wasSuccessfulIn, &connIn->fbb_read);
 			break;
 
 		case CXA_SILABSBGAPI_PROCTYPE_WRITE:
-			cxa_btle_connection_notify_writeComplete(&connIn->super, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn);
+			cxa_btle_connection_notify_writeComplete(&connIn->super, connIn->targetServiceUuid_str, connIn->targetCharacteristicUuid_str, wasSuccessfulIn);
 			break;
 
 		case CXA_SILABSBGAPI_PROCTYPE_NOTI_INDI_CHANGE:
-			cxa_btle_connection_notify_notiIndiSubscriptionChanged(&connIn->super, str_serviceUuid.str, str_charUuid.str, wasSuccessfulIn, connIn->procEnableNotifications);
+			cxa_btle_connection_notify_notiIndiSubscriptionChanged(&connIn->super, connIn->targetServiceUuid_str, connIn->targetCharacteristicUuid_str, wasSuccessfulIn, connIn->procEnableNotifications);
 			break;
 
 		default:
@@ -458,25 +475,15 @@ static void scm_readFromCharacteristic(cxa_btle_connection_t *const superIn, con
 	}
 
 	// save our target service and characteristic
-	if( !cxa_btle_uuid_initFromString(&connIn->targetServiceUuid, serviceUuidIn) )
-	{
-		cxa_logger_warn(&connIn->logger, "invalid service UUID");
-		cxa_btle_connection_notify_readComplete(&connIn->super, serviceUuidIn, characteristicUuidIn, false, NULL);
-		return;
-	}
-	if( !cxa_btle_uuid_initFromString(&connIn->targetCharacteristicUuid, characteristicUuidIn) )
-	{
-		cxa_logger_warn(&connIn->logger, "invalid characteristic UUID");
-		cxa_btle_connection_notify_readComplete(&connIn->super, serviceUuidIn, characteristicUuidIn, false, NULL);
-		return;
-	}
+	connIn->targetServiceUuid_str = serviceUuidIn;
+	connIn->targetCharacteristicUuid_str = characteristicUuidIn;
 
 	// see if we have a cached entry for this characteristic
-	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, &connIn->targetCharacteristicUuid);
+	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, connIn->targetCharacteristicUuid_str);
 	if( cachedCharEntry == NULL )
 	{
 		// we need to discover this characteristic...see if we have this service cached
-		cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, &connIn->targetServiceUuid);
+		cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, connIn->targetServiceUuid_str);
 		if( cachedServiceEntry == NULL )
 		{
 			// we need to discover this service first...
@@ -516,29 +523,19 @@ static void scm_writeToCharacteristic(cxa_btle_connection_t *const superIn, cons
 	}
 
 	// save our target service and characteristic
-	if( !cxa_btle_uuid_initFromString(&connIn->targetServiceUuid, serviceUuidIn) )
-	{
-		cxa_logger_warn(&connIn->logger, "invalid service UUID");
-		cxa_btle_connection_notify_writeComplete(&connIn->super, serviceUuidIn, characteristicUuidIn, false);
-		return;
-	}
-	if( !cxa_btle_uuid_initFromString(&connIn->targetCharacteristicUuid, characteristicUuidIn) )
-	{
-		cxa_logger_warn(&connIn->logger, "invalid characteristic UUID");
-		cxa_btle_connection_notify_writeComplete(&connIn->super, serviceUuidIn, characteristicUuidIn, false);
-		return;
-	}
+	connIn->targetServiceUuid_str = serviceUuidIn;
+	connIn->targetCharacteristicUuid_str = characteristicUuidIn;
 
 	// copy our data over
 	cxa_fixedByteBuffer_clear(&connIn->fbb_write);
 	cxa_fixedByteBuffer_append_fbb(&connIn->fbb_write, dataIn);
 
 	// see if we have a cached entry for this characteristic
-	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, &connIn->targetCharacteristicUuid);
+	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, connIn->targetCharacteristicUuid_str);
 	if( cachedCharEntry == NULL )
 	{
 		// we need to discover this characteristic...see if we have this service cached
-		cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, &connIn->targetServiceUuid);
+		cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, connIn->targetServiceUuid_str);
 		if( cachedServiceEntry == NULL )
 		{
 			// we need to discover this service first...
@@ -588,29 +585,18 @@ static void scm_changeNotifications(cxa_btle_connection_t *const superIn, const 
 	}
 
 	// save our target service and characteristic
-	if( !cxa_btle_uuid_initFromString(&connIn->targetServiceUuid, serviceUuidIn) )
-	{
-		cxa_logger_warn(&connIn->logger, "invalid service UUID");
-		cxa_btle_connection_notify_notiIndiSubscriptionChanged(&connIn->super, serviceUuidIn, characteristicUuidIn, false, false);
-		return;
-	}
-	if( !cxa_btle_uuid_initFromString(&connIn->targetCharacteristicUuid, characteristicUuidIn) )
-	{
-		cxa_logger_warn(&connIn->logger, "invalid characteristic UUID");
-		cxa_btle_connection_notify_notiIndiSubscriptionChanged(&connIn->super, serviceUuidIn, characteristicUuidIn, false, false);
-		return;
-	}
+	connIn->targetServiceUuid_str = serviceUuidIn;
+	connIn->targetCharacteristicUuid_str = characteristicUuidIn;
 
 	// save our intent
 	connIn->procEnableNotifications = enableNotificationsIn;
 
-
 	// see if we have a cached entry for this characteristic
-	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, &connIn->targetCharacteristicUuid);
+	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, connIn->targetCharacteristicUuid_str);
 	if( cachedCharEntry == NULL )
 	{
 		// we need to discover this characteristic...see if we have this service cached
-		cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, &connIn->targetServiceUuid);
+		cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, connIn->targetCharacteristicUuid_str);
 		if( cachedServiceEntry == NULL )
 		{
 			// we need to discover this service first...
@@ -700,17 +686,22 @@ static void stateCb_connResolveService_enter(cxa_stateMachine_t *const smIn, int
 	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
 	cxa_assert(connIn);
 
-	cxa_btle_uuid_string_t str_uuid;
-	cxa_btle_uuid_toString(&connIn->targetServiceUuid, &str_uuid);
-	cxa_logger_debug(&connIn->logger, "resolving service '%s'", str_uuid.str);
+	cxa_btle_uuid_t tmpUuid;
+	if( !cxa_btle_uuid_initFromString(&tmpUuid, connIn->targetServiceUuid_str) )
+	{
+		cxa_logger_warn(&connIn->logger, "bad service uuid");
+		cxa_stateMachine_transition(&connIn->stateMachine, STATE_CONNECTED_IDLE);
+		return;
+	}
+	cxa_logger_debug(&connIn->logger, "resolving service '%s'", connIn->targetServiceUuid_str);
 
 	// resolve our service
 	uint8_t uuidLen;
 	uint8_t* uuidBytes;
-	if( connIn->targetServiceUuid.type == CXA_BTLE_UUID_TYPE_128BIT )
+	if( tmpUuid.type == CXA_BTLE_UUID_TYPE_128BIT )
 	{
 		cxa_btle_uuid_t uuid_transposed;
-		cxa_btle_uuid_initFromUuid(&uuid_transposed, &connIn->targetServiceUuid, true);
+		cxa_btle_uuid_initFromUuid(&uuid_transposed, &tmpUuid, true);
 
 		uuidLen = 128 / 8;
 		uuidBytes = uuid_transposed.as128Bit.bytes;
@@ -718,7 +709,7 @@ static void stateCb_connResolveService_enter(cxa_stateMachine_t *const smIn, int
 	else
 	{
 		uuidLen = 16 / 8;
-		uuidBytes = (uint8_t*)&connIn->targetServiceUuid.as16Bit;
+		uuidBytes = (uint8_t*)&tmpUuid.as16Bit;
 	}
 
 	struct gecko_msg_gatt_discover_primary_services_by_uuid_rsp_t* rsp = gecko_cmd_gatt_discover_primary_services_by_uuid(connIn->connHandle, uuidLen, uuidBytes);
@@ -738,7 +729,7 @@ static void stateCb_connResolveChar_enter(cxa_stateMachine_t *const smIn, int pr
 	cxa_assert(connIn);
 
 	// get our service (we should have resolved this already)
-	cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, &connIn->targetServiceUuid);
+	cxa_siLabsBgApi_btle_connection_cachedServiceEntry_t* cachedServiceEntry = getCachedServiceByUuid(connIn, connIn->targetServiceUuid_str);
 	if( cachedServiceEntry == NULL )
 	{
 		cxa_logger_warn(&connIn->logger, "unknown service");
@@ -746,17 +737,22 @@ static void stateCb_connResolveChar_enter(cxa_stateMachine_t *const smIn, int pr
 		return;
 	}
 
-	cxa_btle_uuid_string_t str_uuid;
-	cxa_btle_uuid_toString(&connIn->targetCharacteristicUuid, &str_uuid);
-	cxa_logger_debug(&connIn->logger, "resolving characteristic '%s'", str_uuid.str);
+	cxa_btle_uuid_t tmpUuid;
+	if( !cxa_btle_uuid_initFromString(&tmpUuid, connIn->targetCharacteristicUuid_str) )
+	{
+		cxa_logger_warn(&connIn->logger, "bad char uuid");
+		cxa_stateMachine_transition(&connIn->stateMachine, STATE_CONNECTED_IDLE);
+		return;
+	}
+	cxa_logger_debug(&connIn->logger, "resolving characteristic '%s'", connIn->targetCharacteristicUuid_str);
 
 	// resolve our characteristic
 	uint8_t uuidLen;
 	uint8_t* uuidBytes;
-	if( connIn->targetCharacteristicUuid.type == CXA_BTLE_UUID_TYPE_128BIT )
+	if( tmpUuid.type == CXA_BTLE_UUID_TYPE_128BIT )
 	{
 		cxa_btle_uuid_t uuid_transposed;
-		cxa_btle_uuid_initFromUuid(&uuid_transposed, &connIn->targetCharacteristicUuid, true);
+		cxa_btle_uuid_initFromUuid(&uuid_transposed, &tmpUuid, true);
 
 		uuidLen = 128 / 8;
 		uuidBytes = uuid_transposed.as128Bit.bytes;
@@ -764,7 +760,7 @@ static void stateCb_connResolveChar_enter(cxa_stateMachine_t *const smIn, int pr
 	else
 	{
 		uuidLen = 16 / 8;
-		uuidBytes = (uint8_t*)&connIn->targetCharacteristicUuid.as16Bit;
+		uuidBytes = (uint8_t*)&tmpUuid.as16Bit;
 	}
 
 	struct gecko_msg_gatt_discover_characteristics_by_uuid_rsp_t* rsp = gecko_cmd_gatt_discover_characteristics_by_uuid(connIn->connHandle, cachedServiceEntry->handle, uuidLen, uuidBytes);
@@ -782,12 +778,7 @@ static void stateCb_connRead_enter(cxa_stateMachine_t *const smIn, int prevState
 	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
 	cxa_assert(connIn);
 
-	cxa_btle_uuid_string_t str_serviceUuid;
-	cxa_btle_uuid_string_t str_charUuid;
-	cxa_btle_uuid_toString(&connIn->targetServiceUuid, &str_serviceUuid);
-	cxa_btle_uuid_toString(&connIn->targetCharacteristicUuid, &str_charUuid);
-
-	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, &connIn->targetCharacteristicUuid);
+	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, connIn->targetCharacteristicUuid_str);
 	if( cachedCharEntry == NULL )
 	{
 		cxa_logger_warn(&connIn->logger, "unknown characteristic");
@@ -800,7 +791,7 @@ static void stateCb_connRead_enter(cxa_stateMachine_t *const smIn, int prevState
 	{
 		cxa_logger_warn(&connIn->logger, "read failed: %d", rsp->result);
 
-		cxa_btle_connection_notify_readComplete(&connIn->super, str_serviceUuid.str, str_charUuid.str, false, NULL);
+		cxa_btle_connection_notify_readComplete(&connIn->super, connIn->targetServiceUuid_str, connIn->targetCharacteristicUuid_str, false, NULL);
 		return;
 	}
 	// if we made it here, the read was successful
@@ -813,12 +804,7 @@ static void stateCb_connWrite_enter(cxa_stateMachine_t *const smIn, int prevStat
 	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
 	cxa_assert(connIn);
 
-	cxa_btle_uuid_string_t str_serviceUuid;
-	cxa_btle_uuid_string_t str_charUuid;
-	cxa_btle_uuid_toString(&connIn->targetServiceUuid, &str_serviceUuid);
-	cxa_btle_uuid_toString(&connIn->targetCharacteristicUuid, &str_charUuid);
-
-	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, &connIn->targetCharacteristicUuid);
+	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, connIn->targetCharacteristicUuid_str);
 	if( cachedCharEntry == NULL )
 	{
 		cxa_logger_warn(&connIn->logger, "unknown characteristic");
@@ -835,7 +821,7 @@ static void stateCb_connWrite_enter(cxa_stateMachine_t *const smIn, int prevStat
 	{
 		cxa_logger_warn(&connIn->logger, "write failed: %d", rsp->result);
 
-		cxa_btle_connection_notify_writeComplete(&connIn->super, str_serviceUuid.str, str_charUuid.str, false);
+		cxa_btle_connection_notify_writeComplete(&connIn->super, connIn->targetServiceUuid_str, connIn->targetCharacteristicUuid_str, false);
 		return;
 	}
 	// if we made it here, the write was successful
@@ -848,12 +834,7 @@ static void stateCb_connChangeNotiIndi_enter(cxa_stateMachine_t *const smIn, int
 	cxa_siLabsBgApi_btle_connection_t *const connIn = (cxa_siLabsBgApi_btle_connection_t *const)userVarIn;
 	cxa_assert(connIn);
 
-	cxa_btle_uuid_string_t str_serviceUuid;
-	cxa_btle_uuid_string_t str_charUuid;
-	cxa_btle_uuid_toString(&connIn->targetServiceUuid, &str_serviceUuid);
-	cxa_btle_uuid_toString(&connIn->targetCharacteristicUuid, &str_charUuid);
-
-	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, &connIn->targetCharacteristicUuid);
+	cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* cachedCharEntry = getCachedCharacteristicByUuid(connIn, connIn->targetCharacteristicUuid_str);
 	if( cachedCharEntry == NULL )
 	{
 		cxa_logger_warn(&connIn->logger, "unknown characteristic");
@@ -866,7 +847,7 @@ static void stateCb_connChangeNotiIndi_enter(cxa_stateMachine_t *const smIn, int
 	{
 		cxa_logger_warn(&connIn->logger, "write failed: %d", rsp->result);
 
-		cxa_btle_connection_notify_notiIndiSubscriptionChanged(&connIn->super, str_serviceUuid.str, str_charUuid.str, false, false);
+		cxa_btle_connection_notify_notiIndiSubscriptionChanged(&connIn->super, connIn->targetServiceUuid_str, connIn->targetCharacteristicUuid_str, false, false);
 		return;
 	}
 	// if we made it here, the write was successful
