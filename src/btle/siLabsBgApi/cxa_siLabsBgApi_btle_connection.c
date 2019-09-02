@@ -375,7 +375,7 @@ static cxa_siLabsBgApi_btle_connection_cachedCharacteristicEntry_t* getCachedCha
 	{
 		if( currChar == NULL ) continue;
 
-		if( !cxa_btle_uuid_initFromString(&currCharUuid, charUuidStrIn) ) continue;
+		if( !cxa_btle_uuid_initFromString(&currCharUuid, currChar->uuid_str) ) continue;
 
 		if( cxa_btle_uuid_isEqual(&targetCharUuid, &currCharUuid) )
 		{
