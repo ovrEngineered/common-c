@@ -26,21 +26,18 @@ typedef void (*cxa_siLabsBgApi_cb_onTimer_t)(void *const userVarIn);
 
 
 // ******** global function prototypes ********
-#ifndef CXA_SILABSBGAPI_MODE_SOC
-
-/**
- * @public
- * Used to configure a SiliconLabs BGAPI module in a NCP configuration
- */
-void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdIn);
-
-#else
-
+#if defined(CXA_SILABSBGAPI_MODE_SOC) || defined(CXA_SILABSBGAPI_MODE_SOC_HIGH_POWER)
 /**
  * @public
  * Used to configure a SiliconLabs BGAPI module in a SOC configuration
  */
 void cxa_siLabsBgApi_module_init(void);
+#else
+/**
+ * @public
+ * Used to configure a SiliconLabs BGAPI module in a NCP configuration
+ */
+void cxa_siLabsBgApi_module_init(cxa_ioStream_t *const ioStreamIn, int threadIdIn);
 #endif
 
 

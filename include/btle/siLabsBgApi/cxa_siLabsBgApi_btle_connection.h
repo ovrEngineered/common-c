@@ -10,12 +10,12 @@
 
 // ******** includes ********
 #include <cxa_config.h>
-#ifndef CXA_SILABSBGAPI_MODE_SOC
-#include <gecko_bglib.h>
-#else
+#if defined(CXA_SILABSBGAPI_MODE_SOC) || defined(CXA_SILABSBGAPI_MODE_SOC_HIGH_POWER)
 #include "bg_types.h"
 #include "native_gecko.h"
 #include "infrastructure.h"
+#else
+#include <gecko_bglib.h>
 #endif
 
 #include <stdbool.h>
