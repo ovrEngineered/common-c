@@ -204,7 +204,7 @@ static void handleIsr_rx(USART_TypeDef *usart_rawIn)
 	if( usartIn == NULL ) return;
 	// if we made it here, we know about this usart and we have an object
 
-	uint8_t rxByte = USART_Rx(USART0);
+	uint8_t rxByte = USART_Rx(usart_rawIn);
 	cxa_fixedFifo_queue(&usartIn->fifo_rx, &rxByte);
 }
 
