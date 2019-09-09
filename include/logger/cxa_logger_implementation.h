@@ -25,7 +25,7 @@
 #define CXA_LOG_LEVEL_DEBUG				4
 #define CXA_LOG_LEVEL_TRACE				5
 
-#if( (!defined CXA_LOG_LEVEL) || (CXA_LOG_LEVEL == CXA_LOG_LEVEL_NONE) )
+#if( (defined CXA_LOGGER_DISABLE) || !(defined CXA_LOG_LEVEL) || (CXA_LOG_LEVEL == CXA_LOG_LEVEL_NONE) )
 	#define cxa_logger_error(loggerIn, msgIn, ...)
 	#define cxa_logger_warn(loggerIn, msgIn, ...)
 	#define cxa_logger_info(loggerIn, msgIn, ...)
