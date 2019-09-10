@@ -151,7 +151,7 @@ bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, s
 	cxa_assert(getHandleForKey(keyIn, &handle));
 
 	struct gecko_msg_flash_ps_load_rsp_t* resp = gecko_cmd_flash_ps_load(handle);
-	if( (resp->result == 0) && (resp->value.len > maxOutputSize_bytesIn) )
+	if( (resp->result == 0) && (resp->value.len <= maxOutputSize_bytesIn) )
 	{
 		if( valueOut != NULL ) memcpy(valueOut, resp->value.data, resp->value.len);
 		if( actualOutputSize_bytesOut != NULL ) *actualOutputSize_bytesOut = resp->value.len;
