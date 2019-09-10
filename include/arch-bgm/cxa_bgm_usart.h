@@ -22,7 +22,7 @@
 
 // ******** global macro definitions ********
 #ifndef CXA_BGM_USART_RX_FIFO_SIZE_BYTES
-#define CXA_BGM_USART_RX_FIFO_SIZE_BYTES		16
+#define CXA_BGM_USART_RX_FIFO_SIZE_BYTES		32
 #endif
 
 
@@ -61,5 +61,20 @@ void cxa_bgm_usart_init_noHH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uart
 							 const uint32_t baudRate_bpsIn,
 							 const GPIO_Port_TypeDef txPortNumIn, const unsigned int txPinNumIn, uint32_t txLocIn,
 							 const GPIO_Port_TypeDef rxPortNumIn, const unsigned int rxPinNumIn, uint32_t rxLocIn);
+
+/**
+ * @public
+ * @brief Initializes the specified USART for hardware handshaking using the specified baud rate.
+ *
+ * @param[in] usartIn pointer to a pre-allocated USART object
+ * @param[in] uartIdIn the UARTID specifying the desired UART
+ * @param[in] baudRate_bpsIn the desired baud rate, in bits-per-second
+ */
+void cxa_bgm_usart_init_HH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uartIdIn,
+						   const uint32_t baudRate_bpsIn,
+						   const GPIO_Port_TypeDef txPortNumIn, const unsigned int txPinNumIn, uint32_t txLocIn,
+						   const GPIO_Port_TypeDef rxPortNumIn, const unsigned int rxPinNumIn, uint32_t rxLocIn,
+						   const GPIO_Port_TypeDef rtsPortNumIn, const unsigned int rtsPinNumIn, uint32_t rtsLocIn,
+						   const GPIO_Port_TypeDef ctsPortNumIn, const unsigned int ctsPinNumIn, uint32_t ctsLocIn);
 
 #endif

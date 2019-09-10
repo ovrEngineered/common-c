@@ -34,6 +34,13 @@ typedef struct
 
 // ******** local function prototypes ********
 static void initSystem(void);
+static void commonInit(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uartIdIn,
+		   const uint32_t baudRate_bpsIn,
+		   const GPIO_Port_TypeDef txPortNumIn, const unsigned int txPinNumIn, uint32_t txLocIn,
+		   const GPIO_Port_TypeDef rxPortNumIn, const unsigned int rxPinNumIn, uint32_t rxLocIn,
+		   bool useHwFlowControlIn,
+		   const GPIO_Port_TypeDef rtsPortNumIn, const unsigned int rtsPinNumIn, uint32_t rtsLocIn,
+		   const GPIO_Port_TypeDef ctsPortNumIn, const unsigned int ctsPinNumIn, uint32_t ctsLocIn);
 
 static void setBgmForUsart(USART_TypeDef *usart_rawIn, cxa_bgm_usart_t* usart_bgmIn);
 static cxa_bgm_usart_t* getBgmForUsart(USART_TypeDef *usart_rawIn);
@@ -56,6 +63,49 @@ void cxa_bgm_usart_init_noHH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uart
 							 const GPIO_Port_TypeDef txPortNumIn, const unsigned int txPinNumIn, uint32_t txLocIn,
 							 const GPIO_Port_TypeDef rxPortNumIn, const unsigned int rxPinNumIn, uint32_t rxLocIn)
 {
+	commonInit(usartIn, uartIdIn,
+				   baudRate_bpsIn,
+				   txPortNumIn, txPinNumIn, txLocIn,
+				   rxPortNumIn, rxPinNumIn, rxLocIn,
+				   false,
+				   0, 0, 0,
+				   0, 0, 0);
+}
+
+
+void cxa_bgm_usart_init_HH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uartIdIn,
+						   const uint32_t baudRate_bpsIn,
+						   const GPIO_Port_TypeDef txPortNumIn, const unsigned int txPinNumIn, uint32_t txLocIn,
+						   const GPIO_Port_TypeDef rxPortNumIn, const unsigned int rxPinNumIn, uint32_t rxLocIn,
+						   const GPIO_Port_TypeDef rtsPortNumIn, const unsigned int rtsPinNumIn, uint32_t rtsLocIn,
+						   const GPIO_Port_TypeDef ctsPortNumIn, const unsigned int ctsPinNumIn, uint32_t ctsLocIn)
+{
+	commonInit(usartIn, uartIdIn,
+			   baudRate_bpsIn,
+			   txPortNumIn, txPinNumIn, txLocIn,
+			   rxPortNumIn, rxPinNumIn, rxLocIn,
+			   true,
+			   rtsPortNumIn, rtsPinNumIn, rtsLocIn,
+			   ctsPortNumIn, ctsPinNumIn, ctsLocIn);
+}
+
+
+// ******** local function implementations ********
+static void initSystem(void)
+{
+	cxa_array_initStd(&rawUsartToBgmMap, rawUsartToBgmMap_raw);
+	isSystemInit = true;
+}
+
+
+static void commonInit(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uartIdIn,
+		   const uint32_t baudRate_bpsIn,
+		   const GPIO_Port_TypeDef txPortNumIn, const unsigned int txPinNumIn, uint32_t txLocIn,
+		   const GPIO_Port_TypeDef rxPortNumIn, const unsigned int rxPinNumIn, uint32_t rxLocIn,
+		   bool useHwFlowControlIn,
+		   const GPIO_Port_TypeDef rtsPortNumIn, const unsigned int rtsPinNumIn, uint32_t rtsLocIn,
+		   const GPIO_Port_TypeDef ctsPortNumIn, const unsigned int ctsPinNumIn, uint32_t ctsLocIn)
+{
 	cxa_assert(usartIn);
 	cxa_assert(uartIdIn);
 
@@ -69,6 +119,7 @@ void cxa_bgm_usart_init_noHH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uart
 	// initialize our hardware
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
 	init.baudrate = baudRate_bpsIn;
+	if( useHwFlowControlIn ) init.hwFlowControl = usartHwFlowControlCtsAndRts;
 
 	// Enable oscillator to GPIO and USART modules
 	CMU_ClockEnable(cmuClock_GPIO, true);
@@ -91,10 +142,25 @@ void cxa_bgm_usart_init_noHH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uart
 	GPIO_PinModeSet(txPortNumIn, txPinNumIn, gpioModePushPull, 1);
 	GPIO_PinModeSet(rxPortNumIn, rxPinNumIn, gpioModeInput, 0);
 
+	// set pin modes for USART CTS and RTS pins (if needed)
+	if( useHwFlowControlIn )
+	{
+		GPIO_PinModeSet(rtsPortNumIn, rtsPinNumIn, gpioModePushPull, 1);
+		GPIO_PinModeSet(ctsPortNumIn, ctsPinNumIn, gpioModeInput, 0);
+	}
+
 	// Initialize USART asynchronous mode and route pins
 	USART_InitAsync(usartIn->uartId, &init);
 	usartIn->uartId->ROUTEPEN |= USART_ROUTEPEN_TXPEN | USART_ROUTEPEN_RXPEN;
 	usartIn->uartId->ROUTELOC0 = rxLocIn | txLocIn;
+
+	// route CTS and RTS pins
+	if( useHwFlowControlIn )
+	{
+		usartIn->uartId->ROUTEPEN |= USART_ROUTEPEN_CTSPEN | USART_ROUTEPEN_RTSPEN;
+		usartIn->uartId->ROUTELOC1 = ctsLocIn | rtsLocIn;
+		usartIn->uartId->CTRLX |= USART_CTRLX_CTSEN;
+	}
 
 	// setup our fifo
 	cxa_fixedFifo_initStd(&usartIn->fifo_rx, CXA_FF_ON_FULL_DROP, usartIn->fifo_rx_raw);
@@ -121,14 +187,6 @@ void cxa_bgm_usart_init_noHH(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uart
 		NVIC_EnableIRQ(USART2_RX_IRQn);
 	}
 #endif
-}
-
-
-// ******** local function implementations ********
-static void initSystem(void)
-{
-	cxa_array_initStd(&rawUsartToBgmMap, rawUsartToBgmMap_raw);
-	isSystemInit = true;
 }
 
 
@@ -204,8 +262,12 @@ static void handleIsr_rx(USART_TypeDef *usart_rawIn)
 	if( usartIn == NULL ) return;
 	// if we made it here, we know about this usart and we have an object
 
-	uint8_t rxByte = USART_Rx(usart_rawIn);
-	cxa_fixedFifo_queue(&usartIn->fifo_rx, &rxByte);
+	uint8_t rxByte;
+	while( usartIn->uartId->STATUS & USART_STATUS_RXDATAV )
+	{
+		rxByte = (uint8_t)usartIn->uartId->RXDATA;
+		cxa_fixedFifo_queue(&usartIn->fifo_rx, &rxByte);
+	}
 }
 
 
