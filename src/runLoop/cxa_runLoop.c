@@ -184,7 +184,7 @@ uint32_t cxa_runLoop_iterate(int threadIdIn)
 			if( (entries[i].execPeriod_ms == 0) ||
 				 cxa_timeDiff_isElapsed_recurring_ms(&entries[i].td_exec, entries[i].execPeriod_ms) )
 			{
-				entries[i].updateCb(entries[i].userVar);
+				if( entries[i].updateCb != NULL ) entries[i].updateCb(entries[i].userVar);
 
 				// free this entry if it's a one-shot
 				if( entries[i].type == TYPE_ONESHOT ) entries[i].state = STATE_UNUSED;
