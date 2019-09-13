@@ -287,6 +287,11 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)userVarIn;
 	cxa_assert(clePpIn);
 
+	// allocate here to avoid stack issues on TI TMS320
+	size_t currSize_bytes;
+	uint8_t rxByte;
+	cxa_ioStream_readStatus_t readStat;
+
 	// get our expected size
 	uint16_t expectedSize_bytes;
 	if( !cxa_fixedByteBuffer_get_uint16LE(clePpIn->super.currBuffer, 2, expectedSize_bytes) )
@@ -298,13 +303,12 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 	// do a limited number of iterations
 	for( uint8_t i = 0; i < MAX_NUM_RX_BYTES_PER_UPDATE; i++ )
 	{
-		size_t currSize_bytes = cxa_fixedByteBuffer_getSize_bytes(clePpIn->super.currBuffer) - 4;
+		currSize_bytes = cxa_fixedByteBuffer_getSize_bytes(clePpIn->super.currBuffer) - 4;
 
 		if( currSize_bytes < expectedSize_bytes )
 		{
 			// we have more bytes to receive
-			uint8_t rxByte;
-			cxa_ioStream_readStatus_t readStat = cxa_ioStream_readByte(clePpIn->super.ioStream, &rxByte);
+			readStat = cxa_ioStream_readByte(clePpIn->super.ioStream, &rxByte);
 			if( readStat == CXA_IOSTREAM_READSTAT_ERROR ) { cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_ERROR); return; }
 			else if( readStat == CXA_IOSTREAM_READSTAT_GOTDATA )
 			{
