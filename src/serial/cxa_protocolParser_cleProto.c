@@ -197,7 +197,7 @@ static void rxState_cb_wait0x80_state(cxa_stateMachine_t *const smIn, void *user
 			{
 				// we've gotten our first header byte
 				cxa_fixedByteBuffer_clear(clePpIn->super.currBuffer);
-				cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte);
+				if( !cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte) ) { cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_ERROR); return; }
 
 				// start our reception timeout timeDiff
 				cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
@@ -226,7 +226,7 @@ static void rxState_cb_wait0x81_state(cxa_stateMachine_t *const smIn, void *user
 		if( rxByte == 0x81 )
 		{
 			// we have a valid second header byte
-			cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte);
+			if( !cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte) ) { cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_ERROR); return; }
 			cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_LEN);
 			return;
 		}
@@ -262,12 +262,15 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 		cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
 
 		// just append the byte
-		cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte);
+		if( !cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte) ) { cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_ERROR); return; }
 		if( cxa_fixedByteBuffer_getSize_bytes(clePpIn->super.currBuffer) == 4 )
 		{
 			// we have all of our length bytes...make sure it's valid
 			uint16_t len_bytes;
-			if( cxa_fixedByteBuffer_get_uint16LE(clePpIn->super.currBuffer, 2, len_bytes) && (len_bytes >= 1) ) cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
+			if( cxa_fixedByteBuffer_get_uint16LE(clePpIn->super.currBuffer, 2, len_bytes) && (len_bytes >= 1) )
+			{
+				cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_DATA_BYTES);
+			}
 			return;
 		}
 	}
@@ -275,9 +278,9 @@ static void rxState_cb_waitLen_state(cxa_stateMachine_t *const smIn, void *userV
 	// check to see if we've had a reception timeout
 	if( cxa_timeDiff_isElapsed_ms(&clePpIn->super.td_timeout, RECEPTION_TIMEOUT_MS) )
 	{
-			cxa_protocolParser_notify_receptionTimeout(&clePpIn->super);
-			cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_0x80);
-			return;
+		cxa_protocolParser_notify_receptionTimeout(&clePpIn->super);
+		cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_WAIT_0x80);
+		return;
 	}
 }
 
@@ -315,7 +318,7 @@ static void rxState_cb_waitDataBytes_state(cxa_stateMachine_t *const smIn, void 
 				// reset our reception timeout timeDiff
 				cxa_timeDiff_setStartTime_now(&clePpIn->super.td_timeout);
 
-				cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte);
+				if( !cxa_fixedByteBuffer_append_uint8(clePpIn->super.currBuffer, rxByte) ) { cxa_stateMachine_transition(&clePpIn->stateMachine, RX_STATE_ERROR); return; }
 			}
 		}
 		else
