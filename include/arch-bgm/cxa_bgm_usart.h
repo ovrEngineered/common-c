@@ -45,6 +45,10 @@ struct cxa_bgm_usart
 
 	cxa_fixedFifo_t fifo_rx;
 	uint8_t fifo_rx_raw[CXA_BGM_USART_RX_FIFO_SIZE_BYTES];
+
+	bool rxOverflow;
+	bool rxFifoOverflow;
+	bool rxUnderflow;
 };
 
 

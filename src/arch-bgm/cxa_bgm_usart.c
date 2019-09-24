@@ -115,6 +115,9 @@ static void commonInit(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uartIdIn,
 	// save our references
 	usartIn->uartId = uartIdIn;
 	setBgmForUsart(usartIn->uartId, usartIn);
+	usartIn->rxOverflow = false;
+	usartIn->rxFifoOverflow = false;
+	usartIn->rxUnderflow = false;
 
 	// initialize our hardware
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
@@ -170,7 +173,7 @@ static void commonInit(cxa_bgm_usart_t *const usartIn, USART_TypeDef* uartIdIn,
 	cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte, ioStream_cb_writeBytes, (void*)usartIn);
 
 	// setup our interrupts
-	USART_IntEnable(usartIn->uartId, USART_IEN_RXDATAV);
+	USART_IntEnable(usartIn->uartId, USART_IEN_RXDATAV | USART_IEN_RXOF | USART_IEN_RXUF);
 
 	// enable the USART Interrupts
 	if( usartIn->uartId == USART0 )
@@ -226,7 +229,16 @@ static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, vo
 
 	cxa_ioStream_readStatus_t retVal = CXA_IOSTREAM_READSTAT_NODATA;
 	uint8_t readByte;
-	if( cxa_fixedFifo_dequeue(&usartIn->fifo_rx, &readByte) )
+	if( usartIn->rxOverflow || usartIn->rxFifoOverflow || usartIn->rxUnderflow )
+	{
+		cxa_logger_stepDebug_msg("%d  %d  %d", usartIn->rxOverflow, usartIn->rxFifoOverflow, usartIn->rxUnderflow);
+		usartIn->rxOverflow = false;
+		usartIn->rxFifoOverflow = false;
+		usartIn->rxUnderflow = false;
+		USART_Reset(usartIn->uartId);
+		retVal = CXA_IOSTREAM_READSTAT_ERROR;
+	}
+	else if( cxa_fixedFifo_dequeue(&usartIn->fifo_rx, &readByte) )
 	{
 		if( byteOut != NULL ) *byteOut = readByte;
 		retVal = CXA_IOSTREAM_READSTAT_GOTDATA;
@@ -262,12 +274,31 @@ static void handleIsr_rx(USART_TypeDef *usart_rawIn)
 	if( usartIn == NULL ) return;
 	// if we made it here, we know about this usart and we have an object
 
-	uint8_t rxByte;
-	while( usartIn->uartId->STATUS & USART_STATUS_RXDATAV )
+	if( flags & USART_IEN_RXDATAV )
 	{
-		rxByte = (uint8_t)usartIn->uartId->RXDATA;
-		cxa_fixedFifo_queue(&usartIn->fifo_rx, &rxByte);
+		uint8_t rxByte;
+		while( usartIn->uartId->STATUS & USART_STATUS_RXDATAV )
+		{
+			rxByte = (uint8_t)usartIn->uartId->RXDATA;
+			if( !cxa_fixedFifo_queue(&usartIn->fifo_rx, &rxByte) )
+			{
+				usartIn->rxFifoOverflow = true;
+				cxa_fixedFifo_clear(&usartIn->fifo_rx);
+			}
+		}
 	}
+	else if( flags & USART_IEN_RXOF )
+	{
+		usartIn->rxOverflow = true;
+	}
+	else if( flags & USART_IEN_RXUF )
+	{
+		usartIn->rxUnderflow = true;
+	}
+
+	// clear our flags one more time
+	flags = USART_IntGet(usart_rawIn);
+	USART_IntClear(usart_rawIn, flags);
 }
 
 
