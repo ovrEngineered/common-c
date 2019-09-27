@@ -235,7 +235,6 @@ static cxa_ioStream_readStatus_t ioStream_cb_readByte(uint8_t *const byteOut, vo
 		usartIn->rxOverflow = false;
 		usartIn->rxFifoOverflow = false;
 		usartIn->rxUnderflow = false;
-		USART_Reset(usartIn->uartId);
 		retVal = CXA_IOSTREAM_READSTAT_ERROR;
 	}
 	else if( cxa_fixedFifo_dequeue(&usartIn->fifo_rx, &readByte) )
