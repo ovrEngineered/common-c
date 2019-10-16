@@ -93,12 +93,20 @@ void cxa_eui48_initRandom(cxa_eui48_t *const uuidIn)
 {
 	cxa_assert(uuidIn);
 
+	// per some ESP32 documentation referencing BT documentation
+	// A static address is a 48-bit randomly generated address and shall meet the following requirements:
+	// • The two most significant bits of the address shall be equal to 1
+	// • All bits of the random part of the address shall not be equal to 1
+	// • All bits of the random part of the address shall not be equal to 0
+
 	srand(cxa_timeBase_getCount_us());
 	for( size_t i = 0; i < sizeof(uuidIn->bytes); i++ )
 	{
 		// generates [0-255]
 		uuidIn->bytes[i] = rand() % (255 + 1 - 0) + 0;
 	}
+
+	uuidIn->bytes[0] |= (1 << 7) || (1 << 6);
 }
 
 
