@@ -47,10 +47,26 @@ bool cxa_btle_advPacket_init(cxa_btle_advPacket_t *const advPacketIn,
 	cxa_eui48_init(&advPacketIn->addr, sourceAddrBytesIn);
 	advPacketIn->isRandomAddress = isRandomAddressIn;
 	advPacketIn->rssi = rssiIn;
-	cxa_fixedByteBuffer_init_inPlace(&advPacketIn->fbb_data, dataLen_bytesIn, dataIn, dataLen_bytesIn);
+
+	cxa_fixedByteBuffer_initStd(&advPacketIn->fbb_data, advPacketIn->fbb_data_raw);
+	if( !cxa_fixedByteBuffer_append(&advPacketIn->fbb_data, dataIn, dataLen_bytesIn) ) return false;
 
 	// make sure we can do some rudimentary parsing of our packet
 	return cxa_btle_advPacket_getNumFields(advPacketIn, NULL);
+}
+
+
+void cxa_btle_advPacket_initFromPacket(cxa_btle_advPacket_t *const advPacketIn, cxa_btle_advPacket_t *const sourcePacketIn)
+{
+	cxa_assert(advPacketIn);
+	cxa_assert(sourcePacketIn);
+
+	cxa_eui48_initFromEui48(&advPacketIn->addr, &sourcePacketIn->addr);
+	advPacketIn->isRandomAddress = sourcePacketIn->isRandomAddress;
+	advPacketIn->rssi = sourcePacketIn->rssi;
+
+	cxa_fixedByteBuffer_initStd(&advPacketIn->fbb_data, advPacketIn->fbb_data_raw);
+	cxa_fixedByteBuffer_append_fbb(&advPacketIn->fbb_data, &sourcePacketIn->fbb_data);
 }
 
 

@@ -83,6 +83,7 @@ struct cxa_btle_advPacket
 	int rssi;
 
 	cxa_fixedByteBuffer_t fbb_data;
+	uint8_t fbb_data_raw[32];
 };
 
 
@@ -91,6 +92,8 @@ bool cxa_btle_advPacket_init(cxa_btle_advPacket_t *const advPacketIn,
 							 uint8_t *const sourceAddrBytesIn, bool isRandomAddressIn,
 							 int rssiIn,
 							 uint8_t *const dataIn, size_t dataLen_bytesIn);
+
+void cxa_btle_advPacket_initFromPacket(cxa_btle_advPacket_t *const advPacketIn, cxa_btle_advPacket_t *const sourcePacketIn);
 
 cxa_eui48_t* cxa_btle_advPacket_getAddress(cxa_btle_advPacket_t *const advPacketIn);
 
