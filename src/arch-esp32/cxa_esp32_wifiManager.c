@@ -149,16 +149,16 @@ void cxa_network_wifiManager_init(int threadIdIn)
 									  NULL);
 
 	// add our console commands
-	cxa_console_addCommand("wifi_getCfg", "prints current config", NULL, 0, consoleCb_getCfg, NULL);
+	cxa_console_addCommand("wifi.getCfg", "prints current config", NULL, 0, consoleCb_getCfg, NULL);
 
 	cxa_console_argDescriptor_t args[2] = {
 			{.dataType = CXA_STRINGUTILS_DATATYPE_STRING, .description = "ssid"},
 			{.dataType = CXA_STRINGUTILS_DATATYPE_STRING, .description = "passphrase (- for open network)"}
 	};
-	cxa_console_addCommand("wifi_setCfg", "sets wifi config", args, 2, consoleCb_setCfg, NULL);
+	cxa_console_addCommand("wifi.setCfg", "sets wifi config", args, 2, consoleCb_setCfg, NULL);
 
-	cxa_console_addCommand("wifi_clearCfg", "clears current config", NULL, 0, consoleCb_clearCfg, NULL);
-	cxa_console_addCommand("wifi_restart", "restarts the WiFi stateMachine", NULL, 0, consoleCb_restart, NULL);
+	cxa_console_addCommand("wifi.clearCfg", "clears current config", NULL, 0, consoleCb_clearCfg, NULL);
+	cxa_console_addCommand("wifi.restart", "restarts the WiFi stateMachine", NULL, 0, consoleCb_restart, NULL);
 }
 
 
@@ -187,7 +187,17 @@ void cxa_network_wifiManager_addListener(cxa_network_wifiManager_cb_t cb_idleEnt
 
 void cxa_network_wifiManager_start(void)
 {
-	if( cxa_stateMachine_getCurrentState(&stateMachine) != STATE_IDLE ) return;
+	switch( cxa_stateMachine_getCurrentState(&stateMachine) )
+	{
+		case CXA_STATE_MACHINE_STATE_UNKNOWN:
+		case STATE_IDLE:
+			// continue
+			break;
+
+		default:
+			// don't do anything
+			return;
+	}
 
 	targetWifiMode = INTTAR_MODE_NORMAL;
 }
