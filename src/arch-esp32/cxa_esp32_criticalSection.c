@@ -10,7 +10,6 @@
 // ******** includes ********
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <freertos/semphr.h>
 
 #include <stdbool.h>
 
@@ -23,36 +22,23 @@
 
 
 // ******** local function prototypes ********
-static void init(void);
 
 
 // ********  local variable declarations *********
-static bool isInit = false;
-
-static SemaphoreHandle_t xSemaphore;
+static portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
 
 
 // ******** global function implementations ********
 void cxa_criticalSection_enter(void)
 {
-	if( !isInit ) init();
-
-	xSemaphoreTake(xSemaphore, portMAX_DELAY);
+	portENTER_CRITICAL(&myMutex);
 }
 
 
 void cxa_criticalSection_exit(void)
 {
-	if( !isInit ) init();
-
-	xSemaphoreGive(xSemaphore);
+	portEXIT_CRITICAL(&myMutex);
 }
 
 
 // ******** local function implementations ********
-static void init(void)
-{
-	xSemaphore = xSemaphoreCreateMutex();
-
-	isInit = true;
-}
