@@ -125,8 +125,9 @@ static bool ioStream_cb_writeBytes(void* buffIn, size_t bufferSize_bytesIn, void
 {
 	cxa_esp32_usart_t* usartIn = (cxa_esp32_usart_t*)userVarIn;
 	cxa_assert(usartIn);
+	cxa_assert(buffIn);
 
-	uart_write_bytes(usartIn->uartId, buffIn, bufferSize_bytesIn);
+	if( bufferSize_bytesIn > 0 ) uart_write_bytes(usartIn->uartId, buffIn, bufferSize_bytesIn);
 
 	return true;
 }
