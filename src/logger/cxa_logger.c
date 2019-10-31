@@ -13,7 +13,7 @@
 #include <inttypes.h>
 #include <cxa_assert.h>
 #include <cxa_config.h>
-#include <cxa_criticalSection.h>
+#include <cxa_mutex.h>
 #include <cxa_numberUtils.h>
 #include <cxa_stringUtils.h>
 #include <cxa_timeBase.h>
@@ -31,24 +31,25 @@
 
 
 // ******** local function prototypes ********
+static inline void checkInit(void);
 static void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, va_list argsIn);
-static inline void checkSysLogInit(void);
 static void writeField(const char *const stringIn, size_t maxFieldLenIn);
 static void writeHeader(cxa_logger_t *const loggerIn, const uint8_t levelIn);
 
 
 // ********  local variable declarations *********
 static cxa_logger_t sysLog;
-static bool isSysLogInit = false;
+static bool isInit = false;
 
 static cxa_ioStream_t* ioStream = NULL;
 static size_t largestloggerName_bytes = 0;
+static cxa_mutex_t* printMutex;
 
 
 // ******** global function implementations ********
 void cxa_logger_setGlobalIoStream(cxa_ioStream_t *const ioStreamIn)
 {
-	checkSysLogInit();
+	checkInit();
 
 	ioStream = ioStreamIn;
 
@@ -62,7 +63,7 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
 {
 	cxa_assert(loggerIn);
 	cxa_assert(nameIn);
-	checkSysLogInit();
+	checkInit();
 
 	// copy our name (and make sure it will be null terminated)
 	cxa_stringUtils_copy(loggerIn->name, nameIn, CXA_LOGGER_MAX_NAME_LEN_CHARS);
@@ -77,7 +78,7 @@ void cxa_logger_init_formattedString(cxa_logger_t *const loggerIn, const char *n
 {
 	cxa_assert(loggerIn);
 	cxa_assert(nameFmtIn);
-	checkSysLogInit();
+	checkInit();
 
 	va_list varArgs;
 	va_start(varArgs, nameFmtIn);
@@ -92,12 +93,18 @@ void cxa_logger_init_formattedString(cxa_logger_t *const loggerIn, const char *n
 
 cxa_logger_t* cxa_logger_getSysLog(void)
 {
+	checkInit();
+
 	return &sysLog;
 }
 
 
 void cxa_logger_log_formattedString_impl(cxa_logger_t *const loggerIn, const uint8_t levelIn, const char* formatIn, ...)
 {
+	cxa_assert(loggerIn);
+	cxa_assert(formatIn);
+	checkInit();
+
 	va_list varArgs;
 	va_start(varArgs, formatIn);
 	cxa_logger_log_varArgs(loggerIn, levelIn, formatIn, varArgs);
@@ -115,19 +122,19 @@ void cxa_logger_log_untermString_impl(cxa_logger_t *const loggerIn, const uint8_
 				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
 				(levelIn == CXA_LOG_LEVEL_TRACE) );
 	cxa_assert(untermStringIn);
-	checkSysLogInit();
+	checkInit();
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
 
 
-	cxa_criticalSection_enter();
+	cxa_mutex_aquire(printMutex);
 
 #ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
 	if( cxa_console_isExecutingCommand() )
 	{
-		cxa_criticalSection_exit();
+		cxa_mutex_release(printMutex);
 		return;
 	}
 #endif
@@ -146,7 +153,7 @@ void cxa_logger_log_untermString_impl(cxa_logger_t *const loggerIn, const uint8_
 	cxa_console_postlog();
 #endif
 
-	cxa_criticalSection_exit();
+	cxa_mutex_release(printMutex);
 }
 
 
@@ -160,19 +167,19 @@ void cxa_logger_log_memdump_impl(cxa_logger_t *const loggerIn, const uint8_t lev
 			(levelIn == CXA_LOG_LEVEL_DEBUG) ||
 			(levelIn == CXA_LOG_LEVEL_TRACE) );
 	cxa_assert(ptrIn);
-	checkSysLogInit();
+	checkInit();
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
 
 
-	cxa_criticalSection_enter();
+	cxa_mutex_aquire(printMutex);
 
 #ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
 	if( cxa_console_isExecutingCommand() )
 	{
-		cxa_criticalSection_exit();
+		cxa_mutex_release(printMutex);
 		return;
 	}
 #endif
@@ -198,13 +205,15 @@ void cxa_logger_log_memdump_impl(cxa_logger_t *const loggerIn, const uint8_t lev
 	cxa_console_postlog();
 #endif
 
-	cxa_criticalSection_exit();
+	cxa_mutex_release(printMutex);
 }
 
 
 void cxa_logger_stepDebug_formattedString_impl(const char* fileIn, const int lineNumIn, const char* formatIn, ...)
 {
 	cxa_assert(fileIn);
+	cxa_assert(formatIn);
+	checkInit();
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
@@ -218,7 +227,7 @@ void cxa_logger_stepDebug_formattedString_impl(const char* fileIn, const int lin
 	}
 
 
-	cxa_criticalSection_enter();
+	cxa_mutex_aquire(printMutex);
 
 #ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
@@ -246,13 +255,15 @@ void cxa_logger_stepDebug_formattedString_impl(const char* fileIn, const int lin
 	cxa_console_postlog();
 #endif
 
-	cxa_criticalSection_exit();
+	cxa_mutex_release(printMutex);
 }
 
 
 void cxa_logger_stepDebug_memDump_impl(const char* fileIn, const int lineNumIn, void* bytesIn, size_t numBytesIn, const char* msgIn)
 {
 	cxa_assert(fileIn);
+	cxa_assert(bytesIn);
+	checkInit();
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
@@ -266,7 +277,7 @@ void cxa_logger_stepDebug_memDump_impl(const char* fileIn, const int lineNumIn, 
 	}
 
 
-	cxa_criticalSection_enter();
+	cxa_mutex_aquire(printMutex);
 
 #ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
@@ -297,7 +308,7 @@ void cxa_logger_stepDebug_memDump_impl(const char* fileIn, const int lineNumIn, 
 	cxa_console_postlog();
 #endif
 
-	cxa_criticalSection_exit();
+	cxa_mutex_release(printMutex);
 }
 
 
@@ -311,19 +322,19 @@ void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn,
 				(levelIn == CXA_LOG_LEVEL_DEBUG) ||
 				(levelIn == CXA_LOG_LEVEL_TRACE) );
 	cxa_assert(formatIn);
-	checkSysLogInit();
+	checkInit();
 
 	// if we don't have an ioStream, don't worry about it!
 	if( ioStream == NULL ) return;
 
 
-	cxa_criticalSection_enter();
+	cxa_mutex_aquire(printMutex);
 
 #ifdef CXA_CONSOLE_ENABLE
 	cxa_console_prelog();
 	if( cxa_console_isExecutingCommand() )
 	{
-		cxa_criticalSection_exit();
+		cxa_mutex_release(printMutex);
 		return;
 	}
 #endif
@@ -341,16 +352,17 @@ void cxa_logger_log_varArgs(cxa_logger_t *const loggerIn, const uint8_t levelIn,
 	cxa_console_postlog();
 #endif
 
-	cxa_criticalSection_exit();
+	cxa_mutex_release(printMutex);
 }
 
 
-static inline void checkSysLogInit(void)
+static inline void checkInit(void)
 {
-	if( !isSysLogInit )
+	if( !isInit )
 	{
 		// mark init first since we'll have a stack overflow (recursive call if not)
-		isSysLogInit = true;
+		isInit = true;
+		cxa_assert(printMutex = cxa_mutex_reserve());
 		cxa_logger_init(&sysLog, "sysLog");
 	}
 }
