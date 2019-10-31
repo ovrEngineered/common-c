@@ -32,8 +32,6 @@
 
 
 // ******** local function prototypes ********
-static void runLoopCb_onStartup(void* userVarIn);
-
 static cxa_btle_central_state_t scm_getState(cxa_btle_central_t *const superIn);
 static void scm_startScan(cxa_btle_central_t *const superIn, bool isActiveIn);
 static void scm_stopScan(cxa_btle_central_t *const superIn);
@@ -56,9 +54,6 @@ void cxa_esp32_btle_central_init(cxa_esp32_btle_central_t *const btlecIn, int th
 
 	// initialize our superclass
 	cxa_btle_central_init(&btlecIn->super, scm_getState, scm_startScan, scm_stopScan, scm_startConnection);
-
-	// schedule for runloop execution
-	cxa_runLoop_addEntry(threadIdIn, runLoopCb_onStartup, NULL, (void*)btlecIn);
 }
 
 
@@ -99,6 +94,16 @@ void cxa_esp32_btle_central_handleEvent_gap(cxa_esp32_btle_central_t *const btle
 		cxa_btle_central_notify_advertRx(&btlecIn->super, &rxPacket);
 
 	}
+	else if( event == ESP_GAP_BLE_SCAN_START_COMPLETE_EVT )
+	{
+		bool startSuccessful = param->scan_start_cmpl.status == ESP_BT_STATUS_SUCCESS;
+		if( !startSuccessful )
+		{
+			cxa_logger_warn(&btlecIn->super.logger, "scan start failed: %d", param->scan_start_cmpl.status);
+		}
+
+		cxa_btle_central_notify_scanStart(&btlecIn->super, startSuccessful);
+	}
 	else if( (event == ESP_GAP_BLE_SCAN_RESULT_EVT) && (scanResult->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_CMPL_EVT) )
 	{
 		// scanning done...this might be a timeout OR requested by the user
@@ -111,15 +116,6 @@ void cxa_esp32_btle_central_handleEvent_gap(cxa_esp32_btle_central_t *const btle
 
 
 // ******** local function implementations ********
-static void runLoopCb_onStartup(void* userVarIn)
-{
-	cxa_esp32_btle_central_t *const btlecIn = (cxa_esp32_btle_central_t *const)userVarIn;
-	cxa_assert(btlecIn);
-
-	cxa_btle_central_notify_onBecomesReady(&btlecIn->super);
-}
-
-
 static cxa_btle_central_state_t scm_getState(cxa_btle_central_t *const superIn)
 {
 	cxa_esp32_btle_central_t *const btlecIn = (cxa_esp32_btle_central_t *const)superIn;
