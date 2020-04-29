@@ -11,7 +11,7 @@
 // ******** includes ********
 #include <stdbool.h>
 #include <stdio.h>
-#include <cxa_ioStream.h>
+#include <cxa_ioStream_file.h>
 
 
 // ******** global macro definitions ********
@@ -39,3 +39,4 @@ void cxa_ioStream_file_setFile(cxa_ioStream_file_t *const ioStreamIn, FILE *cons
 void cxa_ioStream_file_close(cxa_ioStream_file_t *const ioStreamIn);
 
 #endif // CXA_IOSTREAM_FILE_H_
+o
