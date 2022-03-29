@@ -61,7 +61,7 @@ static void scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 	while( (ADCSRA & (1 << 6)) );
 
 	// process our value
-	uint16_t rawVal = ((uint16_t)ADCL << 0) | ((uint16_t)ADCH << 8);
+	uint16_t rawVal = ((((uint16_t)ADCL) & 0x00FF) << 0) | ((((uint16_t)ADCH) & 0x00FF) << 8);
 
 	// notify our listeners
 	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, true, NAN, rawVal);
