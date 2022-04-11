@@ -17,28 +17,28 @@
 
 
 // ******** local function prototypes ********
-static void timer8_cb_onOverflow(cxa_atmega_timer8_t *const timerIn, void *userVarIn);
+static void timer8_cb_onOverflow(cxa_atmega_timer_t *const timerIn, void *userVarIn);
 
 
 // ********  local variable declarations *********
-static cxa_atmega_timer8_t* timer = NULL;
+static cxa_atmega_timer_t* timer = NULL;
 static uint32_t numOverflows = 0;
 
 
 // ******** global function implementations ********
-void cxa_atmega_timeBase_initWithTimer8(cxa_atmega_timer8_t *const timerIn)
+void cxa_atmega_timeBase_initWithTimer8(cxa_atmega_timer_t *const timerIn)
 {
 	cxa_assert(timerIn);
 
 	timer = timerIn;
-	cxa_atmega_timer8_addListener(timer, timer8_cb_onOverflow, NULL);
-	cxa_atmega_timer8_enableInterrupt_overflow(timer);
+	cxa_atmega_timer_addListener(timer, timer8_cb_onOverflow, NULL);
+	cxa_atmega_timer_enableInterrupt_overflow(timer);
 }
 
 
 uint32_t cxa_timeBase_getCount_us(void)
 {
-	return (timer != NULL) ? (numOverflows * cxa_atmega_timer8_getOverflowPeriod_us(timer)) : 0;
+	return (timer != NULL) ? (numOverflows * ((uint32_t)(cxa_atmega_timer_getOverflowPeriod_s(timer) * 1.0E6))) : 0;
 }
 
 
@@ -49,7 +49,7 @@ uint32_t cxa_timeBase_getMaxCount_us(void)
 
 
 // ******** local function implementations ********
-static void timer8_cb_onOverflow(cxa_atmega_timer8_t *const timerIn, void *userVarIn)
+static void timer8_cb_onOverflow(cxa_atmega_timer_t *const timerIn, void *userVarIn)
 {
 	numOverflows++;
 }

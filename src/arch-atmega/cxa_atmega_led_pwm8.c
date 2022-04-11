@@ -28,7 +28,7 @@ static void scm_setBrightness(cxa_led_runLoop_t *const superIn, uint8_t brightne
 
 
 // ******** global function implementations ********
-void cxa_atmega_led_pwm8_init(cxa_atmega_led_pwm8_t *const ledIn, cxa_atmega_timer8_ocr_t *const ocrIn, int threadIdIn)
+void cxa_atmega_led_pwm8_init(cxa_atmega_led_pwm8_t *const ledIn, cxa_atmega_timer_ocr_t *const ocrIn, int threadIdIn)
 {
 	cxa_assert(ledIn);
 	cxa_assert(ocrIn);
@@ -47,5 +47,5 @@ static void scm_setBrightness(cxa_led_runLoop_t *const superIn, uint8_t brightne
 	cxa_atmega_led_pwm8_t* ledIn = (cxa_atmega_led_pwm8_t*)superIn;
 	cxa_assert(ledIn);
 
-	cxa_atmega_timer8_ocr_setValue(ledIn->ocr, brightness_255In);
+	cxa_atmega_timer_ocr_setValue(ledIn->ocr, brightness_255In);
 }

@@ -9,8 +9,8 @@
 
 
 // ******** includes ********
+#include <cxa_atmega_timer_ocr.h>
 #include <cxa_led_runLoop.h>
-#include <cxa_atmega_timer8_ocr.h>
 
 
 // ******** global macro definitions ********
@@ -21,12 +21,12 @@ typedef struct
 {
 	cxa_led_runLoop_t super;
 
-	cxa_atmega_timer8_ocr_t* ocr;
+	cxa_atmega_timer_ocr_t* ocr;
 }cxa_atmega_led_pwm8_t;
 
 
 // ******** global function prototypes ********
-void cxa_atmega_led_pwm8_init(cxa_atmega_led_pwm8_t *const ledIn, cxa_atmega_timer8_ocr_t *const ocrIn, int threadIdIn);
+void cxa_atmega_led_pwm8_init(cxa_atmega_led_pwm8_t *const ledIn, cxa_atmega_timer_ocr_t *const ocrIn, int threadIdIn);
 
 
 #endif /* CXA_ATMEGA_LED_PWM8_H_ */

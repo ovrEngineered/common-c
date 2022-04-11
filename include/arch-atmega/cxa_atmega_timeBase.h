@@ -9,7 +9,7 @@
 
 
 // ******** includes ********
-#include <cxa_atmega_timer8.h>
+#include <cxa_atmega_timer.h>
 #include <cxa_timeBase.h>
 
 
@@ -23,7 +23,7 @@
 /**
  * @public
  */
-void cxa_atmega_timeBase_initWithTimer8(cxa_atmega_timer8_t *const timerIn);
+void cxa_atmega_timeBase_initWithTimer8(cxa_atmega_timer_t *const timerIn);
 
 
 #endif
