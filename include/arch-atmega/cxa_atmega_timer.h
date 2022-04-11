@@ -103,6 +103,8 @@ struct cxa_atmega_timer
 // ******** global function prototypes ********
 void cxa_atmega_timer_init(cxa_atmega_timer_t *const timerIn, const cxa_atmega_timer_id_t idIn, const cxa_atmega_timer_mode_t modeIn, const cxa_atmega_timer_prescaler_t prescaleIn);
 
+uint16_t cxa_atmega_timer_getCurrentCounts(cxa_atmega_timer_t *const timerIn);
+
 bool cxa_atmega_timer_setPrescalar(cxa_atmega_timer_t *const timerIn, const cxa_atmega_timer_prescaler_t prescaleIn);
 
 void cxa_atmega_timer_addListener(cxa_atmega_timer_t *const timerIn, cxa_atmega_timer_cb_onOverflow_t cb_onOverflowIn, void* userVarIn);

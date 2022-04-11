@@ -81,6 +81,29 @@ void cxa_atmega_timer_init(cxa_atmega_timer_t *const timerIn, const cxa_atmega_t
 }
 
 
+uint16_t cxa_atmega_timer_getCurrentCounts(cxa_atmega_timer_t *const timerIn)
+{
+	cxa_assert(timerIn);
+
+	uint16_t retVal = 0;
+	switch( timerIn->id )
+	{
+		case CXA_ATM_TIMER_0:
+			retVal = TCNT0;
+			break;
+
+		case CXA_ATM_TIMER_1:
+			retVal = TCNT1;
+			break;
+
+		case CXA_ATM_TIMER_2:
+			retVal = TCNT2;
+			break;
+	}
+	return retVal;
+}
+
+
 bool cxa_atmega_timer_setPrescalar(cxa_atmega_timer_t *const timerIn, const cxa_atmega_timer_prescaler_t prescaleIn)
 {
 	cxa_assert(timerIn);
