@@ -4,13 +4,16 @@
  *
  * @author Christopher Armenio
  */
+#include <cxa_atmega_timer_ocr.h>
+
+
+// ******** includes *******
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdbool.h>
 
 #include <cxa_assert.h>
 #include <cxa_atmega_timer.h>
-#include <cxa_atmega_timer_ocr.h>
 
 
 // ******** local macro definitions ********
