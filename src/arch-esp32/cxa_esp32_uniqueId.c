@@ -52,7 +52,7 @@ static void init(void)
 {
 	if( esp_wifi_get_mac(WIFI_IF_STA, id_bytes) != ESP_OK )
 	{
-		esp_eth_get_mac(id_bytes);
+		esp_read_mac(id_bytes, ESP_MAC_ETH);
 	}
 
 	sprintf(id_str, "%02X:%02X:%02X:%02X:%02X:%02X", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3], id_bytes[4], id_bytes[5]);

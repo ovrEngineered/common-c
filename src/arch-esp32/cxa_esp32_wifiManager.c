@@ -10,7 +10,7 @@
 // ******** includes ********
 #include <string.h>
 
-#include "esp_event_loop.h"
+#include "esp_event.h"
 #include "esp_smartConfig.h"
 #include "esp_wifi.h"
 
@@ -80,7 +80,7 @@ static void stateCb_associationFailed_enter(cxa_stateMachine_t *const smIn, int 
 static void stateCb_staStopping_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 static void stateCb_provisioning_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
-static void espCb_smartConfig(smartconfig_status_t status, void *pdata);
+//static void espCb_smartConfig(smartconfig_status_t status, void *pdata);
 
 static void notify_idle(void);
 static void notify_provisioning(void);
@@ -118,7 +118,7 @@ void cxa_network_wifiManager_init(int threadIdIn)
 	cxa_array_initStd(&listeners, listeners_raw);
 
 	// setup our wifi sub-system
-	tcpip_adapter_init();
+//	tcpip_adapter_init();
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 	cxa_assert( esp_wifi_init(&cfg) == ESP_OK );
 	cxa_assert( esp_wifi_set_storage(WIFI_STORAGE_FLASH) == ESP_OK );
@@ -488,46 +488,46 @@ static void stateCb_provisioning_enter(cxa_stateMachine_t *const smIn, int prevS
 	cxa_logger_info(&logger, "starting provisioning");
 
 	esp_smartconfig_set_type(SC_TYPE_ESPTOUCH);
-	esp_smartconfig_start(espCb_smartConfig);
+//	esp_smartconfig_start(espCb_smartConfig);
 
 	notify_provisioning();
 }
 
 
-static void espCb_smartConfig(smartconfig_status_t status, void *pdata)
-{
-	cxa_logger_trace(&logger, "smartConfig: %d", status);
-
-	switch( status )
-	{
-		case SC_STATUS_LINK:
-		{
-			// make a local copy
-			wifi_config_t cfg;
-			memcpy(&cfg.sta, pdata, sizeof(cfg.sta));
-
-			// save our config to persistent storage
-			esp_wifi_set_config(WIFI_IF_STA, &cfg);
-
-			cxa_logger_info(&logger, "provisioned for ssid:'%s'", cfg.sta.ssid);
-
-			// restart to apply
-			targetWifiMode = INTTAR_MODE_NORMAL;
-			cxa_stateMachine_transition(&stateMachine, STATE_STARTUP);
-			break;
-		}
-
-		case SC_STATUS_LINK_OVER:
-			cxa_logger_debug(&logger, "provision confirmed");
-
-			// stop smart config
-			esp_smartconfig_stop();
-			break;
-
-		default:
-			break;
-	}
-}
+//static void espCb_smartConfig(smartconfig_status_t status, void *pdata)
+//{
+//	cxa_logger_trace(&logger, "smartConfig: %d", status);
+//
+//	switch( status )
+//	{
+//		case SC_STATUS_LINK:
+//		{
+//			// make a local copy
+//			wifi_config_t cfg;
+//			memcpy(&cfg.sta, pdata, sizeof(cfg.sta));
+//
+//			// save our config to persistent storage
+//			esp_wifi_set_config(WIFI_IF_STA, &cfg);
+//
+//			cxa_logger_info(&logger, "provisioned for ssid:'%s'", cfg.sta.ssid);
+//
+//			// restart to apply
+//			targetWifiMode = INTTAR_MODE_NORMAL;
+//			cxa_stateMachine_transition(&stateMachine, STATE_STARTUP);
+//			break;
+//		}
+//
+//		case SC_STATUS_LINK_OVER:
+//			cxa_logger_debug(&logger, "provision confirmed");
+//
+//			// stop smart config
+//			esp_smartconfig_stop();
+//			break;
+//
+//		default:
+//			break;
+//	}
+//}
 
 
 static void notify_idle(void)
@@ -618,7 +618,7 @@ static void consoleCb_getCfg(cxa_array_t *const argsIn, cxa_ioStream_t *const io
 	}
 
 	tcpip_adapter_dns_info_t dnsInfo;
-	if( tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &dnsInfo) != ESP_OK )
+	if( tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, ESP_NETIF_DNS_MAIN, &dnsInfo) != ESP_OK )
 	{
 		cxa_ioStream_writeLine(ioStreamIn, "fail");
 		return;

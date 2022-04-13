@@ -8,7 +8,7 @@
 
 
 // ******** includes ********
-#include "esp_event_loop.h"
+#include "esp_event.h"
 
 #include <cxa_array.h>
 #include <cxa_assert.h>
@@ -41,7 +41,7 @@ typedef struct
 
 
 // ******** local function prototypes ********
-static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event);
+static esp_err_t espCb_eventHandler(void* event_handler_arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
 static void notifyListeners_sta_start(system_event_t *eventIn);
 static void notifyListeners_sta_stop(system_event_t *eventIn);
@@ -74,7 +74,8 @@ void cxa_esp32_eventManager_init(void)
 
 	cxa_array_initStd(&listeners, listeners_raw);
 
-	cxa_assert( esp_event_loop_init(espCb_eventHandler, NULL) == ESP_OK );
+	cxa_assert(esp_event_loop_create_default() == ESP_OK);
+//	cxa_assert(esp_event_handler_instance_register(ESP_EVENT_ANY_BASE, ESP_EVENT_ANY_ID, espCb_eventHandler, NULL, NULL) == ESP_OK);
 }
 
 
@@ -110,62 +111,63 @@ void cxa_esp32_eventManager_addListener(cxa_esp32_eventManager_cb_t cb_sta_start
 
 
 // ******** local function implementations ********
-static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event)
+//static esp_err_t espCb_eventHandler(void *ctx, system_event_t *event)
+static esp_err_t espCb_eventHandler(void* event_handler_arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-	switch( event->event_id )
+	switch( event_id )
 	{
-		case SYSTEM_EVENT_STA_START:
-			cxa_logger_debug(&logger, "new event: %s", "STA_START");
-			notifyListeners_sta_start(event);
-			break;
-
-		case SYSTEM_EVENT_STA_STOP:
-			cxa_logger_debug(&logger, "new event: %s", "STA_STOP");
-			notifyListeners_sta_stop(event);
-			break;
-
-		case SYSTEM_EVENT_STA_CONNECTED:
-			cxa_logger_debug(&logger, "new event: %s", "STA_CONNECTED");
-			notifyListeners_sta_connected(event);
-			break;
-
-		case SYSTEM_EVENT_STA_DISCONNECTED:
-			cxa_logger_debug(&logger, "new event: %s", "STA_DISCONNECTED");
-			notifyListeners_sta_disconnected(event);
-			break;
-
-		case SYSTEM_EVENT_STA_GOT_IP:
-			cxa_logger_debug(&logger, "new event: %s", "STA_GOT_IP");
-			notifyListeners_sta_gotIp(event);
-			break;
-
-		case SYSTEM_EVENT_ETH_START:
-			cxa_logger_debug(&logger, "new event: %s", "ETH_START");
-			notifyListeners_eth_start(event);
-			break;
-
-		case SYSTEM_EVENT_ETH_STOP:
-			cxa_logger_debug(&logger, "new event: %s", "ETH_STOP");
-			notifyListeners_eth_stop(event);
-			break;
-
-		case SYSTEM_EVENT_ETH_CONNECTED:
-			cxa_logger_debug(&logger, "new event: %s", "ETH_CONNECTED");
-			notifyListeners_eth_connected(event);
-			break;
-
-		case SYSTEM_EVENT_ETH_DISCONNECTED:
-			cxa_logger_debug(&logger, "new event: %s", "ETH_DISCONNECTED");
-			notifyListeners_eth_disconnected(event);
-			break;
-
-		case SYSTEM_EVENT_ETH_GOT_IP:
-			cxa_logger_debug(&logger, "new event: %s", "ETH_GOT_IP");
-			notifyListeners_eth_gotIp(event);
-			break;
+//		case SYSTEM_EVENT_STA_START:
+//			cxa_logger_debug(&logger, "new event: %s", "STA_START");
+//			notifyListeners_sta_start(event);
+//			break;
+//
+//		case SYSTEM_EVENT_STA_STOP:
+//			cxa_logger_debug(&logger, "new event: %s", "STA_STOP");
+//			notifyListeners_sta_stop(event);
+//			break;
+//
+//		case SYSTEM_EVENT_STA_CONNECTED:
+//			cxa_logger_debug(&logger, "new event: %s", "STA_CONNECTED");
+//			notifyListeners_sta_connected(event);
+//			break;
+//
+//		case SYSTEM_EVENT_STA_DISCONNECTED:
+//			cxa_logger_debug(&logger, "new event: %s", "STA_DISCONNECTED");
+//			notifyListeners_sta_disconnected(event);
+//			break;
+//
+//		case SYSTEM_EVENT_STA_GOT_IP:
+//			cxa_logger_debug(&logger, "new event: %s", "STA_GOT_IP");
+//			notifyListeners_sta_gotIp(event);
+//			break;
+//
+//		case SYSTEM_EVENT_ETH_START:
+//			cxa_logger_debug(&logger, "new event: %s", "ETH_START");
+//			notifyListeners_eth_start(event);
+//			break;
+//
+//		case SYSTEM_EVENT_ETH_STOP:
+//			cxa_logger_debug(&logger, "new event: %s", "ETH_STOP");
+//			notifyListeners_eth_stop(event);
+//			break;
+//
+//		case SYSTEM_EVENT_ETH_CONNECTED:
+//			cxa_logger_debug(&logger, "new event: %s", "ETH_CONNECTED");
+//			notifyListeners_eth_connected(event);
+//			break;
+//
+//		case SYSTEM_EVENT_ETH_DISCONNECTED:
+//			cxa_logger_debug(&logger, "new event: %s", "ETH_DISCONNECTED");
+//			notifyListeners_eth_disconnected(event);
+//			break;
+//
+//		case SYSTEM_EVENT_ETH_GOT_IP:
+//			cxa_logger_debug(&logger, "new event: %s", "ETH_GOT_IP");
+//			notifyListeners_eth_gotIp(event);
+//			break;
 
 		default:
-			cxa_logger_debug(&logger, "unhandled event: %d", event->event_id);
+			cxa_logger_debug(&logger, "unhandled event: %d", event_id);
 			break;
 	}
 
