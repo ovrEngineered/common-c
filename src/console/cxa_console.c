@@ -47,6 +47,7 @@ typedef struct
 
 
 // ******** local function prototypes ********
+static void cb_onRunLoopStart(void* userVarIn);
 static void cb_onRunLoopUpdate(void* userVarIn);
 static void printBootHeader(const char* deviceNameIn);
 static void printCommandLine(void);
@@ -60,6 +61,8 @@ static void command_help(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStre
 
 // ********  local variable declarations *********
 static cxa_ioStream_t* ioStream = NULL;
+
+static const char* deviceName = NULL;
 
 static cxa_array_t commandBuffer;
 static char commandBuffer_raw[CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES];
@@ -79,6 +82,7 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 
 	// save our references
 	ioStream = ioStreamIn;
+	deviceName = deviceNameIn;
 
 	// setup our arrays
 	cxa_array_initStd(&commandBuffer, commandBuffer_raw);
@@ -87,10 +91,7 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 	cxa_console_addCommand("help", "prints available commands", NULL, 0, command_help, NULL);
 
 	// register for our runLoop
-	cxa_runLoop_addEntry(threadIdIn, NULL, cb_onRunLoopUpdate, NULL);
-
-	printBootHeader(deviceNameIn);
-	printCommandLine();
+	cxa_runLoop_addEntry(threadIdIn, cb_onRunLoopStart, cb_onRunLoopUpdate, NULL);
 }
 
 
@@ -176,6 +177,13 @@ void cxa_console_postlog(void)
 
 
 // ******** local function implementations ********
+static void cb_onRunLoopStart(void* userVarIn)
+{
+	printBootHeader(deviceName);
+	printCommandLine();
+}
+
+
 static void cb_onRunLoopUpdate(void* userVarIn)
 {
     // don't do anything if we're paused
