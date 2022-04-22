@@ -162,8 +162,9 @@ static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn)
 	// get a pointer to our class
 	cxa_esp32_gpio_t *const gpioIn = (cxa_esp32_gpio_t *const)superIn;
 
-	gpio_set_level(gpioIn->pinNum, (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn);
-	gpioIn->lastVal = valIn;
+	bool newVal = (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !valIn : valIn;
+	gpio_set_level(gpioIn->pinNum, newVal);
+	gpioIn->lastVal = newVal;
 }
 
 
