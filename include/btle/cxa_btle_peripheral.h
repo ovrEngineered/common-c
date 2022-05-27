@@ -178,6 +178,9 @@ typedef struct
 	const char* serviceUuid_str;
 	const char* charUuid_str;
 
+	bool allowNotifications;
+	bool allowIndications;
+
 	struct
 	{
 		cxa_btle_peripheral_cb_onReadRequest_t onReadRequest;
@@ -265,6 +268,8 @@ void cxa_btle_peripheral_addListener(cxa_btle_peripheral_t *const btlepIn,
 void cxa_btle_peripheral_registerCharacteristicHandler_read(cxa_btle_peripheral_t *const btlepIn,
 															const char *const serviceUuidStrIn,
 															const char *const charUuidStrIn,
+															bool allowNotificationsIn,
+															bool allowIndicationsIn,
 															cxa_btle_peripheral_cb_onReadRequest_t cb_onReadIn, void *userVarIn);
 
 /**

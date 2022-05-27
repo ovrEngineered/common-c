@@ -29,7 +29,7 @@ void cxa_esp32_btle_module_init(int threadIdIn);
 /**
  * @public
  */
-cxa_esp32_btle_central_t* cxa_esp32_btle_module_getBtleCentral(void);
+//cxa_esp32_btle_central_t* cxa_esp32_btle_module_getBtleCentral(void);
 
 
 /**

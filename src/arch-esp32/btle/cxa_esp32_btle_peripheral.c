@@ -11,10 +11,11 @@
 #include <cxa_assert.h>
 #include <cxa_esp32_btle_module.h>
 #include <cxa_fixedByteBuffer.h>
+#include <cxa_stringUtils.h>
 
 #include <string.h>
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_DEBUG
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
 #include <cxa_logger_implementation.h>
 
 
@@ -27,8 +28,9 @@
 
 // ******** local function prototypes ********
 static void createServiceForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *const btlepIn, esp_gatt_if_t gatts_if);
-static void createCharacteristicForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *const btlepIn, bool startServiceIn);
-static void createDescriptorForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *const btlepIn);
+static void createCharacteristicForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *const btlepIn, uint16_t serviceHandleIn);
+static void handleRead(cxa_esp32_btle_peripheral_t *const btlepIn, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+static void handleWrite(cxa_esp32_btle_peripheral_t *const btlepIn, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
 static void scm_sendNotification(cxa_btle_peripheral_t *const superIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_fixedByteBuffer_t *const fbb_dataIn);
 static void scm_sendDeferredReadResponse(cxa_btle_peripheral_t *const superIn, cxa_eui48_t *const sourceAddrIn, const char *const serviceUuidStrIn, const char *const characteristicUuidStrIn, cxa_btle_peripheral_readRetVal_t retValIn, cxa_fixedByteBuffer_t *const fbbReadDataIn);
@@ -118,13 +120,10 @@ void cxa_esp32_btle_peripheral_handleEvent_gatts(cxa_esp32_btle_peripheral_t *co
 			// service was created, record our service handle
 			cxa_btle_peripheral_charEntry_t* currCharEntry = cxa_array_get(&btlepIn->super.charEntries, btlepIn->currRegisteringCharEntryIndex);
 			if( currCharEntry == NULL ) return;
-			cxa_esp32_btle_handleCharMapEntry_t newEntry = { .charEntry = currCharEntry, .handle_service = param->create.service_handle };
-			cxa_assert( cxa_array_append(&btlepIn->handleCharMap, &newEntry) );
-
 			cxa_logger_debug(&btlepIn->super.logger, "service %s -> handle %d", currCharEntry->serviceUuid_str, param->create.service_handle);
 
-			// create the corresponding characteristic
-			createCharacteristicForCurrCharEntryIndex(btlepIn, true);
+			cxa_logger_debug(&btlepIn->super.logger, "starting service handle %d", param->create.service_handle);
+			esp_ble_gatts_start_service(param->create.service_handle);
 			break;
 		}
 
@@ -140,30 +139,10 @@ void cxa_esp32_btle_peripheral_handleEvent_gatts(cxa_esp32_btle_peripheral_t *co
 			cxa_btle_peripheral_charEntry_t* currCharEntry = cxa_array_get(&btlepIn->super.charEntries, btlepIn->currRegisteringCharEntryIndex);
 			if( currCharEntry == NULL ) return;
 
-			cxa_array_iterate(&btlepIn->handleCharMap, currCharMapEntry, cxa_esp32_btle_handleCharMapEntry_t)
-			{
-				if( currCharMapEntry == NULL ) continue;
-
-				if( currCharMapEntry->charEntry == currCharEntry )
-				{
-					currCharMapEntry->handle_char = param->add_char.attr_handle;
-					cxa_logger_debug(&btlepIn->super.logger, "char %s -> handle %d", currCharEntry->charUuid_str, param->add_char.attr_handle);
-					break;
-				}
-			}
-
-			// create our descriptor for the characteristic
-			createDescriptorForCurrCharEntryIndex(btlepIn);
-			break;
-		}
-
-		case ESP_GATTS_ADD_CHAR_DESCR_EVT:
-		{
-			if( param->add_char_descr.status != ESP_GATT_OK )
-			{
-				cxa_logger_warn(&btlepIn->super.logger, "cannot create descriptor: %d", param->add_char_descr.status);
-				return;
-			}
+			// add to our lookup map
+			cxa_esp32_btle_handleCharMapEntry_t newEntry = { .charEntry = currCharEntry, .handle_service = param->add_char.service_handle, .handle_char = param->add_char.attr_handle };
+			cxa_assert( cxa_array_append(&btlepIn->handleCharMap, &newEntry) );
+			cxa_logger_debug(&btlepIn->super.logger, "char %s -> handle %d", currCharEntry->charUuid_str, param->add_char.attr_handle);
 
 			// move onto the next char map entry
 			btlepIn->currRegisteringCharEntryIndex++;
@@ -173,6 +152,29 @@ void cxa_esp32_btle_peripheral_handleEvent_gatts(cxa_esp32_btle_peripheral_t *co
 
 		case ESP_GATTS_START_EVT:
 		{
+			if( param->start.status != ESP_GATT_OK )
+			{
+				cxa_logger_warn(&btlepIn->super.logger, "cannot start service: %d", param->start.service_handle);
+				return;
+			}
+			cxa_logger_debug(&btlepIn->super.logger, "service handle %d started", param->start.service_handle);
+
+			// start creating the corresponding characteristics
+			createCharacteristicForCurrCharEntryIndex(btlepIn, param->start.service_handle);
+			break;
+		}
+
+		case ESP_GATTS_READ_EVT:
+		{
+			cxa_logger_debug(&btlepIn->super.logger, "read handle %d", param->read.handle);
+			handleRead(btlepIn, gatts_if, param);
+			break;
+		}
+
+		case ESP_GATTS_WRITE_EVT:
+		{
+			cxa_logger_debug(&btlepIn->super.logger, "write handle %d", param->read.handle);
+			handleWrite(btlepIn, gatts_if, param);
 			break;
 		}
 
@@ -242,17 +244,37 @@ static void createServiceForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *cons
 			memcpy(&srv.id.uuid.uuid.uuid16, &currServiceUuid.as16Bit, sizeof(srv.id.uuid.uuid.uuid16));
 		}
 		cxa_logger_debug(&btlepIn->super.logger, "creating service %s with %d chars", currCharEntry->serviceUuid_str, numCharsForService);
-		esp_ble_gatts_create_service(gatts_if, &srv, 1+numCharsForService);
+		esp_ble_gatts_create_service(gatts_if, &srv, 2+(2*numCharsForService));
 	}
 	else
 	{
 		// we already have this service, skip to creating the characteristic
-		createCharacteristicForCurrCharEntryIndex(btlepIn, false);
+
+		// first, we need to lookup the service handle
+		uint16_t existingServiceHandle = 0;
+		cxa_array_iterate(&btlepIn->handleCharMap, currCharMapEntry, cxa_esp32_btle_handleCharMapEntry_t)
+		{
+			if( currCharMapEntry == NULL ) continue;
+
+			if( cxa_stringUtils_equals_ignoreCase(currCharEntry->serviceUuid_str, currCharMapEntry->charEntry->serviceUuid_str) )
+			{
+				existingServiceHandle = currCharMapEntry->handle_service;
+				break;
+			}
+		}
+		if( existingServiceHandle == 0 )
+		{
+			cxa_logger_warn(&btlepIn->super.logger, "failed to find service handle for existing service '%s'", currCharEntry->serviceUuid_str);
+			return;
+		}
+
+		// if we made it here, we found our existing service
+		createCharacteristicForCurrCharEntryIndex(btlepIn, existingServiceHandle);
 	}
 }
 
 
-static void createCharacteristicForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *const btlepIn, bool startServiceIn)
+static void createCharacteristicForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *const btlepIn, uint16_t serviceHandleIn)
 {
 	cxa_assert(btlepIn);
 
@@ -262,39 +284,15 @@ static void createCharacteristicForCurrCharEntryIndex(cxa_esp32_btle_peripheral_
 	cxa_btle_uuid_t currCharUuid;
 	if( !cxa_btle_uuid_initFromString(&currCharUuid, currCharEntry->charUuid_str) ) return;
 
-	// now lookup the handle for the service
-	cxa_esp32_btle_handleCharMapEntry_t* targetCharMapEntry = NULL;
-	cxa_array_iterate(&btlepIn->handleCharMap, currCharMapEntry, cxa_esp32_btle_handleCharMapEntry_t)
-	{
-		if( currCharMapEntry == NULL ) continue;
-
-		if( currCharMapEntry->charEntry == currCharEntry )
-		{
-			targetCharMapEntry = currCharMapEntry;
-			break;
-		}
-	}
-	if( targetCharMapEntry == NULL )
-	{
-		cxa_logger_warn(&btlepIn->super.logger, "unknown service");
-		return;
-	}
-
-	// start the service first
-	if( startServiceIn )
-	{
-		cxa_logger_debug(&btlepIn->super.logger, "starting service handle %d", targetCharMapEntry->handle_service);
-		esp_ble_gatts_start_service(targetCharMapEntry->handle_service);
-	}
-
 	// determine the permissions
 	esp_gatt_perm_t permissions = (((currCharEntry->cbs.onReadRequest != NULL) || (currCharEntry->cbs.onDeferredReadRequest != NULL)) ? ESP_GATT_PERM_READ : 0) |
 								  (((currCharEntry->cbs.onWriteRequest != NULL) || (currCharEntry->cbs.onDeferredWriteRequest != NULL)) ? ESP_GATT_PERM_WRITE : 0);
 
 	// determine the properties
 	esp_gatt_char_prop_t properties = (((currCharEntry->cbs.onReadRequest != NULL) || (currCharEntry->cbs.onDeferredReadRequest != NULL)) ? ESP_GATT_CHAR_PROP_BIT_READ : 0) |
-			  	  	  	  	  	  	  (((currCharEntry->cbs.onWriteRequest != NULL) || (currCharEntry->cbs.onDeferredWriteRequest != NULL)) ? ESP_GATT_CHAR_PROP_BIT_WRITE : 0);
-	// todo: add notify / indicate properties if needed
+			  	  	  	  	  	  	  (((currCharEntry->cbs.onWriteRequest != NULL) || (currCharEntry->cbs.onDeferredWriteRequest != NULL)) ? ESP_GATT_CHAR_PROP_BIT_WRITE : 0) |
+									  (currCharEntry->allowNotifications ? ESP_GATT_CHAR_PROP_BIT_NOTIFY : 0) |
+									  (currCharEntry->allowIndications ? ESP_GATT_CHAR_PROP_BIT_INDICATE : 0);
 
 	// convert our uuid
 	esp_bt_uuid_t charUuid;
@@ -313,42 +311,127 @@ static void createCharacteristicForCurrCharEntryIndex(cxa_esp32_btle_peripheral_
 	}
 
 	// if we made it here, we have all of the information we need
-    cxa_logger_debug(&btlepIn->super.logger, "creating char %s for service %d", currCharEntry->charUuid_str, targetCharMapEntry->handle_service);
-    esp_ble_gatts_add_char(targetCharMapEntry->handle_service, &charUuid, permissions, properties, NULL, NULL);
+    cxa_logger_debug(&btlepIn->super.logger, "creating char %s for service %d", currCharEntry->charUuid_str, serviceHandleIn);
+    esp_ble_gatts_add_char(serviceHandleIn, &charUuid, permissions, properties, NULL, NULL);
 }
 
 
-static void createDescriptorForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *const btlepIn)
+static void handleRead(cxa_esp32_btle_peripheral_t *const btlepIn, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
-	cxa_assert(btlepIn);
+	// get our response ready
+	esp_gatt_rsp_t rsp;
+	memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+	rsp.attr_value.handle = param->read.handle;
+	rsp.attr_value.len = 0;
+	cxa_fixedByteBuffer_t readData_fbb;
+	cxa_fixedByteBuffer_initStd(&readData_fbb, rsp.attr_value.value);
 
-	// get our current characteristic entry
-	cxa_btle_peripheral_charEntry_t* currCharEntry = cxa_array_get(&btlepIn->super.charEntries, btlepIn->currRegisteringCharEntryIndex);
-	cxa_assert(currCharEntry);
-
-	// now lookup the handle for the service
-	cxa_esp32_btle_handleCharMapEntry_t* targetCharMapEntry = NULL;
+	// see if we have any registered handlers
+	cxa_btle_peripheral_readRetVal_t retVal = CXA_BTLE_PERIPHERAL_READRET_SUCCESS;
 	cxa_array_iterate(&btlepIn->handleCharMap, currCharMapEntry, cxa_esp32_btle_handleCharMapEntry_t)
 	{
 		if( currCharMapEntry == NULL ) continue;
 
-		if( currCharMapEntry->charEntry == currCharEntry )
+		if( currCharMapEntry->handle_char == param->read.handle )
 		{
-			targetCharMapEntry = currCharMapEntry;
+			if( currCharMapEntry->charEntry->cbs.onReadRequest != NULL )
+			{
+				retVal = currCharMapEntry->charEntry->cbs.onReadRequest(&readData_fbb, currCharMapEntry->charEntry->cbs.userVar_read);
+				if( retVal == CXA_BTLE_PERIPHERAL_READRET_SUCCESS ) rsp.attr_value.len = cxa_fixedByteBuffer_getSize_bytes(&readData_fbb);
+			}
+			else if( currCharMapEntry->charEntry->cbs.onDeferredReadRequest != NULL ) cxa_assert_failWithMsg("not supported");
 			break;
 		}
 	}
-	if( targetCharMapEntry == NULL )
+
+	// translate our return value
+	esp_gatt_status_t espRet = ESP_GATT_OK;
+	switch( retVal )
 	{
-		cxa_logger_warn(&btlepIn->super.logger, "unknown service");
-		return;
+		case CXA_BTLE_PERIPHERAL_READRET_SUCCESS:
+			espRet = ESP_GATT_OK;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_READRET_NOT_PERMITTED:
+			espRet = ESP_GATT_READ_NOT_PERMIT;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_READRET_VALUE_NOT_ALLOWED:
+			espRet = ESP_GATT_OUT_OF_RANGE;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_READRET_ATTRIBUTE_NOT_FOUND:
+			espRet = ESP_GATT_INVALID_HANDLE;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_READRET_UNLIKELY:
+			espRet = ESP_GATT_UNKNOWN_ERROR;
+			break;
 	}
 
-	esp_bt_uuid_t descUuid;
-	descUuid.len = ESP_UUID_LEN_16;
-	descUuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
-	cxa_logger_debug(&btlepIn->super.logger, "creating descriptor for char %d", targetCharMapEntry->handle_char);
-	esp_ble_gatts_add_char_descr(targetCharMapEntry->handle_service, &descUuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, NULL, NULL);
+	// send our return value
+	esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, espRet, &rsp);
+}
+
+
+static void handleWrite(cxa_esp32_btle_peripheral_t *const btlepIn, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+{
+	// get our response ready
+	esp_gatt_rsp_t rsp;
+	memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+	rsp.attr_value.handle = param->write.handle;
+	rsp.attr_value.len = param->write.len;
+	rsp.attr_value.offset = param->write.offset;
+	rsp.attr_value.auth_req = ESP_GATT_AUTH_REQ_NONE;
+	memcpy(rsp.attr_value.value, param->write.value, param->write.len);
+
+	cxa_fixedByteBuffer_t writeData_fbb;
+	cxa_fixedByteBuffer_init_inPlace(&writeData_fbb, param->write.len, param->write.value, param->write.len);
+
+	// see if we have any registered handlers
+	cxa_btle_peripheral_writeRetVal_t retVal = CXA_BTLE_PERIPHERAL_WRITERET_SUCCESS;
+	cxa_array_iterate(&btlepIn->handleCharMap, currCharMapEntry, cxa_esp32_btle_handleCharMapEntry_t)
+	{
+		if( currCharMapEntry == NULL ) continue;
+
+		if( currCharMapEntry->handle_char == param->read.handle )
+		{
+			if( currCharMapEntry->charEntry->cbs.onWriteRequest != NULL )
+			{
+				retVal = currCharMapEntry->charEntry->cbs.onWriteRequest(&writeData_fbb, currCharMapEntry->charEntry->cbs.userVar_write);
+			}
+			else if( currCharMapEntry->charEntry->cbs.onDeferredWriteRequest != NULL ) cxa_assert_failWithMsg("not supported");
+			break;
+		}
+	}
+
+	// translate our return value
+	esp_gatt_status_t espRet = ESP_GATT_OK;
+	switch( retVal )
+	{
+		case CXA_BTLE_PERIPHERAL_WRITERET_SUCCESS:
+			espRet = ESP_GATT_OK;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_WRITERET_NOT_PERMITTED:
+			espRet = ESP_GATT_WRITE_NOT_PERMIT;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_WRITERET_VALUE_NOT_ALLOWED:
+			espRet = ESP_GATT_OUT_OF_RANGE;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_WRITERET_ATTRIBUTE_NOT_FOUND:
+			espRet = ESP_GATT_INVALID_HANDLE;
+			break;
+
+		case CXA_BTLE_PERIPHERAL_WRITERET_UNLIKELY:
+			espRet = ESP_GATT_UNKNOWN_ERROR;
+			break;
+	}
+
+	// send our return value
+	esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, espRet, &rsp);
 }
 
 

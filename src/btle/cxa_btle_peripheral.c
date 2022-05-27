@@ -9,6 +9,7 @@
 
 // ******** includes ********
 #include <cxa_assert.h>
+#include <stddef.h>
 
 #define CXA_LOG_LEVEL					CXA_LOG_LEVEL_DEBUG
 #include <cxa_logger_implementation.h>
@@ -83,6 +84,8 @@ void cxa_btle_peripheral_addListener(cxa_btle_peripheral_t *const btlepIn,
 void cxa_btle_peripheral_registerCharacteristicHandler_read(cxa_btle_peripheral_t *const btlepIn,
 															const char *const serviceUuidStrIn,
 															const char *const charUuidStrIn,
+															bool allowNotificationsIn,
+															bool allowIndicationsIn,
 															cxa_btle_peripheral_cb_onReadRequest_t cb_onReadIn, void *userVarIn)
 {
 	cxa_assert(btlepIn);
@@ -95,6 +98,8 @@ void cxa_btle_peripheral_registerCharacteristicHandler_read(cxa_btle_peripheral_
 
 	targetEntry->serviceUuid_str = serviceUuidStrIn;
 	targetEntry->charUuid_str = charUuidStrIn;
+	targetEntry->allowNotifications = allowNotificationsIn;
+	targetEntry->allowIndications = allowIndicationsIn;
 	targetEntry->cbs.onReadRequest = cb_onReadIn;
 	targetEntry->cbs.onDeferredReadRequest = NULL;
 	targetEntry->cbs.userVar_read = userVarIn;

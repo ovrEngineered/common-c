@@ -46,9 +46,9 @@ void cxa_nvsManager_get_uint8_withDefault(const char *const keyIn, uint8_t *cons
 void cxa_nvsManager_get_uint32_withDefault(const char *const keyIn, uint32_t *const valueOut, uint32_t defaultIn)
 {
 	if( !cxa_nvsManager_get_uint32(keyIn, valueOut) )
-		{
-			if( valueOut != NULL ) *valueOut = defaultIn;
-		}
+	{
+		if( valueOut != NULL ) *valueOut = defaultIn;
+	}
 }
 
 

@@ -12,9 +12,9 @@
 #include <cxa_btle_peripheral.h>
 #include <cxa_fixedByteBuffer.h>
 
-#include <esp_gap_ble_api.h>
-#include <esp_gatts_api.h>
 
+#include <esp_gap_ble_api.h>
+#include "esp_gatts_api.h"
 
 
 // ******** global macro definitions ********

@@ -1,7 +1,7 @@
 set(include_dirs
 	include/arch-common
 	include/arch-esp32
-#	include/arch-esp32/btle
+	include/arch-esp32/btle
 	include/arch-xmega
 	include/btle
 	include/btle/siLabsBgApi
@@ -45,9 +45,9 @@ set(srcs
 	"src/arch-common/cxa_tempSensor.c"
 	"src/arch-common/cxa_tempSensor_adc.c"
 	"src/arch-common/cxa_usart.c"
-#	"src/arch-esp32/btle/cxa_esp32_btle_central.c"
-#	"src/arch-esp32/btle/cxa_esp32_btle_module.c"
-#	"src/arch-esp32/btle/cxa_esp32_btle_peripheral.c"
+	"src/arch-esp32/btle/cxa_esp32_btle_central.c"
+	"src/arch-esp32/btle/cxa_esp32_btle_module.c"
+	"src/arch-esp32/btle/cxa_esp32_btle_peripheral.c"
 	"src/arch-esp32/cxa_esp32_criticalSection.c"
 	"src/arch-esp32/cxa_esp32_delay.c"
 #	"src/arch-esp32/cxa_esp32_ethernetManager.c"
@@ -69,11 +69,6 @@ set(srcs
 	"src/btle/cxa_btle_connectionManager.c"
 	"src/btle/cxa_btle_peripheral.c"
 	"src/btle/cxa_btle_uuid.c"
-	"src/btle/siLabsBgApi/cxa_siLabsBgApi_btle_central.c"
-	"src/btle/siLabsBgApi/cxa_siLabsBgApi_btle_connection.c"
-	"src/btle/siLabsBgApi/cxa_siLabsBgApi_btle_peripheral.c"
-	"src/btle/siLabsBgApi/cxa_siLabsBgApi_module.c"
-	"src/btle/siLabsBgApi/gecko_bglib.c"
 	"src/collections/cxa_array.c"
 	"src/collections/cxa_fixedByteBuffer.c"
 	"src/collections/cxa_fixedFifo.c"
@@ -150,7 +145,7 @@ set(srcs
 
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "${include_dirs}"
-                    PRIV_REQUIRES esp_eth esp_event main nvs_flash tcpip_adapter
+                    REQUIRES bt esp_eth esp_event main nvs_flash tcpip_adapter
                     )
                     
                     
