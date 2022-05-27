@@ -28,7 +28,6 @@
 
 
 // ******** local function prototypes ********
-static void init(void);
 
 
 // ********  local variable declarations *********
@@ -39,15 +38,22 @@ static cxa_logger_t logger;
 
 
 // ******** global function implementations ********
-bool cxa_esp32_nvsManager_init(void)
+void cxa_esp32_nvsManager_init(void)
 {
-	return (nvs_flash_init() == ESP_OK);
+	if( isInit ) return;
+
+	cxa_assert(nvs_flash_init() == ESP_OK);
+
+	cxa_assert( nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) == ESP_OK );
+	cxa_logger_init(&logger, "nvsManager");
+
+	isInit = true;
 }
 
 
 bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	uint8_t tmpStr;
 	size_t tmpSize = sizeof(tmpStr);
@@ -64,7 +70,7 @@ bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 
 bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	// first, determine the size of the stored string
 	esp_err_t retVal = nvs_get_str(handle, keyIn, valueOut, &maxOutputSize_bytes);
@@ -75,7 +81,7 @@ bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, s
 
 bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_set_str(handle, keyIn, valueIn);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
@@ -85,7 +91,7 @@ bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 
 bool cxa_nvsManager_get_uint8(const char *const keyIn, uint8_t *const valueOut)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_get_u8(handle, keyIn, valueOut);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
@@ -95,7 +101,7 @@ bool cxa_nvsManager_get_uint8(const char *const keyIn, uint8_t *const valueOut)
 
 bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_set_u8(handle, keyIn, valueIn);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
@@ -105,17 +111,17 @@ bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
 
 bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_get_u32(handle, keyIn, valueOut);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
+	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d %s", retVal, esp_err_to_name(retVal));
 	return (retVal == ESP_OK);
 }
 
 
 bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_set_u32(handle, keyIn, valueIn);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
@@ -125,7 +131,7 @@ bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
 
 bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, size_t maxOutputSize_bytesIn, size_t *const actualOutputSize_bytesOut)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_get_blob(handle, keyIn, valueOut, &maxOutputSize_bytesIn);
 	if( retVal != ESP_OK )
@@ -143,7 +149,7 @@ bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, s
 
 bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, size_t blobSize_bytesIn)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_set_blob(handle, keyIn, valueIn, blobSize_bytesIn);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
@@ -153,7 +159,7 @@ bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, si
 
 bool cxa_nvsManager_erase(const char *const keyIn)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_erase_key(handle, keyIn);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
@@ -163,7 +169,7 @@ bool cxa_nvsManager_erase(const char *const keyIn)
 
 bool cxa_nvsManager_eraseAll(void)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_erase_all(handle);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
@@ -173,7 +179,7 @@ bool cxa_nvsManager_eraseAll(void)
 
 bool cxa_nvsManager_commit(void)
 {
-	if( !isInit ) init();
+	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_commit(handle);
 	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "commit error: %d", retVal);
@@ -182,15 +188,3 @@ bool cxa_nvsManager_commit(void)
 
 
 // ******** local function implementations ********
-static void init(void)
-{
-	if( isInit ) return;
-
-	nvs_flash_init();
-
-	cxa_assert( nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) == ESP_OK );
-
-	cxa_logger_init(&logger, "nvsManager");
-
-	isInit = true;
-}

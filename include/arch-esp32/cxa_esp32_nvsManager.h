@@ -19,6 +19,6 @@
 
 
 // ******** global function prototypes ********
-bool cxa_esp32_nvsManager_init(void);
+void cxa_esp32_nvsManager_init(void);
 
 #endif
