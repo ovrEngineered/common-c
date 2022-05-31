@@ -55,6 +55,10 @@ struct cxa_esp32_btle_peripheral
 	cxa_esp32_btle_handleCharMapEntry_t handleCharMap_raw[CXA_BTLE_PERIPHERAL_MAXNUM_CHAR_ENTRIES];
 
 	size_t currRegisteringCharEntryIndex;
+
+	bool isConnected;
+	esp_gatt_if_t currGattsIf;
+	uint16_t currConnId;
 };
 
 

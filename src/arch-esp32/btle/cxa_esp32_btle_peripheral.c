@@ -53,6 +53,7 @@ void cxa_esp32_btle_peripheral_init(cxa_esp32_btle_peripheral_t *const btlepIn, 
 
 	// setup our internal state
 	cxa_array_initStd(&btlepIn->handleCharMap, btlepIn->handleCharMap_raw);
+	btlepIn->isConnected = false;
 
 	// setup our advertising information
 	btlepIn->advParams.adv_int_min        = 0x20;
@@ -161,6 +162,26 @@ void cxa_esp32_btle_peripheral_handleEvent_gatts(cxa_esp32_btle_peripheral_t *co
 
 			// start creating the corresponding characteristics
 			createCharacteristicForCurrCharEntryIndex(btlepIn, param->start.service_handle);
+			break;
+		}
+
+		case ESP_GATTS_CONNECT_EVT:
+		{
+			cxa_logger_debug(&btlepIn->super.logger, "connected %d %d", gatts_if, param->connect.conn_id);
+			btlepIn->currGattsIf = gatts_if;
+			btlepIn->currConnId = param->connect.conn_id;
+			btlepIn->isConnected = true;
+			break;
+		}
+
+		case ESP_GATTS_DISCONNECT_EVT:
+		{
+			cxa_logger_debug(&btlepIn->super.logger, "disconnected %d %d", gatts_if, param->disconnect.conn_id);
+			btlepIn->isConnected = false;
+			btlepIn->currGattsIf = 0;
+			btlepIn->currConnId = 0;
+
+			scm_startAdvertising(&btlepIn->super);
 			break;
 		}
 
@@ -439,6 +460,38 @@ static void scm_sendNotification(cxa_btle_peripheral_t *const superIn, const cha
 {
 	cxa_esp32_btle_peripheral_t *const btlepIn = (cxa_esp32_btle_peripheral_t *const)superIn;
 	cxa_assert(btlepIn);
+
+	cxa_logger_debug(&btlepIn->super.logger, "send notifcation1");
+
+	// don't send if we aren't connected
+	if( !btlepIn->isConnected ) return;
+
+	cxa_logger_debug(&btlepIn->super.logger, "send notifcation2");
+
+	// find our characteristic handle
+	uint16_t charHandle;
+	bool foundCharHandle = false;
+	cxa_array_iterate(&btlepIn->handleCharMap, currCharMapEntry, cxa_esp32_btle_handleCharMapEntry_t)
+	{
+		if( currCharMapEntry == NULL ) continue;
+
+		if( cxa_stringUtils_equals_ignoreCase(currCharMapEntry->charEntry->serviceUuid_str, serviceUuidStrIn) &&
+			cxa_stringUtils_equals_ignoreCase(currCharMapEntry->charEntry->charUuid_str, characteristicUuidStrIn) )
+		{
+			charHandle = currCharMapEntry->handle_char;
+			foundCharHandle = true;
+			break;
+		}
+	}
+	if( !foundCharHandle )
+	{
+		cxa_logger_warn(&btlepIn->super.logger, "cannot find char handle, notify failed");
+		return;
+	}
+
+	// send the notification
+	cxa_logger_debug(&btlepIn->super.logger, "send notifcation3");
+	esp_ble_gatts_send_indicate(btlepIn->currGattsIf, btlepIn->currConnId, charHandle, cxa_fixedByteBuffer_getSize_bytes(fbb_dataIn), cxa_fixedByteBuffer_get_pointerToStartOfData(fbb_dataIn), false);
 }
 
 
