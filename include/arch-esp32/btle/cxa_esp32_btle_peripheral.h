@@ -70,12 +70,6 @@ void cxa_esp32_btle_peripheral_init(cxa_esp32_btle_peripheral_t *const btlepIn, 
 
 
 /**
- * @public
- */
-void cxa_esp32_btle_peripheral_setDeviceName(cxa_esp32_btle_peripheral_t *const btlepIn, const char *const nameIn);
-
-
-/**
  * @protected
  */
 void cxa_esp32_btle_peripheral_handleEvent_gap(cxa_esp32_btle_peripheral_t *const btlepIn, esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);

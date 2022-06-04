@@ -80,15 +80,6 @@ void cxa_esp32_btle_peripheral_init(cxa_esp32_btle_peripheral_t *const btlepIn, 
 }
 
 
-void cxa_esp32_btle_peripheral_setDeviceName(cxa_esp32_btle_peripheral_t *const btlepIn, const char *const nameIn)
-{
-	cxa_assert(btlepIn);
-	cxa_assert(nameIn);
-
-	esp_ble_gap_set_device_name(nameIn);
-}
-
-
 void cxa_esp32_btle_peripheral_handleEvent_gap(cxa_esp32_btle_peripheral_t *const btlepIn, esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
 	cxa_assert(btlepIn);
@@ -461,12 +452,8 @@ static void scm_sendNotification(cxa_btle_peripheral_t *const superIn, const cha
 	cxa_esp32_btle_peripheral_t *const btlepIn = (cxa_esp32_btle_peripheral_t *const)superIn;
 	cxa_assert(btlepIn);
 
-	cxa_logger_debug(&btlepIn->super.logger, "send notifcation1");
-
 	// don't send if we aren't connected
 	if( !btlepIn->isConnected ) return;
-
-	cxa_logger_debug(&btlepIn->super.logger, "send notifcation2");
 
 	// find our characteristic handle
 	uint16_t charHandle;
@@ -490,7 +477,6 @@ static void scm_sendNotification(cxa_btle_peripheral_t *const superIn, const cha
 	}
 
 	// send the notification
-	cxa_logger_debug(&btlepIn->super.logger, "send notifcation3");
 	esp_ble_gatts_send_indicate(btlepIn->currGattsIf, btlepIn->currConnId, charHandle, cxa_fixedByteBuffer_getSize_bytes(fbb_dataIn), cxa_fixedByteBuffer_get_pointerToStartOfData(fbb_dataIn), false);
 }
 
@@ -534,6 +520,19 @@ static void scm_setAdvertisingInfo(cxa_btle_peripheral_t *const superIn, uint32_
 				uint8_t field_flags;
 				if( !cxa_fixedByteBuffer_get_uint8(fbbAdvertDataIn, i, field_flags) ) break;
 				btlepIn->advData.flag = field_flags;
+				break;
+			}
+
+			case 0x09:
+			{
+				// complete local name field
+				uint8_t localName[fieldLen_bytes];
+				memset(localName, 0, sizeof(localName));
+				cxa_fixedByteBuffer_get(fbbAdvertDataIn, i, false, localName, fieldLen_bytes-1);
+				esp_ble_gap_set_device_name((char*)localName);
+				btlepIn->advData.include_name = true;
+
+				i += fieldLen_bytes - 1;
 				break;
 			}
 
