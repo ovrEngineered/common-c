@@ -98,6 +98,23 @@ bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *con
 }
 
 
+bool cxa_fixedByteBuffer_append_transposed(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const size_t numBytesIn)
+{
+	cxa_assert(fbbIn);
+	cxa_assert(ptrIn);
+
+	// make sure we have room for the operation
+	if( cxa_fixedByteBuffer_getFreeSize_bytes(fbbIn) < numBytesIn ) return false;
+
+	for( size_t i = 0; i < numBytesIn; i++ )
+	{
+		if( !cxa_array_append(&fbbIn->bytes, &(ptrIn[numBytesIn-i-1])) ) return false;
+	}
+
+	return true;
+}
+
+
 bool cxa_fixedByteBuffer_append_lengthPrefixedField_uint16BE(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const uint16_t numBytesIn)
 {
 	cxa_assert(fbbIn);

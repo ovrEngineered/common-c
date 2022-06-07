@@ -223,7 +223,7 @@ void cxa_fixedByteBuffer_init_subBufferParentMaxSize(cxa_fixedByteBuffer_t *cons
  * @return true if the append was successful, false if not (eg. full)
  */
 bool cxa_fixedByteBuffer_append(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const size_t numBytesIn);
-
+bool cxa_fixedByteBuffer_append_transposed(cxa_fixedByteBuffer_t *const fbbIn, uint8_t *const ptrIn, const size_t numBytesIn);
 
 /**
  * @public
