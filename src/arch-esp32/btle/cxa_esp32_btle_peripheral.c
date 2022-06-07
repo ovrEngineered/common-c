@@ -136,6 +136,14 @@ void cxa_esp32_btle_peripheral_handleEvent_gatts(cxa_esp32_btle_peripheral_t *co
 			cxa_assert( cxa_array_append(&btlepIn->handleCharMap, &newEntry) );
 			cxa_logger_debug(&btlepIn->super.logger, "char %s -> handle %d", currCharEntry->charUuid_str, param->add_char.attr_handle);
 
+
+			esp_bt_uuid_t descr_uuid;
+			descr_uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
+			descr_uuid.len = ESP_UUID_LEN_16;
+			esp_ble_gatts_add_char_descr(param->add_char.service_handle, &descr_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, NULL, NULL);
+
+
+
 			// move onto the next char map entry
 			btlepIn->currRegisteringCharEntryIndex++;
 			createServiceForCurrCharEntryIndex(btlepIn, gatts_if);
@@ -256,7 +264,7 @@ static void createServiceForCurrCharEntryIndex(cxa_esp32_btle_peripheral_t *cons
 			memcpy(&srv.id.uuid.uuid.uuid16, &currServiceUuid.as16Bit, sizeof(srv.id.uuid.uuid.uuid16));
 		}
 		cxa_logger_debug(&btlepIn->super.logger, "creating service %s with %d chars", currCharEntry->serviceUuid_str, numCharsForService);
-		esp_ble_gatts_create_service(gatts_if, &srv, 2+(2*numCharsForService));
+		esp_ble_gatts_create_service(gatts_if, &srv, 2+(3*numCharsForService));
 	}
 	else
 	{
@@ -523,6 +531,17 @@ static void scm_setAdvertisingInfo(cxa_btle_peripheral_t *const superIn, uint32_
 				break;
 			}
 
+			case 0x06:
+			{
+				// incomplete list of 128-bit services
+				uint8_t* serviceUuidData = cxa_fixedByteBuffer_get_pointerToIndex(fbbAdvertDataIn, i);
+				btlepIn->advData.p_service_uuid = serviceUuidData;
+				btlepIn->advData.service_uuid_len = ESP_UUID_LEN_128;
+
+				i += fieldLen_bytes - 2;
+				break;
+			}
+
 			case 0x09:
 			{
 				// complete local name field
@@ -532,7 +551,7 @@ static void scm_setAdvertisingInfo(cxa_btle_peripheral_t *const superIn, uint32_
 				esp_ble_gap_set_device_name((char*)localName);
 				btlepIn->advData.include_name = true;
 
-				i += fieldLen_bytes - 1;
+				i += fieldLen_bytes - 2;
 				break;
 			}
 
@@ -540,7 +559,7 @@ static void scm_setAdvertisingInfo(cxa_btle_peripheral_t *const superIn, uint32_
 			{
 				uint8_t* manAdvData = cxa_fixedByteBuffer_get_pointerToIndex(fbbAdvertDataIn, i);
 				if( manAdvData == NULL ) break;
-				btlepIn->advData.manufacturer_len = fieldLen_bytes - 1;
+				btlepIn->advData.manufacturer_len = fieldLen_bytes - 2;
 				btlepIn->advData.p_manufacturer_data = manAdvData;
 
 				i += btlepIn->advData.manufacturer_len;
