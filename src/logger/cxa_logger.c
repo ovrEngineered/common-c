@@ -212,7 +212,6 @@ void cxa_logger_log_memdump_impl(cxa_logger_t *const loggerIn, const uint8_t lev
 void cxa_logger_stepDebug_formattedString_impl(const char* fileIn, const int lineNumIn, const char* formatIn, ...)
 {
 	cxa_assert(fileIn);
-	cxa_assert(formatIn);
 	checkInit();
 
 	// if we don't have an ioStream, don't worry about it!
