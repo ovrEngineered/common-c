@@ -92,6 +92,7 @@ void cxa_ioStream_clearReadBuffer(cxa_ioStream_t *const ioStreamIn);
 
 bool cxa_ioStream_writeByte(cxa_ioStream_t *const ioStreamIn, uint8_t byteIn);
 bool cxa_ioStream_writeBytes(cxa_ioStream_t *const ioStreamIn, void* buffIn, size_t bufferSize_bytesIn);
+bool cxa_ioStream_writeBytes_hex(cxa_ioStream_t *const ioStreamIn, void* buffIn, size_t bufferSize_bytesIn);
 bool cxa_ioStream_writeFixedByteBuffer(cxa_ioStream_t *const ioStreamIn, cxa_fixedByteBuffer_t *const fbbIn);
 bool cxa_ioStream_writeString(cxa_ioStream_t *const ioStreamIn, const char* stringIn);
 bool cxa_ioStream_writeLine(cxa_ioStream_t *const ioStreamIn, const char* stringIn);
