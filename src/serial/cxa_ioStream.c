@@ -18,6 +18,7 @@
 #include <cxa_config.h>
 #include <cxa_numberUtils.h>
 #include <cxa_timeDiff.h>
+#include <cxa_stringUtils.h>
 
 
 // ******** local macro definitions ********
@@ -150,6 +151,21 @@ bool cxa_ioStream_writeBytes(cxa_ioStream_t *const ioStreamIn, void* buffIn, siz
 	if( !cxa_ioStream_isBound(ioStreamIn) ) return false;
 
 	return ioStreamIn->writeCb(buffIn, bufferSize_bytesIn, ioStreamIn->userVar);
+}
+
+bool cxa_ioStream_writeBytes_hex(cxa_ioStream_t *const ioStreamIn, void* buffIn, size_t bufferSize_bytesIn)
+{
+	cxa_assert(ioStreamIn);
+	if( bufferSize_bytesIn > 0 ) cxa_assert(buffIn);
+
+	// make sure we're bound
+	if( !cxa_ioStream_isBound(ioStreamIn) ) return false;
+
+	size_t output_size = (bufferSize_bytesIn * 2) + 1;
+	char output[output_size];
+	cxa_stringUtils_bytesToHexString(buffIn, bufferSize_bytesIn, false, output, output_size);
+
+	return cxa_ioStream_writeString(ioStreamIn, output);
 }
 
 
