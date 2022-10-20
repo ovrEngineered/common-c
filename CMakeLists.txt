@@ -27,6 +27,7 @@ set(include_dirs
 	
 set(srcs
 	"src/arch-common/cxa_adcChannel.c"
+	"src/arch-common/cxa_adcEmaSampler.c"
 	"src/arch-common/cxa_batteryCapacityEstimator.c"
 	"src/arch-common/cxa_gpio.c"
 	"src/arch-common/cxa_gpio_debouncer.c"
@@ -42,6 +43,7 @@ set(srcs
 	"src/arch-common/cxa_rgbLed.c"
 	"src/arch-common/cxa_rgbLed_runLoop.c"
 	"src/arch-common/cxa_rgbLed_triLed.c"
+	"src/arch-common/cxa_stepperMotorChannel.c"
 	"src/arch-common/cxa_tempSensor.c"
 	"src/arch-common/cxa_tempSensor_adc.c"
 	"src/arch-common/cxa_usart.c"
@@ -59,6 +61,7 @@ set(srcs
 	"src/arch-esp32/cxa_esp32_random.c"
 	"src/arch-esp32/cxa_esp32_reboot.c"
 #	"src/arch-esp32/cxa_esp32_sntpClient.c"
+	"src/arch-esp32/cxa_esp32_stepperMotorChannel.c"
 	"src/arch-esp32/cxa_esp32_timeBase.c"
 	"src/arch-esp32/cxa_esp32_uniqueId.c"
 	"src/arch-esp32/cxa_esp32_usart.c"
