@@ -136,6 +136,7 @@ void cxa_stateMachine_transition(cxa_stateMachine_t *const smIn, int stateIdIn);
 void cxa_stateMachine_transitionNow(cxa_stateMachine_t *const smIn, int stateIdIn);
 
 int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn);
+const char* cxa_stateMachine_getCurrentState_name(cxa_stateMachine_t *const smIn);
 
 
 #endif // CXA_STATE_MACHINE_H_

@@ -200,6 +200,14 @@ int cxa_stateMachine_getCurrentState(cxa_stateMachine_t *const smIn)
 }
 
 
+const char* cxa_stateMachine_getCurrentState_name(cxa_stateMachine_t *const smIn)
+{
+	cxa_assert(smIn);
+
+	return (smIn->currState != NULL) ? smIn->currState->stateName : NULL;
+}
+
+
 // ******** local function implementations ********
 static void cb_onRunLoopUpdate(void* userVarIn)
 {
