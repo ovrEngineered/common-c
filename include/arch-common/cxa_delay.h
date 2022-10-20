@@ -42,4 +42,13 @@
 void cxa_delay_ms(uint16_t delay_msIn);
 
 
+/**
+ * @public
+ * @brief Delays for a fixed number of microseconds
+ *
+ * @param[in] delay_usIn the number of microseconds for which to delay
+ */
+void cxa_delay_us(uint32_t delay_usIn);
+
+
 #endif // CXA_DELAY_H_
