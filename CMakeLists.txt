@@ -50,6 +50,7 @@ set(srcs
 	"src/arch-esp32/btle/cxa_esp32_btle_central.c"
 	"src/arch-esp32/btle/cxa_esp32_btle_module.c"
 	"src/arch-esp32/btle/cxa_esp32_btle_peripheral.c"
+	"src/arch-esp32/cxa_esp32_adcChannel.c"
 	"src/arch-esp32/cxa_esp32_criticalSection.c"
 	"src/arch-esp32/cxa_esp32_delay.c"
 #	"src/arch-esp32/cxa_esp32_ethernetManager.c"
@@ -148,7 +149,7 @@ set(srcs
 
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "${include_dirs}"
-                    REQUIRES bt esp_eth esp_event main nvs_flash tcpip_adapter
+                    REQUIRES bt esp_adc_cal esp_eth esp_event main nvs_flash tcpip_adapter
                     )
                     
                     
