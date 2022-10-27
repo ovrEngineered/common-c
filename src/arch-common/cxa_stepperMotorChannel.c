@@ -215,7 +215,7 @@ static void periodic_timer_callback(void)
 			}
 
 			// set our GPIO direction as needed
-			cxa_gpio_setDirection(gpio_globalDir, (diff_steps > 0));
+			cxa_gpio_setValue(gpio_globalDir, (diff_steps > 0));
 
 			// perform the rising edge
 			cxa_gpio_setValue((*currStepCtrl)->gpio_step, 1);
