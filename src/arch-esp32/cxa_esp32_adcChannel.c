@@ -12,11 +12,14 @@
 #include "esp_adc_cal.h"
 #include <string.h>
 
+#define CXA_LOG_LEVEL						CXA_LOG_LEVEL_DEBUG
+#include <cxa_logger_implementation.h>
+
 
 // ******** local macro definitions ********
-#define DEFAULT_VREF    				1100
-#define ATTENUATION						ADC_ATTEN_DB_11
-#define BIT_WIDTH						ADC_WIDTH_BIT_12
+#define DEFAULT_VREF    					1100
+#define ATTENUATION							ADC_ATTEN_DB_11
+#define BIT_WIDTH							ADC_WIDTH_BIT_12
 
 
 // ******** local type definitions ********
@@ -62,7 +65,7 @@ static void cxa_esp32_adcChannel_init_common(cxa_esp32_adcChannel_t *const adcCh
 	// save our references
 	adcChanIn->adcUnit = unitIn;
 	adcChanIn->chan1 = chan1In;
-	adcChanIn->chan1 = chan2In;
+	adcChanIn->chan2 = chan2In;
 
 	// make sure the ADC is powered on
 	if( !isAdcPoweredOn )
@@ -102,8 +105,7 @@ static void scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 	cxa_esp32_adcChannel_t* adcChanIn = (cxa_esp32_adcChannel_t*)superIn;
 	cxa_assert(adcChanIn);
 
-	int adc2_raw;
-	uint16_t convVal_raw = 0;
+	int convVal_raw = 0;
 	float voltage = 0.0;
 	switch( adcChanIn->adcUnit )
 	{
@@ -113,8 +115,7 @@ static void scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 			break;
 
 		case ADC_UNIT_2:
-			adc2_get_raw(adcChanIn->chan2, BIT_WIDTH, &adc2_raw);
-			convVal_raw = adc2_raw;
+			adc2_get_raw(adcChanIn->chan2, BIT_WIDTH, &convVal_raw);
 			voltage = esp_adc_cal_raw_to_voltage(convVal_raw, &adc_chars_unit2) / 1000.0;
 			break;
 
@@ -124,7 +125,7 @@ static void scm_startConversion_singleShot(cxa_adcChannel_t *const superIn)
 	}
 
 	// notify our listeners
-	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, true, voltage, convVal_raw);
+	cxa_adcChannel_notify_conversionComplete(&adcChanIn->super, true, voltage, (uint16_t)convVal_raw);
 }
 
 
