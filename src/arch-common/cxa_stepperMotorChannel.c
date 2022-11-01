@@ -134,7 +134,8 @@ bool cxa_stepperMotorChannel_isStopped(cxa_stepperMotorChannel_t *const stepMtrC
 {
 	cxa_assert(stepMtrChanIn);
 
-	return stepMtrChanIn->currentStep == stepMtrChanIn->targetStep;
+	float diff_steps = stepMtrChanIn->targetStep - ((float)stepMtrChanIn->currentStep);
+	return fabs(diff_steps) < 1.0 ;
 }
 
 
@@ -142,7 +143,7 @@ void cxa_stepperMotorChannel_runContinuous(cxa_stepperMotorChannel_t *const step
 {
 	cxa_assert(stepMtrChanIn);
 
-	stepMtrChanIn->targetStep = forwardIn ? FLT_MAX : FLT_MIN;
+	stepMtrChanIn->targetStep = forwardIn ? INFINITY : -INFINITY;
 }
 
 
