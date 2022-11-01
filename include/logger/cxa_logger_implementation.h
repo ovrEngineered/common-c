@@ -25,6 +25,15 @@
 #define CXA_LOG_LEVEL_DEBUG				4
 #define CXA_LOG_LEVEL_TRACE				5
 
+#ifdef CXA_LOGGER_CLAMPED_ENABLE
+#define _cxa_logger_clamped_wrapper(loggerIn, levelIn, period_msIn, msgIn, ...) 							\
+	if( cxa_timeDiff_isElapsed_ms(&((loggerIn)->td_clamped), (period_msIn)) ) {								\
+		cxa_logger_log_formattedString_impl((loggerIn), (levelIn), (msgIn), ##__VA_ARGS__);					\
+		cxa_timeDiff_setStartTime_now(&((loggerIn)->td_clamped));											\
+	}
+#endif
+
+
 #if( (defined CXA_LOGGER_DISABLE) || !(defined CXA_LOG_LEVEL) || (CXA_LOG_LEVEL == CXA_LOG_LEVEL_NONE) )
 	#define cxa_logger_error(loggerIn, msgIn, ...)
 	#define cxa_logger_warn(loggerIn, msgIn, ...)
@@ -50,8 +59,16 @@
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 
+	#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	#define cxa_logger_clamped_error(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_warn(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_info(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_debug(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_trace(loggerIn, period_msIn, msgIn, ...)
+	#endif
+
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_ERROR) )
-	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_error(loggerIn, msgIn, ...)																	cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
 	#define cxa_logger_warn(loggerIn, msgIn, ...)
 	#define cxa_logger_info(loggerIn, msgIn, ...)
 	#define cxa_logger_debug(loggerIn, msgIn, ...)
@@ -74,6 +91,14 @@
 	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
+
+	#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	#define cxa_logger_clamped_error(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_ERROR, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_warn(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_info(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_debug(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_trace(loggerIn, period_msIn, msgIn, ...)
+	#endif
 
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_WARN) )
 	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
@@ -100,6 +125,14 @@
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 
+	#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	#define cxa_logger_clamped_error(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_ERROR, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_warn(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_WARN, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_info(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_debug(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_trace(loggerIn, period_msIn, msgIn, ...)
+	#endif
+
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_INFO) )
 	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
 	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
@@ -124,6 +157,14 @@
 	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
+
+	#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	#define cxa_logger_clamped_error(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_ERROR, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_warn(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_WARN, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_info(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_INFO, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_debug(loggerIn, period_msIn, msgIn, ...)
+	#define cxa_logger_clamped_trace(loggerIn, period_msIn, msgIn, ...)
+	#endif
 
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_DEBUG) )
 	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
@@ -150,6 +191,14 @@
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)
 
+	#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	#define cxa_logger_clamped_error(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_ERROR, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_warn(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_WARN, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_info(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_INFO, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_debug(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_DEBUG, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_trace(loggerIn, period_msIn, msgIn, ...)
+	#endif
+
 #elif( (defined CXA_LOG_LEVEL) && (CXA_LOG_LEVEL == CXA_LOG_LEVEL_TRACE) )
 	#define cxa_logger_error(loggerIn, msgIn, ...)		cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_ERROR, (msgIn), ##__VA_ARGS__)
 	#define cxa_logger_warn(loggerIn, msgIn, ...)		cxa_logger_log_formattedString_impl((loggerIn), CXA_LOG_LEVEL_WARN, (msgIn), ##__VA_ARGS__)
@@ -174,6 +223,14 @@
 	#define cxa_logger_info_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_INFO, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_debug_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_DEBUG, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
 	#define cxa_logger_trace_memDump_fbb(loggerIn, prefixIn, fbbIn, postFixIn)										cxa_logger_log_memdump_impl(loggerIn, CXA_LOG_LEVEL_TRACE, prefixIn, cxa_fixedByteBuffer_get_pointerToStartOfData((fbbIn)), cxa_fixedByteBuffer_getSize_bytes((fbbIn)), postFixIn)
+
+	#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	#define cxa_logger_clamped_error(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_ERROR, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_warn(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_WARN, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_info(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_INFO, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_debug(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_DEBUG, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#define cxa_logger_clamped_trace(loggerIn, period_msIn, msgIn, ...)												_cxa_logger_clamped_wrapper((loggerIn), CXA_LOG_LEVEL_TRACE, (period_msIn), (msgIn), ##__VA_ARGS__)
+	#endif
 
 #else
 	#error "Unknown CXA_LOG_LEVEL specified"

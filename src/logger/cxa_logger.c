@@ -71,6 +71,10 @@ void cxa_logger_init(cxa_logger_t *const loggerIn, const char *nameIn)
 
 	size_t nameLen_bytes = strlen(loggerIn->name);
 	if( nameLen_bytes > largestloggerName_bytes ) largestloggerName_bytes = nameLen_bytes;
+
+	#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	cxa_timeDiff_init(&loggerIn->td_clamped);
+	#endif
 }
 
 

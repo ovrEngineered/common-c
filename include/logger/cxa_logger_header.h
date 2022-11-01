@@ -10,6 +10,7 @@
 
 // ******** includes ********
 #include <cxa_config.h>
+#include <cxa_timeDiff.h>
 
 
 // ******** global macro definitions ********
@@ -22,6 +23,10 @@
 typedef struct
 {
 	char name[CXA_LOGGER_MAX_NAME_LEN_CHARS+1];
+
+#ifdef CXA_LOGGER_CLAMPED_ENABLE
+	cxa_timeDiff_t td_clamped;
+#endif
 }cxa_logger_t;
 
 
