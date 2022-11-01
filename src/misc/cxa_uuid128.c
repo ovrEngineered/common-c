@@ -103,6 +103,26 @@ void cxa_uuid128_initFromUuid128(cxa_uuid128_t *const targetIn, cxa_uuid128_t *c
 }
 
 
+void cxa_uuid128_initEmpty(cxa_uuid128_t *const uuidIn)
+{
+	cxa_assert(uuidIn);
+
+	memset(uuidIn->bytes, 0, sizeof(uuidIn->bytes));
+}
+
+
+bool cxa_uuid128_isEmpty(cxa_uuid128_t *const uuidIn)
+{
+	cxa_assert(uuidIn);
+
+	for(size_t i = 0; i < sizeof(uuidIn->bytes); i++ )
+	{
+		if( uuidIn->bytes[i] != 0 ) return false;
+	}
+	return true;
+}
+
+
 bool cxa_uuid128_isEqual(cxa_uuid128_t *const uuid1In, cxa_uuid128_t *const uuid2In)
 {
 	cxa_assert(uuid1In);
