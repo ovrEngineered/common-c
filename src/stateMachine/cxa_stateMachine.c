@@ -50,11 +50,12 @@ void cxa_stateMachine_init(cxa_stateMachine_t *const smIn, const char* nameIn, i
 	cxa_logger_init_formattedString(&smIn->logger, "fsm::%s", nameIn);
 	#endif
 
-	// a timediff was _not_ supplied so we cannot do timed states
-	// even if they are enabled
 	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
 	cxa_timeDiff_init(&smIn->td_timedTransition);
-	smIn->timedStatesEnabled = true;
+	#endif
+
+	#ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
+	cxa_array_initStd(&smIn->listeners, smIn->listeners_raw);
 	#endif
 
 	// register for run loop execution
@@ -119,7 +120,6 @@ void cxa_stateMachine_addState_timed_full(cxa_stateMachine_t *const smIn, int id
 	cxa_assert(smIn);
 	cxa_assert(nameIn);
 	cxa_assert(!smIn->hasStarted);
-	cxa_assert(smIn->timedStatesEnabled);
 	cxa_assert(idIn != CXA_STATE_MACHINE_STATE_UNKNOWN);
 
 	// make sure we don't already have this state added
@@ -142,6 +142,15 @@ void cxa_stateMachine_addState_timed_full(cxa_stateMachine_t *const smIn, int id
 
 	// add the new state to our array of states
 	cxa_assert(cxa_array_append(&smIn->states, &newState));
+}
+#endif
+
+
+#ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
+void cxa_stateMachine_addListener(cxa_stateMachine_t *const smIn, cxa_stateMachine_listenerCb_onTransition_t cbIn, void *userVarIn)
+{
+	cxa_stateMachine_listenerEntry_t newEntry = {.cb = cbIn, .userVar = userVarIn};
+	cxa_assert(cxa_array_append(&smIn->listeners, &newEntry));
 }
 #endif
 
@@ -248,16 +257,25 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 		if( smIn->currState->cb_entered != NULL ) smIn->currState->cb_entered(smIn, ((prevState != NULL) ? prevState->stateId : CXA_STATE_MACHINE_STATE_UNKNOWN), smIn->currState->userVar);
 
 		#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-			if( smIn->timedStatesEnabled && (smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) ) cxa_timeDiff_setStartTime_now(&smIn->td_timedTransition);
+			if( smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED ) cxa_timeDiff_setStartTime_now(&smIn->td_timedTransition);
+		#endif
+
+		// notify our listeners last
+		#ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
+		cxa_array_iterate(&smIn->listeners, currListener, cxa_stateMachine_listenerEntry_t)
+		{
+			if( currListener == NULL ) continue;
+
+			if( currListener->cb != NULL ) currListener->cb(smIn, (prevState != NULL) ? prevState->stateId : CXA_STATE_MACHINE_STATE_UNKNOWN, smIn->currState->stateId, currListener->userVar);
+		}
 		#endif
 	}
 	else
 	{
 		#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
 			// see if our state's time has expired...if so, transition into our next state
-			if(  smIn->timedStatesEnabled &&
-				(smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) &&
-				 cxa_timeDiff_isElapsed_ms(&smIn->td_timedTransition, smIn->currState->stateTime_ms) )
+			if( (smIn->currState->type == CXA_STATE_MACHINE_STATE_TYPE_TIMED) &&
+				cxa_timeDiff_isElapsed_ms(&smIn->td_timedTransition, smIn->currState->stateTime_ms) )
 			{
 				cxa_stateMachine_transition(smIn, smIn->currState->nextStateId);
 				return;

@@ -26,7 +26,11 @@
 	#define CXA_STATE_MACHINE_MAXNUM_STATES				16
 #endif
 
-#define CXA_STATE_MACHINE_STATE_UNKNOWN						-1
+#ifndef CXA_STATE_MACHINE_MAXNUM_LISTENERS
+	#define CXA_STATE_MACHINE_MAXNUM_LISTENERS			1
+#endif
+
+#define CXA_STATE_MACHINE_STATE_UNKNOWN					-1
 
 
 // ******** global type definitions *********
@@ -44,6 +48,12 @@ typedef void (*cxa_stateMachine_cb_entered_t)(cxa_stateMachine_t *const smIn, in
 typedef void (*cxa_stateMachine_cb_state_t)(cxa_stateMachine_t *const smIn, void *userVarIn);
 typedef void (*cxa_stateMachine_cb_leaving_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn);
 typedef void (*cxa_stateMachine_cb_left_t)(cxa_stateMachine_t *const smIn, int nextStateIdIn, void* userVarIn);
+
+
+/**
+ * @public
+ */
+typedef void (*cxa_stateMachine_listenerCb_onTransition_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, int newStateIdIn, void* userVarIn);
 
 
 /**
@@ -83,6 +93,16 @@ typedef struct
 
 
 /**
+ * @private
+ */
+typedef struct
+{
+	cxa_stateMachine_listenerCb_onTransition_t cb;
+	void* userVar;
+}cxa_stateMachine_listenerEntry_t;
+
+
+/**
  * @public
  */
 struct cxa_stateMachine
@@ -100,8 +120,12 @@ struct cxa_stateMachine
 	#endif
 
 	#ifdef CXA_STATE_MACHINE_ENABLE_TIMED_STATES
-		bool timedStatesEnabled;
 		cxa_timeDiff_t td_timedTransition;
+	#endif
+
+	#ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
+		cxa_array_t listeners;
+		cxa_stateMachine_listenerEntry_t listeners_raw[CXA_STATE_MACHINE_MAXNUM_LISTENERS];
 	#endif
 };
 
@@ -128,6 +152,10 @@ void cxa_stateMachine_addState_timed_full(cxa_stateMachine_t *const smIn, int id
 		cxa_stateMachine_cb_state_t cb_stateIn,
 		cxa_stateMachine_cb_leaving_t cb_leavingIn, cxa_stateMachine_cb_left_t cb_leftIn,
 		void *userVarIn);
+#endif
+
+#ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
+void cxa_stateMachine_addListener(cxa_stateMachine_t *const smIn, cxa_stateMachine_listenerCb_onTransition_t cbIn, void *userVarIn);
 #endif
 
 void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateIdIn);
