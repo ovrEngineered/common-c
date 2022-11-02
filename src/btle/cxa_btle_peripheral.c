@@ -246,10 +246,11 @@ void cxa_btle_peripheral_sendNotification(cxa_btle_peripheral_t *const btlepIn,
 	cxa_assert(btlepIn);
 	cxa_assert(serviceUuidStrIn);
 	cxa_assert(charUuidStrIn);
-	cxa_assert(dataIn);
+	if( numBytesIn > 0 ) cxa_assert(dataIn);
 
 	cxa_fixedByteBuffer_t fbb_data;
-	cxa_fixedByteBuffer_init_inPlace(&fbb_data, numBytesIn, dataIn, numBytesIn);
+	uint8_t tmp;
+	cxa_fixedByteBuffer_init_inPlace(&fbb_data, numBytesIn, (dataIn != NULL) ? dataIn : &tmp, numBytesIn);
 
 	cxa_btle_peripheral_sendNotification_fbb(btlepIn, serviceUuidStrIn, charUuidStrIn, &fbb_data);
 }
