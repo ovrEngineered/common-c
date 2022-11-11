@@ -85,4 +85,6 @@ void cxa_stepperMotorChannel_stopMotion(cxa_stepperMotorChannel_t *const stepMtr
 void cxa_stepperMotorChannel_registerTimedCallback(cxa_stepperMotorChannel_timedCallback_t cbIn, uint32_t stepFreq_hzIn);
 
 
+void cxa_stepperMotorChannel_forceEnable(bool forceEnableIn);
+
 #endif

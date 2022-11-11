@@ -56,6 +56,8 @@ static uint32_t stepFrequency_hz = DEFAULT_STEP_FREQ_HZ;
 static cxa_array_t stepperCtrlrs;
 static cxa_stepperMotorChannel_t* stepperCtrlrs_raw[MAX_NUM_STEPPERS];
 
+static bool forceEnable = false;
+
 
 // ******** global function implementations ********
 void cxa_stepperMotorChannel_initSubsystem(cxa_gpio_t *const gpioGlobalDirIn, cxa_gpio_t *const gpioGlobalEnableIn)
@@ -155,6 +157,13 @@ void cxa_stepperMotorChannel_stopMotion(cxa_stepperMotorChannel_t *const stepMtr
 }
 
 
+void cxa_stepperMotorChannel_forceEnable(bool forceEnableIn)
+{
+	forceEnable = forceEnableIn;
+	if( forceEnable ) cxa_gpio_setValue(gpio_globalEnable, 1);
+}
+
+
 // ******** local function implementations ********
 static void consoleCb_getFrequency(cxa_array_t *const argsIn, cxa_ioStream_t *const ioStreamIn, void* userVarIn)
 {
@@ -209,7 +218,7 @@ static void periodic_timer_callback(void)
 		if( fabs(diff_steps) >= 1.0 )
 		{
 			// check to see if we are asleep...if so, wake us up
-			if( !cxa_gpio_getValue(gpio_globalEnable) )
+			if( !forceEnable && !cxa_gpio_getValue(gpio_globalEnable) )
 			{
 				cxa_logger_debug(&logger, "waking up");
 				cxa_gpio_setValue(gpio_globalEnable, 1);
@@ -229,7 +238,7 @@ static void periodic_timer_callback(void)
 	if( !didPerformStep )
 	{
 		// no steps to perform...check our enter sleep timer
-		if( cxa_gpio_getValue(gpio_globalEnable) )
+		if( !forceEnable && cxa_gpio_getValue(gpio_globalEnable) )
 		{
 			// we're not asleep yet...check if we need to be
 			if( cxa_timeDiff_isElapsed_ms(&td_enterSleep, ENTER_SLEEP_TIMEOUT_MS) )
