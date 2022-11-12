@@ -35,6 +35,10 @@ bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut
 void cxa_nvsManager_get_uint32_withDefault(const char *const keyIn, uint32_t *const valueOut, uint32_t defaultIn);
 bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn);
 
+bool cxa_nvsManager_get_float(const char *const keyIn, float *const valueOut);
+void cxa_nvsManager_get_float_withDefault(const char *const keyIn, float *const valueOut, float defaultIn);
+bool cxa_nvsManager_set_float(const char *const keyIn, float valueIn);
+
 bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, size_t maxOutputSize_bytesIn, size_t *const actualOutputSize_bytesOut);
 bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, size_t blobSize_bytesIn);
 
