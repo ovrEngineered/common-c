@@ -170,6 +170,11 @@ void cxa_esp32_btle_peripheral_handleEvent_gatts(cxa_esp32_btle_peripheral_t *co
 			btlepIn->currGattsIf = gatts_if;
 			btlepIn->currConnId = param->connect.conn_id;
 			btlepIn->isConnected = true;
+
+			cxa_eui48_t remoteAddr;
+			cxa_eui48_init(&remoteAddr, (uint8_t*)param->connect.remote_bda);
+			cxa_btle_peripheral_notify_connectionOpened(&btlepIn->super, &remoteAddr);
+
 			break;
 		}
 
@@ -179,6 +184,10 @@ void cxa_esp32_btle_peripheral_handleEvent_gatts(cxa_esp32_btle_peripheral_t *co
 			btlepIn->isConnected = false;
 			btlepIn->currGattsIf = 0;
 			btlepIn->currConnId = 0;
+
+			cxa_eui48_t remoteAddr;
+			cxa_eui48_init(&remoteAddr, (uint8_t*)param->disconnect.remote_bda);
+			cxa_btle_peripheral_notify_connectionClosed(&btlepIn->super, &remoteAddr);
 
 			scm_startAdvertising(&btlepIn->super);
 			break;
