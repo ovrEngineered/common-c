@@ -119,7 +119,7 @@ set(srcs
 #	"src/net/wolfSslDialSocket/cxa_wolfSslDialSocket_network_tcpClient.c"
 #	"src/peripherals/cxa_lightSensor_ltr329.c"
 #	"src/peripherals/cxa_ltc2942.c"
-#	"src/peripherals/cxa_pca9555.c"
+	"src/peripherals/cxa_pca9555.c"
 #	"src/peripherals/cxa_pca9624.c"
 #	"src/peripherals/cxa_rgbLed_pca9624.c"
 #	"src/peripherals/cxa_tempRhSensor_si7021.c"
@@ -151,5 +151,4 @@ idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "${include_dirs}"
                     REQUIRES bt esp_adc_cal esp_eth esp_event main nvs_flash tcpip_adapter
                     )
-                    
                     

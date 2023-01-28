@@ -10,6 +10,7 @@
 // ******** includes ********
 #include <stdio.h>
 #include <cxa_assert.h>
+#include <cxa_runLoop.h>
 
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
@@ -34,12 +35,17 @@ typedef enum
 
 
 // ******** local function prototypes ********
+static void runLoop_cb_onStartup(void* userVarIn);
+
 static bool readFromRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t* valOut);
 static bool writeToRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t valIn);
 
 static void getGpioPortAndChannelNum(cxa_gpio_pca9555_t *gpioIn, uint8_t* portOut, uint8_t* chanNumOut);
 static uint8_t getDirValueForPort(cxa_pca9555_t *pcaIn, uint8_t portNumIn);
 static uint8_t getOutputValueForPort(cxa_pca9555_t *pcaIn, uint8_t portNumIn);
+
+static void i2c_cb_onReadComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn);
+static void i2c_cb_onWriteComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn);
 
 static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn);
 static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn);
@@ -53,7 +59,7 @@ static bool scm_getValue(cxa_gpio_t *const superIn);
 
 
 // ******** global function implementations ********
-bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, uint8_t addressIn)
+void cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, uint8_t addressIn, cxa_gpio_t *const gpio_resetIn, int threadIdIn)
 {
 	cxa_assert(pcaIn);
 	cxa_assert(i2cIn);
@@ -61,21 +67,19 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 	// save our references
 	pcaIn->address = addressIn;
 	pcaIn->i2c = i2cIn;
+	pcaIn->gpio_reset = gpio_resetIn;
+	pcaIn->isDeviceResponding = false;
 
-	// read our configuration regs
-	uint8_t cfg0, cfg1, out0, out1;
-	if( !readFromRegister(pcaIn, REG_CFG0, &cfg0) ||
-		!readFromRegister(pcaIn, REG_CFG1, &cfg1) ||
-		!readFromRegister(pcaIn, REG_OUTPUT0, &out0) ||
-		!readFromRegister(pcaIn, REG_OUTPUT1, &out1) ) return false;
+	// setup our logger
+	cxa_logger_init(&pcaIn->logger, "pca9555");
+
+	// setup our read buffer
+	cxa_fixedByteBuffer_initStd(&pcaIn->fbb_readVal, pcaIn->fbb_readVal_raw);
 
 	// setup our GPIOs
 	for( int i = 0; i < (sizeof(pcaIn->gpios_port0)/sizeof(*pcaIn->gpios_port0)); i++ )
 	{
 		pcaIn->gpios_port0[i].pca = pcaIn;
-		pcaIn->gpios_port0[i].polarity = CXA_GPIO_POLARITY_NONINVERTED;
-		pcaIn->gpios_port0[i].lastDirection = ((cfg0 >> i) & 0x01) ? CXA_GPIO_DIR_INPUT : CXA_GPIO_DIR_OUTPUT;
-		pcaIn->gpios_port0[i].lastOutputVal = ((out0 >> i) & 0x01);
 
 		// initialize our super class
 		cxa_gpio_init(&pcaIn->gpios_port0[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
@@ -83,15 +87,13 @@ bool cxa_pca9555_init(cxa_pca9555_t *const pcaIn, cxa_i2cMaster_t *const i2cIn, 
 	for( int i = 0; i < (sizeof(pcaIn->gpios_port1)/sizeof(*pcaIn->gpios_port1)); i++ )
 	{
 		pcaIn->gpios_port1[i].pca = pcaIn;
-		pcaIn->gpios_port1[i].polarity = CXA_GPIO_POLARITY_NONINVERTED;
-		pcaIn->gpios_port0[i].lastDirection = ((cfg1 >> i) & 0x01) ? CXA_GPIO_DIR_INPUT : CXA_GPIO_DIR_OUTPUT;
-		pcaIn->gpios_port1[i].lastOutputVal = ((out1 >> i) & 0x01);
 
 		// initialize our super class
 		cxa_gpio_init(&pcaIn->gpios_port1[i].super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 	}
 
-	return true;
+	// setup to get called once the runloop is initialized
+	cxa_runLoop_addEntry(threadIdIn, runLoop_cb_onStartup, NULL, (void*)pcaIn);
 }
 
 
@@ -107,23 +109,69 @@ cxa_gpio_t* cxa_pca9555_getGpio(cxa_pca9555_t *const pcaIn, uint8_t portNumIn, u
 
 
 // ******** local function implementations ********
+static void runLoop_cb_onStartup(void* userVarIn)
+{
+	cxa_pca9555_t* pcaIn = (cxa_pca9555_t*)userVarIn;
+	cxa_assert(pcaIn);
+
+	// read our configuration regs
+	uint8_t cfg0, cfg1, out0, out1;
+	if( !readFromRegister(pcaIn, REG_CFG0, &cfg0) ||
+		!readFromRegister(pcaIn, REG_CFG1, &cfg1) ||
+		!readFromRegister(pcaIn, REG_OUTPUT0, &out0) ||
+		!readFromRegister(pcaIn, REG_OUTPUT1, &out1) )
+	{
+		pcaIn->isDeviceResponding = false;
+		cxa_logger_warn(&pcaIn->logger, "device not responding");
+		return;
+	}
+
+	// get some initial values for our GPIOS
+	for( int i = 0; i < (sizeof(pcaIn->gpios_port0)/sizeof(*pcaIn->gpios_port0)); i++ )
+	{
+		pcaIn->gpios_port0[i].polarity = CXA_GPIO_POLARITY_NONINVERTED;
+		pcaIn->gpios_port0[i].lastDirection = ((cfg0 >> i) & 0x01) ? CXA_GPIO_DIR_INPUT : CXA_GPIO_DIR_OUTPUT;
+		pcaIn->gpios_port0[i].lastOutputVal = ((out0 >> i) & 0x01);
+	}
+	for( int i = 0; i < (sizeof(pcaIn->gpios_port1)/sizeof(*pcaIn->gpios_port1)); i++ )
+	{
+		pcaIn->gpios_port1[i].polarity = CXA_GPIO_POLARITY_NONINVERTED;
+		pcaIn->gpios_port0[i].lastDirection = ((cfg1 >> i) & 0x01) ? CXA_GPIO_DIR_INPUT : CXA_GPIO_DIR_OUTPUT;
+		pcaIn->gpios_port1[i].lastOutputVal = ((out1 >> i) & 0x01);
+	}
+
+	cxa_logger_info(&pcaIn->logger, "device initialized");
+	pcaIn->isDeviceResponding = true;
+}
+
+
 static bool readFromRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t* valOut)
 {
 	cxa_assert(pcaIn);
 
-//	uint8_t ctrlBytes = registerIn;
-#warning fix this
-	return false;
-//	return cxa_i2cMaster_readBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, valOut, 1);
+	uint8_t ctrlBytes = registerIn;
+	cxa_fixedByteBuffer_t fbb_tx;
+	cxa_fixedByteBuffer_init_inPlace(&fbb_tx, 1, (void*)&ctrlBytes, 1);
+
+	cxa_i2cMaster_readBytes_withControlBytes(pcaIn->i2c, pcaIn->address, true, &fbb_tx, 1, i2c_cb_onReadComplete, (void*)pcaIn);
+	return pcaIn->lastReadWriteStatus;
 }
 
 
 static bool writeToRegister(cxa_pca9555_t *const pcaIn, pca_register_t registerIn, uint8_t valIn)
 {
-//	uint8_t ctrlBytes = registerIn;
-#warning fix this
-	return false;
-//	return cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, &ctrlBytes, 1, &valIn, 1);
+	cxa_assert(pcaIn);
+
+	cxa_fixedByteBuffer_t fbb_tx;
+	uint8_t fbb_txBytes_raw[2];
+	cxa_fixedByteBuffer_initStd(&fbb_tx, fbb_txBytes_raw);
+
+	uint8_t ctrlBytes = registerIn;
+	cxa_fixedByteBuffer_append_uint8(&fbb_tx, ctrlBytes);
+	cxa_fixedByteBuffer_append_uint8(&fbb_tx, valIn);
+
+	cxa_i2cMaster_writeBytes(pcaIn->i2c, pcaIn->address, true, &fbb_tx, i2c_cb_onWriteComplete, (void*)pcaIn);
+	return pcaIn->lastReadWriteStatus;
 }
 
 
@@ -208,6 +256,26 @@ static uint8_t getOutputValueForPort(cxa_pca9555_t *pcaIn, uint8_t portNumIn)
 		}
 	}
 	return retVal;
+}
+
+
+static void i2c_cb_onReadComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, cxa_fixedByteBuffer_t *const readBytesIn, void* userVarIn)
+{
+	cxa_pca9555_t* pcaIn = (cxa_pca9555_t*)userVarIn;
+	cxa_assert(pcaIn);
+
+	pcaIn->lastReadWriteStatus = wasSuccessfulIn;
+	cxa_fixedByteBuffer_clear(&pcaIn->fbb_readVal);
+	cxa_fixedByteBuffer_append_fbb(&pcaIn->fbb_readVal, readBytesIn);
+}
+
+
+static void i2c_cb_onWriteComplete(cxa_i2cMaster_t *const i2cIn, bool wasSuccessfulIn, void* userVarIn)
+{
+	cxa_pca9555_t* pcaIn = (cxa_pca9555_t*)userVarIn;
+	cxa_assert(pcaIn);
+
+	pcaIn->lastReadWriteStatus = wasSuccessfulIn;
 }
 
 
