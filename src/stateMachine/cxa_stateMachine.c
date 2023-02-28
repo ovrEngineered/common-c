@@ -147,9 +147,18 @@ void cxa_stateMachine_addState_timed_full(cxa_stateMachine_t *const smIn, int id
 
 
 #ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
-void cxa_stateMachine_addListener(cxa_stateMachine_t *const smIn, cxa_stateMachine_listenerCb_onTransition_t cbIn, void *userVarIn)
+void cxa_stateMachine_addListener(cxa_stateMachine_t *const smIn,
+								  cxa_stateMachine_listenerCb_beforeExecution_t cb_beforeExecutionIn,
+								  cxa_stateMachine_listenerCb_onTransition_t cb_onTransitionIn,
+								  cxa_stateMachine_listenerCb_afterExecution_t cb_afterExecutionIn,
+								  void *userVarIn)
 {
-	cxa_stateMachine_listenerEntry_t newEntry = {.cb = cbIn, .userVar = userVarIn};
+	cxa_stateMachine_listenerEntry_t newEntry = {
+			.cb_beforeExecution = cb_beforeExecutionIn,
+			.cb_onTransition = cb_onTransitionIn,
+			.cb_afterExecution = cb_afterExecutionIn,
+			.userVar = userVarIn
+	};
 	cxa_assert(cxa_array_append(&smIn->listeners, &newEntry));
 }
 #endif
@@ -226,6 +235,16 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 	// make sure we've been marked as started
 	if( !smIn->hasStarted ) smIn->hasStarted = true;
 
+	// notify our listeners
+	#ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
+	cxa_array_iterate(&smIn->listeners, currListener, cxa_stateMachine_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+
+		if( currListener->cb_beforeExecution != NULL ) currListener->cb_beforeExecution(smIn, currListener->userVar);
+	}
+	#endif
+
 	// see if we should transition
 	if( smIn->nextState != NULL )
 	{
@@ -266,7 +285,7 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 		{
 			if( currListener == NULL ) continue;
 
-			if( currListener->cb != NULL ) currListener->cb(smIn, (prevState != NULL) ? prevState->stateId : CXA_STATE_MACHINE_STATE_UNKNOWN, smIn->currState->stateId, currListener->userVar);
+			if( currListener->cb_onTransition != NULL ) currListener->cb_onTransition(smIn, (prevState != NULL) ? prevState->stateId : CXA_STATE_MACHINE_STATE_UNKNOWN, smIn->currState->stateId, currListener->userVar);
 		}
 		#endif
 	}
@@ -285,6 +304,16 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 		// keep updating our state
 		if( (smIn->currState != NULL) && (smIn->currState->cb_state != NULL) ) smIn->currState->cb_state(smIn, smIn->currState->userVar);
 	}
+
+	// notify our listeners
+	#ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
+	cxa_array_iterate(&smIn->listeners, currListener, cxa_stateMachine_listenerEntry_t)
+	{
+		if( currListener == NULL ) continue;
+
+		if( currListener->cb_afterExecution != NULL ) currListener->cb_afterExecution(smIn, currListener->userVar);
+	}
+	#endif
 }
 
 

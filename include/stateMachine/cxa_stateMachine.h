@@ -53,7 +53,9 @@ typedef void (*cxa_stateMachine_cb_left_t)(cxa_stateMachine_t *const smIn, int n
 /**
  * @public
  */
+typedef void (*cxa_stateMachine_listenerCb_beforeExecution_t)(cxa_stateMachine_t *const smIn, void* userVarIn);
 typedef void (*cxa_stateMachine_listenerCb_onTransition_t)(cxa_stateMachine_t *const smIn, int prevStateIdIn, int newStateIdIn, void* userVarIn);
+typedef void (*cxa_stateMachine_listenerCb_afterExecution_t)(cxa_stateMachine_t *const smIn, void* userVarIn);
 
 
 /**
@@ -97,7 +99,9 @@ typedef struct
  */
 typedef struct
 {
-	cxa_stateMachine_listenerCb_onTransition_t cb;
+	cxa_stateMachine_listenerCb_beforeExecution_t cb_beforeExecution;
+	cxa_stateMachine_listenerCb_onTransition_t cb_onTransition;
+	cxa_stateMachine_listenerCb_afterExecution_t cb_afterExecution;
 	void* userVar;
 }cxa_stateMachine_listenerEntry_t;
 
@@ -155,7 +159,11 @@ void cxa_stateMachine_addState_timed_full(cxa_stateMachine_t *const smIn, int id
 #endif
 
 #ifdef CXA_STATE_MACHINE_ENABLE_LISTENERS
-void cxa_stateMachine_addListener(cxa_stateMachine_t *const smIn, cxa_stateMachine_listenerCb_onTransition_t cbIn, void *userVarIn);
+void cxa_stateMachine_addListener(cxa_stateMachine_t *const smIn,
+								  cxa_stateMachine_listenerCb_beforeExecution_t cb_beforeExecutionIn,
+								  cxa_stateMachine_listenerCb_onTransition_t cb_onTransitionIn,
+								  cxa_stateMachine_listenerCb_afterExecution_t cb_afterExecutionIn,
+								  void *userVarIn);
 #endif
 
 void cxa_stateMachine_setInitialState(cxa_stateMachine_t *const smIn, int stateIdIn);
