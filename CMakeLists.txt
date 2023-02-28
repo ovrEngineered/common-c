@@ -86,6 +86,7 @@ set(srcs
 	"src/misc/cxa_assert.c"
 	"src/misc/cxa_eui48.c"
 	"src/misc/cxa_numberUtils.c"
+	"src/misc/cxa_profiler.c"
 	"src/misc/cxa_stringUtils.c"
 	"src/misc/cxa_uuid128.c"
 	"src/mqtt/cxa_mqtt_client.c"
