@@ -17,6 +17,7 @@
 
 
 // ******** includes ********
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -29,6 +30,9 @@
 #define CXA_CLAMP_HIGH(val, max)					((val) = CXA_MIN((val), (max)))
 #define CXA_CLAMP_LOW(val, min)						((val) = CXA_MAX((val), (min)))
 #define CXA_CLAMP_LOW_HIGH(val, min, max)			((val) = CXA_CLAMP_HIGH(CXA_CLAMP_LOW((val), (min)), (max)))
+
+#define CXA_INCREMENT_CLAMP_HIGH(val, inc, max)		((val) = (((max) - (val)) >= (inc)) ? ((val) + (inc)) : (max))
+#define CXA_INCREMENT_CLAMP_LOW(val, inc, min)		((val) = (((min) + (val)) >= (fabs(inc))) ? ((val) + (inc)) : (min))
 
 
 // ******** global type definitions *********
