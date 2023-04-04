@@ -25,7 +25,6 @@ typedef enum
 	RX_STATE_IDLE,
 	RX_STATE_WAIT_FIRSTBYTE,
 	RX_STATE_WAIT_CR,
-	RX_STATE_WAIT_LF,
 	RX_STATE_PROCESS_PACKET,
 	RX_STATE_ERROR
 }rxState_t;
@@ -43,7 +42,7 @@ static void rxState_cb_idle_enter(cxa_stateMachine_t *const smIn, int prevStateI
 static void rxState_cb_idle_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_idle_leave(cxa_stateMachine_t *const smIn, int nextStateIdIn, void *userVarIn);
 static void rxState_cb_waitFirstByte_state(cxa_stateMachine_t *const smIn, void *userVarIn);
-static void rxState_cb_waitCrLf_state(cxa_stateMachine_t *const smIn, void *userVarIn);
+static void rxState_cb_waitCr_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void *userVarIn);
 static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevStateIdIn, void *userVarIn);
 
@@ -67,8 +66,7 @@ void cxa_protocolParser_crlf_init(cxa_protocolParser_crlf_t *const crlfPpIn, cxa
 	cxa_stateMachine_init(&crlfPpIn->stateMachine, "crlfParser", threadIdIn);
 	cxa_stateMachine_addState(&crlfPpIn->stateMachine, RX_STATE_IDLE, "idle", rxState_cb_idle_enter, rxState_cb_idle_state, rxState_cb_idle_leave, (void*)crlfPpIn);
 	cxa_stateMachine_addState(&crlfPpIn->stateMachine, RX_STATE_WAIT_FIRSTBYTE, "wait_firstByte", NULL, rxState_cb_waitFirstByte_state, NULL, (void*)crlfPpIn);
-	cxa_stateMachine_addState(&crlfPpIn->stateMachine, RX_STATE_WAIT_CR, "wait_CR", NULL, rxState_cb_waitCrLf_state, NULL, (void*)crlfPpIn);
-	cxa_stateMachine_addState(&crlfPpIn->stateMachine, RX_STATE_WAIT_LF, "wait_LF", NULL, rxState_cb_waitCrLf_state, NULL, (void*)crlfPpIn);
+	cxa_stateMachine_addState(&crlfPpIn->stateMachine, RX_STATE_WAIT_CR, "wait_CR", NULL, rxState_cb_waitCr_state, NULL, (void*)crlfPpIn);
 	cxa_stateMachine_addState(&crlfPpIn->stateMachine, RX_STATE_PROCESS_PACKET, "processPacket", NULL, rxState_cb_processPacket_state, NULL, (void*)crlfPpIn);
 	cxa_stateMachine_addState(&crlfPpIn->stateMachine, RX_STATE_ERROR, "error", rxState_cb_error_enter, NULL, NULL, (void*)crlfPpIn);
 	cxa_stateMachine_setInitialState(&crlfPpIn->stateMachine, RX_STATE_IDLE);
@@ -209,7 +207,12 @@ static void rxState_cb_waitFirstByte_state(cxa_stateMachine_t *const smIn, void 
 			// next state depends on the byte
 			if( rxByte == '\r' )
 			{
-				cxa_stateMachine_transition(&crlfPpIn->stateMachine, RX_STATE_WAIT_LF);
+				cxa_stateMachine_transition(&crlfPpIn->stateMachine, RX_STATE_PROCESS_PACKET);
+			}
+			else if( rxByte == '\n' )
+			{
+				// discard this byte
+				cxa_fixedByteBuffer_clear(crlfPpIn->super.currBuffer);
 			}
 			else
 			{
@@ -221,7 +224,7 @@ static void rxState_cb_waitFirstByte_state(cxa_stateMachine_t *const smIn, void 
 }
 
 
-static void rxState_cb_waitCrLf_state(cxa_stateMachine_t *const smIn, void *userVarIn)
+static void rxState_cb_waitCr_state(cxa_stateMachine_t *const smIn, void *userVarIn)
 {
 	cxa_protocolParser_crlf_t* crlfPpIn = (cxa_protocolParser_crlf_t*)userVarIn;
 	cxa_assert(crlfPpIn);
@@ -243,31 +246,11 @@ static void rxState_cb_waitCrLf_state(cxa_stateMachine_t *const smIn, void *user
 			cxa_fixedByteBuffer_append_uint8(crlfPpIn->super.currBuffer, rxByte);
 
 			// see if we got the next byte we're looking for
-			rxState_t currState = cxa_stateMachine_getCurrentState(&crlfPpIn->stateMachine);
-			uint8_t targetByte = (currState == RX_STATE_WAIT_LF) ? '\n' : '\r';
-
-			if( rxByte == targetByte )
+			if( rxByte == '\r' )
 			{
 				// this is the byte we're looking for
-				if( currState == RX_STATE_WAIT_CR )
-				{
-					cxa_stateMachine_transition(&crlfPpIn->stateMachine, RX_STATE_WAIT_LF);
-					return;
-				}
-				else if( currState == RX_STATE_WAIT_LF )
-				{
-					cxa_stateMachine_transition(smIn, RX_STATE_PROCESS_PACKET);
-					return;
-				}
-			}
-			else
-			{
-				// if we already moved on in the state machine, reset ourselves
-				if( currState == RX_STATE_WAIT_LF )
-				{
-					cxa_stateMachine_transition(&crlfPpIn->stateMachine, RX_STATE_WAIT_CR);
-					return;
-				}
+				cxa_stateMachine_transition(&crlfPpIn->stateMachine, RX_STATE_PROCESS_PACKET);
+				return;
 			}
 		}
 
@@ -293,16 +276,14 @@ static void rxState_cb_processPacket_state(cxa_stateMachine_t *const smIn, void 
 	uint8_t tmpVal8;
 
 	// make sure our packet is kosher
-	if( (currSize_bytes >= 2) &&
-		(cxa_fixedByteBuffer_get_uint8(crlfPpIn->super.currBuffer, currSize_bytes-2, tmpVal8) && (tmpVal8 == '\r')) &&
-		(cxa_fixedByteBuffer_get_uint8(crlfPpIn->super.currBuffer, currSize_bytes-1, tmpVal8) && (tmpVal8 == '\n')) )
+	if( (currSize_bytes >= 1) &&
+		(cxa_fixedByteBuffer_get_uint8(crlfPpIn->super.currBuffer, currSize_bytes-1, tmpVal8) && (tmpVal8 == '\r')) )
 	{
 		// we received a message
 		cxa_logger_trace(&crlfPpIn->super.logger, "message received...calling listeners");
 
 		// ...but first, strip the crlf and null terminate
-		cxa_fixedByteBuffer_replace_uint8(crlfPpIn->super.currBuffer, currSize_bytes-2, 0);
-		cxa_fixedByteBuffer_remove(crlfPpIn->super.currBuffer, currSize_bytes-1, 1);
+		cxa_fixedByteBuffer_replace_uint8(crlfPpIn->super.currBuffer, currSize_bytes-1, 0);
 
 		cxa_protocolParser_notify_packetReceived(&crlfPpIn->super, crlfPpIn->super.currBuffer);
 	}
