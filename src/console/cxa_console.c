@@ -11,6 +11,7 @@
 #include <cxa_array.h>
 #include <cxa_assert.h>
 #include <cxa_delay.h>
+#include <cxa_fixedFifo.h>
 #include <cxa_numberUtils.h>
 #include <cxa_runLoop.h>
 #include <cxa_stringUtils.h>
@@ -29,6 +30,8 @@
 #define COMMAND_PROMPT					" > "
 #define ESCAPE							"\x1b"
 #define CONSOLE_RESPONSE_TIMEOUT_MS		2000
+
+#define ESCAPE_SEQUENCE_TIMEOUT_MS		500
 
 
 // ******** local type definitions ********
@@ -50,7 +53,7 @@ typedef struct
 static void cb_onRunLoopStart(void* userVarIn);
 static void cb_onRunLoopUpdate(void* userVarIn);
 static void printBootHeader(const char* deviceNameIn);
-static void printCommandLine(void);
+static void printCommandLine(bool addPreLineEndingIn);
 static void printBlockLine(const char* textIn, size_t maxNumCols);
 static void clearScreenReturnHome(void);
 static void clearBuffer(void);
@@ -66,6 +69,10 @@ static const char* deviceName = NULL;
 
 static cxa_array_t commandBuffer;
 static char commandBuffer_raw[CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES];
+
+static cxa_fixedFifo_t commandBufferHistory;
+static char commandBufferHistory_raw[CXA_CONSOLE_MAXLEN_COMMAND_HISTORY*CXA_CONSOLE_COMMAND_BUFFER_LEN_BYTES];
+static ssize_t cbhScrollbackIndex = -1;
 
 static cxa_array_t commandEntries;
 static commandEntry_t commandEntries_raw[CXA_CONSOLE_MAXNUM_COMMANDS+2];
@@ -87,6 +94,9 @@ void cxa_console_init(const char* deviceNameIn, cxa_ioStream_t *const ioStreamIn
 	// setup our arrays
 	cxa_array_initStd(&commandBuffer, commandBuffer_raw);
 	cxa_array_initStd(&commandEntries, commandEntries_raw);
+	cxa_fixedFifo_init(&commandBufferHistory, CXA_FF_ON_FULL_DEQUEUE, sizeof(commandBuffer_raw), commandBufferHistory_raw, sizeof(commandBufferHistory_raw));
+
+	// add our basic console commands
 	cxa_console_addCommand("clear", "clears the console", NULL, 0, command_clear, NULL);
 	cxa_console_addCommand("help", "prints available commands", NULL, 0, command_help, NULL);
 
@@ -145,7 +155,7 @@ void cxa_console_resume(void)
     isPaused = false;
 
     clearBuffer();
-    printCommandLine();
+    printCommandLine(true);
 }
 
 
@@ -172,7 +182,7 @@ void cxa_console_postlog(void)
 {
 	if( ioStream == NULL ) return;
 
-	if( !isExecutingCommand ) printCommandLine();
+	if( !isExecutingCommand ) printCommandLine(true);
 }
 
 
@@ -180,7 +190,7 @@ void cxa_console_postlog(void)
 static void cb_onRunLoopStart(void* userVarIn)
 {
 	printBootHeader(deviceName);
-	printCommandLine();
+	printCommandLine(true);
 }
 
 
@@ -190,11 +200,57 @@ static void cb_onRunLoopUpdate(void* userVarIn)
     if( isPaused ) return;
 
 	uint8_t rxByte;
+	size_t numBytesInBuffer = cxa_array_getSize_elems(&commandBuffer);
 	if( cxa_ioStream_readByte(ioStream, &rxByte) == CXA_IOSTREAM_READSTAT_GOTDATA )
 	{
-		// handle carriage returns / line feeds
-		if( (rxByte == '\r') || (rxByte == '\n') )
+		/// first byte is escape...don't let them get into the buffer and be repeated back
+
+		// handle escape sequences
+		if( rxByte == ESCAPE[0] )
 		{
+			cxa_timeDiff_t td_escape;
+			cxa_timeDiff_init(&td_escape);
+
+			uint8_t escapeByte_0, escapeByte_1;
+			cxa_timeDiff_setStartTime_now(&td_escape);
+			while( cxa_ioStream_readByte(ioStream, &escapeByte_0) != CXA_IOSTREAM_READSTAT_GOTDATA ) { if( cxa_timeDiff_isElapsed_ms(&td_escape, ESCAPE_SEQUENCE_TIMEOUT_MS) ) return; }
+			cxa_timeDiff_setStartTime_now(&td_escape);
+			while( cxa_ioStream_readByte(ioStream, &escapeByte_1) != CXA_IOSTREAM_READSTAT_GOTDATA ) { if( cxa_timeDiff_isElapsed_ms(&td_escape, ESCAPE_SEQUENCE_TIMEOUT_MS) ) return; }
+			// if we made it here, we have a proper escape sequence
+
+			size_t cbhScrollbackSize_elems = cxa_fixedFifo_getSize_elems(&commandBufferHistory);
+			if( (escapeByte_0 == 0x5B) && (escapeByte_1 == 0x41) )
+			{
+				// up arrow
+				if( cbhScrollbackSize_elems == 0 ) return;
+				if( cbhScrollbackIndex == -1 ) cbhScrollbackIndex = 0;										// account for hitting our lower limit
+				if( cbhScrollbackIndex < cbhScrollbackSize_elems )
+				{
+					cxa_fixedFifo_peekAtIndex(&commandBufferHistory, cbhScrollbackIndex++, commandBuffer_raw);
+					cxa_array_init_inPlace(&commandBuffer, sizeof(*commandBuffer_raw), strlen(commandBuffer_raw), commandBuffer_raw, sizeof(commandBuffer_raw));
+					// clear the line, reset the cursor to the beginning of the line
+					cxa_ioStream_writeString(ioStream, ESCAPE "[2K\r");
+					printCommandLine(false);
+				}
+			}
+			else if( (escapeByte_0 == 0x5B) && (escapeByte_1 == 0x42) )
+			{
+				// down arrow
+				if( cbhScrollbackIndex >= 0 )
+				{
+					if( cbhScrollbackIndex == cbhScrollbackSize_elems ) cbhScrollbackIndex -= 1;			// account for hitting our upper limit
+
+					cxa_fixedFifo_peekAtIndex(&commandBufferHistory, cbhScrollbackIndex--, commandBuffer_raw);
+					cxa_array_init_inPlace(&commandBuffer, sizeof(*commandBuffer_raw), strlen(commandBuffer_raw), commandBuffer_raw, sizeof(commandBuffer_raw));
+					// clear the line, reset the cursor to the beginning of the line
+					cxa_ioStream_writeString(ioStream, ESCAPE "[2K\r");
+					printCommandLine(false);
+				}
+			}
+		}
+		else if( (rxByte == '\r') || (rxByte == '\n') )
+		{
+			// handle carriage returns / line feeds
 			// end of a command...make sure it's not empty
 			if( cxa_array_isEmpty(&commandBuffer) ) return;
 
@@ -255,7 +311,11 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 						break;
 					}
 
-					// if we made it here, we parses our arguments correctly...
+					// if we made it here, we parsed our arguments correctly...
+					// save to our command history and reset our scrollback index
+					cxa_fixedFifo_queue(&commandBufferHistory, commandBuffer_raw);
+					cbhScrollbackIndex = -1;
+
 					// give it two new lines, then call the callback
 					isExecutingCommand = true;
 					cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
@@ -267,38 +327,39 @@ static void cb_onRunLoopUpdate(void* userVarIn)
 			}
 			if( !foundCommand )
 			{
+				cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
 				cxa_console_printErrorToIoStream(ioStream, "Unknown command");
 			}
 
 			clearBuffer();
-			printCommandLine();
-			return;
+			printCommandLine(true);
 		}
-
-		// handle backspaces / deletes
-		if( (rxByte == 0x08) || (rxByte == 0x7F) )
+		else if( (rxByte == 0x08) || (rxByte == 0x7F) )
 		{
-			size_t numItemsInCb = cxa_array_getSize_elems(&commandBuffer);
-			if( numItemsInCb > 0 )
+			// handle backspaces / deletes
+			if( numBytesInBuffer > 0 )
 			{
-				cxa_array_remove_atIndex(&commandBuffer, numItemsInCb - 1);
-				// send character to terminal which should delete last item
+				cxa_array_remove_atIndex(&commandBuffer, numBytesInBuffer - 1);
+				// backspace moves the cursor back but doesn't clear the character...clear it, then go back again
+				cxa_ioStream_writeByte(ioStream, rxByte);
+				cxa_ioStream_writeByte(ioStream, ' ');
 				cxa_ioStream_writeByte(ioStream, rxByte);
 			}
-			return;
-		}
-
-		// if we made it here, we're still in the middle of a command
-		if( !cxa_array_append(&commandBuffer, &rxByte) )
-		{
-			// commandBuffer is full
-			clearBuffer();
-			cxa_console_printErrorToIoStream(ioStream, "Command too long for buffer");
-			printCommandLine();
 		}
 		else
 		{
-			cxa_ioStream_writeByte(ioStream, rxByte);
+			// if we made it here, we're still in the middle of a command
+			if( !cxa_array_append(&commandBuffer, &rxByte) )
+			{
+				// commandBuffer is full
+				clearBuffer();
+				cxa_console_printErrorToIoStream(ioStream, "Command too long for buffer");
+				printCommandLine(true);
+			}
+			else
+			{
+				cxa_ioStream_writeByte(ioStream, rxByte);
+			}
 		}
 	}
 }
@@ -319,9 +380,9 @@ static void printBootHeader(const char* deviceNameIn)
 }
 
 
-static void printCommandLine(void)
+static void printCommandLine(bool addPreLineEndingIn)
 {
-	cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
+	if( addPreLineEndingIn ) cxa_ioStream_writeString(ioStream, CXA_LINE_ENDING);
 	cxa_ioStream_writeString(ioStream, " > ");
 	cxa_array_iterate(&commandBuffer, currCharPtr, char)
 	{

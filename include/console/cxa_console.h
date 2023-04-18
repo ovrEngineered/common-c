@@ -35,6 +35,10 @@
 	#define CXA_CONSOLE_MAXNUM_ARGS					6
 #endif
 
+#ifndef CXA_CONSOLE_MAXLEN_COMMAND_HISTORY
+	#define CXA_CONSOLE_MAXLEN_COMMAND_HISTORY		4
+#endif
+
 
 // ******** global type definitions *********
 typedef struct
