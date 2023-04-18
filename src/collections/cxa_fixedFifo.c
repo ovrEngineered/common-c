@@ -119,6 +119,24 @@ bool cxa_fixedFifo_peek(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 }
 
 
+bool cxa_fixedFifo_peekAtIndex(cxa_fixedFifo_t *const fifoIn, size_t indexIn, void *elemOut)
+{
+	cxa_assert(fifoIn);
+	if( indexIn >= cxa_fixedFifo_getSize_elems(fifoIn) ) return false;
+
+	size_t peekIndex = fifoIn->removeIndex + indexIn;
+	if( peekIndex >= fifoIn->maxNumElements ) peekIndex -= fifoIn->maxNumElements;
+
+	// if we made it here, we should return our element
+	if( elemOut != NULL )
+	{
+		memcpy(elemOut, (const void*)(((uint8_t*)fifoIn->bufferLoc) + (peekIndex * fifoIn->datatypeSize_bytes)), fifoIn->datatypeSize_bytes);
+	}
+
+	return true;
+}
+
+
 bool cxa_fixedFifo_dequeue(cxa_fixedFifo_t *const fifoIn, void *elemOut)
 {
 	cxa_assert(fifoIn);

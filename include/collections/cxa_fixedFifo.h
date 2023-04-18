@@ -233,6 +233,19 @@ bool cxa_fixedFifo_peek(cxa_fixedFifo_t *const fifoIn, void *elemOut);
 
 /**
  * @public
+ * @brief "Peeks" at the element in the FIFO at the specified index.
+ * Does not remove the element from the queue.
+ *
+ * @param[in] fifoIn pointer to the pre-initialized FIFO object
+ * @param[in] indexIn the index of the element to peek
+ * @param[out] elemOut pointer to where the element should be copied. May be
+ * 		NULL if no copy is desired.
+ *
+ */
+bool cxa_fixedFifo_peekAtIndex(cxa_fixedFifo_t *const fifoIn, size_t indexIn, void *elemOut);
+
+/**
+ * @public
  * @brief Dequeues an element from the FIFO
  *
  * @param[in] fifoIn pointer to the pre-initialized FIFO object
