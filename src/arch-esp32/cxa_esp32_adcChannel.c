@@ -32,8 +32,6 @@ static uint16_t scm_getMaxRawValue(cxa_adcChannel_t *const superIn);
 
 
 // ********  local variable declarations *********
-static bool isAdcPoweredOn = false;
-
 static bool isAdc1Calibrated = false;
 static esp_adc_cal_characteristics_t adc_chars_unit1;
 static bool isAdc2Calibrated = false;
@@ -66,13 +64,6 @@ static void cxa_esp32_adcChannel_init_common(cxa_esp32_adcChannel_t *const adcCh
 	adcChanIn->adcUnit = unitIn;
 	adcChanIn->chan1 = chan1In;
 	adcChanIn->chan2 = chan2In;
-
-	// make sure the ADC is powered on
-	if( !isAdcPoweredOn )
-	{
-		adc_power_acquire();
-		isAdcPoweredOn = true;
-	}
 
 	// 12-bit, attenuate for the full voltage range
 	adc1_config_width(BIT_WIDTH);
