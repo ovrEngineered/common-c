@@ -9,6 +9,7 @@
 
 // ******** includes ********
 #include <stdio.h>
+#include <string.h>
 
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -16,7 +17,7 @@
 #include <cxa_assert.h>
 
 
-#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_TRACE
+#define CXA_LOG_LEVEL			CXA_LOG_LEVEL_ERROR
 #include <cxa_logger_implementation.h>
 
 
@@ -54,6 +55,7 @@ void cxa_esp32_nvsManager_init(void)
 bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	uint8_t tmpStr;
 	size_t tmpSize = sizeof(tmpStr);
@@ -71,10 +73,11 @@ bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
 bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, size_t maxOutputSize_bytes)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	// first, determine the size of the stored string
 	esp_err_t retVal = nvs_get_str(handle, keyIn, valueOut, &maxOutputSize_bytes);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "get error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -82,9 +85,10 @@ bool cxa_nvsManager_get_cString(const char *const keyIn, char *const valueOut, s
 bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_set_str(handle, keyIn, valueIn);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "set error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -92,9 +96,10 @@ bool cxa_nvsManager_set_cString(const char *const keyIn, char *const valueIn)
 bool cxa_nvsManager_get_uint8(const char *const keyIn, uint8_t *const valueOut)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_get_u8(handle, keyIn, valueOut);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "get error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -102,9 +107,10 @@ bool cxa_nvsManager_get_uint8(const char *const keyIn, uint8_t *const valueOut)
 bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_set_u8(handle, keyIn, valueIn);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "set error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -112,9 +118,10 @@ bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
 bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_get_u32(handle, keyIn, valueOut);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d %s", retVal, esp_err_to_name(retVal));
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "get error: %d %s", retVal, esp_err_to_name(retVal)); }
 	return (retVal == ESP_OK);
 }
 
@@ -122,9 +129,10 @@ bool cxa_nvsManager_get_uint32(const char *const keyIn, uint32_t *const valueOut
 bool cxa_nvsManager_set_uint32(const char *const keyIn, uint32_t valueIn)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_set_u32(handle, keyIn, valueIn);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "set error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -150,6 +158,7 @@ bool cxa_nvsManager_set_float(const char *const keyIn, float valueIn)
 bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, size_t maxOutputSize_bytesIn, size_t *const actualOutputSize_bytesOut)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_get_blob(handle, keyIn, valueOut, &maxOutputSize_bytesIn);
 	if( retVal != ESP_OK )
@@ -168,9 +177,10 @@ bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, s
 bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, size_t blobSize_bytesIn)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_set_blob(handle, keyIn, valueIn, blobSize_bytesIn);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "set error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -178,9 +188,10 @@ bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, si
 bool cxa_nvsManager_erase(const char *const keyIn)
 {
 	cxa_assert(isInit);
+	cxa_assert(strlen(keyIn) < NVS_KEY_NAME_MAX_SIZE);
 
 	esp_err_t retVal = nvs_erase_key(handle, keyIn);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "erase error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -190,7 +201,7 @@ bool cxa_nvsManager_eraseAll(void)
 	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_erase_all(handle);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "erase error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
@@ -200,7 +211,7 @@ bool cxa_nvsManager_commit(void)
 	cxa_assert(isInit);
 
 	esp_err_t retVal = nvs_commit(handle);
-	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "commit error: %d", retVal);
+	if( retVal != ESP_OK ) { cxa_logger_warn(&logger, "commit error: %d", retVal); }
 	return (retVal == ESP_OK);
 }
 
