@@ -10,6 +10,7 @@
 // ******** includes ********
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_timer.h>
 
 
 // ******** local macro definitions ********
@@ -20,8 +21,8 @@
 
 
 // ******** local function prototypes ********
-static unsigned long IRAM_ATTR micros();
-static void IRAM_ATTR delayMicroseconds(uint32_t us);
+static unsigned long micros();
+static void delayMicroseconds(uint32_t us);
 
 
 // ********  local variable declarations *********
