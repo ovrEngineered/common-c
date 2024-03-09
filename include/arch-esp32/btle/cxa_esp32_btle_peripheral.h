@@ -14,10 +14,12 @@
 
 
 #include <esp_gap_ble_api.h>
+#include <esp_gatt_common_api.h>
 #include "esp_gatts_api.h"
 
 
 // ******** global macro definitions ********
+#define CXA_ESP32_BTLE_MAX_NOTIFICATION_LEN_BYTES			(ESP_GATT_DEF_BLE_MTU_SIZE-3)
 
 
 // ******** global type definitions *********
